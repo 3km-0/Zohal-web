@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zohal - AI STEM Notebook</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+    <style>
+        /* Scholar Light Theme */
+        :root {
+            --bg: #f9f7f4;
+            --surface: #ffffff;
+            --surface-alt: #f5f3f0;
+            --text: #1a2f23;
+            --text-soft: #5d6b64;
+            --border: #e0dcd4;
+            --accent: #2d8878;
+            --accent-alt: #c9973e;
+            --success: #22c55e;
+            --highlight: #c9973e;
+            --grid-color: rgba(0,0,0,0.03);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Source Serif 4", Georgia, serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.75;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Subtle grid background */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 80px 32px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: var(--text-soft);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 120px 0 80px;
+        }
+
+        .hero-icon {
+            width: 100px;
+            height: 100px;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 32px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 3.5rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-soft);
+            max-width: 550px;
+            margin: 0 auto 40px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 60px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 40px;
+            color: var(--text);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin: 0 auto 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .feature-card p {
+            font-size: 0.95rem;
+            color: var(--text-soft);
+        }
+
+        /* Links Section */
+        .links-section {
+            padding: 40px 0;
+        }
+
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .link-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.2s ease;
+        }
+
+        .link-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+
+        .link-card-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--surface-alt);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .link-card span {
+            font-weight: 600;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 48px 0;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+
+        .footer-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-soft);
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent);
+        }
+
+        .copyright {
+            color: var(--text-soft);
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 60px 20px;
+            }
+
+            nav {
+                padding: 14px 20px;
+            }
+
+            .nav-links {
+                gap: 16px;
+            }
+
+            .hero {
+                padding: 100px 0 60px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 280px;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+
+    <nav>
+        <a href="index.html" class="logo">Zohal</a>
+        <div class="nav-links">
+            <a href="terms.html">Terms</a>
+            <a href="privacy.html">Privacy</a>
+            <a href="support.html">Support</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <section class="hero">
+            <div class="hero-icon">📚</div>
+            <h1>Zohal</h1>
+            <p class="hero-subtitle">The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.</p>
+            <div class="cta-buttons">
+                <a href="https://apps.apple.com/app/zohal/id6756722186" class="btn btn-primary">
+                    <span>Download on App Store</span>
+                </a>
+                <a href="support.html" class="btn btn-secondary">
+                    <span>Get Support</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="features">
+            <h2 class="section-title">What is Zohal?</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>PDF Reader</h3>
+                    <p>Import and read your textbooks, papers, and documents with a clean, distraction-free interface.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✏️</div>
+                    <h3>Handwritten Notes</h3>
+                    <p>Write and draw directly on your documents with Apple Pencil support.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Explanations</h3>
+                    <p>Select any text or equation and get instant, intelligent explanations powered by AI.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>STEM Tools</h3>
+                    <p>Specialized plugins for math, physics, engineering, legal, and finance documents.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="links-section">
+            <div class="links-grid">
+                <a href="terms.html" class="link-card">
+                    <div class="link-card-icon">📜</div>
+                    <span>Terms of Use (EULA)</span>
+                </a>
+                <a href="privacy.html" class="link-card">
+                    <div class="link-card-icon">🔒</div>
+                    <span>Privacy Policy</span>
+                </a>
+                <a href="support.html" class="link-card">
+                    <div class="link-card-icon">💬</div>
+                    <span>Support & FAQ</span>
+                </a>
+                <a href="mailto:support@zohal.app" class="link-card">
+                    <div class="link-card-icon">📧</div>
+                    <span>Contact Us</span>
+                </a>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footer-logo">Zohal</div>
+            <div class="footer-links">
+                <a href="terms.html">Terms of Use (EULA)</a>
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="support.html">Support</a>
+            </div>
+            <p class="copyright">&copy; 2025 Zohal. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
+
