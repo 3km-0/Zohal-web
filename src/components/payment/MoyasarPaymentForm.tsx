@@ -1,56 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Spinner } from '@/components/ui';
+import { useState } from 'react';
+import { CreditCard, Smartphone, ArrowRight, Lock } from 'lucide-react';
+import { Button, Spinner } from '@/components/ui';
 import { cn } from '@/lib/utils';
-
-// Moyasar types
-declare global {
-  interface Window {
-    Moyasar: {
-      init: (config: MoyasarConfig) => MoyasarInstance;
-    };
-  }
-}
-
-interface MoyasarConfig {
-  element: string;
-  amount: number;
-  currency: string;
-  description: string;
-  publishable_api_key: string;
-  callback_url: string;
-  methods?: string[];
-  apple_pay?: {
-    country: string;
-    label: string;
-    validate_merchant_url: string;
-  };
-  on_initiating?: () => void;
-  on_completed?: (payment: MoyasarPayment) => void;
-  on_failure?: (error: MoyasarError) => void;
-}
-
-interface MoyasarInstance {
-  submit: () => void;
-}
-
-interface MoyasarPayment {
-  id: string;
-  status: string;
-  amount: number;
-  currency: string;
-  source: {
-    type: string;
-    token?: string;
-    transaction_url?: string;
-  };
-}
-
-interface MoyasarError {
-  type: string;
-  message: string;
-}
+import { createClient } from '@/lib/supabase/client';
 
 interface MoyasarPaymentFormProps {
   amount: number; // In halalas (SAR cents)
@@ -58,8 +12,8 @@ interface MoyasarPaymentFormProps {
   tier: string;
   period: 'monthly' | 'yearly';
   callbackUrl: string;
-  onPaymentComplete?: (payment: MoyasarPayment) => void;
-  onPaymentError?: (error: MoyasarError) => void;
+  onPaymentComplete?: (payment: { id: string; status: string }) => void;
+  onPaymentError?: (error: { message: string }) => void;
   onPaymentInitiating?: () => void;
   className?: string;
 }
@@ -70,213 +24,80 @@ export function MoyasarPaymentForm({
   tier,
   period,
   callbackUrl,
-  onPaymentComplete,
-  onPaymentError,
   onPaymentInitiating,
   className,
 }: MoyasarPaymentFormProps) {
-  const formRef = useRef<HTMLDivElement>(null);
-  const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [formInitialized, setFormInitialized] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const initAttemptedRef = useRef(false);
+  const supabase = createClient();
 
-  const publishableKey = process.env.NEXT_PUBLIC_MOYASAR_PUBLISHABLE_KEY;
+  const handlePayment = async () => {
+    setLoading(true);
+    setError(null);
+    onPaymentInitiating?.();
 
-  // Load Moyasar SDK dynamically
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Check if already loaded
-    if (window.Moyasar) {
-      setSdkLoaded(true);
-      return;
-    }
-
-    // Check if script is already in DOM
-    const existingScript = document.querySelector('script[src*="moyasar"]');
-    if (existingScript) {
-      existingScript.addEventListener('load', () => setSdkLoaded(true));
-      return;
-    }
-
-    // Load CSS
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.css';
-    document.head.appendChild(link);
-
-    // Load JS
-    const script = document.createElement('script');
-    script.src = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.min.js';
-    script.async = true;
-    script.onload = () => {
-      console.log('[MoyasarForm] SDK loaded');
-      setSdkLoaded(true);
-    };
-    script.onerror = () => {
-      console.error('[MoyasarForm] Failed to load SDK');
-      setError('Failed to load payment form. Please refresh the page.');
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      // Don't remove on cleanup as other components might need it
-    };
-  }, []);
-
-  // Initialize form when SDK is loaded
-  const initializeForm = useCallback(() => {
-    if (!sdkLoaded || formInitialized || !publishableKey || initAttemptedRef.current) return;
-    
-    initAttemptedRef.current = true;
-
-    // Wait for DOM to be ready
-    const timeout = setTimeout(() => {
-      try {
-        if (!window.Moyasar) {
-          console.error('Moyasar SDK not available');
-          setError('Payment form failed to load. Please refresh the page.');
-          return;
-        }
-
-        console.log('[MoyasarForm] Initializing form with amount:', amount);
-        
-        window.Moyasar.init({
-          element: '.moyasar-form',
-          amount: amount,
-          currency: 'SAR',
-          description: description,
-          publishable_api_key: publishableKey,
-          callback_url: callbackUrl,
-          methods: ['creditcard', 'stcpay'],
-          on_initiating: () => {
-            console.log('[MoyasarForm] Payment initiating...');
-            onPaymentInitiating?.();
-          },
-          on_completed: (payment) => {
-            console.log('[MoyasarForm] Payment completed:', payment);
-            onPaymentComplete?.(payment);
-          },
-          on_failure: (err) => {
-            console.error('[MoyasarForm] Payment failed:', err);
-            setError(err.message || 'Payment failed. Please try again.');
-            onPaymentError?.(err);
-          },
-        });
-
-        setFormInitialized(true);
-        console.log('[MoyasarForm] Form initialized successfully');
-      } catch (err) {
-        console.error('[MoyasarForm] Error initializing form:', err);
-        setError('Failed to initialize payment form. Please refresh the page.');
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Please log in to continue');
+        setLoading(false);
+        return;
       }
-    }, 200);
 
-    return () => clearTimeout(timeout);
-  }, [sdkLoaded, formInitialized, amount, description, callbackUrl, publishableKey, onPaymentComplete, onPaymentError, onPaymentInitiating]);
+      // Call our Edge Function to create the payment
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/moyasar-create-subscription`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            tier,
+            period,
+            callback_url: callbackUrl,
+          }),
+        }
+      );
 
-  useEffect(() => {
-    initializeForm();
-  }, [initializeForm]);
+      const data = await response.json();
 
-  if (!publishableKey) {
-    return (
-      <div className={cn('p-4 bg-error/10 border border-error/20 rounded-scholar text-error', className)}>
-        Payment configuration error. Please contact support.
-      </div>
-    );
-  }
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create payment');
+      }
+
+      // If there's a transaction URL (for 3DS), redirect to it
+      if (data.transaction_url) {
+        window.location.href = data.transaction_url;
+        return;
+      }
+
+      // If payment was immediately successful
+      if (data.status === 'paid') {
+        window.location.href = '/subscription/success';
+        return;
+      }
+
+      // Otherwise, redirect to Moyasar's payment page
+      // The Edge Function should return a payment URL
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        // Fallback: redirect to callback to check status
+        window.location.href = `${callbackUrl}?payment_id=${data.payment_id}&status=pending`;
+      }
+
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className={cn('relative', className)}>
-
-      {/* Custom styling for Moyasar form to match Scholar theme */}
-      <style jsx global>{`
-        .moyasar-form {
-          font-family: inherit;
-        }
-        
-        .moyasar-form .mpf-card-number,
-        .moyasar-form .mpf-card-expiry,
-        .moyasar-form .mpf-card-cvc,
-        .moyasar-form .mpf-card-holder {
-          border-radius: 8px;
-          border-color: var(--border);
-          background-color: var(--surface);
-          transition: all 0.2s;
-        }
-        
-        .moyasar-form .mpf-card-number:focus,
-        .moyasar-form .mpf-card-expiry:focus,
-        .moyasar-form .mpf-card-cvc:focus,
-        .moyasar-form .mpf-card-holder:focus {
-          border-color: var(--accent);
-          box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
-        }
-        
-        .moyasar-form .mpf-submit {
-          background-color: var(--accent) !important;
-          border-radius: 8px !important;
-          font-weight: 600;
-          transition: all 0.2s;
-        }
-        
-        .moyasar-form .mpf-submit:hover {
-          opacity: 0.9;
-        }
-        
-        .moyasar-form .mpf-error {
-          color: var(--error);
-          font-size: 0.875rem;
-          margin-top: 0.5rem;
-        }
-        
-        .moyasar-form label {
-          color: var(--text);
-          font-weight: 500;
-          margin-bottom: 0.5rem;
-        }
-        
-        /* Method selector styling */
-        .moyasar-form .mpf-methods {
-          display: flex;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
-        }
-        
-        .moyasar-form .mpf-method {
-          flex: 1;
-          border-radius: 8px;
-          border: 2px solid var(--border);
-          padding: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        
-        .moyasar-form .mpf-method.active {
-          border-color: var(--accent);
-          background-color: rgba(var(--accent-rgb), 0.05);
-        }
-        
-        /* Dark mode support */
-        [data-theme="dark"] .moyasar-form .mpf-card-number,
-        [data-theme="dark"] .moyasar-form .mpf-card-expiry,
-        [data-theme="dark"] .moyasar-form .mpf-card-cvc,
-        [data-theme="dark"] .moyasar-form .mpf-card-holder {
-          background-color: var(--surface-alt);
-          color: var(--text);
-        }
-      `}</style>
-
-      {/* Loading state */}
-      {!formInitialized && !error && (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
-          <span className="ml-3 text-text-soft">Loading payment form...</span>
-        </div>
-      )}
-
+    <div className={cn('space-y-4', className)}>
       {/* Error state */}
       {error && (
         <div className="p-4 bg-error/10 border border-error/20 rounded-scholar text-error text-sm">
@@ -284,14 +105,44 @@ export function MoyasarPaymentForm({
         </div>
       )}
 
-      {/* Moyasar form container */}
-      <div
-        ref={formRef}
-        className={cn(
-          'moyasar-form',
-          !formInitialized && 'hidden'
+      {/* Payment method info */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 p-3 bg-surface-alt rounded-scholar border border-border">
+          <CreditCard className="w-5 h-5 text-text-soft" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-text">Credit/Debit Card</p>
+            <p className="text-xs text-text-soft">Visa, Mastercard, mada</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 p-3 bg-surface-alt rounded-scholar border border-border">
+          <Smartphone className="w-5 h-5 text-text-soft" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-text">STC Pay</p>
+            <p className="text-xs text-text-soft">Pay with your STC Pay wallet</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Pay button */}
+      <Button
+        onClick={handlePayment}
+        disabled={loading}
+        className="w-full"
+        size="lg"
+      >
+        {loading ? (
+          <>
+            <Spinner size="sm" className="mr-2" />
+            Processing...
+          </>
+        ) : (
+          <>
+            Pay {(amount / 100).toFixed(2)} SAR
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </>
         )}
-      />
+      </Button>
 
       {/* Payment summary */}
       <div className="mt-4 p-4 bg-surface-alt rounded-scholar">
