@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Script from 'next/script';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Spinner } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
@@ -80,21 +79,69 @@ export function MoyasarPaymentForm({
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initAttemptedRef = useRef(false);
 
   const publishableKey = process.env.NEXT_PUBLIC_MOYASAR_PUBLISHABLE_KEY;
 
+  // Load Moyasar SDK dynamically
   useEffect(() => {
-    if (!sdkLoaded || formInitialized || !publishableKey) return;
+    if (typeof window === 'undefined') return;
+    
+    // Check if already loaded
+    if (window.Moyasar) {
+      setSdkLoaded(true);
+      return;
+    }
 
-    // Small delay to ensure DOM is ready
+    // Check if script is already in DOM
+    const existingScript = document.querySelector('script[src*="moyasar"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => setSdkLoaded(true));
+      return;
+    }
+
+    // Load CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.css';
+    document.head.appendChild(link);
+
+    // Load JS
+    const script = document.createElement('script');
+    script.src = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.min.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('[MoyasarForm] SDK loaded');
+      setSdkLoaded(true);
+    };
+    script.onerror = () => {
+      console.error('[MoyasarForm] Failed to load SDK');
+      setError('Failed to load payment form. Please refresh the page.');
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      // Don't remove on cleanup as other components might need it
+    };
+  }, []);
+
+  // Initialize form when SDK is loaded
+  const initializeForm = useCallback(() => {
+    if (!sdkLoaded || formInitialized || !publishableKey || initAttemptedRef.current) return;
+    
+    initAttemptedRef.current = true;
+
+    // Wait for DOM to be ready
     const timeout = setTimeout(() => {
       try {
         if (!window.Moyasar) {
-          console.error('Moyasar SDK not loaded');
+          console.error('Moyasar SDK not available');
           setError('Payment form failed to load. Please refresh the page.');
           return;
         }
 
+        console.log('[MoyasarForm] Initializing form with amount:', amount);
+        
         window.Moyasar.init({
           element: '.moyasar-form',
           amount: amount,
@@ -124,10 +171,14 @@ export function MoyasarPaymentForm({
         console.error('[MoyasarForm] Error initializing form:', err);
         setError('Failed to initialize payment form. Please refresh the page.');
       }
-    }, 100);
+    }, 200);
 
     return () => clearTimeout(timeout);
   }, [sdkLoaded, formInitialized, amount, description, callbackUrl, publishableKey, onPaymentComplete, onPaymentError, onPaymentInitiating]);
+
+  useEffect(() => {
+    initializeForm();
+  }, [initializeForm]);
 
   if (!publishableKey) {
     return (
@@ -139,24 +190,6 @@ export function MoyasarPaymentForm({
 
   return (
     <div className={cn('relative', className)}>
-      {/* Moyasar SDK */}
-      <Script
-        src="https://cdn.moyasar.com/mpf/1.14.0/moyasar.min.js"
-        onLoad={() => {
-          console.log('[MoyasarForm] SDK loaded');
-          setSdkLoaded(true);
-        }}
-        onError={() => {
-          console.error('[MoyasarForm] Failed to load SDK');
-          setError('Failed to load payment form. Please refresh the page.');
-        }}
-      />
-      
-      {/* Moyasar CSS */}
-      <link
-        rel="stylesheet"
-        href="https://cdn.moyasar.com/mpf/1.14.0/moyasar.css"
-      />
 
       {/* Custom styling for Moyasar form to match Scholar theme */}
       <style jsx global>{`
