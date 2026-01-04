@@ -1,26 +1,71 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Crown, ArrowRight, Sparkles } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 export default function SubscriptionSuccessPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const { user } = useAuth();
 
   const [tier, setTier] = useState<string>('pro');
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
-    async function fetchSubscription() {
+    async function verifyAndFetchSubscription() {
       if (!user) return;
 
+      // Check if we have payment info in URL (Moyasar redirect)
+      const paymentId = searchParams.get('id') || searchParams.get('payment_id');
+      const invoiceId = searchParams.get('invoice_id');
+
+      console.log('[Success] URL params:', { paymentId, invoiceId });
+
+      // If we have payment info, verify it first
+      if (paymentId || invoiceId) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            console.log('[Success] Calling verify-payment...');
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/verify-payment`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  payment_id: paymentId || '',
+                  invoice_id: invoiceId || '',
+                }),
+              }
+            );
+
+            const result = await response.json();
+            console.log('[Success] Verification result:', result);
+
+            if (response.ok && result.tier) {
+              setTier(result.tier);
+              setExpiresAt(result.expires_at);
+              setVerifying(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('[Success] Verification error:', err);
+        }
+      }
+
+      // Fallback: fetch from database
       const { data: profile } = await supabase
         .from('profiles')
         .select('subscription_tier, subscription_expires_at')
@@ -28,13 +73,15 @@ export default function SubscriptionSuccessPage() {
         .single();
 
       if (profile) {
-        setTier(profile.subscription_tier || 'pro');
+        setTier(profile.subscription_tier || 'free');
         setExpiresAt(profile.subscription_expires_at);
       }
+      
+      setVerifying(false);
     }
 
-    fetchSubscription();
-  }, [supabase, user]);
+    verifyAndFetchSubscription();
+  }, [supabase, user, searchParams]);
 
   const tierColors: Record<string, { bg: string; text: string }> = {
     pro: { bg: 'bg-blue-500/10', text: 'text-blue-500' },
@@ -43,6 +90,21 @@ export default function SubscriptionSuccessPage() {
   };
 
   const colors = tierColors[tier] || tierColors.pro;
+
+  if (verifying) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AppHeader title="Processing..." />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <Card className="w-full max-w-md text-center" padding="lg">
+            <Spinner size="lg" className="mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-text mb-2">Activating Your Subscription</h2>
+            <p className="text-text-soft">Please wait while we confirm your payment...</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
