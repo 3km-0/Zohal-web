@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
 import {
   Crown,
   Check,
@@ -37,7 +36,6 @@ type BillingPeriod = 'monthly' | 'yearly';
 type Currency = 'SAR' | 'USD';
 
 export default function SubscriptionPage() {
-  const t = useTranslations('subscription');
   const router = useRouter();
   const supabase = createClient();
   const { user } = useAuth();

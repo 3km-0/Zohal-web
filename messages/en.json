@@ -137,6 +137,38 @@
     "language": "Language",
     "deleteAccount": "Delete Account"
   },
+  "subscription": {
+    "title": "Subscription",
+    "choosePlan": "Choose the plan that works best for you",
+    "currentPlan": "Current Plan",
+    "managedByAppStore": "Managed via App Store",
+    "renewsOn": "Renews on {date}",
+    "managePayment": "Manage Payment",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "save": "Save {percent}%",
+    "perMonth": "per month",
+    "perYear": "per year",
+    "free": "Free",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "currentPlanBadge": "Current Plan",
+    "upgradeTo": "Upgrade to {plan}",
+    "features": {
+      "documents": "{count} documents",
+      "unlimitedDocuments": "Unlimited documents",
+      "aiExplanations": "AI explanations",
+      "unlimitedAI": "Unlimited AI usage",
+      "workspaces": "{count} workspaces",
+      "unlimitedWorkspaces": "Unlimited workspaces",
+      "allPlugins": "All plugins included",
+      "calendarSync": "Calendar sync",
+      "driveSync": "Google Drive sync",
+      "prioritySupport": "Priority support",
+      "teamWorkspaces": "Team workspaces",
+      "apiAccess": "API access"
+    }
+  },
   "footer": {
     "copyright": "© {year} Zohal. All rights reserved."
   }

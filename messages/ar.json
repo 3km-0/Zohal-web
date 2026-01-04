@@ -137,6 +137,38 @@
     "language": "اللغة",
     "deleteAccount": "حذف الحساب"
   },
+  "subscription": {
+    "title": "الاشتراك",
+    "choosePlan": "اختر الخطة المناسبة لك",
+    "currentPlan": "الخطة الحالية",
+    "managedByAppStore": "تُدار عبر App Store",
+    "renewsOn": "يُجدد في {date}",
+    "managePayment": "إدارة الدفع",
+    "monthly": "شهري",
+    "yearly": "سنوي",
+    "save": "وفر {percent}%",
+    "perMonth": "شهرياً",
+    "perYear": "سنوياً",
+    "free": "مجاني",
+    "upgrade": "ترقية",
+    "downgrade": "تخفيض",
+    "currentPlanBadge": "الخطة الحالية",
+    "upgradeTo": "ترقية إلى {plan}",
+    "features": {
+      "documents": "{count} مستند",
+      "unlimitedDocuments": "مستندات غير محدودة",
+      "aiExplanations": "شروحات الذكاء الاصطناعي",
+      "unlimitedAI": "استخدام غير محدود للذكاء الاصطناعي",
+      "workspaces": "{count} مساحة عمل",
+      "unlimitedWorkspaces": "مساحات عمل غير محدودة",
+      "allPlugins": "جميع الإضافات",
+      "calendarSync": "مزامنة التقويم",
+      "driveSync": "مزامنة Google Drive",
+      "prioritySupport": "دعم مميز",
+      "teamWorkspaces": "مساحات عمل الفريق",
+      "apiAccess": "الوصول للـ API"
+    }
+  },
   "footer": {
     "copyright": "© {year} زُهل. جميع الحقوق محفوظة."
   }
