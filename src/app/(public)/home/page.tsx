@@ -75,18 +75,33 @@ export default function HomePage() {
           {t('hero.subtitle')}
         </p>
 
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+          <Link
+            href="/auth/signup"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-accent text-white font-semibold rounded-scholar transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
+          >
+            Get Started Free →
+          </Link>
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-surface border border-border text-text font-semibold rounded-scholar transition-all duration-200 hover:border-accent hover:text-accent"
+          >
+            Log In
+          </Link>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
             href="https://apps.apple.com/app/id6756722186"
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-accent text-white font-semibold rounded-scholar transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-text-soft hover:text-accent transition-colors"
           >
-            {t('hero.downloadApp')}
+            📱 {t('hero.downloadApp')}
           </a>
           <Link
             href="/support"
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-surface border border-border text-text font-semibold rounded-scholar transition-all duration-200 hover:border-accent hover:text-accent"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-text-soft hover:text-accent transition-colors"
           >
-            {t('hero.getSupport')}
+            💬 {t('hero.getSupport')}
           </Link>
         </div>
       </section>
