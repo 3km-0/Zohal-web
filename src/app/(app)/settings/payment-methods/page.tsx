@@ -177,7 +177,7 @@ export default function PaymentMethodsPage() {
       <AppHeader 
         title="Payment Methods" 
         subtitle="Manage your saved payment methods"
-        action={
+        actions={
           <Button variant="secondary" onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4" />
             Back

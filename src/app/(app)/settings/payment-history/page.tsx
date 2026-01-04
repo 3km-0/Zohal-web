@@ -141,7 +141,7 @@ export default function PaymentHistoryPage() {
       <AppHeader 
         title="Payment History" 
         subtitle="View your past transactions"
-        action={
+        actions={
           <Button variant="secondary" onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4" />
             Back
