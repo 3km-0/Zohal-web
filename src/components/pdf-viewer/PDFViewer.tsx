@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import * as pdfjs from 'pdfjs-dist';
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import { PDFToolbar } from './PDFToolbar';
 import { PDFThumbnails } from './PDFThumbnails';
 import { Spinner } from '@/components/ui';
@@ -32,27 +32,31 @@ export function PDFViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showThumbnails, setShowThumbnails] = useState(true);
-  const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());
 
   // Load PDF document
   useEffect(() => {
     let cancelled = false;
+    let loadingTask: pdfjs.PDFDocumentLoadingTask | null = null;
 
     async function loadPDF() {
       try {
         setLoading(true);
         setError(null);
 
-        const loadingTask = pdfjs.getDocument(url);
+        loadingTask = pdfjs.getDocument(url);
         const pdfDoc = await loadingTask.promise;
 
-        if (cancelled) return;
+        if (cancelled) {
+          pdfDoc.destroy();
+          return;
+        }
 
         setPdf(pdfDoc);
         setTotalPages(pdfDoc.numPages);
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
+        console.error('PDF load error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load PDF');
         setLoading(false);
       }
@@ -62,6 +66,7 @@ export function PDFViewer({
 
     return () => {
       cancelled = true;
+      loadingTask?.destroy();
     };
   }, [url]);
 
@@ -174,13 +179,10 @@ export function PDFViewer({
             {pdf &&
               Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                 <PDFPage
-                  key={pageNum}
+                  key={`${url}-${pageNum}-${scale}`}
                   pdf={pdf}
                   pageNumber={pageNum}
                   scale={scale}
-                  onRendered={() => {
-                    setRenderedPages((prev) => new Set(prev).add(pageNum));
-                  }}
                 />
               ))}
           </div>
@@ -194,95 +196,79 @@ interface PDFPageProps {
   pdf: PDFDocumentProxy;
   pageNumber: number;
   scale: number;
-  onRendered: () => void;
 }
 
-function PDFPage({ pdf, pageNumber, scale, onRendered }: PDFPageProps) {
+function PDFPage({ pdf, pageNumber, scale }: PDFPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const textLayerRef = useRef<HTMLDivElement>(null);
-  const [rendered, setRendered] = useState(false);
+  const renderTaskRef = useRef<RenderTask | null>(null);
+  const [status, setStatus] = useState<'loading' | 'rendered' | 'error'>('loading');
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     let cancelled = false;
+    let page: PDFPageProxy | null = null;
 
     async function renderPage() {
-      if (!canvasRef.current) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
       try {
-        const page = await pdf.getPage(pageNumber);
+        setStatus('loading');
+
+        // Cancel any existing render task
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+          renderTaskRef.current = null;
+        }
+
+        // Get the page
+        page = await pdf.getPage(pageNumber);
         if (cancelled) return;
 
-        // Get the viewport at the specified scale
+        // Get viewport - PDF.js handles rotation internally
         const viewport = page.getViewport({ scale });
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-
-        if (!context) return;
-
-        // Handle high-DPI displays
-        const outputScale = window.devicePixelRatio || 1;
-
-        // Set the canvas size in CSS pixels
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-
-        // Set the canvas buffer size to account for device pixel ratio
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-
-        // Clear canvas and reset transform before rendering
-        context.setTransform(1, 0, 0, 1, 0, 0);
-        context.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Scale context to account for high-DPI displays
-        context.scale(outputScale, outputScale);
+        // Set dimensions for the container placeholder
+        setDimensions({ width: viewport.width, height: viewport.height });
 
-        // Render PDF page to canvas
+        // Get the 2D context
+        const context = canvas.getContext('2d', { alpha: false });
+        if (!context) {
+          console.error('Could not get canvas context');
+          setStatus('error');
+          return;
+        }
+
+        // Set canvas dimensions directly (no DPI scaling to keep it simple)
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        // Clear canvas
+        context.fillStyle = 'white';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Create render task
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
+          background: 'white',
         };
 
-        await page.render(renderContext).promise;
-
+        renderTaskRef.current = page.render(renderContext);
+        
+        await renderTaskRef.current.promise;
+        
         if (cancelled) return;
-
-        // Render text layer for selection
-        if (textLayerRef.current) {
-          textLayerRef.current.innerHTML = '';
-          const textContent = await page.getTextContent();
-
-          if (cancelled) return;
-
-          textLayerRef.current.style.height = `${viewport.height}px`;
-          textLayerRef.current.style.width = `${viewport.width}px`;
-
-          // Create text layer using PDF.js text layer API
-          const textItems = textContent.items as Array<{
-            str: string;
-            transform: number[];
-            width: number;
-            height: number;
-          }>;
-
-          textItems.forEach((item) => {
-            const div = document.createElement('span');
-            div.textContent = item.str;
-            div.style.position = 'absolute';
-            div.style.left = `${item.transform[4] * scale}px`;
-            div.style.top = `${viewport.height - item.transform[5] * scale - 10}px`;
-            div.style.fontSize = `${Math.abs(item.transform[0]) * scale}px`;
-            div.style.fontFamily = 'sans-serif';
-            div.style.color = 'transparent';
-            div.style.whiteSpace = 'pre';
-            textLayerRef.current?.appendChild(div);
-          });
+        
+        setStatus('rendered');
+      } catch (err) {
+        if (cancelled) return;
+        // Ignore cancelled errors
+        if (err instanceof Error && err.message.includes('cancelled')) {
+          return;
         }
-
-        setRendered(true);
-        onRendered();
-      } catch (error) {
-        console.error('Error rendering page:', error);
+        console.error(`Error rendering page ${pageNumber}:`, err);
+        setStatus('error');
       }
     }
 
@@ -290,23 +276,44 @@ function PDFPage({ pdf, pageNumber, scale, onRendered }: PDFPageProps) {
 
     return () => {
       cancelled = true;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
     };
-  }, [pdf, pageNumber, scale, onRendered]);
+  }, [pdf, pageNumber, scale]);
 
   return (
     <div
       id={`pdf-page-${pageNumber}`}
       className="relative bg-white shadow-scholar rounded-scholar overflow-hidden"
+      style={{
+        minWidth: dimensions.width || 200,
+        minHeight: dimensions.height || 280,
+      }}
     >
-      <canvas ref={canvasRef} className="block" />
-      <div
-        ref={textLayerRef}
-        className="absolute top-0 left-0 select-text"
-        style={{ pointerEvents: 'auto' }}
+      <canvas 
+        ref={canvasRef} 
+        className="block"
+        style={{ display: status === 'rendered' ? 'block' : 'none' }}
       />
-      {!rendered && (
-        <div className="absolute inset-0 flex items-center justify-center bg-surface-alt">
+      {status === 'loading' && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-white"
+          style={{ width: dimensions.width || '100%', height: dimensions.height || 280 }}
+        >
           <Spinner size="md" />
+        </div>
+      )}
+      {status === 'error' && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-surface-alt"
+          style={{ width: dimensions.width || '100%', height: dimensions.height || 280 }}
+        >
+          <div className="text-center p-4">
+            <span className="text-2xl mb-2 block">⚠️</span>
+            <p className="text-sm text-text-soft">Failed to load page {pageNumber}</p>
+          </div>
         </div>
       )}
     </div>
