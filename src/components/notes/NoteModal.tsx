@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { Button, Input, Card } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Note } from '@/types/database';
 
@@ -16,8 +16,8 @@ interface NoteModalProps {
 export function NoteModal({ workspaceId, note, onClose, onSaved }: NoteModalProps) {
   const supabase = createClient();
 
-  const [title, setTitle] = useState(note?.title || '');
-  const [content, setContent] = useState(note?.content_text || '');
+  // Note: DB uses note_text, not content_text, and has no title column
+  const [content, setContent] = useState(note?.note_text || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +39,7 @@ export function NoteModal({ workspaceId, note, onClose, onSaved }: NoteModalProp
         const { error } = await supabase
           .from('notes')
           .update({
-            title: title.trim() || null,
-            content_text: content.trim(),
+            note_text: content.trim(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', note.id);
@@ -49,9 +48,8 @@ export function NoteModal({ workspaceId, note, onClose, onSaved }: NoteModalProp
       } else {
         const { error } = await supabase.from('notes').insert({
           workspace_id: workspaceId,
-          title: title.trim() || null,
-          content_text: content.trim(),
-          note_type: 'user_written',
+          note_text: content.trim(),
+          note_type: 'text',  // Use correct enum: 'text' not 'user_written'
         });
 
         if (error) throw error;
@@ -90,13 +88,6 @@ export function NoteModal({ workspaceId, note, onClose, onSaved }: NoteModalProp
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
-          <Input
-            label="Title (optional)"
-            placeholder="Give your note a title..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">
               Content

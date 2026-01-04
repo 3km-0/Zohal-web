@@ -44,6 +44,7 @@ export default function TasksPage() {
     let query = supabase
       .from('tasks')
       .select('*')
+      .is('deleted_at', null)  // Filter out soft-deleted tasks
       .order('due_at', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 

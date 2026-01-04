@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Profile form state
-  const [fullName, setFullName] = useState('');
+  const [displayName, setDisplayName] = useState('');
 
   // Fetch profile
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
       if (data) {
         setProfile(data);
-        setFullName(data.full_name || '');
+        setDisplayName(data.display_name || '');
       }
       setLoading(false);
     }
@@ -78,11 +78,11 @@ export default function SettingsPage() {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ full_name: fullName.trim() || null })
+      .update({ display_name: displayName.trim() || null })
       .eq('id', user.id);
 
     if (!error) {
-      setProfile((prev) => (prev ? { ...prev, full_name: fullName.trim() || null } : null));
+      setProfile((prev) => (prev ? { ...prev, display_name: displayName.trim() || null } : null));
     }
 
     setSaving(false);
@@ -150,9 +150,9 @@ export default function SettingsPage() {
               </div>
 
               <Input
-                label="Full Name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                label="Display Name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
               />
 

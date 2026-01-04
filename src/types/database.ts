@@ -33,11 +33,12 @@ export type ProcessingStatus =
   | 'completed'
   | 'failed';
 
+// Note types matching database
 export type NoteType =
-  | 'user_written'
-  | 'ai_summary'
-  | 'extracted_insight'
-  | 'chat_message';
+  | 'text'           // User-typed text note
+  | 'handwritten'    // Canvas with ink data
+  | 'ai_saved'       // Saved AI response
+  | 'conversation';  // Chat conversation
 
 export type TaskStatus =
   | 'pending'
@@ -45,18 +46,37 @@ export type TaskStatus =
   | 'completed'
   | 'cancelled';
 
-export type SubscriptionTier = 'free' | 'pro' | 'ultra';
+export type SubscriptionTier = 'free' | 'core' | 'pro' | 'pro_plus' | 'premium' | 'ultra' | 'team';
 
 export interface Profile {
   id: string;
-  email: string;
-  full_name?: string | null;
+  email?: string | null;
+  display_name?: string | null;  // Note: DB uses display_name, not full_name
   avatar_url?: string | null;
+  user_type?: string;
+  education_level?: string | null;
+  institution?: string | null;
+  major?: string | null;
+  graduation_year?: number | null;
+  default_org_id?: string | null;
+  timezone?: string | null;
+  onboarding_persona?: string | null;
   subscription_tier: SubscriptionTier;
+  subscription_status?: string;
   subscription_expires_at?: string | null;
-  preferred_language: 'en' | 'ar';
+  daily_explanation_count?: number;
+  daily_explanation_reset_at?: string;
+  total_explanations_lifetime?: number;
+  preferred_explanation_depth?: string | null;
+  preferred_hint_style?: string | null;
+  total_xp?: number;
+  current_streak_days?: number;
+  longest_streak_days?: number;
+  last_study_date?: string | null;
   created_at: string;
   updated_at: string;
+  onboarding_completed_at?: string | null;
+  last_active_at?: string | null;
 }
 
 export interface Workspace {
@@ -114,35 +134,62 @@ export interface DocumentChunk {
 
 export interface Note {
   id: string;
-  workspace_id: string;
-  document_id?: string;
   user_id: string;
+  workspace_id?: string | null;  // Can be null - notes can be workspace-independent
+  document_id?: string | null;
+  selection_id?: string | null;
+  page_number?: number | null;
+  anchor_position?: Record<string, unknown> | null;
+  
+  // Content & Type
   note_type: NoteType;
-  title?: string;
-  content_text?: string;
-  content_html?: string;
-  page_number?: number;
-  selection_text?: string;
-  conversation_id?: string;
+  note_text?: string | null;  // Note: DB uses note_text, not content_text
+  note_latex?: string | null;
+  ink_data_url?: string | null;  // URL to drawing in storage
+  
+  // For handwritten problem solving
+  problem_text?: string | null;
+  problem_latex?: string | null;
+  problem_type?: string | null;
+  expected_answer_text?: string | null;
+  expected_answer_latex?: string | null;
+  recognized_latex?: string | null;
+  verification_status?: 'pending' | 'checking' | 'correct' | 'incorrect' | 'partial' | 'uncertain' | null;
+  total_steps?: number;
+  correct_steps?: number;
+  hints_used?: number;
+  solution_revealed?: boolean;
+  started_at?: string | null;
+  completed_at?: string | null;
+  
+  // For ai_saved type
+  source_explanation_id?: string | null;
+  
+  // Metadata
+  tags?: string[] | null;
+  color?: string | null;
+  is_pinned?: boolean;
   created_at: string;
   updated_at: string;
-  deleted_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Task {
   id: string;
-  workspace_id: string;
-  document_id?: string;
-  user_id: string;
+  workspace_id?: string | null;
+  document_id?: string | null;
+  created_by: string;  // Note: DB uses created_by, not user_id
+  assignee_user_id?: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   status: TaskStatus;
-  due_at?: string;
-  priority?: number;
-  source_insight_id?: string;
+  due_at?: string | null;
+  priority?: number | null;
+  source_insight_id?: string | null;
   created_at: string;
   updated_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface Insight {

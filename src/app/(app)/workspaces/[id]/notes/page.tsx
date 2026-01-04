@@ -12,12 +12,12 @@ import type { Note, NoteType } from '@/types/database';
 import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { NoteModal } from '@/components/notes/NoteModal';
 
-// Note type icons and colors
+// Note type icons and colors (matching database enum)
 const noteTypeConfig: Record<NoteType, { icon: string; color: string; label: string }> = {
-  user_written: { icon: '✏️', color: 'bg-blue-500/10 text-blue-500', label: 'Note' },
-  ai_summary: { icon: '🤖', color: 'bg-purple-500/10 text-purple-500', label: 'AI Summary' },
-  extracted_insight: { icon: '💡', color: 'bg-amber-500/10 text-amber-500', label: 'Insight' },
-  chat_message: { icon: '💬', color: 'bg-green-500/10 text-green-500', label: 'Chat' },
+  text: { icon: '✏️', color: 'bg-blue-500/10 text-blue-500', label: 'Note' },
+  handwritten: { icon: '🖊️', color: 'bg-indigo-500/10 text-indigo-500', label: 'Handwritten' },
+  ai_saved: { icon: '🤖', color: 'bg-purple-500/10 text-purple-500', label: 'AI Response' },
+  conversation: { icon: '💬', color: 'bg-green-500/10 text-green-500', label: 'Chat' },
 };
 
 export default function WorkspaceNotesPage() {
@@ -132,7 +132,10 @@ interface NoteCardProps {
 
 function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const config = noteTypeConfig[note.note_type];
+  const config = noteTypeConfig[note.note_type] || noteTypeConfig.text;
+
+  // Get display text - note_text for text notes, problem_text for handwritten
+  const displayText = note.note_text || note.problem_text || 'No content';
 
   return (
     <Card
@@ -154,12 +157,8 @@ function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
           )}
         </div>
 
-        {note.title && (
-          <h3 className="font-semibold text-text mb-2 truncate">{note.title}</h3>
-        )}
-
         <p className="text-sm text-text-soft line-clamp-3">
-          {truncate(note.content_text || 'No content', 150)}
+          {truncate(displayText, 150)}
         </p>
 
         <div className="mt-4 pt-3 border-t border-border">
