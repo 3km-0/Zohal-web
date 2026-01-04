@@ -212,14 +212,30 @@ function PDFPage({ pdf, pageNumber, scale, onRendered }: PDFPageProps) {
         const page = await pdf.getPage(pageNumber);
         if (cancelled) return;
 
+        // Get the viewport at the specified scale
         const viewport = page.getViewport({ scale });
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
 
         if (!context) return;
 
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        // Handle high-DPI displays
+        const outputScale = window.devicePixelRatio || 1;
+
+        // Set the canvas size in CSS pixels
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+
+        // Set the canvas buffer size to account for device pixel ratio
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+
+        // Clear canvas and reset transform before rendering
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Scale context to account for high-DPI displays
+        context.scale(outputScale, outputScale);
 
         // Render PDF page to canvas
         const renderContext = {
