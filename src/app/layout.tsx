@@ -63,7 +63,6 @@ export default async function RootLayout({
     >
       <body>
         <NextIntlClientProvider messages={messages}>
-          <div className="grid-bg" aria-hidden="true" />
           {children}
         </NextIntlClientProvider>
       </body>

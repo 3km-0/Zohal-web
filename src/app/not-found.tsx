@@ -71,7 +71,6 @@ export default function NotFound() {
           </div>
         </div>
       </main>
-      <div className="grid-bg" aria-hidden="true" />
     </>
   );
 }
