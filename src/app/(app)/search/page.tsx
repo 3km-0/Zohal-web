@@ -28,7 +28,7 @@ export default function SearchPage() {
       const { data } = await supabase
         .from('workspaces')
         .select('*')
-        .eq('archived', false)
+        .is('deleted_at', null)
         .order('name');
 
       if (data) {
@@ -197,7 +197,7 @@ export default function SearchPage() {
                       : 'border-border text-text-soft hover:border-accent'
                   )}
                 >
-                  {ws.icon_emoji && <span className="mr-1">{ws.icon_emoji}</span>}
+                  {ws.icon && <span className="mr-1">{ws.icon}</span>}
                   {ws.name}
                 </button>
               ))}

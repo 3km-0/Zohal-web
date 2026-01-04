@@ -61,15 +61,19 @@ export interface Profile {
 
 export interface Workspace {
   id: string;
+  org_id?: string | null;
   owner_id: string;
   name: string;
+  description?: string | null;
   workspace_type: WorkspaceType;
-  icon_emoji?: string;
-  description?: string;
-  color_hex?: string;
-  archived: boolean;
+  primary_plugin_family?: string | null;
+  status?: string;
+  color?: string | null;
+  icon?: string | null;
+  sort_index?: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 }
 
 export interface Document {

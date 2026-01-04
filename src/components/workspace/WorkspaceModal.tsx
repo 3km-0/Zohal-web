@@ -33,7 +33,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
   const [workspaceType, setWorkspaceType] = useState<WorkspaceType>(
     workspace?.workspace_type || 'project'
   );
-  const [iconEmoji, setIconEmoji] = useState(workspace?.icon_emoji || '');
+  const [iconEmoji, setIconEmoji] = useState(workspace?.icon || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +58,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
             name: name.trim(),
             description: description.trim() || null,
             workspace_type: workspaceType,
-            icon_emoji: iconEmoji.trim() || null,
+            icon: iconEmoji.trim() || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', workspace.id);

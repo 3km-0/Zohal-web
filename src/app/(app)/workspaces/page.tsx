@@ -46,14 +46,33 @@ export default function WorkspacesPage() {
 
   const fetchWorkspaces = useCallback(async () => {
     setLoading(true);
+    
+    // Debug: Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('[Workspaces] Current user ID:', user?.id);
+    console.log('[Workspaces] Current user email:', user?.email);
+    
+    if (!user) {
+      console.error('[Workspaces] No authenticated user!');
+      setLoading(false);
+      return;
+    }
+
+    // Query workspaces - RLS will filter by owner_id = auth.uid()
     const { data, error } = await supabase
       .from('workspaces')
       .select('*')
-      .eq('archived', false)
+      .is('deleted_at', null) // Use soft delete filter instead of archived
       .order('updated_at', { ascending: false });
 
-    if (!error && data) {
-      setWorkspaces(data);
+    if (error) {
+      console.error('[Workspaces] Error fetching:', error.message, error.details, error.hint);
+    } else {
+      console.log('[Workspaces] Fetched:', data?.length, 'workspaces');
+      if (data && data.length > 0) {
+        console.log('[Workspaces] First workspace owner_id:', data[0].owner_id);
+      }
+      setWorkspaces(data || []);
     }
     setLoading(false);
   }, [supabase]);
@@ -78,7 +97,7 @@ export default function WorkspacesPage() {
   const handleArchive = async (workspace: Workspace) => {
     const { error } = await supabase
       .from('workspaces')
-      .update({ archived: true })
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', workspace.id);
 
     if (!error) {
@@ -172,7 +191,7 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
               workspaceColors[workspace.workspace_type]
             )}
           >
-            {workspace.icon_emoji || workspaceIcons[workspace.workspace_type]}
+            {workspace.icon || workspaceIcons[workspace.workspace_type]}
           </div>
 
           {/* Content */}
