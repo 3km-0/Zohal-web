@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, X, AlertCircle, ArrowRight } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -29,66 +29,55 @@ export default function SubscriptionCallbackPage() {
   const [payment, setPayment] = useState<PaymentDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const verifyPaymentWithServer = useCallback(async (paymentId: string, invoiceId: string | null) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/verify-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            payment_id: paymentId,
+            invoice_id: invoiceId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed');
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Payment verification error:', err);
+      throw err;
+    }
+  }, [supabase.auth]);
+
   useEffect(() => {
     async function verifyPayment() {
-      // Get payment ID from URL params
+      // Get payment ID from URL params (Moyasar sends these)
       const paymentId = searchParams.get('id') || searchParams.get('payment_id');
+      const invoiceId = searchParams.get('invoice_id');
       const paymentStatus = searchParams.get('status');
       const message = searchParams.get('message');
 
-      if (!paymentId) {
-        setError('No payment ID found');
+      console.log('[Callback] Params:', { paymentId, invoiceId, paymentStatus, message });
+
+      if (!paymentId && !invoiceId) {
+        setError('No payment information found');
         setStatus('failed');
         return;
-      }
-
-      // If status is already in URL (from Moyasar callback)
-      if (paymentStatus === 'paid') {
-        // Wait for webhook to process
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Fetch payment details from our database
-        const { data: paymentData, error: fetchError } = await supabase
-          .from('subscription_payments')
-          .select('*')
-          .eq('moyasar_payment_id', paymentId)
-          .single();
-
-        if (fetchError || !paymentData) {
-          // Payment might still be processing via webhook
-          // Check user's subscription status directly
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('subscription_tier, subscription_expires_at')
-            .eq('id', user?.id)
-            .single();
-
-          if (profile && profile.subscription_tier !== 'free') {
-            setPayment({
-              id: paymentId,
-              status: 'paid',
-              amount: 0,
-              currency: 'SAR',
-              tier: profile.subscription_tier,
-            });
-            setStatus('success');
-            return;
-          }
-        } else {
-          setPayment({
-            id: paymentData.moyasar_payment_id,
-            status: paymentData.status,
-            amount: paymentData.amount_cents,
-            currency: paymentData.currency,
-            tier: paymentData.subscription_tier,
-            period: paymentData.subscription_period,
-          });
-
-          if (paymentData.status === 'paid') {
-            setStatus('success');
-            return;
-          }
-        }
       }
 
       // If status indicates failure
@@ -98,56 +87,64 @@ export default function SubscriptionCallbackPage() {
         return;
       }
 
-      // If status is initiated or pending, poll for updates
-      if (paymentStatus === 'initiated' || !paymentStatus) {
-        let attempts = 0;
-        const maxAttempts = 10;
+      // If status is paid or we have a payment ID, verify with our server
+      if (paymentStatus === 'paid' || paymentId) {
+        try {
+          // Call our verify-payment Edge Function
+          const result = await verifyPaymentWithServer(paymentId || '', invoiceId);
+          
+          console.log('[Callback] Verification result:', result);
 
-        const checkStatus = async () => {
-          const { data: paymentData } = await supabase
-            .from('subscription_payments')
-            .select('*')
-            .eq('moyasar_payment_id', paymentId)
-            .single();
-
-          if (paymentData) {
-            if (paymentData.status === 'paid') {
-              setPayment({
-                id: paymentData.moyasar_payment_id,
-                status: paymentData.status,
-                amount: paymentData.amount_cents,
-                currency: paymentData.currency,
-                tier: paymentData.subscription_tier,
-                period: paymentData.subscription_period,
-              });
-              setStatus('success');
-              return true;
-            } else if (paymentData.status === 'failed') {
-              setError(paymentData.failure_reason || 'Payment failed');
-              setStatus('failed');
-              return true;
-            }
-          }
-          return false;
-        };
-
-        // Poll for payment status
-        while (attempts < maxAttempts) {
-          const done = await checkStatus();
-          if (done) return;
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          attempts++;
+          setPayment({
+            id: paymentId || invoiceId || '',
+            status: 'paid',
+            amount: result.amount || 0,
+            currency: result.currency || 'SAR',
+            tier: result.tier,
+            period: result.period,
+          });
+          setStatus('success');
+          return;
+        } catch (err) {
+          console.error('[Callback] Verification failed:', err);
+          // Don't fail immediately - the payment might still be processing
         }
-
-        // If we've exhausted attempts, show pending status
-        setStatus('pending');
       }
+
+      // If verification failed but status was paid, try polling
+      if (paymentStatus === 'paid') {
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        while (attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          
+          try {
+            const result = await verifyPaymentWithServer(paymentId || '', invoiceId);
+            setPayment({
+              id: paymentId || invoiceId || '',
+              status: 'paid',
+              amount: result.amount || 0,
+              currency: result.currency || 'SAR',
+              tier: result.tier,
+              period: result.period,
+            });
+            setStatus('success');
+            return;
+          } catch {
+            attempts++;
+          }
+        }
+      }
+
+      // If we still couldn't verify, show pending
+      setStatus('pending');
     }
 
     if (user) {
       verifyPayment();
     }
-  }, [searchParams, supabase, user]);
+  }, [searchParams, supabase, user, verifyPaymentWithServer]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
