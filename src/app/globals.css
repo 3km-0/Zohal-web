@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scholar Design System - CSS Variables */
+:root {
+  /* Light Theme (Default) */
+  --bg: #f9f7f4;
+  --surface: #ffffff;
+  --surface-alt: #f5f3f0;
+  --text: #1a2f23;
+  --text-soft: #5d6b64;
+  --border: #e0dcd4;
+  --accent: #2d8878;
+  --accent-alt: #c9973e;
+  --success: #22c55e;
+  --error: #ef4444;
+  --highlight: #c9973e;
+  --grid-color: rgba(0, 0, 0, 0.03);
+
+  /* Font Variables */
+  --font-source-serif: 'Source Serif 4', Georgia, serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-jetbrains: 'JetBrains Mono', monospace;
+}
+
+/* Dark Theme */
+[data-theme='dark'] {
+  --bg: #1a1f1c;
+  --surface: #252b27;
+  --surface-alt: #2d3430;
+  --text: #e8e4df;
+  --text-soft: #a3a89f;
+  --border: #3d4340;
+  --accent: #3da08e;
+  --accent-alt: #d4a64a;
+  --success: #34d399;
+  --error: #f87171;
+  --highlight: #d4a64a;
+  --grid-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-source-serif);
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* RTL Support */
+[dir='rtl'] {
+  text-align: right;
+}
+
+/* Grid Background Pattern */
+.grid-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Focus Ring */
+@layer base {
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
+}
+
+/* Scholar Component Base Styles */
+@layer components {
+  /* Card */
+  .scholar-card {
+    @apply bg-surface border border-border rounded-scholar p-6;
+  }
+
+  /* Button Primary */
+  .scholar-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
+           bg-accent text-white font-semibold rounded-scholar
+           transition-all duration-200
+           hover:opacity-90 hover:-translate-y-0.5
+           active:translate-y-0;
+  }
+
+  /* Button Secondary */
+  .scholar-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
+           bg-surface border border-border text-text font-semibold rounded-scholar
+           transition-all duration-200
+           hover:border-accent hover:text-accent;
+  }
+
+  /* Input */
+  .scholar-input {
+    @apply w-full px-4 py-3 bg-surface border border-border rounded-scholar
+           text-text placeholder:text-text-soft
+           transition-colors duration-200
+           focus:border-accent focus:ring-0;
+  }
+
+  /* Badge */
+  .scholar-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1.5
+           bg-surface border border-border rounded-full
+           text-sm text-text-soft;
+  }
+
+  /* Section */
+  .scholar-section {
+    @apply bg-surface border border-border rounded-scholar p-7;
+  }
+
+  /* Highlight Box */
+  .scholar-highlight {
+    @apply bg-surface-alt border border-border border-l-[3px] border-l-accent
+           rounded-scholar-sm p-4;
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-alt);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-soft);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--accent);
+  color: white;
+}
+
+/* KaTeX Math Styling */
+.katex {
+  font-size: 1.1em;
+}
+
+.katex-display {
+  margin: 1em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+

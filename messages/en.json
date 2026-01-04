@@ -1,0 +1,144 @@
+{
+  "common": {
+    "appName": "Zohal",
+    "tagline": "AI STEM Notebook",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "viewAll": "View All",
+    "learnMore": "Learn More",
+    "getStarted": "Get Started"
+  },
+  "nav": {
+    "home": "Home",
+    "workspaces": "Workspaces",
+    "documents": "Documents",
+    "notes": "Notes",
+    "search": "Search",
+    "tasks": "Tasks",
+    "settings": "Settings",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "support": "Support"
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Log Out",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "continueWith": "Or continue with",
+    "termsAgree": "By signing up, you agree to our",
+    "and": "and"
+  },
+  "landing": {
+    "hero": {
+      "title": "Zohal",
+      "subtitle": "The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.",
+      "downloadApp": "Download on App Store",
+      "getSupport": "Get Support"
+    },
+    "features": {
+      "title": "What is Zohal?",
+      "pdfReader": {
+        "title": "PDF Reader",
+        "description": "Import and read your textbooks, papers, and documents with a clean, distraction-free interface."
+      },
+      "handwrittenNotes": {
+        "title": "Handwritten Notes",
+        "description": "Write and draw directly on your documents with Apple Pencil support."
+      },
+      "aiExplanations": {
+        "title": "AI Explanations",
+        "description": "Select any text or equation and get instant, intelligent explanations powered by AI."
+      },
+      "stemTools": {
+        "title": "STEM Tools",
+        "description": "Specialized plugins for math, physics, engineering, legal, and finance documents."
+      }
+    }
+  },
+  "workspaces": {
+    "title": "Workspaces",
+    "create": "Create Workspace",
+    "empty": "No workspaces yet",
+    "emptyDescription": "Create your first workspace to start organizing your documents.",
+    "types": {
+      "project": "Project",
+      "case": "Case",
+      "course": "Course",
+      "personal": "Personal",
+      "archive": "Archive",
+      "research": "Research",
+      "client": "Client",
+      "other": "Other"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "upload": "Upload Document",
+    "empty": "No documents yet",
+    "emptyDescription": "Upload your first document to get started.",
+    "processing": "Processing...",
+    "types": {
+      "textbook": "Textbook",
+      "contract": "Contract",
+      "financial_report": "Financial Report",
+      "problem_set": "Problem Set",
+      "lecture_notes": "Lecture Notes",
+      "paper": "Paper",
+      "meeting_notes": "Meeting Notes",
+      "invoice": "Invoice",
+      "other": "Other"
+    }
+  },
+  "notes": {
+    "title": "Notes",
+    "create": "Create Note",
+    "empty": "No notes yet",
+    "emptyDescription": "Create your first note or let AI generate insights from your documents."
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search your documents...",
+    "noResults": "No results found",
+    "noResultsDescription": "Try adjusting your search terms or filters."
+  },
+  "tasks": {
+    "title": "Tasks",
+    "create": "Create Task",
+    "empty": "No tasks yet",
+    "emptyDescription": "Tasks will appear here when extracted from your documents.",
+    "statuses": {
+      "pending": "Pending",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "subscription": "Subscription",
+    "appearance": "Appearance",
+    "language": "Language",
+    "deleteAccount": "Delete Account"
+  },
+  "footer": {
+    "copyright": "© {year} Zohal. All rights reserved."
+  }
+}
+

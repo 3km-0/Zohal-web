@@ -1,0 +1,144 @@
+{
+  "common": {
+    "appName": "زُهل",
+    "tagline": "دفتر الذكاء الاصطناعي للعلوم",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "search": "بحث",
+    "filter": "تصفية",
+    "sort": "ترتيب",
+    "viewAll": "عرض الكل",
+    "learnMore": "اعرف المزيد",
+    "getStarted": "ابدأ الآن"
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "workspaces": "مساحات العمل",
+    "documents": "المستندات",
+    "notes": "الملاحظات",
+    "search": "البحث",
+    "tasks": "المهام",
+    "settings": "الإعدادات",
+    "terms": "الشروط",
+    "privacy": "الخصوصية",
+    "support": "الدعم"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟",
+    "continueWith": "أو تابع باستخدام",
+    "termsAgree": "بالتسجيل، أنت توافق على",
+    "and": "و"
+  },
+  "landing": {
+    "hero": {
+      "title": "زُهل",
+      "subtitle": "دفتر الذكاء الاصطناعي للطلاب والمهندسين. اقرأ ملفات PDF، اكتب بخط اليد، واحصل على شروحات ذكية في الهامش.",
+      "downloadApp": "حمّل من App Store",
+      "getSupport": "احصل على الدعم"
+    },
+    "features": {
+      "title": "ما هو زُهل؟",
+      "pdfReader": {
+        "title": "قارئ PDF",
+        "description": "استورد واقرأ كتبك ومستنداتك بواجهة نظيفة وخالية من التشتت."
+      },
+      "handwrittenNotes": {
+        "title": "ملاحظات بخط اليد",
+        "description": "اكتب وارسم مباشرة على مستنداتك مع دعم Apple Pencil."
+      },
+      "aiExplanations": {
+        "title": "شروحات الذكاء الاصطناعي",
+        "description": "حدد أي نص أو معادلة واحصل على شروحات فورية وذكية."
+      },
+      "stemTools": {
+        "title": "أدوات العلوم",
+        "description": "إضافات متخصصة للرياضيات والفيزياء والهندسة والقانون والمالية."
+      }
+    }
+  },
+  "workspaces": {
+    "title": "مساحات العمل",
+    "create": "إنشاء مساحة عمل",
+    "empty": "لا توجد مساحات عمل",
+    "emptyDescription": "أنشئ أول مساحة عمل لبدء تنظيم مستنداتك.",
+    "types": {
+      "project": "مشروع",
+      "case": "قضية",
+      "course": "دورة",
+      "personal": "شخصي",
+      "archive": "أرشيف",
+      "research": "بحث",
+      "client": "عميل",
+      "other": "أخرى"
+    }
+  },
+  "documents": {
+    "title": "المستندات",
+    "upload": "رفع مستند",
+    "empty": "لا توجد مستندات",
+    "emptyDescription": "ارفع أول مستند للبدء.",
+    "processing": "جاري المعالجة...",
+    "types": {
+      "textbook": "كتاب دراسي",
+      "contract": "عقد",
+      "financial_report": "تقرير مالي",
+      "problem_set": "مجموعة مسائل",
+      "lecture_notes": "ملاحظات محاضرة",
+      "paper": "ورقة بحثية",
+      "meeting_notes": "ملاحظات اجتماع",
+      "invoice": "فاتورة",
+      "other": "أخرى"
+    }
+  },
+  "notes": {
+    "title": "الملاحظات",
+    "create": "إنشاء ملاحظة",
+    "empty": "لا توجد ملاحظات",
+    "emptyDescription": "أنشئ أول ملاحظة أو دع الذكاء الاصطناعي يستخرج رؤى من مستنداتك."
+  },
+  "search": {
+    "title": "البحث",
+    "placeholder": "ابحث في مستنداتك...",
+    "noResults": "لا توجد نتائج",
+    "noResultsDescription": "حاول تعديل كلمات البحث أو الفلاتر."
+  },
+  "tasks": {
+    "title": "المهام",
+    "create": "إنشاء مهمة",
+    "empty": "لا توجد مهام",
+    "emptyDescription": "ستظهر المهام هنا عند استخراجها من مستنداتك.",
+    "statuses": {
+      "pending": "قيد الانتظار",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتملة",
+      "cancelled": "ملغاة"
+    }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "subscription": "الاشتراك",
+    "appearance": "المظهر",
+    "language": "اللغة",
+    "deleteAccount": "حذف الحساب"
+  },
+  "footer": {
+    "copyright": "© {year} زُهل. جميع الحقوق محفوظة."
+  }
+}
+
