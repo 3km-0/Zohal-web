@@ -282,6 +282,64 @@ export interface LegalRiskFlag {
   created_at: string;
 }
 
+// Payment-related types
+export type PaymentStatus = 'initiated' | 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+export type PaymentSource = 'apple' | 'moyasar' | 'stripe' | 'manual';
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  moyasar_token: string;
+  card_last_four?: string | null;
+  card_brand?: string | null;
+  card_holder_name?: string | null;
+  card_expiry_month?: number | null;
+  card_expiry_year?: number | null;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPayment {
+  id: string;
+  user_id: string;
+  payment_method_id?: string | null;
+  moyasar_payment_id?: string | null;
+  amount_cents: number;
+  currency: string;
+  status: PaymentStatus;
+  subscription_tier: string;
+  subscription_period: 'monthly' | 'yearly';
+  billing_period_start?: string | null;
+  billing_period_end?: string | null;
+  failure_reason?: string | null;
+  failure_count: number;
+  retry_at?: string | null;
+  is_renewal: boolean;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  tier: string;
+  name: string;
+  description?: string | null;
+  price_monthly_usd?: number | null;
+  price_yearly_usd?: number | null;
+  price_monthly_sar?: number | null;
+  price_yearly_sar?: number | null;
+  limits: Record<string, number>;
+  features: Record<string, boolean>;
+  badge_text?: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Search result types
 export interface SearchResult {
   chunk_id: string;

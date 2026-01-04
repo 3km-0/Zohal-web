@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
@@ -36,6 +37,7 @@ export function Sidebar({ className }: SidebarProps) {
   ];
 
   const bottomItems = [
+    { href: '/subscription', label: 'Subscription', icon: Crown },
     { href: '/settings', label: t('settings'), icon: Settings },
   ];
 
