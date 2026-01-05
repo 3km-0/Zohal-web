@@ -258,18 +258,83 @@ export interface LegalClause {
   text: string;
   risk_level: 'low' | 'medium' | 'high';
   page_number?: number;
+  start_page?: number;
+  end_page?: number;
+  char_start?: number;
+  char_end?: number;
   is_missing_standard_protection?: boolean;
   created_at: string;
 }
 
+// Obligation confidence states - MVP: Contract Obligations Verification
+export type ObligationConfidenceState = 'extracted' | 'needs_review' | 'confirmed';
+
 export interface LegalObligation {
   id: string;
   contract_id: string;
+  task_id?: string;
   obligation_type: string;
   due_at?: string;
   recurrence?: string;
-  responsible_party?: string;
+  
+  // NEW: Full obligation details for MVP - Contract Obligations Verification
+  summary?: string;           // What is this obligation?
+  action?: string;            // What specific action is required?
+  condition?: string;         // Under what conditions?
+  responsible_party?: string; // Who must perform (us/counterparty/mutual)
+  
+  // Confidence state system
+  confidence_state: ObligationConfidenceState;
+  
+  // Source clause linking for highlight/navigation
+  source_clause_id?: string;
+  page_number?: number;
+  
+  // User verification tracking
+  user_notes?: string;
+  confirmed_at?: string;
+  confirmed_by?: string;
+  
   created_at: string;
+}
+
+// Verification Object types for audit trail
+export type VerificationState = 'provisional' | 'finalized';
+export type VerificationVisibility = 'private' | 'workspace' | 'link';
+
+export interface VerificationObject {
+  id: string;
+  workspace_id: string;
+  document_id: string;
+  user_id: string;
+  object_type: string;
+  title?: string;
+  state: VerificationState;
+  current_version_id?: string;
+  finalized_by?: string;
+  finalized_at?: string;
+  visibility: VerificationVisibility;
+  share_token?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VerificationObjectVersion {
+  id: string;
+  verification_object_id: string;
+  version_number: number;
+  state: VerificationState;
+  snapshot_json: Record<string, unknown>;
+  diff_summary_json?: {
+    added: Array<{ category: string; item_id?: string; description: string }>;
+    removed: Array<{ category: string; item_id?: string; description: string }>;
+    changed: Array<{ category: string; field: string; old_value?: string; new_value?: string }>;
+  };
+  change_notes?: string;
+  created_by?: string;
+  created_at: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
 }
 
 export interface LegalRiskFlag {
