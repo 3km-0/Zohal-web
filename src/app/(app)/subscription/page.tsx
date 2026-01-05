@@ -138,14 +138,12 @@ export default function SubscriptionPage() {
     free: Zap,
     pro: Sparkles,
     premium: Crown,
-    ultra: Shield,
   };
 
   const tierColors: Record<string, string> = {
     free: 'text-text-soft',
     pro: 'text-blue-500',
     premium: 'text-purple-500',
-    ultra: 'text-amber-500',
   };
 
   if (loading) {
@@ -278,8 +276,8 @@ export default function SubscriptionPage() {
                   <ul className="space-y-3 mb-6 flex-1">
                     {plan.tier === 'free' && (
                       <>
-                        <FeatureItem>5 documents</FeatureItem>
-                        <FeatureItem>Basic AI explanations</FeatureItem>
+                        <FeatureItem>10 documents</FeatureItem>
+                        <FeatureItem>2 AI explanations/day</FeatureItem>
                         <FeatureItem>1 workspace</FeatureItem>
                       </>
                     )}
@@ -296,20 +294,11 @@ export default function SubscriptionPage() {
                       <>
                         <FeatureItem>Unlimited documents</FeatureItem>
                         <FeatureItem>Unlimited AI usage</FeatureItem>
+                        <FeatureItem>100GB storage</FeatureItem>
                         <FeatureItem>Unlimited workspaces</FeatureItem>
                         <FeatureItem>All plugins included</FeatureItem>
                         <FeatureItem>Google Drive sync</FeatureItem>
                         <FeatureItem>Priority support</FeatureItem>
-                      </>
-                    )}
-                    {plan.tier === 'ultra' && (
-                      <>
-                        <FeatureItem>Everything in Premium</FeatureItem>
-                        <FeatureItem>500GB storage</FeatureItem>
-                        <FeatureItem>Team workspaces</FeatureItem>
-                        <FeatureItem>Advanced analytics</FeatureItem>
-                        <FeatureItem>API access</FeatureItem>
-                        <FeatureItem>Dedicated support</FeatureItem>
                       </>
                     )}
                   </ul>

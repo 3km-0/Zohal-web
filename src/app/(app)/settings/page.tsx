@@ -176,14 +176,14 @@ export default function SettingsPage() {
                     ? 'Free Plan'
                     : profile?.subscription_tier === 'pro'
                     ? 'Pro Plan'
-                    : 'Ultra Plan'}
+                    : 'Premium Plan'}
                 </p>
                 <p className="text-sm text-text-soft">
                   {profile?.subscription_tier === 'free'
-                    ? '5 documents, 10 AI explanations/day'
+                    ? '10 documents, 2 AI explanations/day'
                     : profile?.subscription_tier === 'pro'
                     ? '100 documents, unlimited AI'
-                    : 'Unlimited everything'}
+                    : 'Unlimited documents, 100GB storage'}
                 </p>
               </div>
               <Badge

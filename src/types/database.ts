@@ -46,7 +46,7 @@ export type TaskStatus =
   | 'completed'
   | 'cancelled';
 
-export type SubscriptionTier = 'free' | 'core' | 'pro' | 'pro_plus' | 'premium' | 'ultra' | 'team';
+export type SubscriptionTier = 'free' | 'core' | 'pro' | 'pro_plus' | 'premium' | 'team';
 
 export interface Profile {
   id: string;

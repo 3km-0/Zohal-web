@@ -86,7 +86,6 @@ export default function SubscriptionSuccessPage() {
   const tierColors: Record<string, { bg: string; text: string }> = {
     pro: { bg: 'bg-blue-500/10', text: 'text-blue-500' },
     premium: { bg: 'bg-purple-500/10', text: 'text-purple-500' },
-    ultra: { bg: 'bg-amber-500/10', text: 'text-amber-500' },
   };
 
   const colors = tierColors[tier] || tierColors.pro;
@@ -138,11 +137,11 @@ export default function SubscriptionSuccessPage() {
               <BenefitItem>Unlimited AI explanations</BenefitItem>
               <BenefitItem>All document plugins</BenefitItem>
               <BenefitItem>Priority processing</BenefitItem>
-              {(tier === 'premium' || tier === 'ultra') && (
-                <BenefitItem>Google Drive sync</BenefitItem>
-              )}
-              {tier === 'ultra' && (
-                <BenefitItem>Team collaboration</BenefitItem>
+              {tier === 'premium' && (
+                <>
+                  <BenefitItem>Google Drive sync</BenefitItem>
+                  <BenefitItem>Priority support</BenefitItem>
+                </>
               )}
             </ul>
           </div>
