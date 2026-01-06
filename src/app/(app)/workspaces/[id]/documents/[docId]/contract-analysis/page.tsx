@@ -228,12 +228,12 @@ export default function ContractAnalysisPage() {
           <EmptyState
             title="Not analyzed yet"
             description="This contract doesn't have a saved analysis. Run it once, then you can reopen it anytime."
-            action={
-              <Button onClick={analyzeOnce} isLoading={isAnalyzing}>
-                <Scale className="w-4 h-4" />
-                Contract Analysis
-              </Button>
-            }
+            action={{
+              label: isAnalyzing ? 'Analyzing…' : 'Contract Analysis',
+              onClick: () => {
+                if (!isAnalyzing) analyzeOnce();
+              },
+            }}
           />
         ) : (
           <div className="space-y-4">
