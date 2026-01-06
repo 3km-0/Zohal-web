@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Scale, Calendar, FileText, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert } from 'lucide-react';
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
@@ -122,6 +122,48 @@ export default function ContractAnalysisPage() {
     }
   }
 
+  async function exportCalendar() {
+    setError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/export-calendar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          document_id: documentId,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || 'No obligations with due dates found');
+      }
+
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get('content-disposition') || '';
+      const match = contentDisposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || 'contract_obligations.ics';
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to export calendar');
+    }
+  }
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,6 +188,12 @@ export default function ContractAnalysisPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {contract && (
+            <Button variant="secondary" size="sm" onClick={exportCalendar}>
+              <Download className="w-4 h-4" />
+              Export Calendar
+            </Button>
+          )}
           <Button variant="secondary" size="sm" onClick={() => router.push(`/workspaces/${workspaceId}/documents/${documentId}`)}>
             Back to PDF
           </Button>
@@ -165,7 +213,7 @@ export default function ContractAnalysisPage() {
             action={
               <Button onClick={analyzeOnce} isLoading={isAnalyzing}>
                 <Scale className="w-4 h-4" />
-                Analyze Contract
+                Contract Analysis
               </Button>
             }
           />

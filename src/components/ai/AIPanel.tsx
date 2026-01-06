@@ -39,7 +39,7 @@ const getCapabilities = (docType?: DocumentType) => {
   if (docType === 'contract') {
     return [
       ...baseCapabilities,
-      { id: 'analyze', icon: Scale, label: 'Analyze Contract', color: 'text-purple-500' },
+      { id: 'analyze', icon: Scale, label: 'Contract Analysis', color: 'text-purple-500' },
       { id: 'risks', icon: FileText, label: 'Detect Risks', color: 'text-rose-500' },
     ];
   }
