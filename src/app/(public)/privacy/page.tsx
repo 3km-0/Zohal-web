@@ -151,7 +151,7 @@ export default function PrivacyPage() {
               {
                 title: 'Service Providers',
                 description:
-                  "We work with trusted partners who help us operate (hosting, analytics, AI services). They're bound by strict confidentiality agreements.",
+                  "We work with trusted partners who help us operate (hosting, analytics, AI services, and Google services when you connect your Google account). They're bound by strict confidentiality agreements.",
               },
               {
                 title: 'AI Processing',
@@ -170,6 +170,53 @@ export default function PrivacyPage() {
               },
             ]}
           />
+        </Section>
+
+        <Section icon="🧩" title="Google API Services">
+          <p>
+            Zohal uses Google API Services to provide certain features. When you connect your Google
+            account, we may access the following:
+          </p>
+          <BulletList
+            items={[
+              {
+                title: 'Google Sign-In',
+                description:
+                  'Basic profile information (name, email address, profile picture) used solely for authentication and account creation.',
+              },
+              {
+                title: 'Google Calendar',
+                description:
+                  'Permission to create calendar events on your behalf. We only add events you explicitly request through the app, and we do not read, store, or access your existing calendar events.',
+              },
+            ]}
+          />
+          <HighlightBox>
+            <p className="text-sm">
+              Our use of Google API Services complies with the{' '}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:opacity-80"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+          </HighlightBox>
+          <p className="text-sm">
+            You can revoke Zohal&apos;s access to your Google data at any time by visiting your{' '}
+            <a
+              href="https://myaccount.google.com/permissions"
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent hover:opacity-80"
+            >
+              Google Account permissions
+            </a>
+            .
+          </p>
         </Section>
 
         <Section icon="🛡️" title="Data Security">
@@ -246,6 +293,10 @@ export default function PrivacyPage() {
               📧 Email us at:{' '}
               <a href="mailto:support@zohal.app" className="text-accent hover:opacity-80">
                 support@zohal.app
+              </a>
+              {' '}or{' '}
+              <a href="mailto:abdullah@watd.co" className="text-accent hover:opacity-80">
+                abdullah@watd.co
               </a>
             </p>
           </HighlightBox>
