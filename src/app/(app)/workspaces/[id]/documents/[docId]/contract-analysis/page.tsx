@@ -22,6 +22,7 @@ export default function ContractAnalysisPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
+  const [progressStep, setProgressStep] = useState(0);
 
   const [contract, setContract] = useState<LegalContract | null>(null);
   const [clauses, setClauses] = useState<LegalClause[]>([]);
@@ -80,6 +81,22 @@ export default function ContractAnalysisPage() {
   async function analyzeOnce() {
     setIsAnalyzing(true);
     setError(null);
+    setProgressStep(0);
+
+    // Client-side progress hints (the edge function is one call, so we simulate phases for UX).
+    const steps = [
+      'Preparing document…',
+      'Identifying parties & dates…',
+      'Extracting clauses…',
+      'Extracting obligations & deadlines…',
+      'Assessing risks…',
+      'Finalizing…',
+    ];
+    let tick = 0;
+    const timer = window.setInterval(() => {
+      tick = Math.min(tick + 1, steps.length - 1);
+      setProgressStep(tick);
+    }, 1600);
     try {
       const {
         data: { session },
@@ -118,6 +135,7 @@ export default function ContractAnalysisPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Contract analysis failed');
     } finally {
+      window.clearInterval(timer);
       setIsAnalyzing(false);
     }
   }
@@ -381,6 +399,73 @@ export default function ContractAnalysisPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Analyzing state (visible even before contract exists) */}
+        {isAnalyzing && (
+          <div className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-purple-500" />
+                  Contract Analysis in progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
+                  <div
+                    className="h-full bg-accent transition-all duration-500"
+                    style={{ width: `${Math.min(100, ((progressStep + 1) / 6) * 100)}%` }}
+                  />
+                </div>
+                <div className="text-sm text-text-soft">
+                  {[
+                    'Preparing document…',
+                    'Identifying parties & dates…',
+                    'Extracting clauses…',
+                    'Extracting obligations & deadlines…',
+                    'Assessing risks…',
+                    'Finalizing…',
+                  ][progressStep]}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {[
+                    'Identify parties & key dates',
+                    'Extract clauses',
+                    'Extract obligations & deadlines',
+                    'Assess risks',
+                  ].map((label, idx) => {
+                    const complete = progressStep >= idx + 2; // heuristically mark later steps as we tick
+                    const active = !complete && progressStep === idx + 1;
+                    return (
+                      <div
+                        key={label}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-scholar border',
+                          complete
+                            ? 'border-success/30 bg-success/5 text-text'
+                            : active
+                              ? 'border-accent/30 bg-accent/5 text-text'
+                              : 'border-border text-text-soft'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'inline-flex w-2.5 h-2.5 rounded-full',
+                            complete ? 'bg-success' : active ? 'bg-accent' : 'bg-border'
+                          )}
+                        />
+                        <span className="text-sm font-medium">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-text-soft">
+                  This can take ~10–20 seconds depending on document size.
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
