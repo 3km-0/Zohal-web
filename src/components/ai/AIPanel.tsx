@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   X,
   Sparkles,
@@ -63,6 +64,7 @@ export function AIPanel({
   documentType,
 }: AIPanelProps) {
   const supabase = createClient();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('explain');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -73,6 +75,10 @@ export function AIPanel({
   >([]);
 
   const capabilities = getCapabilities(documentType);
+
+  const goToContractAnalysis = useCallback(() => {
+    router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
+  }, [router, workspaceId, documentId]);
 
   const handleExplain = useCallback(
     async (text: string, requestType: string = 'explain') => {
@@ -244,8 +250,16 @@ export function AIPanel({
               {capabilities.map((cap) => (
                 <button
                   key={cap.id}
-                  onClick={() => selectedText && handleExplain(selectedText, cap.id)}
-                  disabled={!selectedText || loading}
+                  onClick={() => {
+                    if (cap.id === 'analyze') {
+                      goToContractAnalysis();
+                      return;
+                    }
+                    if (selectedText) {
+                      handleExplain(selectedText, cap.id);
+                    }
+                  }}
+                  disabled={(cap.id !== 'analyze' && !selectedText) || loading}
                   className={cn(
                     'flex items-center gap-2 p-3 rounded-scholar border border-border',
                     'hover:border-accent/50 hover:bg-surface-alt transition-all',

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, PanelRight, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, PanelRight, Scale, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Spinner, Badge } from '@/components/ui';
@@ -128,6 +128,20 @@ export default function DocumentViewerPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {document.document_type === 'contract' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                router.push(
+                  `/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`
+                )
+              }
+            >
+              <Scale className="w-4 h-4" />
+              Contract Analysis
+            </Button>
+          )}
           <Button
             variant={showAIPanel ? 'primary' : 'secondary'}
             size="sm"
