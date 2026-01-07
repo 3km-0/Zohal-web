@@ -27,9 +27,9 @@ export default function SupportPage() {
         <ContactCard
           icon="📧"
           title="Email Support"
-          description="Have a question or need assistance? Send us an email."
+          description="Have a question or need assistance? Send us an email. For Google API / verification inquiries, you can also reach us at abdullah@watd.co."
           link="mailto:support@zohal.app"
-          linkText="support@zohal.app →"
+          linkText="support@zohal.app (or abdullah@watd.co) →"
           responseTime="Usually responds within 24 hours"
         />
         <ContactCard

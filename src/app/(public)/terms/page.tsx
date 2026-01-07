@@ -248,6 +248,10 @@ export default function TermsPage() {
               <a href="mailto:support@zohal.app" className="text-accent hover:opacity-80">
                 support@zohal.app
               </a>
+              {' '}or{' '}
+              <a href="mailto:abdullah@watd.co" className="text-accent hover:opacity-80">
+                abdullah@watd.co
+              </a>
             </p>
           </HighlightBox>
         </Section>
