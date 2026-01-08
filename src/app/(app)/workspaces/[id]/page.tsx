@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, Document, DocumentType, ProcessingStatus } from '@/types/database';
 import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
@@ -54,6 +55,7 @@ export default function WorkspaceDetailPage() {
   const workspaceId = params.id as string;
   const t = useTranslations('documents');
   const supabase = createClient();
+  const { showError } = useToast();
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -64,18 +66,20 @@ export default function WorkspaceDetailPage() {
     setLoading(true);
 
     // Fetch workspace
-    const { data: workspaceData } = await supabase
+    const { data: workspaceData, error: workspaceError } = await supabase
       .from('workspaces')
       .select('*')
       .eq('id', workspaceId)
       .single();
 
-    if (workspaceData) {
+    if (workspaceError) {
+      showError(workspaceError, 'workspaces');
+    } else if (workspaceData) {
       setWorkspace(workspaceData);
     }
 
     // Fetch documents
-    const { data: documentsData } = await supabase
+    const { data: documentsData, error: documentsError } = await supabase
       .from('documents')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -84,12 +88,14 @@ export default function WorkspaceDetailPage() {
       .neq('storage_path', 'local')
       .order('updated_at', { ascending: false });
 
-    if (documentsData) {
+    if (documentsError) {
+      showError(documentsError, 'documents');
+    } else if (documentsData) {
       setDocuments(documentsData);
     }
 
     setLoading(false);
-  }, [supabase, workspaceId]);
+  }, [supabase, workspaceId, showError]);
 
   useEffect(() => {
     fetchData();
@@ -104,7 +110,9 @@ export default function WorkspaceDetailPage() {
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', doc.id);
 
-    if (!error) {
+    if (error) {
+      showError(error, 'documents');
+    } else {
       setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
     }
   };

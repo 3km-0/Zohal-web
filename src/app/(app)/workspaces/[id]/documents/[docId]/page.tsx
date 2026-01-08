@@ -6,11 +6,13 @@ import { ArrowLeft, PanelRight, Scale, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Spinner, Badge } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { PDFViewer } from '@/components/pdf-viewer';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, Workspace } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { notFound } from '@/lib/errors';
 
 export default function DocumentViewerPage() {
   const params = useParams();
@@ -18,6 +20,7 @@ export default function DocumentViewerPage() {
   const workspaceId = params.id as string;
   const documentId = params.docId as string;
   const supabase = createClient();
+  const { show, showError } = useToast();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -33,37 +36,49 @@ export default function DocumentViewerPage() {
       setLoading(true);
 
       // Fetch document
-      const { data: docData } = await supabase
+      const { data: docData, error: docError } = await supabase
         .from('documents')
         .select('*')
         .eq('id', documentId)
         .single();
+
+      if (docError) {
+        showError(docError, 'documents');
+        setLoading(false);
+        return;
+      }
 
       if (docData) {
         setDocument(docData);
 
         // Get signed URL for PDF
         if (docData.storage_path && docData.storage_path !== 'local') {
-          const { data: urlData } = await supabase.storage
+          const { data: urlData, error: urlError } = await supabase.storage
             .from('documents')
             .createSignedUrl(docData.storage_path, 3600); // 1 hour expiry
 
-          if (urlData?.signedUrl) {
+          if (urlError) {
+            show(notFound('document file'));
+          } else if (urlData?.signedUrl) {
             setPdfUrl(urlData.signedUrl);
           }
         } else {
+          // Document only exists locally on iOS device - show friendly error
+          show(notFound('document file'));
           setPdfUrl(null);
         }
       }
 
       // Fetch workspace
-      const { data: wsData } = await supabase
+      const { data: wsData, error: wsError } = await supabase
         .from('workspaces')
         .select('*')
         .eq('id', workspaceId)
         .single();
 
-      if (wsData) {
+      if (wsError) {
+        showError(wsError, 'workspaces');
+      } else if (wsData) {
         setWorkspace(wsData);
       }
 
@@ -71,7 +86,7 @@ export default function DocumentViewerPage() {
     }
 
     fetchData();
-  }, [supabase, documentId, workspaceId]);
+  }, [supabase, documentId, workspaceId, show, showError]);
 
   // Handle text selection for AI features
   const handleTextSelect = useCallback((text: string, pageNumber: number) => {
