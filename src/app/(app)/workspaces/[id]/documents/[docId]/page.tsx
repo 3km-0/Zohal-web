@@ -43,7 +43,7 @@ export default function DocumentViewerPage() {
         setDocument(docData);
 
         // Get signed URL for PDF
-        if (docData.storage_path) {
+        if (docData.storage_path && docData.storage_path !== 'local') {
           const { data: urlData } = await supabase.storage
             .from('documents')
             .createSignedUrl(docData.storage_path, 3600); // 1 hour expiry
@@ -51,6 +51,8 @@ export default function DocumentViewerPage() {
           if (urlData?.signedUrl) {
             setPdfUrl(urlData.signedUrl);
           }
+        } else {
+          setPdfUrl(null);
         }
       }
 
@@ -166,7 +168,11 @@ export default function DocumentViewerPage() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <p className="text-text-soft mb-2">PDF not available</p>
+                <p className="text-text-soft mb-2">
+                  {document.storage_path === 'local'
+                    ? 'This document exists only on the device that imported it (not uploaded to cloud).'
+                    : 'PDF not available'}
+                </p>
                 {document.processing_status !== 'completed' && (
                   <Badge variant="warning">Processing: {document.processing_status}</Badge>
                 )}

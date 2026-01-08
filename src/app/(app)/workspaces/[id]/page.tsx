@@ -80,6 +80,8 @@ export default function WorkspaceDetailPage() {
       .select('*')
       .eq('workspace_id', workspaceId)
       .is('deleted_at', null)
+      // Web cannot open "local-only placeholder" rows (storage_path='local'); hide them.
+      .neq('storage_path', 'local')
       .order('updated_at', { ascending: false });
 
     if (documentsData) {
