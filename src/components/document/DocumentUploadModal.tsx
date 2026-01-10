@@ -8,6 +8,7 @@ import { cn, formatFileSize } from '@/lib/utils';
 
 interface DocumentUploadModalProps {
   workspaceId: string;
+  folderId?: string | null;
   onClose: () => void;
   onUploaded: () => void;
 }
@@ -25,6 +26,7 @@ const ALLOWED_TYPES = ['application/pdf'];
 
 export function DocumentUploadModal({
   workspaceId,
+  folderId,
   onClose,
   onUploaded,
 }: DocumentUploadModalProps) {
@@ -121,8 +123,11 @@ export function DocumentUploadModal({
         if (uploadError) throw uploadError;
 
         // Create document record
+        const documentId = crypto.randomUUID();
         const { error: insertError } = await supabase.from('documents').insert({
+          id: documentId,
           workspace_id: workspaceId,
+          folder_id: folderId || null,
           user_id: user.id,
           title: fileItem.file.name.replace(/\.pdf$/i, ''),
           original_filename: fileItem.file.name,
@@ -133,6 +138,12 @@ export function DocumentUploadModal({
         });
 
         if (insertError) throw insertError;
+
+        // Trigger background processing (classification, chunking, embedding)
+        // Fire and forget - don't block upload completion
+        supabase.functions.invoke('classify-document', {
+          body: { document_id: documentId, filename: fileItem.file.name }
+        }).catch(err => console.warn('Classification failed:', err));
 
         // Update status to success
         setFiles((prev) =>

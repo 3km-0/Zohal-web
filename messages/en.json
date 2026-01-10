@@ -15,7 +15,20 @@
     "sort": "Sort",
     "viewAll": "View All",
     "learnMore": "Learn More",
-    "getStarted": "Get Started"
+    "getStarted": "Get Started",
+    "done": "Done",
+    "open": "Open",
+    "rename": "Rename",
+    "share": "Share",
+    "all": "All",
+    "back": "Back",
+    "close": "Close",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "items": "{count} items",
+    "empty": "Empty"
   },
   "nav": {
     "home": "Home",
@@ -27,7 +40,9 @@
     "settings": "Settings",
     "terms": "Terms",
     "privacy": "Privacy",
-    "support": "Support"
+    "support": "Support",
+    "library": "Library",
+    "trash": "Trash"
   },
   "auth": {
     "login": "Log In",
@@ -87,12 +102,37 @@
       "other": "Other"
     }
   },
+  "folders": {
+    "title": "Folders",
+    "folder": "Folder",
+    "newFolder": "New Folder",
+    "createFolder": "Create Folder",
+    "emptyFolder": "Empty Folder",
+    "openFolder": "Open Folder",
+    "renameFolder": "Rename Folder",
+    "deleteFolder": "Delete Folder",
+    "moveToFolder": "Move to Folder",
+    "workspaceRoot": "Workspace Root",
+    "subfolders": "Subfolders",
+    "subfolder": "Subfolder",
+    "folderName": "Folder Name",
+    "addDocumentsOrSubfolders": "Add documents or create subfolders",
+    "documents": "{count} Documents",
+    "created": "Created {date}",
+    "dropHere": "Drop here to move",
+    "dragToMove": "Drag to move to folder"
+  },
   "documents": {
     "title": "Documents",
     "upload": "Upload Document",
     "empty": "No documents yet",
     "emptyDescription": "Upload your first document to get started.",
     "processing": "Processing...",
+    "addDocument": "Add Document",
+    "fromFiles": "From Files",
+    "fromGoogleDrive": "From Google Drive",
+    "noDocuments": "No Documents Yet",
+    "uploadDescription": "Upload PDFs to this workspace to get started",
     "types": {
       "textbook": "Textbook",
       "contract": "Contract",
@@ -173,4 +213,3 @@
     "copyright": "© {year} Zohal. All rights reserved."
   }
 }
-

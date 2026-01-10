@@ -15,7 +15,20 @@
     "sort": "ترتيب",
     "viewAll": "عرض الكل",
     "learnMore": "اعرف المزيد",
-    "getStarted": "ابدأ الآن"
+    "getStarted": "ابدأ الآن",
+    "done": "تم",
+    "open": "فتح",
+    "rename": "إعادة تسمية",
+    "share": "مشاركة",
+    "all": "الكل",
+    "back": "رجوع",
+    "close": "إغلاق",
+    "confirm": "تأكيد",
+    "yes": "نعم",
+    "no": "لا",
+    "or": "أو",
+    "items": "{count} عنصر",
+    "empty": "فارغ"
   },
   "nav": {
     "home": "الرئيسية",
@@ -27,7 +40,9 @@
     "settings": "الإعدادات",
     "terms": "الشروط",
     "privacy": "الخصوصية",
-    "support": "الدعم"
+    "support": "الدعم",
+    "library": "المكتبة",
+    "trash": "السلة"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -87,12 +102,37 @@
       "other": "أخرى"
     }
   },
+  "folders": {
+    "title": "المجلدات",
+    "folder": "مجلد",
+    "newFolder": "مجلد جديد",
+    "createFolder": "إنشاء مجلد",
+    "emptyFolder": "مجلد فارغ",
+    "openFolder": "فتح المجلد",
+    "renameFolder": "إعادة تسمية المجلد",
+    "deleteFolder": "حذف المجلد",
+    "moveToFolder": "نقل إلى مجلد",
+    "workspaceRoot": "جذر مساحة العمل",
+    "subfolders": "المجلدات الفرعية",
+    "subfolder": "مجلد فرعي",
+    "folderName": "اسم المجلد",
+    "addDocumentsOrSubfolders": "أضف مستندات أو أنشئ مجلدات فرعية",
+    "documents": "{count} مستند",
+    "created": "أُنشئ {date}",
+    "dropHere": "أفلت هنا للنقل",
+    "dragToMove": "اسحب للنقل إلى مجلد"
+  },
   "documents": {
     "title": "المستندات",
     "upload": "رفع مستند",
     "empty": "لا توجد مستندات",
     "emptyDescription": "ارفع أول مستند للبدء.",
     "processing": "جاري المعالجة...",
+    "addDocument": "إضافة مستند",
+    "fromFiles": "من الملفات",
+    "fromGoogleDrive": "من Google Drive",
+    "noDocuments": "لا توجد مستندات",
+    "uploadDescription": "ارفع ملفات PDF إلى مساحة العمل للبدء",
     "types": {
       "textbook": "كتاب دراسي",
       "contract": "عقد",
@@ -173,4 +213,3 @@
     "copyright": "© {year} زُهل. جميع الحقوق محفوظة."
   }
 }
-

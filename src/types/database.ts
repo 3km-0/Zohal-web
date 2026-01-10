@@ -100,6 +100,7 @@ export interface Document {
   id: string;
   workspace_id: string;
   user_id: string;
+  folder_id?: string | null;  // Folder within workspace
   title: string;
   original_filename?: string;
   storage_path?: string;
@@ -116,6 +117,24 @@ export interface Document {
   created_at: string;
   updated_at: string;
   deleted_at?: string;
+}
+
+export interface WorkspaceFolder {
+  id: string;
+  workspace_id: string;
+  parent_id?: string | null;  // nil = root folder
+  name: string;
+  icon?: string | null;
+  color?: string | null;
+  sort_index?: number | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface FolderWithStats extends WorkspaceFolder {
+  document_count: number;
+  subfolder_count: number;
 }
 
 export interface DocumentChunk {
