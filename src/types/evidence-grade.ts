@@ -102,6 +102,12 @@ export interface VerifiedVariable {
   
   /** AI's confidence in this extraction */
   ai_confidence: AIConfidence
+
+  /** Deterministic verifier result (additive metadata; optional) */
+  verifier?: {
+    status: 'green' | 'yellow' | 'red'
+    reasons: string[]
+  }
 }
 
 // =============================================================================

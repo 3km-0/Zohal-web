@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, PanelRight, Scale, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -17,6 +17,7 @@ import { notFound } from '@/lib/errors';
 export default function DocumentViewerPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
   const documentId = params.docId as string;
   const supabase = createClient();
@@ -29,6 +30,14 @@ export default function DocumentViewerPage() {
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  const tapToProof = useMemo(() => {
+    const pageStr = searchParams.get('page');
+    const page = pageStr ? parseInt(pageStr, 10) : NaN;
+    const quote = searchParams.get('quote') || undefined;
+    if (!pageStr || Number.isNaN(page) || page < 1) return undefined;
+    return { page, quote };
+  }, [searchParams]);
 
   // Fetch document and workspace
   useEffect(() => {
@@ -179,6 +188,7 @@ export default function DocumentViewerPage() {
               url={pdfUrl}
               onTextSelect={handleTextSelect}
               onPageChange={setCurrentPage}
+              tapToProof={tapToProof}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center">

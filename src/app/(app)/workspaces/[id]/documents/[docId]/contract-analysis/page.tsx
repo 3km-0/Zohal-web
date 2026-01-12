@@ -7,9 +7,11 @@ import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert } from 'luc
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
+import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
+import { parseSnapshot } from '@/types/evidence-grade';
 import { cn } from '@/lib/utils';
 
-type Tab = 'overview' | 'clauses' | 'obligations' | 'deadlines' | 'risks';
+type Tab = 'overview' | 'variables' | 'clauses' | 'obligations' | 'deadlines' | 'risks';
 
 export default function ContractAnalysisPage() {
   const params = useParams();
@@ -28,6 +30,7 @@ export default function ContractAnalysisPage() {
   const [clauses, setClauses] = useState<LegalClause[]>([]);
   const [obligations, setObligations] = useState<LegalObligation[]>([]);
   const [risks, setRisks] = useState<LegalRiskFlag[]>([]);
+  const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
 
   const deadlines = useMemo(() => {
     return obligations
@@ -35,6 +38,29 @@ export default function ContractAnalysisPage() {
       .slice()
       .sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''));
   }, [obligations]);
+  
+  const attention = useMemo(() => {
+    const highRiskClauses = clauses.filter((c) => c.risk_level === 'high').length;
+    const obligationsNeedsReview = obligations.filter((o) => o.confidence_state === 'needs_review').length;
+    const unresolvedRisks = risks.filter((r) => !r.resolved).length;
+    
+    // Upcoming deadlines: within next 30 days
+    const now = new Date();
+    const upcomingDeadlines = deadlines.filter((o) => {
+      if (!o.due_at) return false;
+      const d = new Date(o.due_at);
+      if (Number.isNaN(d.getTime())) return false;
+      const days = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return days >= 0 && days <= 30;
+    }).length;
+    
+    return {
+      clauses: highRiskClauses,
+      obligations: obligationsNeedsReview,
+      deadlines: upcomingDeadlines,
+      risks: unresolvedRisks,
+    };
+  }, [clauses, obligations, risks, deadlines]);
 
   async function load() {
     setLoading(true);
@@ -53,10 +79,12 @@ export default function ContractAnalysisPage() {
         setClauses([]);
         setObligations([]);
         setRisks([]);
+        setSnapshot(null);
         return;
       }
 
       setContract(contractData);
+      setSnapshot(null);
 
       const [clausesRes, obligationsRes, risksRes] = await Promise.all([
         supabase.from('legal_clauses').select('*').eq('contract_id', contractData.id).order('page_number', { ascending: true }),
@@ -71,6 +99,26 @@ export default function ContractAnalysisPage() {
       setClauses((clausesRes.data || []) as LegalClause[]);
       setObligations((obligationsRes.data || []) as LegalObligation[]);
       setRisks((risksRes.data || []) as LegalRiskFlag[]);
+
+      // Load evidence-grade snapshot (canonical) to power Variables + verifier
+      if (contractData.verification_object_id) {
+        const { data: vo, error: voErr } = await supabase
+          .from('verification_objects')
+          .select('current_version_id')
+          .eq('id', contractData.verification_object_id)
+          .maybeSingle();
+        if (!voErr && vo?.current_version_id) {
+          const { data: vov, error: vovErr } = await supabase
+            .from('verification_object_versions')
+            .select('snapshot_json')
+            .eq('id', vo.current_version_id)
+            .maybeSingle();
+          if (!vovErr && vov?.snapshot_json) {
+            const parsed = parseSnapshot(vov.snapshot_json, documentId);
+            setSnapshot(parsed);
+          }
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load contract analysis');
     } finally {
@@ -206,15 +254,37 @@ export default function ContractAnalysisPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {contract && (
-            <Button variant="secondary" size="sm" onClick={exportCalendar}>
-              <Download className="w-4 h-4" />
-              Export Calendar
-            </Button>
-          )}
-          <Button variant="secondary" size="sm" onClick={() => router.push(`/workspaces/${workspaceId}/documents/${documentId}`)}>
-            Back to PDF
-          </Button>
+          <details className="relative">
+            <summary className="list-none">
+              <Button variant="secondary" size="sm">
+                Actions
+                <span className="ml-1 text-text-soft">▾</span>
+              </Button>
+            </summary>
+            <div className="absolute right-0 mt-2 w-52 rounded-scholar border border-border bg-surface shadow-scholar overflow-hidden z-30">
+              <div className="px-3 py-2 text-xs font-semibold text-text-soft border-b border-border bg-surface-alt">
+                Actions
+              </div>
+              <div className="p-2 space-y-1">
+                {contract && (
+                  <button
+                    onClick={() => exportCalendar()}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold text-text hover:bg-surface-alt transition-colors"
+                  >
+                    <Download className="w-4 h-4 text-text-soft" />
+                    Export Calendar
+                  </button>
+                )}
+                <button
+                  onClick={() => router.push(`/workspaces/${workspaceId}/documents/${documentId}`)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold text-text hover:bg-surface-alt transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4 text-text-soft" />
+                  Back to PDF
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -248,6 +318,7 @@ export default function ContractAnalysisPage() {
               {(
                 [
                   { id: 'overview', label: 'Overview', icon: FileText },
+                  { id: 'variables', label: `Variables (${snapshot?.variables.length ?? 0})`, icon: FileText },
                   { id: 'clauses', label: `Clauses (${clauses.length})`, icon: FileText },
                   { id: 'obligations', label: `Obligations (${obligations.length})`, icon: FileText },
                   { id: 'deadlines', label: `Deadlines (${deadlines.length})`, icon: Calendar },
@@ -262,7 +333,26 @@ export default function ContractAnalysisPage() {
                     tab === t.id ? 'border-accent text-accent bg-accent/5' : 'border-border text-text hover:bg-surface-alt'
                   )}
                 >
-                  <t.icon className="w-4 h-4" />
+                  <span className="relative inline-flex">
+                    <t.icon className="w-4 h-4" />
+                    {t.id !== 'overview' &&
+                      (t.id === 'variables'
+                        ? (snapshot?.variables.some((v) => v.verification_state === 'needs_review') ?? false)
+                        : t.id === 'clauses'
+                        ? attention.clauses > 0
+                        : t.id === 'obligations'
+                          ? attention.obligations > 0
+                          : t.id === 'deadlines'
+                            ? attention.deadlines > 0
+                            : t.id === 'risks'
+                              ? attention.risks > 0
+                              : false) && (
+                        <span
+                          className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent-alt ring-2 ring-surface"
+                          aria-label="Needs attention"
+                        />
+                      )}
+                  </span>
                   {t.label}
                 </button>
               ))}
@@ -294,6 +384,86 @@ export default function ContractAnalysisPage() {
               </Card>
             )}
 
+            {tab === 'variables' && (
+              <div className="space-y-3">
+                {!snapshot ? (
+                  <EmptyState
+                    title="No variables snapshot"
+                    description="This view is driven by the evidence-grade snapshot (canonical). Re-run analysis if needed."
+                  />
+                ) : snapshot.variables.length === 0 ? (
+                  <EmptyState title="No variables" description="No variables were stored in the canonical snapshot." />
+                ) : (
+                  snapshot.variables.map((v) => (
+                    <Card key={v.id}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>{v.display_name}</span>
+                          <div className="flex items-center gap-2">
+                            {v.verifier?.status && (
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold',
+                                  v.verifier.status === 'green'
+                                    ? 'border-success/30 bg-success/5 text-text'
+                                    : v.verifier.status === 'red'
+                                      ? 'border-error/30 bg-error/5 text-text'
+                                      : 'border-accent-alt/30 bg-accent-alt/5 text-text'
+                                )}
+                                title={v.verifier.reasons?.join(', ') || undefined}
+                              >
+                                <span
+                                  className={cn(
+                                    'inline-flex w-2.5 h-2.5 rounded-full',
+                                    v.verifier.status === 'green'
+                                      ? 'bg-success'
+                                      : v.verifier.status === 'red'
+                                        ? 'bg-error'
+                                        : 'bg-accent-alt'
+                                  )}
+                                />
+                                {v.verifier.status.toUpperCase()}
+                              </span>
+                            )}
+                            <Badge size="sm">{v.verification_state}</Badge>
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="text-sm text-text">
+                          <span className="text-text-soft">Value: </span>
+                          {v.value == null ? '—' : String(v.value)}
+                          {v.unit ? ` ${v.unit}` : ''}
+                        </div>
+                        <div className="text-xs text-text-soft">
+                          AI confidence: <span className="text-text">{v.ai_confidence}</span>
+                        </div>
+                        {v.evidence?.page_number != null && (
+                          <div>
+                            <Link
+                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${v.evidence.page_number}&quote=${encodeURIComponent(
+                                (v.evidence.snippet || '').slice(0, 140)
+                              )}`}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF (p. {v.evidence.page_number})
+                            </Link>
+                          </div>
+                        )}
+                        {v.verifier?.reasons?.length ? (
+                          <div className="text-xs text-text-soft">
+                            {v.verifier.reasons.map((r) => (
+                              <div key={r}>• {r.replace(/_/g, ' ')}</div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+
             {tab === 'clauses' && (
               <div className="space-y-3">
                 {clauses.length === 0 ? (
@@ -311,6 +481,18 @@ export default function ContractAnalysisPage() {
                         <div className="text-xs text-text-soft mb-2">
                           Page {c.page_number ?? '—'} {c.clause_number ? `• ${c.clause_number}` : ''}
                         </div>
+                        {c.page_number != null && (
+                          <div className="mb-2">
+                            <Link
+                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent(
+                                (c.text || '').slice(0, 120)
+                              )}`}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
                         <div className="text-sm text-text whitespace-pre-wrap">{c.text}</div>
                       </CardContent>
                     </Card>
@@ -333,6 +515,18 @@ export default function ContractAnalysisPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
+                        {o.page_number != null && (
+                          <div>
+                            <Link
+                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
+                                (o.summary || o.action || '').slice(0, 120)
+                              )}`}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
                         {o.due_at && (
                           <div className="text-xs text-text-soft">
                             Due: <span className="text-text">{o.due_at}</span>
