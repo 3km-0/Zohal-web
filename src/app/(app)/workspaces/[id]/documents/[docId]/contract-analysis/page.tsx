@@ -32,6 +32,14 @@ export default function ContractAnalysisPage() {
   const [risks, setRisks] = useState<LegalRiskFlag[]>([]);
   const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
 
+  function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
+    if (!evidence?.page_number) return null;
+    const quote = (evidence.snippet || '').slice(0, 160);
+    const bbox = evidence.bbox ? `${evidence.bbox.x},${evidence.bbox.y},${evidence.bbox.width},${evidence.bbox.height}` : null;
+    const base = `/workspaces/${workspaceId}/documents/${documentId}?page=${evidence.page_number}&quote=${encodeURIComponent(quote)}`;
+    return bbox ? `${base}&bbox=${encodeURIComponent(bbox)}` : base;
+  }
+
   const deadlines = useMemo(() => {
     return obligations
       .filter((o) => !!o.due_at)
@@ -441,9 +449,12 @@ export default function ContractAnalysisPage() {
                         {v.evidence?.page_number != null && (
                           <div>
                             <Link
-                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${v.evidence.page_number}&quote=${encodeURIComponent(
-                                (v.evidence.snippet || '').slice(0, 140)
-                              )}`}
+                              href={
+                                proofHref(v.evidence) ||
+                                `/workspaces/${workspaceId}/documents/${documentId}?page=${v.evidence.page_number}&quote=${encodeURIComponent(
+                                  (v.evidence.snippet || '').slice(0, 140)
+                                )}`
+                              }
                               className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
                             >
                               View in PDF (p. {v.evidence.page_number})
@@ -466,7 +477,34 @@ export default function ContractAnalysisPage() {
 
             {tab === 'clauses' && (
               <div className="space-y-3">
-                {clauses.length === 0 ? (
+                {snapshot?.clauses?.length ? (
+                  snapshot.clauses.map((c) => (
+                    <Card key={c.id}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>{c.clause_title || c.clause_type}</span>
+                          <Badge size="sm">{c.risk_level}</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xs text-text-soft mb-2">
+                          Page {c.evidence?.page_number ?? '—'} {c.clause_number ? `• ${c.clause_number}` : ''}
+                        </div>
+                        {c.evidence?.page_number != null && (
+                          <div className="mb-2">
+                            <Link
+                              href={proofHref(c.evidence) || '#'}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
+                        <div className="text-sm text-text whitespace-pre-wrap">{c.text}</div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : clauses.length === 0 ? (
                   <EmptyState title="No clauses" description="No clauses were saved for this analysis." />
                 ) : (
                   clauses.map((c) => (
@@ -503,7 +541,48 @@ export default function ContractAnalysisPage() {
 
             {tab === 'obligations' && (
               <div className="space-y-3">
-                {obligations.length === 0 ? (
+                {snapshot?.obligations?.length ? (
+                  snapshot.obligations.map((o) => (
+                    <Card key={o.id}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>{o.obligation_type}</span>
+                          <Badge size="sm">{o.verification_state}</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {o.evidence?.page_number != null && (
+                          <div>
+                            <Link
+                              href={proofHref(o.evidence) || '#'}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
+                        {o.due_at && (
+                          <div className="text-xs text-text-soft">
+                            Due: <span className="text-text">{o.due_at}</span>
+                          </div>
+                        )}
+                        {o.summary && <div className="text-sm text-text">{o.summary}</div>}
+                        {o.action && (
+                          <div className="text-sm text-text">
+                            <span className="text-text-soft">Action: </span>
+                            {o.action}
+                          </div>
+                        )}
+                        {o.responsible_party && (
+                          <div className="text-xs text-text-soft">
+                            Responsible: <span className="text-text">{o.responsible_party}</span>
+                          </div>
+                        )}
+                        {o.evidence?.page_number != null && <div className="text-xs text-text-soft">Page {o.evidence.page_number}</div>}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : obligations.length === 0 ? (
                   <EmptyState title="No obligations" description="No obligations were saved for this analysis." />
                 ) : (
                   obligations.map((o) => (
@@ -566,6 +645,18 @@ export default function ContractAnalysisPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
+                        {o.page_number != null && (
+                          <div className="mb-2">
+                            <Link
+                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
+                                (o.summary || o.action || '').slice(0, 140)
+                              )}`}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
                         <div className="text-sm text-text">{o.summary || o.action || '—'}</div>
                       </CardContent>
                     </Card>
@@ -576,7 +667,31 @@ export default function ContractAnalysisPage() {
 
             {tab === 'risks' && (
               <div className="space-y-3">
-                {risks.length === 0 ? (
+                {snapshot?.risks?.length ? (
+                  snapshot.risks.map((r) => (
+                    <Card key={r.id}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>{r.description}</span>
+                          <Badge size="sm">{r.severity}</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {r.evidence?.page_number != null && (
+                          <div>
+                            <Link
+                              href={proofHref(r.evidence) || '#'}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
+                        {r.explanation && <div className="text-sm text-text whitespace-pre-wrap">{r.explanation}</div>}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : risks.length === 0 ? (
                   <EmptyState title="No risks" description="No risks were saved for this analysis." />
                 ) : (
                   risks.map((r) => (
@@ -587,7 +702,21 @@ export default function ContractAnalysisPage() {
                           <Badge size="sm">{r.severity}</Badge>
                         </CardTitle>
                       </CardHeader>
-                      {r.explanation && <CardContent className="text-sm text-text whitespace-pre-wrap">{r.explanation}</CardContent>}
+                      <CardContent className="space-y-2">
+                        {r.page_number != null && (
+                          <div>
+                            <Link
+                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${r.page_number}&quote=${encodeURIComponent(
+                                (r.description || '').slice(0, 140)
+                              )}`}
+                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                            >
+                              View in PDF
+                            </Link>
+                          </div>
+                        )}
+                        {r.explanation && <div className="text-sm text-text whitespace-pre-wrap">{r.explanation}</div>}
+                      </CardContent>
                     </Card>
                   ))
                 )}

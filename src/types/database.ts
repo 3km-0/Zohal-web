@@ -363,6 +363,7 @@ export interface LegalRiskFlag {
   description: string;
   explanation?: string;
   resolved: boolean;
+  page_number?: number | null;
   created_at: string;
 }
 

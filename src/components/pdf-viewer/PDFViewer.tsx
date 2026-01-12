@@ -92,9 +92,10 @@ export function PDFViewer({
     s
       .replace(/…/g, ' ')
       .replace(/\.\.\./g, ' ')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
+      .trim();
 
   // Tap-to-Proof: jump + highlight bbox, else highlight quote
   useEffect(() => {
@@ -129,7 +130,7 @@ export function PDFViewer({
             height: b.height * height,
           },
         });
-        window.setTimeout(() => setHighlight(null), 2800);
+        window.setTimeout(() => setHighlight(null), 8000);
         return;
       }
 
@@ -199,7 +200,7 @@ export function PDFViewer({
           page,
           rect: { left: minX, top: minY, width: maxX - minX, height: maxY - minY },
         });
-        window.setTimeout(() => setHighlight(null), 3000);
+        window.setTimeout(() => setHighlight(null), 8000);
       } catch (e) {
         setProofMessage(`Couldn’t locate quote; jumped to page ${page}.`);
         window.setTimeout(() => setProofMessage(null), 2600);

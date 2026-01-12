@@ -36,7 +36,27 @@ export default function DocumentViewerPage() {
     const page = pageStr ? parseInt(pageStr, 10) : NaN;
     const quote = searchParams.get('quote') || undefined;
     if (!pageStr || Number.isNaN(page) || page < 1) return undefined;
-    return { page, quote };
+    
+    const bboxStr = searchParams.get('bbox');
+    let bbox:
+      | {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        }
+      | undefined;
+    if (bboxStr) {
+      const parts = bboxStr.split(',').map((p) => parseFloat(p.trim()));
+      if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
+        const [x, y, width, height] = parts;
+        if (x >= 0 && y >= 0 && width > 0 && height > 0) {
+          bbox = { x, y, width, height };
+        }
+      }
+    }
+    
+    return { page, quote, bbox };
   }, [searchParams]);
 
   // Fetch document and workspace
