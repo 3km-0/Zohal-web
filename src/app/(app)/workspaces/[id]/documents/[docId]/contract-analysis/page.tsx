@@ -542,46 +542,100 @@ export default function ContractAnalysisPage() {
             {tab === 'obligations' && (
               <div className="space-y-3">
                 {snapshot?.obligations?.length ? (
-                  snapshot.obligations.map((o) => (
-                    <Card key={o.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{o.obligation_type}</span>
-                          <Badge size="sm">{o.verification_state}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {o.evidence?.page_number != null && (
-                          <div>
-                            <Link
-                              href={proofHref(o.evidence) || '#'}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF
-                            </Link>
-                          </div>
-                        )}
-                        {o.due_at && (
-                          <div className="text-xs text-text-soft">
-                            Due: <span className="text-text">{o.due_at}</span>
-                          </div>
-                        )}
-                        {o.summary && <div className="text-sm text-text">{o.summary}</div>}
-                        {o.action && (
-                          <div className="text-sm text-text">
-                            <span className="text-text-soft">Action: </span>
-                            {o.action}
-                          </div>
-                        )}
-                        {o.responsible_party && (
-                          <div className="text-xs text-text-soft">
-                            Responsible: <span className="text-text">{o.responsible_party}</span>
-                          </div>
-                        )}
-                        {o.evidence?.page_number != null && <div className="text-xs text-text-soft">Page {o.evidence.page_number}</div>}
-                      </CardContent>
-                    </Card>
-                  ))
+                  (() => {
+                    const byType = snapshot.obligations.reduce<Record<string, typeof snapshot.obligations>>((acc, o) => {
+                      const k = o.obligation_type || 'other';
+                      (acc[k] ||= []).push(o);
+                      return acc;
+                    }, {});
+                    
+                    const typeOrder = [
+                      'renewal',
+                      'notice',
+                      'payment',
+                      'milestone',
+                      'deliverable',
+                      'reporting',
+                      'compliance',
+                      'termination',
+                      'confidentiality',
+                      'indemnification',
+                      'insurance',
+                      'audit',
+                      'other',
+                    ];
+                    
+                    const groups = Object.entries(byType).sort(([a], [b]) => {
+                      const ia = typeOrder.indexOf(a);
+                      const ib = typeOrder.indexOf(b);
+                      if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+                      return a.localeCompare(b);
+                    });
+                    
+                    const sorted = (items: typeof snapshot.obligations) =>
+                      items.slice().sort((a, b) => {
+                        const da = a.due_at || '';
+                        const db = b.due_at || '';
+                        if (da && db && da !== db) return da.localeCompare(db);
+                        if (da && !db) return -1;
+                        if (!da && db) return 1;
+                        const pa = a.evidence?.page_number ?? 999999;
+                        const pb = b.evidence?.page_number ?? 999999;
+                        if (pa !== pb) return pa - pb;
+                        return a.id.localeCompare(b.id);
+                      });
+                    
+                    return groups.map(([type, items]) => (
+                      <div key={type} className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <div className="text-sm font-semibold text-text">{type}</div>
+                          <div className="text-xs text-text-soft">{items.length}</div>
+                        </div>
+                        {sorted(items).map((o) => (
+                          <Card key={o.id}>
+                            <CardHeader>
+                              <CardTitle className="flex items-center justify-between">
+                                <span>{o.summary || o.action || o.obligation_type}</span>
+                                <Badge size="sm">{o.verification_state}</Badge>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              {o.evidence?.page_number != null && (
+                                <div>
+                                  <Link
+                                    href={proofHref(o.evidence) || '#'}
+                                    className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                                  >
+                                    View in PDF
+                                  </Link>
+                                </div>
+                              )}
+                              {o.due_at && (
+                                <div className="text-xs text-text-soft">
+                                  Due: <span className="text-text">{o.due_at}</span>
+                                </div>
+                              )}
+                              {o.summary && <div className="text-sm text-text">{o.summary}</div>}
+                              {o.action && (
+                                <div className="text-sm text-text">
+                                  <span className="text-text-soft">Action: </span>
+                                  {o.action}
+                                </div>
+                              )}
+                              {o.responsible_party && (
+                                <div className="text-xs text-text-soft">
+                                  Responsible: <span className="text-text">{o.responsible_party}</span>
+                                </div>
+                              )}
+                              {o.evidence?.page_number != null && (
+                                <div className="text-xs text-text-soft">Page {o.evidence.page_number}</div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ));
+                  })()
                 ) : obligations.length === 0 ? (
                   <EmptyState title="No obligations" description="No obligations were saved for this analysis." />
                 ) : (
