@@ -50,7 +50,12 @@ export default function DocumentViewerPage() {
       const parts = bboxStr.split(',').map((p) => parseFloat(p.trim()));
       if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
         const [x, y, width, height] = parts;
-        if (x >= 0 && y >= 0 && width > 0 && height > 0) {
+        // Evidence bboxes are expected to be normalized (0..1) in pdf_normalized_v1.
+        // Defensive: if we get non-normalized coords (e.g. PDF points), ignore bbox and fall back to quote highlight.
+        if (
+          x >= 0 && y >= 0 && width > 0 && height > 0 &&
+          x <= 1 && y <= 1 && width <= 1 && height <= 1
+        ) {
           bbox = { x, y, width, height };
         }
       }

@@ -114,13 +114,27 @@ export function PDFViewer({
       if (cancelled) return;
 
       if (tapToProof.bbox) {
+        // BBox is expected to be normalized (0..1). If it isn't, fall back to quote highlighting.
+        const b0 = tapToProof.bbox
+        const isNormalized =
+          b0.x >= 0 &&
+          b0.y >= 0 &&
+          b0.width > 0 &&
+          b0.height > 0 &&
+          b0.x <= 1 &&
+          b0.y <= 1 &&
+          b0.width <= 1 &&
+          b0.height <= 1
+        if (!isNormalized) {
+          // Continue into quote path below.
+        } else {
         const pe = document.getElementById(`pdf-page-${page}`);
         if (!pe) return;
         const rect = pe.getBoundingClientRect();
         // We need page dimensions; take from element size.
         const width = rect.width;
         const height = rect.height;
-        const b = tapToProof.bbox;
+        const b = b0;
         setHighlight({
           page,
           rect: {
@@ -132,6 +146,7 @@ export function PDFViewer({
         });
         window.setTimeout(() => setHighlight(null), 8000);
         return;
+        }
       }
 
       const quote = tapToProof.quote ? normalize(tapToProof.quote) : '';
