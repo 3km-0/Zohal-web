@@ -46,6 +46,15 @@ export default function ContractAnalysisPage() {
       .slice()
       .sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''));
   }, [obligations]);
+
+  function computeNoticeDeadline(endDateIso: string | null | undefined, noticeDays: number | null | undefined): Date | null {
+    if (!endDateIso || noticeDays == null) return null;
+    const end = new Date(endDateIso);
+    if (Number.isNaN(end.getTime())) return null;
+    const d = new Date(end.getTime());
+    d.setDate(d.getDate() - noticeDays);
+    return d;
+  }
   
   const attention = useMemo(() => {
     const highRiskClauses = clauses.filter((c) => c.risk_level === 'high').length;
@@ -388,6 +397,40 @@ export default function ContractAnalysisPage() {
                     <span className="text-text-soft">Notice: </span>
                     {contract.notice_period_days != null ? `${contract.notice_period_days} days` : '—'}
                   </div>
+                  
+                  <div className="pt-3 mt-3 border-t border-border space-y-2">
+                    <div className="text-sm font-semibold text-text">Renewal Timeline</div>
+                    <div className="text-sm text-text">
+                      <span className="text-text-soft">Auto-renewal: </span>
+                      {contract.auto_renewal ? 'Yes' : 'No'}
+                    </div>
+                    {contract.end_date ? (
+                      <div className="text-sm text-text">
+                        <span className="text-text-soft">{contract.auto_renewal ? 'Renews on: ' : 'Term ends on: '}</span>
+                        {contract.end_date}
+                      </div>
+                    ) : null}
+                    {(() => {
+                      const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
+                      if (!notice) return null;
+                      return (
+                        <div className="text-sm text-text">
+                          <span className="text-text-soft">Notice deadline: </span>
+                          {notice.toLocaleDateString()}
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
+                      const href = proofHref(endEvidence);
+                      if (!href) return null;
+                      return (
+                        <Link href={href} className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline">
+                          View end-date evidence in PDF
+                        </Link>
+                      );
+                    })()}
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -687,35 +730,91 @@ export default function ContractAnalysisPage() {
 
             {tab === 'deadlines' && (
               <div className="space-y-3">
-                {deadlines.length === 0 ? (
-                  <EmptyState title="No deadlines" description="No obligations with due dates were found." />
-                ) : (
-                  deadlines.map((o) => (
-                    <Card key={o.id}>
+                {(() => {
+                  const items: Array<{
+                    key: string;
+                    title: string;
+                    dueLabel: string;
+                    description: string;
+                    href?: string | null;
+                  }> = [];
+                  
+                  const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
+                  const noticeEvidence = endEvidence;
+                  
+                  if (contract.end_date) {
+                    items.push({
+                      key: 'contract_end',
+                      title: 'Contract End Date',
+                      dueLabel: contract.end_date,
+                      description: 'Contract term ends',
+                      href: proofHref(endEvidence),
+                    });
+                    if (contract.auto_renewal) {
+                      items.push({
+                        key: 'renewal',
+                        title: 'Auto-Renewal Date',
+                        dueLabel: contract.end_date,
+                        description: 'Contract renews automatically unless notice is given',
+                        href: proofHref(endEvidence),
+                      });
+                    }
+                    
+                    const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
+                    if (notice) {
+                      items.push({
+                        key: 'notice_deadline',
+                        title: 'Notice Deadline',
+                        dueLabel: notice.toLocaleDateString(),
+                        description: `Last day to provide ${contract.notice_period_days ?? ''}-day notice`,
+                        href: proofHref(noticeEvidence),
+                      });
+                    }
+                  }
+                  
+                  for (const o of deadlines) {
+                    items.push({
+                      key: `ob_${o.id}`,
+                      title: o.obligation_type,
+                      dueLabel: o.due_at || '—',
+                      description: o.summary || o.action || '—',
+                      href:
+                        o.page_number != null
+                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
+                              (o.summary || o.action || '').slice(0, 140)
+                            )}`
+                          : null,
+                    });
+                  }
+                  
+                  if (items.length === 0) {
+                    return <EmptyState title="No deadlines" description="No contract dates or obligations with due dates were found." />;
+                  }
+                  
+                  return items.map((it) => (
+                    <Card key={it.key}>
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
-                          <span>{o.obligation_type}</span>
-                          <Badge size="sm">{o.due_at}</Badge>
+                          <span>{it.title}</span>
+                          <Badge size="sm">{it.dueLabel}</Badge>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        {o.page_number != null && (
+                        {it.href ? (
                           <div className="mb-2">
                             <Link
-                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
-                                (o.summary || o.action || '').slice(0, 140)
-                              )}`}
+                              href={it.href}
                               className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
                             >
                               View in PDF
                             </Link>
                           </div>
-                        )}
-                        <div className="text-sm text-text">{o.summary || o.action || '—'}</div>
+                        ) : null}
+                        <div className="text-sm text-text">{it.description}</div>
                       </CardContent>
                     </Card>
-                  ))
-                )}
+                  ));
+                })()}
               </div>
             )}
 
