@@ -478,6 +478,37 @@ export default function ContractAnalysisPage() {
                       );
                     })()}
                   </div>
+
+                  <div className="pt-3 mt-3 border-t border-border space-y-2">
+                    <div className="text-sm font-semibold text-text">Audit Trail</div>
+                    <div className="text-sm text-text">
+                      <span className="text-text-soft">Status: </span>
+                      Provisional (pending review)
+                    </div>
+                    {snapshot ? (
+                      <>
+                        <div className="text-sm text-text">
+                          <span className="text-text-soft">Schema: </span>
+                          {snapshot.schema_version}
+                        </div>
+                        <div className="text-sm text-text">
+                          <span className="text-text-soft">Template: </span>
+                          {snapshot.template}
+                        </div>
+                        <div className="text-sm text-text">
+                          <span className="text-text-soft">Analyzed: </span>
+                          {snapshot.analyzed_at}
+                        </div>
+                        <div className="text-sm text-text">
+                          <span className="text-text-soft">Chunks: </span>
+                          {snapshot.chunks_analyzed}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-text-soft">Snapshot unavailable (re-run analysis to generate it).</div>
+                    )}
+                    <div className="text-xs text-text-soft">System: Zohal Evidence-Grade Analysis Platform</div>
+                  </div>
                 </CardContent>
               </Card>
             )}
