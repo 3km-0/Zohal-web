@@ -31,6 +31,7 @@ export default function ContractAnalysisPage() {
   const [obligations, setObligations] = useState<LegalObligation[]>([]);
   const [risks, setRisks] = useState<LegalRiskFlag[]>([]);
   const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
+  const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
 
   function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
     if (!evidence?.page_number) return null;
@@ -244,6 +245,52 @@ export default function ContractAnalysisPage() {
       URL.revokeObjectURL(url);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to export calendar');
+    }
+  }
+
+  async function addTaskFromObligation(o: LegalObligation) {
+    try {
+      setCreatingTaskFor(o.id);
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userRes.user.id;
+
+      const titleBase = o.summary || o.action || o.obligation_type || 'Contract obligation';
+      const title = `${o.obligation_type}: ${titleBase}`.slice(0, 120);
+      const descriptionParts = [
+        'Source: Contract Analysis',
+        `Document: ${documentId}`,
+        o.page_number != null ? `Page: ${o.page_number}` : null,
+        '',
+        o.summary ? `Summary: ${o.summary}` : null,
+        o.action ? `Action: ${o.action}` : null,
+        o.condition ? `Condition: ${o.condition}` : null,
+      ].filter(Boolean) as string[];
+
+      const { data: task, error: taskErr } = await supabase
+        .from('tasks')
+        .insert({
+          workspace_id: workspaceId,
+          document_id: documentId,
+          created_by: userId,
+          title,
+          description: descriptionParts.join('\n'),
+          status: 'pending',
+          due_at: o.due_at || null,
+        })
+        .select('*')
+        .single();
+      if (taskErr) throw taskErr;
+
+      // Link obligation to task for UI state
+      const { error: linkErr } = await supabase.from('legal_obligations').update({ task_id: task.id }).eq('id', o.id);
+      if (linkErr) throw linkErr;
+
+      setObligations((prev) => prev.map((x) => (x.id === o.id ? { ...x, task_id: task.id } : x)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create task');
+    } finally {
+      setCreatingTaskFor(null);
     }
   }
 
@@ -584,9 +631,11 @@ export default function ContractAnalysisPage() {
 
             {tab === 'obligations' && (
               <div className="space-y-3">
-                {snapshot?.obligations?.length ? (
+                {obligations.length === 0 ? (
+                  <EmptyState title="No obligations" description="No obligations were saved for this analysis." />
+                ) : (
                   (() => {
-                    const byType = snapshot.obligations.reduce<Record<string, typeof snapshot.obligations>>((acc, o) => {
+                    const byType = obligations.reduce<Record<string, LegalObligation[]>>((acc, o) => {
                       const k = o.obligation_type || 'other';
                       (acc[k] ||= []).push(o);
                       return acc;
@@ -615,15 +664,15 @@ export default function ContractAnalysisPage() {
                       return a.localeCompare(b);
                     });
                     
-                    const sorted = (items: typeof snapshot.obligations) =>
+                    const sorted = (items: LegalObligation[]) =>
                       items.slice().sort((a, b) => {
                         const da = a.due_at || '';
                         const db = b.due_at || '';
                         if (da && db && da !== db) return da.localeCompare(db);
                         if (da && !db) return -1;
                         if (!da && db) return 1;
-                        const pa = a.evidence?.page_number ?? 999999;
-                        const pb = b.evidence?.page_number ?? 999999;
+                        const pa = a.page_number ?? 999999;
+                        const pb = b.page_number ?? 999999;
                         if (pa !== pb) return pa - pb;
                         return a.id.localeCompare(b.id);
                       });
@@ -637,27 +686,43 @@ export default function ContractAnalysisPage() {
                         {sorted(items).map((o) => (
                           <Card key={o.id}>
                             <CardHeader>
-                              <CardTitle className="flex items-center justify-between">
-                                <span>{o.summary || o.action || o.obligation_type}</span>
-                                <Badge size="sm">{o.verification_state}</Badge>
+                              <CardTitle className="flex items-center justify-between gap-3">
+                                <span className="min-w-0 truncate">{o.summary || o.action || o.obligation_type}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge size="sm">{o.confidence_state}</Badge>
+                                  {o.due_at ? <Badge size="sm">{o.due_at}</Badge> : null}
+                                </div>
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {o.evidence?.page_number != null && (
-                                <div>
+                              <div className="flex items-center justify-between gap-3">
+                                {o.page_number != null ? (
                                   <Link
-                                    href={proofHref(o.evidence) || '#'}
+                                    href={`/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
+                                      (o.summary || o.action || '').slice(0, 140)
+                                    )}`}
                                     className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
                                   >
                                     View in PDF
                                   </Link>
-                                </div>
-                              )}
-                              {o.due_at && (
-                                <div className="text-xs text-text-soft">
-                                  Due: <span className="text-text">{o.due_at}</span>
-                                </div>
-                              )}
+                                ) : (
+                                  <span className="text-xs text-text-soft">No source page</span>
+                                )}
+                                
+                                {!o.task_id ? (
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={creatingTaskFor === o.id}
+                                    onClick={() => addTaskFromObligation(o)}
+                                  >
+                                    {creatingTaskFor === o.id ? 'Adding…' : 'Add Task'}
+                                  </Button>
+                                ) : (
+                                  <Badge size="sm">Task added</Badge>
+                                )}
+                              </div>
+                              
                               {o.summary && <div className="text-sm text-text">{o.summary}</div>}
                               {o.action && (
                                 <div className="text-sm text-text">
@@ -670,60 +735,13 @@ export default function ContractAnalysisPage() {
                                   Responsible: <span className="text-text">{o.responsible_party}</span>
                                 </div>
                               )}
-                              {o.evidence?.page_number != null && (
-                                <div className="text-xs text-text-soft">Page {o.evidence.page_number}</div>
-                              )}
+                              {o.page_number != null && <div className="text-xs text-text-soft">Page {o.page_number}</div>}
                             </CardContent>
                           </Card>
                         ))}
                       </div>
                     ));
                   })()
-                ) : obligations.length === 0 ? (
-                  <EmptyState title="No obligations" description="No obligations were saved for this analysis." />
-                ) : (
-                  obligations.map((o) => (
-                    <Card key={o.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{o.obligation_type}</span>
-                          <Badge size="sm">{o.confidence_state}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {o.page_number != null && (
-                          <div>
-                            <Link
-                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
-                                (o.summary || o.action || '').slice(0, 120)
-                              )}`}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF
-                            </Link>
-                          </div>
-                        )}
-                        {o.due_at && (
-                          <div className="text-xs text-text-soft">
-                            Due: <span className="text-text">{o.due_at}</span>
-                          </div>
-                        )}
-                        {o.summary && <div className="text-sm text-text">{o.summary}</div>}
-                        {o.action && (
-                          <div className="text-sm text-text">
-                            <span className="text-text-soft">Action: </span>
-                            {o.action}
-                          </div>
-                        )}
-                        {o.responsible_party && (
-                          <div className="text-xs text-text-soft">
-                            Responsible: <span className="text-text">{o.responsible_party}</span>
-                          </div>
-                        )}
-                        {o.page_number != null && <div className="text-xs text-text-soft">Page {o.page_number}</div>}
-                      </CardContent>
-                    </Card>
-                  ))
                 )}
               </div>
             )}
