@@ -85,16 +85,19 @@ export default function DocumentViewerPage() {
       if (docData) {
         setDocument(docData);
 
-        // Get signed URL for PDF
+        // Get signed URL for PDF from GCS gateway
         if (docData.storage_path && docData.storage_path !== 'local') {
-          const { data: urlData, error: urlError } = await supabase.storage
-            .from('documents')
-            .createSignedUrl(docData.storage_path, 3600); // 1 hour expiry
+          const { data: urlData, error: urlError } = await supabase.functions.invoke(
+            'document-download-url',
+            {
+              body: { document_id: documentId },
+            }
+          );
 
           if (urlError) {
             show(notFound('document file'));
-          } else if (urlData?.signedUrl) {
-            setPdfUrl(urlData.signedUrl);
+          } else if (urlData?.download_url) {
+            setPdfUrl(urlData.download_url);
           }
         } else {
           // Document only exists locally on iOS device - show friendly error

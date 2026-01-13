@@ -107,23 +107,40 @@ export function DocumentUploadModal({
 
         if (!user) throw new Error('Not authenticated');
 
-        // Create unique storage path
-        const timestamp = Date.now();
-        const safeName = fileItem.file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const storagePath = `${user.id}/${workspaceId}/${timestamp}_${safeName}`;
+        // Generate document ID
+        const documentId = crypto.randomUUID();
 
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(storagePath, fileItem.file, {
-            contentType: fileItem.file.type,
-            upsert: false,
-          });
+        // Get signed upload URL from GCS gateway
+        const { data: uploadUrlData, error: urlError } = await supabase.functions.invoke(
+          'document-upload-url',
+          {
+            body: {
+              document_id: documentId,
+              content_type: fileItem.file.type,
+              file_size: fileItem.file.size,
+            },
+          }
+        );
 
-        if (uploadError) throw uploadError;
+        if (urlError) throw urlError;
+        if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
+
+        const { upload_url: uploadUrl, storage_path: storagePath } = uploadUrlData;
+
+        // Upload directly to GCS using signed URL
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: fileItem.file,
+          headers: {
+            'Content-Type': fileItem.file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload failed: ${uploadResponse.status}`);
+        }
 
         // Create document record
-        const documentId = crypto.randomUUID();
         const { error: insertError } = await supabase.from('documents').insert({
           id: documentId,
           workspace_id: workspaceId,
@@ -132,6 +149,7 @@ export function DocumentUploadModal({
           title: fileItem.file.name.replace(/\.pdf$/i, ''),
           original_filename: fileItem.file.name,
           storage_path: storagePath,
+          storage_bucket: 'gcs', // Mark as GCS storage
           file_size_bytes: fileItem.file.size,
           mime_type: fileItem.file.type,
           processing_status: 'pending',
