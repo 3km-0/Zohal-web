@@ -111,6 +111,7 @@ export interface Document {
   processing_status: ProcessingStatus;
   ocr_status?: string;
   has_text_layer?: boolean;
+  privacy_mode?: boolean;
   embedding_completed?: boolean;
   thumbnail_url?: string;
   source_metadata?: Record<string, unknown>;

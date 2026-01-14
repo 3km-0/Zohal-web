@@ -223,6 +223,19 @@ export function DocumentUploadModal({
         </div>
 
         <div className="p-5 space-y-5">
+          <div className="rounded-scholar border border-border bg-surface-alt/60 p-3 text-sm text-text">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5">🔒</span>
+              <div>
+                <div className="font-semibold">Privacy Mode</div>
+                <div className="text-text-soft">
+                  Privacy Mode (on-device sanitization) is currently available on iOS. Documents uploaded from the web
+                  are processed normally.
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Drop Zone */}
           <div
             onDrop={handleDrop}

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert } from 'lucide-react';
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
-import type { LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
+import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
 import { parseSnapshot } from '@/types/evidence-grade';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ export default function ContractAnalysisPage() {
   const [risks, setRisks] = useState<LegalRiskFlag[]>([]);
   const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
+  const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata'> | null>(null);
 
   function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
     if (!evidence?.page_number) return null;
@@ -84,6 +85,14 @@ export default function ContractAnalysisPage() {
     setLoading(true);
     setError(null);
     try {
+      // Fetch document row for Privacy Mode UI + redaction report (safe metadata only).
+      const { data: docData, error: docErr } = await supabase
+        .from('documents')
+        .select('privacy_mode, source_metadata')
+        .eq('id', documentId)
+        .maybeSingle();
+      if (!docErr) setDocumentRow((docData || null) as any);
+
       const { data: contractData, error: contractError } = await supabase
         .from('legal_contracts')
         .select('*')
@@ -314,6 +323,11 @@ export default function ContractAnalysisPage() {
             <Scale className="w-5 h-5 text-purple-500" />
             <h1 className="font-semibold text-text">Contract Analysis</h1>
             <Badge size="sm">saved</Badge>
+            {documentRow?.privacy_mode && (
+              <Badge size="sm" variant="secondary">
+                Privacy_Mode
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -375,6 +389,44 @@ export default function ContractAnalysisPage() {
               <div className="p-3 rounded-scholar border border-error/30 bg-error/5 text-error text-sm">
                 {error}
               </div>
+            )}
+
+            {documentRow?.privacy_mode && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <span>🔒</span>
+                    Sanitized document (Privacy Mode)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-text-soft">
+                    Some fields are masked before cloud processing. Do not guess redacted content.
+                  </p>
+                  {(() => {
+                    const report = (documentRow.source_metadata as any)?.privacy_redaction_report;
+                    if (!report) return null;
+                    const counts = report.counts || {};
+                    const pages = report.pagesAffected || [];
+                    return (
+                      <div className="text-sm text-text">
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(counts).map(([k, v]) => (
+                            <Badge key={k} size="sm" variant="secondary">
+                              {k}:{String(v)}
+                            </Badge>
+                          ))}
+                        </div>
+                        {pages.length > 0 && (
+                          <div className="mt-2 text-text-soft">
+                            Pages affected: {pages.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
             )}
 
             {/* Tabs */}

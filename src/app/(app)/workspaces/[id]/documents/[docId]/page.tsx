@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, PanelRight, Scale, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Spinner, Badge } from '@/components/ui';
+import { Button, Spinner, Badge, Card, CardContent } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { PDFViewer } from '@/components/pdf-viewer';
 import { AIPanel } from '@/components/ai/AIPanel';
@@ -85,8 +85,12 @@ export default function DocumentViewerPage() {
       if (docData) {
         setDocument(docData);
 
+        // Privacy Mode: original PDF is device-only; web cannot fetch it.
+        if (docData.privacy_mode) {
+          setPdfUrl(null);
+        }
         // Get signed URL for PDF from GCS gateway
-        if (docData.storage_path && docData.storage_path !== 'local') {
+        else if (docData.storage_path && docData.storage_path !== 'local') {
           const { data: urlData, error: urlError } = await supabase.functions.invoke(
             'document-download-url',
             {
@@ -174,6 +178,11 @@ export default function DocumentViewerPage() {
               {document.document_type && (
                 <Badge size="sm">{document.document_type}</Badge>
               )}
+              {document.privacy_mode && (
+                <Badge size="sm" variant="secondary">
+                  Privacy_Mode
+                </Badge>
+              )}
               {workspace && (
                 <span className="text-xs text-text-soft">{workspace.name}</span>
               )}
@@ -220,16 +229,48 @@ export default function DocumentViewerPage() {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-text-soft mb-2">
-                  {document.storage_path === 'local'
-                    ? 'This document exists only on the device that imported it (not uploaded to cloud).'
-                    : 'PDF not available'}
-                </p>
-                {document.processing_status !== 'completed' && (
-                  <Badge variant="warning">Processing: {document.processing_status}</Badge>
-                )}
-              </div>
+              {document.privacy_mode ? (
+                <Card className="max-w-xl w-full">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 h-9 w-9 rounded-lg bg-surface-alt flex items-center justify-center">
+                        <span className="text-lg">🔒</span>
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="text-lg font-semibold text-text">Privacy Mode document</h2>
+                        <p className="mt-1 text-sm text-text-soft">
+                          The original PDF stays on the iOS device. This web view can show sanitized analysis and proof
+                          links, but cannot display the unredacted PDF.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {document.document_type === 'contract' && (
+                            <Button
+                              variant="secondary"
+                              onClick={() =>
+                                router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`)
+                              }
+                            >
+                              <Scale className="w-4 h-4" />
+                              View contract analysis
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="text-center">
+                  <p className="text-text-soft mb-2">
+                    {document.storage_path === 'local'
+                      ? 'This document exists only on the device that imported it (not uploaded to cloud).'
+                      : 'PDF not available'}
+                  </p>
+                  {document.processing_status !== 'completed' && (
+                    <Badge variant="warning">Processing: {document.processing_status}</Badge>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
