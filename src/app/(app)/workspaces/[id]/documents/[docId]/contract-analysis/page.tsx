@@ -324,8 +324,8 @@ export default function ContractAnalysisPage() {
             <h1 className="font-semibold text-text">Contract Analysis</h1>
             <Badge size="sm">saved</Badge>
             {documentRow?.privacy_mode && (
-              <Badge size="sm" variant="secondary">
-                Privacy_Mode
+              <Badge size="sm">
+                Privacy Mode
               </Badge>
             )}
           </div>
@@ -412,7 +412,7 @@ export default function ContractAnalysisPage() {
                       <div className="text-sm text-text">
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(counts).map(([k, v]) => (
-                            <Badge key={k} size="sm" variant="secondary">
+                            <Badge key={k} size="sm">
                               {k}:{String(v)}
                             </Badge>
                           ))}

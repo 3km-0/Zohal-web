@@ -179,8 +179,8 @@ export default function DocumentViewerPage() {
                 <Badge size="sm">{document.document_type}</Badge>
               )}
               {document.privacy_mode && (
-                <Badge size="sm" variant="secondary">
-                  Privacy_Mode
+                <Badge size="sm">
+                  Privacy Mode
                 </Badge>
               )}
               {workspace && (
