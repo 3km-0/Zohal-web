@@ -12,6 +12,9 @@ import {
   Trash2,
   LogOut,
   AlertTriangle,
+  Link2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Input, Badge, Spinner } from '@/components/ui';
@@ -36,26 +39,88 @@ export default function SettingsPage() {
   // Profile form state
   const [displayName, setDisplayName] = useState('');
 
-  // Fetch profile
+  // Integration states
+  interface IntegrationAccount {
+    provider: string;
+    status: string;
+    connected_at: string;
+  }
+  const [integrations, setIntegrations] = useState<IntegrationAccount[]>([]);
+  const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
+
+  // Fetch profile and integrations
   useEffect(() => {
-    async function fetchProfile() {
+    async function fetchData() {
       if (!user) return;
 
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const [profileRes, integrationsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase
+          .from('integration_accounts')
+          .select('provider, status, connected_at')
+          .eq('user_id', user.id)
+          .eq('status', 'active'),
+      ]);
 
-      if (data) {
-        setProfile(data);
-        setDisplayName(data.display_name || '');
+      if (profileRes.data) {
+        setProfile(profileRes.data);
+        setDisplayName(profileRes.data.display_name || '');
       }
+
+      if (integrationsRes.data) {
+        setIntegrations(integrationsRes.data);
+      }
+
       setLoading(false);
     }
 
-    fetchProfile();
+    fetchData();
   }, [supabase, user]);
+
+  // Check if a provider is connected
+  const isConnected = (provider: string) => {
+    return integrations.some((i) => i.provider === provider);
+  };
+
+  // Connect an integration (redirects to OAuth)
+  const connectIntegration = async (provider: 'google_drive' | 'onedrive') => {
+    setConnectingProvider(provider);
+    
+    // Use Supabase OAuth for the base provider, then the user can grant additional scopes
+    // For now, we'll redirect to our custom OAuth flow
+    // Note: This requires the user to have already signed in with the provider to use integrations
+    const oauthProvider = provider === 'google_drive' ? 'google' : 'azure';
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: oauthProvider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?integration=${provider}`,
+        scopes: provider === 'google_drive' 
+          ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/calendar.events'
+          : 'Files.Read Files.Read.All Calendars.Read Calendars.ReadWrite offline_access User.Read',
+      },
+    });
+
+    if (error) {
+      console.error('OAuth error:', error);
+      setConnectingProvider(null);
+    }
+  };
+
+  // Disconnect an integration
+  const disconnectIntegration = async (provider: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('integration_accounts')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('provider', provider);
+
+    if (!error) {
+      setIntegrations((prev) => prev.filter((i) => i.provider !== provider));
+    }
+  };
 
   // Load theme from localStorage
   useEffect(() => {
@@ -198,6 +263,102 @@ export default function SettingsPage() {
                 Upgrade to Pro
               </Button>
             )}
+          </Card>
+
+          {/* Integrations Section */}
+          <Card padding="lg">
+            <div className="flex items-center gap-3 mb-6">
+              <Link2 className="w-5 h-5 text-accent" />
+              <h2 className="text-lg font-semibold text-text">Integrations</h2>
+            </div>
+
+            <p className="text-sm text-text-soft mb-4">
+              Connect your cloud accounts to import files and sync calendar events.
+            </p>
+
+            <div className="space-y-3">
+              {/* Google Integration */}
+              <div className="flex items-center justify-between p-4 bg-surface-alt rounded-scholar border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-scholar bg-white border border-border">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-text">Google</p>
+                    <p className="text-xs text-text-soft">Drive & Calendar</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isConnected('google_drive') ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-success" />
+                      <span className="text-sm text-success">Connected</span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => disconnectIntegration('google_drive')}
+                      >
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => connectIntegration('google_drive')}
+                      isLoading={connectingProvider === 'google_drive'}
+                    >
+                      Connect
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Microsoft Integration */}
+              <div className="flex items-center justify-between p-4 bg-surface-alt rounded-scholar border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-scholar bg-white border border-border">
+                    <svg className="w-5 h-5" viewBox="0 0 23 23">
+                      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+                      <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+                      <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+                      <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-text">Microsoft</p>
+                    <p className="text-xs text-text-soft">OneDrive & Calendar</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isConnected('onedrive') ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-success" />
+                      <span className="text-sm text-success">Connected</span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => disconnectIntegration('onedrive')}
+                      >
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => connectIntegration('onedrive')}
+                      isLoading={connectingProvider === 'onedrive'}
+                    >
+                      Connect
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </Card>
 
           {/* Appearance Section */}
