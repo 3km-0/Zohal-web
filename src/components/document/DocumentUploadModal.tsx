@@ -243,12 +243,10 @@ export function DocumentUploadModal({
             .catch((err) => console.warn('embed-and-store failed:', err));
         }
 
-        // 4. Classify document
-        supabase.functions
-          .invoke('classify-document', {
-            body: { document_id: documentId },
-          })
-          .catch((err) => console.warn('classify-document failed:', err));
+        // 4. Classify document (wait for this so document type is set before navigation)
+        await supabase.functions.invoke('classify-document', {
+          body: { document_id: documentId },
+        });
       } catch (err) {
         console.warn('Document processing failed, falling back to queue:', err);
         // Fallback: enqueue for background processing
