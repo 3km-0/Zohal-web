@@ -216,12 +216,19 @@ export function DocumentUploadModal({
 
       if (insertError) throw insertError;
 
-      // Enqueue ingestion (bounded concurrency, no fan-out)
+      // Enqueue ingestion as backup (bounded concurrency, no fan-out)
       supabase.functions
         .invoke('enqueue-document-ingestion', {
           body: { document_id: documentId },
         })
         .catch((err) => console.warn('enqueue-document-ingestion failed:', err));
+
+      // Extract text and create chunks immediately (required for contract analysis)
+      supabase.functions
+        .invoke('extract-pdf-text-layer', {
+          body: { document_id: documentId },
+        })
+        .catch((err) => console.warn('extract-pdf-text-layer failed:', err));
 
       // Trigger classification immediately (don't wait for queue worker)
       supabase.functions
