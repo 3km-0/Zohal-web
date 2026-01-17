@@ -506,9 +506,14 @@ export default function WorkspaceDetailPage() {
           workspaceId={workspaceId}
           folderId={currentFolderId}
           onClose={() => setShowUploadModal(false)}
-          onUploaded={() => {
+          onUploaded={(documentId) => {
             setShowUploadModal(false);
-            fetchData();
+            if (documentId) {
+              // Navigate to the uploaded document
+              router.push(`/workspaces/${workspaceId}/documents/${documentId}`);
+            } else {
+              fetchData();
+            }
           }}
         />
       )}

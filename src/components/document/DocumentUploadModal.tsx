@@ -12,7 +12,7 @@ interface DocumentUploadModalProps {
   workspaceId: string;
   folderId?: string | null;
   onClose: () => void;
-  onUploaded: () => void;
+  onUploaded: (documentId?: string) => void;
 }
 
 interface FileWithPreview {
@@ -148,7 +148,10 @@ export function DocumentUploadModal({
     const pendingImageItems = pendingFiles.filter((f) => isImageType(f.file.type));
     const pendingPdfItems = pendingFiles.filter((f) => f.file.type === 'application/pdf');
 
-    const uploadSinglePdf = async (pdfFile: File, originalName: string, idsToMark: string[]) => {
+    // Track the first successfully uploaded document ID for auto-navigation
+    let firstUploadedDocId: string | undefined;
+
+    const uploadSinglePdf = async (pdfFile: File, originalName: string, idsToMark: string[]): Promise<string> => {
       // Update status to uploading
       setFiles((prev) =>
         prev.map((f) =>
@@ -226,6 +229,8 @@ export function DocumentUploadModal({
           idsToMark.includes(f.id) ? { ...f, status: 'success' as const } : f
         )
       );
+
+      return documentId;
     };
 
     // 1) Upload pending images as ONE multi-page PDF (MVP)
@@ -238,7 +243,8 @@ export function DocumentUploadModal({
             ? pendingImageItems[0].file.name.replace(/\.(png|jpe?g)$/i, '')
             : 'Scanned Document'
         );
-        await uploadSinglePdf(pdfFile, pdfFile.name, ids);
+        const docId = await uploadSinglePdf(pdfFile, pdfFile.name, ids);
+        if (!firstUploadedDocId) firstUploadedDocId = docId;
       } catch (error) {
         setFiles((prev) =>
           prev.map((f) =>
@@ -257,7 +263,8 @@ export function DocumentUploadModal({
     // 2) Upload PDFs individually (existing behavior)
     for (const fileItem of pendingPdfItems) {
       try {
-        await uploadSinglePdf(fileItem.file, fileItem.file.name, [fileItem.id]);
+        const docId = await uploadSinglePdf(fileItem.file, fileItem.file.name, [fileItem.id]);
+        if (!firstUploadedDocId) firstUploadedDocId = docId;
       } catch (error) {
         setFiles((prev) =>
           prev.map((f) =>
@@ -275,13 +282,10 @@ export function DocumentUploadModal({
 
     setUploading(false);
 
-    // Check if all uploads succeeded
-    const allSucceeded = files.every(
-      (f) => f.status === 'success' || f.status === 'error'
-    );
-    if (allSucceeded && files.some((f) => f.status === 'success')) {
+    // Auto-navigate to the first successfully uploaded document
+    if (firstUploadedDocId) {
       setTimeout(() => {
-        onUploaded();
+        onUploaded(firstUploadedDocId);
       }, 500);
     }
   };
