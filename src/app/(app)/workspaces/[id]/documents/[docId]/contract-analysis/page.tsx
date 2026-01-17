@@ -547,6 +547,12 @@ export default function ContractAnalysisPage() {
                           <span className="text-text-soft">Template: </span>
                           {snapshot.template}
                         </div>
+                        {snapshot.pack?.modules_activated?.length ? (
+                          <div className="text-sm text-text">
+                            <span className="text-text-soft">Modules: </span>
+                            {snapshot.pack.modules_activated.join(', ')}
+                          </div>
+                        ) : null}
                         <div className="text-sm text-text">
                           <span className="text-text-soft">Analyzed: </span>
                           {snapshot.analyzed_at}

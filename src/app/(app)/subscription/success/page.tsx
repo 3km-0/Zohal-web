@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Check, Crown, ArrowRight, Sparkles } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Spinner } from '@/components/ui';
@@ -14,6 +15,7 @@ export default function SubscriptionSuccessPage() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   const { user } = useAuth();
+  const t = useTranslations('subscriptionSuccess');
 
   const [tier, setTier] = useState<string>('pro');
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -93,12 +95,12 @@ export default function SubscriptionSuccessPage() {
   if (verifying) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader title="Processing..." />
+        <AppHeader title={t('processing')} />
         <div className="flex-1 flex items-center justify-center p-6">
           <Card className="w-full max-w-md text-center" padding="lg">
             <Spinner size="lg" className="mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-text mb-2">Activating Your Subscription</h2>
-            <p className="text-text-soft">Please wait while we confirm your payment...</p>
+            <h2 className="text-xl font-semibold text-text mb-2">{t('activating')}</h2>
+            <p className="text-text-soft">{t('pleaseWait')}</p>
           </Card>
         </div>
       </div>
@@ -107,7 +109,7 @@ export default function SubscriptionSuccessPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <AppHeader title="Welcome!" />
+      <AppHeader title={t('welcome')} />
 
       <div className="flex-1 flex items-center justify-center p-6">
         <Card className="w-full max-w-md text-center" padding="lg">
@@ -123,24 +125,24 @@ export default function SubscriptionSuccessPage() {
           </div>
 
           <h2 className="text-2xl font-bold text-text mb-2">
-            Welcome to Zohal {tier.charAt(0).toUpperCase() + tier.slice(1)}!
+            {t('welcomeTo', { tier: tier.charAt(0).toUpperCase() + tier.slice(1) })}
           </h2>
           
           <p className="text-text-soft mb-6">
-            Your subscription is now active. Enjoy unlimited access to all {tier} features.
+            {t('subscriptionActive', { tier })}
           </p>
 
           {/* Benefits */}
           <div className="p-4 bg-surface-alt rounded-scholar mb-6 text-left">
-            <p className="text-sm font-medium text-text mb-3">You now have access to:</p>
+            <p className="text-sm font-medium text-text mb-3">{t('youNowHave')}</p>
             <ul className="space-y-2">
-              <BenefitItem>Unlimited AI explanations</BenefitItem>
-              <BenefitItem>All document plugins</BenefitItem>
-              <BenefitItem>Priority processing</BenefitItem>
+              <BenefitItem>{t('unlimitedAi')}</BenefitItem>
+              <BenefitItem>{t('allPlugins')}</BenefitItem>
+              <BenefitItem>{t('priorityProcessing')}</BenefitItem>
               {tier === 'premium' && (
                 <>
-                  <BenefitItem>Google Drive sync</BenefitItem>
-                  <BenefitItem>Priority support</BenefitItem>
+                  <BenefitItem>{t('driveSync')}</BenefitItem>
+                  <BenefitItem>{t('prioritySupport')}</BenefitItem>
                 </>
               )}
             </ul>
@@ -148,17 +150,17 @@ export default function SubscriptionSuccessPage() {
 
           {expiresAt && (
             <p className="text-sm text-text-soft mb-6">
-              Your subscription will renew on {new Date(expiresAt).toLocaleDateString()}
+              {t('renewsOn', { date: new Date(expiresAt).toLocaleDateString() })}
             </p>
           )}
 
           <div className="space-y-3">
             <Button onClick={() => router.push('/workspaces')} className="w-full">
-              Start Using Zohal
+              {t('startUsing')}
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
             <Button variant="secondary" onClick={() => router.push('/subscription')} className="w-full">
-              View Subscription Details
+              {t('viewDetails')}
             </Button>
           </div>
         </Card>

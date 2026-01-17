@@ -26,6 +26,8 @@ const workspaceTypes: { value: WorkspaceType; icon: string }[] = [
 
 export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalProps) {
   const t = useTranslations('workspaces');
+  const tModal = useTranslations('workspaceModal');
+  const tCommon = useTranslations('common');
   const supabase = createClient();
 
   const [name, setName] = useState(workspace?.name || '');
@@ -44,7 +46,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
     setError(null);
 
     if (!name.trim()) {
-      setError('Name is required');
+      setError(tModal('nameRequired'));
       return;
     }
 
@@ -96,7 +98,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold text-text">
-            {isEditing ? 'Edit Workspace' : t('create')}
+            {isEditing ? tModal('editWorkspace') : t('create')}
           </h2>
           <button
             onClick={onClose}
@@ -109,15 +111,15 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
           <Input
-            label="Name"
-            placeholder="My Workspace"
+            label={tModal('name')}
+            placeholder={tModal('namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
 
           <div>
-            <label className="block text-sm font-medium text-text mb-2">Type</label>
+            <label className="block text-sm font-medium text-text mb-2">{tModal('type')}</label>
             <div className="grid grid-cols-4 gap-2">
               {workspaceTypes.map((type) => (
                 <button
@@ -139,21 +141,21 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
           </div>
 
           <Input
-            label="Custom Icon (optional)"
-            placeholder="📚"
+            label={tModal('customIcon')}
+            placeholder={tModal('iconPlaceholder')}
             value={iconEmoji}
             onChange={(e) => setIconEmoji(e.target.value)}
-            hint="Enter an emoji to use as custom icon"
+            hint={tModal('iconHint')}
           />
 
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">
-              Description (optional)
+              {tModal('description')}
             </label>
             <textarea
               className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text placeholder:text-text-soft transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background resize-none"
               rows={3}
-              placeholder="What is this workspace for?"
+              placeholder={tModal('descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -172,10 +174,10 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
               className="flex-1"
               onClick={onClose}
             >
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" className="flex-1" isLoading={loading}>
-              {isEditing ? 'Save Changes' : 'Create Workspace'}
+              {isEditing ? tModal('saveChanges') : tModal('createWorkspace')}
             </Button>
           </div>
         </form>

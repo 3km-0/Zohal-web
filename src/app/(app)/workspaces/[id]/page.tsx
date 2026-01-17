@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Home,
   FolderInput,
+  RefreshCcw,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -558,11 +559,27 @@ function DocumentCard({
   const t = useTranslations('documents.types');
   const tFolders = useTranslations('folders');
   const tCommon = useTranslations('common');
+  const supabase = createClient();
+  const { showSuccess } = useToast();
   const [showMenu, setShowMenu] = useState(false);
 
   const isProcessing = ['pending', 'uploading', 'processing', 'chunked', 'embedding'].includes(
     doc.processing_status
   );
+
+  const canRetryIndexing = doc.processing_status === 'failed' || doc.processing_status === 'pending';
+  const handleRetryIndexing = async () => {
+    try {
+      await supabase.functions.invoke('enqueue-document-ingestion', {
+        body: { document_id: doc.id },
+      });
+      showSuccess('Queued for indexing', 'We’ll retry processing in the background.');
+    } catch (e) {
+      console.warn('enqueue-document-ingestion failed:', e);
+    } finally {
+      setShowMenu(false);
+    }
+  };
 
   return (
     <Card
@@ -641,6 +658,19 @@ function DocumentCard({
                 <Eye className="w-4 h-4" />
                 {tCommon('open')}
               </Link>
+
+              {canRetryIndexing && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleRetryIndexing();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Retry indexing
+                </button>
+              )}
 
               {/* Move to folder submenu */}
               {folders.length > 0 && (

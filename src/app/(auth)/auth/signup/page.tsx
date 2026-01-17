@@ -25,17 +25,17 @@ export default function SignupPage() {
     setFormError(null);
 
     if (!email || !password || !confirmPassword) {
-      setFormError('Please fill in all required fields');
+      setFormError(t('fillRequiredFields'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setFormError('Passwords do not match');
+      setFormError(t('passwordsDoNotMatch'));
       return;
     }
 
     if (password.length < 8) {
-      setFormError('Password must be at least 8 characters');
+      setFormError(t('passwordMinLength'));
       return;
     }
 
@@ -44,15 +44,15 @@ export default function SignupPage() {
     if (result.success) {
       setSuccess(true);
     } else {
-      setFormError(result.error?.message || 'Failed to sign up');
+      setFormError(result.error?.message || t('signUpFailed'));
     }
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'apple' | 'azure') => {
     const result = await signInWithOAuth(provider);
     if (!result.success) {
-      const providerName = provider === 'azure' ? 'Microsoft' : provider;
-      setFormError(result.error?.message || `Failed to sign up with ${providerName}`);
+      const providerName = provider === 'azure' ? t('microsoft') : provider === 'google' ? t('google') : t('apple');
+      setFormError(result.error?.message || t('signUpWith', { provider: providerName }));
     }
   };
 
@@ -63,10 +63,9 @@ export default function SignupPage() {
           <div className="w-16 h-16 bg-success/10 border border-success/20 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
             ✉️
           </div>
-          <CardTitle className="text-2xl">Check Your Email</CardTitle>
+          <CardTitle className="text-2xl">{t('checkEmail')}</CardTitle>
           <CardDescription>
-            We&apos;ve sent a confirmation email to <strong className="text-text">{email}</strong>.
-            Please click the link in the email to verify your account.
+            {t('verificationSent')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,7 +74,7 @@ export default function SignupPage() {
             className="w-full"
             onClick={() => router.push('/auth/login')}
           >
-            Back to Login
+            {t('login')}
           </Button>
         </CardContent>
       </Card>
@@ -86,7 +85,7 @@ export default function SignupPage() {
     <Card className="w-full max-w-md" padding="lg">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{t('signup')}</CardTitle>
-        <CardDescription>Create your Zohal account</CardDescription>
+        <CardDescription>{t('createAccount')}</CardDescription>
       </CardHeader>
 
       <CardContent>

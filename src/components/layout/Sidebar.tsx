@@ -27,6 +27,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const tSidebar = useTranslations('sidebar');
   const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -37,7 +38,7 @@ export function Sidebar({ className }: SidebarProps) {
   ];
 
   const bottomItems = [
-    { href: '/subscription', label: 'Subscription', icon: Crown },
+    { href: '/subscription', label: tSidebar('subscription'), icon: Crown },
     { href: '/settings', label: t('settings'), icon: Settings },
   ];
 
@@ -72,7 +73,7 @@ export function Sidebar({ className }: SidebarProps) {
             'p-1.5 rounded-lg hover:bg-surface-alt transition-colors',
             collapsed && 'mx-auto'
           )}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? tSidebar('expandSidebar') : tSidebar('collapseSidebar')}
         >
           {collapsed ? (
             <ChevronRight className="w-5 h-5 text-text-soft" />
@@ -113,7 +114,7 @@ export function Sidebar({ className }: SidebarProps) {
           )}
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span className="font-medium">Log Out</span>}
+          {!collapsed && <span className="font-medium">{tSidebar('logOut')}</span>}
         </button>
       </div>
     </aside>

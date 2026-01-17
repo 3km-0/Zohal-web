@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, Upload, FileText, AlertCircle } from 'lucide-react';
+import { PDFDocument } from 'pdf-lib';
 import { Button, Card, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatFileSize } from '@/lib/utils';
@@ -22,7 +24,43 @@ interface FileWithPreview {
 }
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-const ALLOWED_TYPES = ['application/pdf'];
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/heic',
+  'image/heif',
+];
+
+const isImageType = (type: string) => type.startsWith('image/');
+const isSupportedRasterImage = (file: File) =>
+  file.type === 'image/jpeg' || file.type === 'image/png';
+
+async function buildPdfFromImages(imageFiles: File[], outputBaseName: string): Promise<File> {
+  const pdf = await PDFDocument.create();
+
+  for (const f of imageFiles) {
+    if (!isSupportedRasterImage(f)) {
+      throw new Error(
+        `Unsupported image type for web upload: ${f.type || 'unknown'}. Please use JPG or PNG.`
+      );
+    }
+
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const img =
+      f.type === 'image/png' ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    const { width, height } = img.scale(1);
+    const page = pdf.addPage([width, height]);
+    page.drawImage(img, { x: 0, y: 0, width, height });
+  }
+
+  const pdfBytes = await pdf.save();
+  // pdf-lib returns Uint8Array whose .buffer is typed as ArrayBufferLike in some TS/libdom configs.
+  // Cast to ArrayBuffer and slice a copy so File constructor accepts it as a BlobPart.
+  const buf = pdfBytes.buffer as ArrayBuffer;
+  const arrayBuffer = buf.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
+  return new File([arrayBuffer], `${outputBaseName}.pdf`, { type: 'application/pdf' });
+}
 
 export function DocumentUploadModal({
   workspaceId,
@@ -31,9 +69,12 @@ export function DocumentUploadModal({
   onUploaded,
 }: DocumentUploadModalProps) {
   const supabase = createClient();
+  const t = useTranslations('documentUpload');
+  const tCommon = useTranslations('common');
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [privacyChoice, setPrivacyChoice] = useState<'standard' | 'private'>('standard');
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const validFiles: FileWithPreview[] = [];
@@ -48,7 +89,7 @@ export function DocumentUploadModal({
           file,
           id: Math.random().toString(36).substr(2, 9),
           status: 'error',
-          error: 'File too large (max 100MB)',
+          error: t('fileTooLarge'),
         });
         return;
       }
@@ -89,95 +130,142 @@ export function DocumentUploadModal({
   const uploadFiles = async () => {
     setUploading(true);
 
-    const pendingFiles = files.filter((f) => f.status === 'pending');
+    // Web MVP: true "Private (local-only)" isn't viable in the browser (storage limits + no trusted local index).
+    // Keep the option visible but disabled in UI; guard here defensively too.
+    if (privacyChoice === 'private') {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.status === 'pending'
+            ? { ...f, status: 'error' as const, error: t('privateNotSupported') }
+            : f
+        )
+      );
+      setUploading(false);
+      return;
+    }
 
-    for (const fileItem of pendingFiles) {
+    const pendingFiles = files.filter((f) => f.status === 'pending');
+    const pendingImageItems = pendingFiles.filter((f) => isImageType(f.file.type));
+    const pendingPdfItems = pendingFiles.filter((f) => f.file.type === 'application/pdf');
+
+    const uploadSinglePdf = async (pdfFile: File, originalName: string, idsToMark: string[]) => {
       // Update status to uploading
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === fileItem.id ? { ...f, status: 'uploading' as const } : f
+          idsToMark.includes(f.id) ? { ...f, status: 'uploading' as const } : f
         )
       );
 
-      try {
-        // Get current user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error('Not authenticated');
 
-        // Generate document ID
-        const documentId = crypto.randomUUID();
+      // Generate document ID
+      const documentId = crypto.randomUUID();
 
-        // Get signed upload URL from GCS gateway
-        const { data: uploadUrlData, error: urlError } = await supabase.functions.invoke(
-          'document-upload-url',
-          {
-            body: {
-              document_id: documentId,
-              content_type: fileItem.file.type,
-              file_size: fileItem.file.size,
-            },
-          }
-        );
-
-        if (urlError) throw urlError;
-        if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
-
-        const { upload_url: uploadUrl, storage_path: storagePath } = uploadUrlData;
-
-        // Upload directly to GCS using signed URL
-        const uploadResponse = await fetch(uploadUrl, {
-          method: 'PUT',
-          body: fileItem.file,
-          headers: {
-            'Content-Type': fileItem.file.type,
+      // Get signed upload URL from GCS gateway
+      const { data: uploadUrlData, error: urlError } = await supabase.functions.invoke(
+        'document-upload-url',
+        {
+          body: {
+            document_id: documentId,
+            content_type: pdfFile.type,
+            file_size: pdfFile.size,
           },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Upload failed: ${uploadResponse.status}`);
         }
+      );
 
-        // Create document record
-        const { error: insertError } = await supabase.from('documents').insert({
-          id: documentId,
-          workspace_id: workspaceId,
-          folder_id: folderId || null,
-          user_id: user.id,
-          title: fileItem.file.name.replace(/\.pdf$/i, ''),
-          original_filename: fileItem.file.name,
-          storage_path: storagePath,
-          storage_bucket: 'gcs', // Mark as GCS storage
-          file_size_bytes: fileItem.file.size,
-          mime_type: fileItem.file.type,
-          processing_status: 'pending',
-        });
+      if (urlError) throw urlError;
+      if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
 
-        if (insertError) throw insertError;
+      const { upload_url: uploadUrl, storage_path: storagePath } = uploadUrlData;
 
-        // Trigger background processing (classification, chunking, embedding)
-        // Fire and forget - don't block upload completion
-        supabase.functions.invoke('classify-document', {
-          body: { document_id: documentId, filename: fileItem.file.name }
-        }).catch(err => console.warn('Classification failed:', err));
+      // Upload directly to GCS using signed URL
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: pdfFile,
+        headers: {
+          'Content-Type': pdfFile.type,
+        },
+      });
 
-        // Update status to success
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      // Create document record
+      const { error: insertError } = await supabase.from('documents').insert({
+        id: documentId,
+        workspace_id: workspaceId,
+        folder_id: folderId || null,
+        user_id: user.id,
+        title: originalName.replace(/\.pdf$/i, ''),
+        original_filename: originalName,
+        storage_path: storagePath,
+        storage_bucket: 'gcs', // Mark as GCS storage
+        file_size_bytes: pdfFile.size,
+        mime_type: 'application/pdf',
+        processing_status: 'pending',
+      });
+
+      if (insertError) throw insertError;
+
+      // Enqueue ingestion (bounded concurrency, no fan-out)
+      supabase.functions
+        .invoke('enqueue-document-ingestion', {
+          body: { document_id: documentId },
+        })
+        .catch((err) => console.warn('enqueue-document-ingestion failed:', err));
+
+      // Update status to success
+      setFiles((prev) =>
+        prev.map((f) =>
+          idsToMark.includes(f.id) ? { ...f, status: 'success' as const } : f
+        )
+      );
+    };
+
+    // 1) Upload pending images as ONE multi-page PDF (MVP)
+    if (pendingImageItems.length > 0) {
+      const ids = pendingImageItems.map((x) => x.id);
+      try {
+        const pdfFile = await buildPdfFromImages(
+          pendingImageItems.map((x) => x.file),
+          pendingImageItems.length === 1
+            ? pendingImageItems[0].file.name.replace(/\.(png|jpe?g)$/i, '')
+            : 'Scanned Document'
+        );
+        await uploadSinglePdf(pdfFile, pdfFile.name, ids);
+      } catch (error) {
         setFiles((prev) =>
           prev.map((f) =>
-            f.id === fileItem.id ? { ...f, status: 'success' as const } : f
+            ids.includes(f.id)
+              ? {
+                  ...f,
+                  status: 'error' as const,
+                  error: error instanceof Error ? error.message : t('uploadFailed'),
+                }
+              : f
           )
         );
+      }
+    }
+
+    // 2) Upload PDFs individually (existing behavior)
+    for (const fileItem of pendingPdfItems) {
+      try {
+        await uploadSinglePdf(fileItem.file, fileItem.file.name, [fileItem.id]);
       } catch (error) {
-        // Update status to error
         setFiles((prev) =>
           prev.map((f) =>
             f.id === fileItem.id
               ? {
                   ...f,
                   status: 'error' as const,
-                  error: error instanceof Error ? error.message : 'Upload failed',
+                  error: error instanceof Error ? error.message : t('uploadFailed'),
                 }
               : f
           )
@@ -213,7 +301,7 @@ export function DocumentUploadModal({
       <Card className="relative w-full max-w-lg z-10 animate-slide-up" padding="none">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-lg font-semibold text-text">Upload Documents</h2>
+          <h2 className="text-lg font-semibold text-text">{t('title')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
@@ -227,10 +315,29 @@ export function DocumentUploadModal({
             <div className="flex items-start gap-2">
               <span className="mt-0.5">🔒</span>
               <div>
-                <div className="font-semibold">Privacy Mode</div>
-                <div className="text-text-soft">
-                  Privacy Mode (on-device sanitization) is currently available on iOS. Documents uploaded from the web
-                  are processed normally.
+                <div className="font-semibold">Privacy</div>
+                <div className="mt-2 space-y-2 text-text-soft">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="privacy"
+                      checked={privacyChoice === 'standard'}
+                      onChange={() => setPrivacyChoice('standard')}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="font-medium text-text">Standard (Cloud copy)</span>
+                      <span className="block">Upload and process normally.</span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-2 opacity-60 cursor-not-allowed">
+                    <input type="radio" name="privacy" disabled className="mt-1" />
+                    <span>
+                      <span className="font-medium text-text">Private (Local-only)</span>
+                      <span className="block">Available on iOS. Web doesn’t support true local-only yet.</span>
+                    </span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -255,22 +362,22 @@ export function DocumentUploadModal({
               )}
             />
             <p className="text-text font-medium mb-1">
-              {isDragging ? 'Drop files here' : 'Drag & drop files here'}
+              {isDragging ? t('dropFiles') : t('dragDrop')}
             </p>
-            <p className="text-sm text-text-soft mb-4">or</p>
+            <p className="text-sm text-text-soft mb-4">{tCommon('or')}</p>
             <label>
               <input
                 type="file"
-                accept=".pdf"
+                accept=".pdf,image/*"
                 multiple
                 onChange={(e) => e.target.files && addFiles(e.target.files)}
                 className="hidden"
               />
               <span className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-accent text-white font-semibold rounded-scholar cursor-pointer hover:opacity-90 transition-opacity">
-                Browse Files
+                {t('browseFiles')}
               </span>
             </label>
-            <p className="text-xs text-text-soft mt-4">PDF files only, max 100MB</p>
+            <p className="text-xs text-text-soft mt-4">{t('maxSize')}</p>
           </div>
 
           {/* File List */}
@@ -325,7 +432,7 @@ export function DocumentUploadModal({
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={onClose}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               className="flex-1"
@@ -333,7 +440,7 @@ export function DocumentUploadModal({
               disabled={pendingCount === 0 || uploading}
               isLoading={uploading}
             >
-              Upload {pendingCount > 0 && `(${pendingCount})`}
+              {t('uploadCount', { count: pendingCount > 0 ? pendingCount : '' })}
             </Button>
           </div>
         </div>

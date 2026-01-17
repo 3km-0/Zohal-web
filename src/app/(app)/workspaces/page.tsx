@@ -81,8 +81,10 @@ export default function WorkspacesPage() {
     fetchWorkspaces();
   }, [fetchWorkspaces]);
 
+  const tCard = useTranslations('workspaceCard');
+  
   const handleDelete = async (workspace: Workspace) => {
-    if (!confirm(`Are you sure you want to delete "${workspace.name}"?`)) return;
+    if (!confirm(tCard('confirmDelete', { name: workspace.name }))) return;
 
     const { error } = await supabase
       .from('workspaces')
@@ -175,6 +177,8 @@ interface WorkspaceCardProps {
 
 function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCardProps) {
   const t = useTranslations('workspaces.types');
+  const tCard = useTranslations('workspaceCard');
+  const tCommon = useTranslations('common');
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -210,7 +214,7 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
 
         <div className="mt-4 pt-3 border-t border-border">
           <p className="text-xs text-text-soft">
-            Updated {formatRelativeTime(workspace.updated_at)}
+            {tCard('updated')} {formatRelativeTime(workspace.updated_at)}
           </p>
         </div>
       </Link>
@@ -243,7 +247,7 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
               >
                 <Edit2 className="w-4 h-4" />
-                Edit
+                {tCard('edit')}
               </button>
               <button
                 onClick={(e) => {
@@ -254,7 +258,7 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
               >
                 <Archive className="w-4 h-4" />
-                Archive
+                {tCard('archive')}
               </button>
               <hr className="border-border" />
               <button
@@ -266,7 +270,7 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                Delete
+                {tCommon('delete')}
               </button>
             </div>
           </>

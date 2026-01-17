@@ -58,6 +58,7 @@ function LinkCard({
 export default function HomePage() {
   const t = useTranslations('landing');
   const nav = useTranslations('nav');
+  const home = useTranslations('home');
 
   return (
     <div className="max-w-4xl mx-auto px-6 pt-24 pb-12">
@@ -80,13 +81,13 @@ export default function HomePage() {
             href="/auth/signup"
             className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-accent text-white font-semibold rounded-scholar transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
           >
-            Get Started Free →
+            {home('getStartedFree')} →
           </Link>
           <Link
             href="/auth/login"
             className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-surface border border-border text-text font-semibold rounded-scholar transition-all duration-200 hover:border-accent hover:text-accent"
           >
-            Log In
+            {home('logIn')}
           </Link>
         </div>
 
@@ -139,10 +140,10 @@ export default function HomePage() {
       {/* Links Section */}
       <section className="py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <LinkCard href="/terms" icon="📜" label="Terms of Use (EULA)" />
-          <LinkCard href="/privacy" icon="🔒" label="Privacy Policy" />
-          <LinkCard href="/support" icon="💬" label="Support & FAQ" />
-          <LinkCard href="mailto:support@zohal.app" icon="📧" label="Contact Us" />
+          <LinkCard href="/terms" icon="📜" label={home('termsOfUse')} />
+          <LinkCard href="/privacy" icon="🔒" label={home('privacyPolicy')} />
+          <LinkCard href="/support" icon="💬" label={home('supportFaq')} />
+          <LinkCard href="mailto:support@zohal.app" icon="📧" label={home('contactUs')} />
         </div>
       </section>
     </div>

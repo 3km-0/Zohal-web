@@ -21,7 +21,7 @@ export default function DocumentViewerPage() {
   const workspaceId = params.id as string;
   const documentId = params.docId as string;
   const supabase = createClient();
-  const { show, showError } = useToast();
+  const { show, showSuccess, showError } = useToast();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -30,6 +30,7 @@ export default function DocumentViewerPage() {
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [retrying, setRetrying] = useState(false);
   
   const tapToProof = useMemo(() => {
     const pageStr = searchParams.get('page');
@@ -138,6 +139,23 @@ export default function DocumentViewerPage() {
       setShowAIPanel(true);
     }
   }, []);
+
+  const retryIndexing = useCallback(async () => {
+    setRetrying(true);
+    try {
+      await supabase.functions.invoke('enqueue-document-ingestion', {
+        body: { document_id: documentId },
+      });
+      showSuccess('Queued for indexing', 'We’ll retry processing in the background.');
+      // Re-fetch doc to update status quickly
+      const { data: docData } = await supabase.from('documents').select('*').eq('id', documentId).single();
+      if (docData) setDocument(docData);
+    } catch (e) {
+      showError(e, 'enqueue-document-ingestion');
+    } finally {
+      setRetrying(false);
+    }
+  }, [supabase, documentId, showSuccess, showError]);
 
   if (loading) {
     return (
@@ -267,7 +285,21 @@ export default function DocumentViewerPage() {
                       : 'PDF not available'}
                   </p>
                   {document.processing_status !== 'completed' && (
-                    <Badge variant="warning">Processing: {document.processing_status}</Badge>
+                    <div className="space-y-3">
+                      <Badge variant="warning">Processing: {document.processing_status}</Badge>
+                      {(document.processing_status === 'failed' || document.processing_status === 'pending') && (
+                        <div>
+                          <Button
+                            variant="secondary"
+                            onClick={retryIndexing}
+                            disabled={retrying}
+                          >
+                            {retrying ? <Spinner size="sm" /> : null}
+                            Retry indexing
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

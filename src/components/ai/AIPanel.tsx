@@ -144,6 +144,9 @@ export function AIPanel({
 
         if (!session) throw new Error('Not authenticated');
 
+        const userId = session.user?.id;
+        if (!userId) throw new Error('Missing user');
+
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-workspace`,
           {
@@ -155,7 +158,12 @@ export function AIPanel({
             body: JSON.stringify({
               question: message,
               workspace_id: workspaceId,
-              document_ids: [documentId],
+              user_id: userId,
+              options: {
+                document_ids: [documentId],
+                top_k: 10,
+                include_quotes: true,
+              },
             }),
           }
         );

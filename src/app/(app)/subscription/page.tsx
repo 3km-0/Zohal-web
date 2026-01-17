@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Crown,
   Check,
@@ -39,6 +40,8 @@ export default function SubscriptionPage() {
   const router = useRouter();
   const supabase = createClient();
   const { user } = useAuth();
+  const t = useTranslations('subscriptionPage');
+  const tFeatures = useTranslations('subscriptionPage.features');
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +99,7 @@ export default function SubscriptionPage() {
   };
 
   const formatPrice = (price: number | null): string => {
-    if (price === null) return 'Free';
+    if (price === null) return t('free');
     const symbol = currency === 'SAR' ? 'SAR' : '$';
     return `${symbol}${price.toFixed(2)}`;
   };
@@ -156,7 +159,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <AppHeader title="Subscription" subtitle="Choose the plan that works best for you" />
+      <AppHeader title={t('title')} subtitle={t('subtitle')} />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-6xl mx-auto">
@@ -164,21 +167,21 @@ export default function SubscriptionPage() {
           {currentTier !== 'free' && (
             <Card className="mb-8 bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-soft">Current Plan</p>
-                  <p className="text-xl font-bold text-text capitalize">{currentTier}</p>
-                  {subscriptionExpires && (
-                    <p className="text-sm text-text-soft mt-1">
-                      {paymentSource === 'apple' ? 'Managed via App Store' : `Renews on ${new Date(subscriptionExpires).toLocaleDateString()}`}
-                    </p>
-                  )}
-                </div>
-                {paymentSource === 'moyasar' && (
-                  <Button variant="secondary" onClick={() => router.push('/settings/payment-methods')}>
-                    <CreditCard className="w-4 h-4" />
-                    Manage Payment
-                  </Button>
+              <div>
+                <p className="text-sm text-text-soft">{t('currentPlan')}</p>
+                <p className="text-xl font-bold text-text capitalize">{currentTier}</p>
+                {subscriptionExpires && (
+                  <p className="text-sm text-text-soft mt-1">
+                    {paymentSource === 'apple' ? t('managedByAppStore') : t('renewsOn', { date: new Date(subscriptionExpires).toLocaleDateString() })}
+                  </p>
                 )}
+              </div>
+              {paymentSource === 'moyasar' && (
+                <Button variant="secondary" onClick={() => router.push('/settings/payment-methods')}>
+                  <CreditCard className="w-4 h-4" />
+                  {t('managePayment')}
+                </Button>
+              )}
               </div>
             </Card>
           )}
@@ -267,7 +270,7 @@ export default function SubscriptionPage() {
                     </div>
                     {price !== null && (
                       <p className="text-sm text-text-soft">
-                        per {billingPeriod === 'monthly' ? 'month' : 'year'}
+                        {billingPeriod === 'monthly' ? t('perMonth') : t('perYear')}
                       </p>
                     )}
                   </div>
@@ -276,29 +279,29 @@ export default function SubscriptionPage() {
                   <ul className="space-y-3 mb-6 flex-1">
                     {plan.tier === 'free' && (
                       <>
-                        <FeatureItem>10 documents</FeatureItem>
-                        <FeatureItem>2 AI explanations/day</FeatureItem>
-                        <FeatureItem>1 workspace</FeatureItem>
+                        <FeatureItem>{tFeatures('documents10')}</FeatureItem>
+                        <FeatureItem>{tFeatures('aiExplanations2PerDay')}</FeatureItem>
+                        <FeatureItem>{tFeatures('workspace1')}</FeatureItem>
                       </>
                     )}
                     {plan.tier === 'pro' && (
                       <>
-                        <FeatureItem>100 documents</FeatureItem>
-                        <FeatureItem>Unlimited AI explanations</FeatureItem>
-                        <FeatureItem>10 workspaces</FeatureItem>
-                        <FeatureItem>All plugins (STEM, Legal, Finance)</FeatureItem>
-                        <FeatureItem>Calendar sync</FeatureItem>
+                        <FeatureItem>{tFeatures('documents100')}</FeatureItem>
+                        <FeatureItem>{tFeatures('unlimitedAi')}</FeatureItem>
+                        <FeatureItem>{tFeatures('workspaces10')}</FeatureItem>
+                        <FeatureItem>{tFeatures('allPlugins')}</FeatureItem>
+                        <FeatureItem>{tFeatures('calendarSync')}</FeatureItem>
                       </>
                     )}
                     {plan.tier === 'premium' && (
                       <>
-                        <FeatureItem>Unlimited documents</FeatureItem>
-                        <FeatureItem>Unlimited AI usage</FeatureItem>
-                        <FeatureItem>100GB storage</FeatureItem>
-                        <FeatureItem>Unlimited workspaces</FeatureItem>
-                        <FeatureItem>All plugins included</FeatureItem>
-                        <FeatureItem>Google Drive sync</FeatureItem>
-                        <FeatureItem>Priority support</FeatureItem>
+                        <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
+                        <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
+                        <FeatureItem>{tFeatures('storage100gb')}</FeatureItem>
+                        <FeatureItem>{tFeatures('unlimitedWorkspaces')}</FeatureItem>
+                        <FeatureItem>{tFeatures('allPluginsIncluded')}</FeatureItem>
+                        <FeatureItem>{tFeatures('driveSync')}</FeatureItem>
+                        <FeatureItem>{tFeatures('prioritySupport')}</FeatureItem>
                       </>
                     )}
                   </ul>
@@ -311,16 +314,16 @@ export default function SubscriptionPage() {
                     onClick={() => handleSelectPlan(plan)}
                   >
                     {isCurrentPlan ? (
-                      'Current Plan'
+                      t('currentPlanBadge')
                     ) : plan.tier === 'free' ? (
-                      'Free'
+                      t('free')
                     ) : isUpgrade ? (
                       <>
-                        Upgrade
+                        {t('upgrade')}
                         <ArrowRight className="w-4 h-4 ml-1" />
                       </>
                     ) : (
-                      'Downgrade'
+                      t('downgrade')
                     )}
                   </Button>
                 </Card>
@@ -331,9 +334,9 @@ export default function SubscriptionPage() {
           {/* FAQ or Additional Info */}
           <div className="mt-12 text-center">
             <p className="text-sm text-text-soft">
-              Questions about pricing?{' '}
+              {t('questionsAboutPricing')}{' '}
               <a href="/support" className="text-accent hover:underline">
-                Contact support
+                {t('contactSupport')}
               </a>
             </p>
           </div>
@@ -353,10 +356,10 @@ export default function SubscriptionPage() {
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div>
                 <h2 className="text-lg font-semibold text-text">
-                  Upgrade to {selectedPlan.name}
+                  {t('upgradeTo', { plan: selectedPlan.name })}
                 </h2>
                 <p className="text-sm text-text-soft">
-                  {billingPeriod === 'monthly' ? 'Monthly' : 'Yearly'} subscription
+                  {billingPeriod === 'monthly' ? t('monthlySubscription') : t('yearlySubscription')}
                 </p>
               </div>
               <button
@@ -373,7 +376,7 @@ export default function SubscriptionPage() {
               {processingPayment ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <Spinner size="lg" />
-                  <p className="mt-4 text-text-soft">Processing your payment...</p>
+                  <p className="mt-4 text-text-soft">{t('processingPayment')}</p>
                 </div>
               ) : (
                 <MoyasarPaymentForm

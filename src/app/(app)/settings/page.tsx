@@ -25,6 +25,7 @@ import type { Profile } from '@/types/database';
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
+  const tSettings = useTranslations('settingsPage');
   const router = useRouter();
   const supabase = createClient();
   const { user, signOut } = useAuth();
@@ -210,19 +211,19 @@ export default function SettingsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text mb-1">Email</label>
+                <label className="block text-sm font-medium text-text mb-1">{tSettings('email')}</label>
                 <p className="text-text-soft">{user?.email}</p>
               </div>
 
               <Input
-                label="Display Name"
+                label={tSettings('displayName')}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your name"
+                placeholder={tSettings('displayNamePlaceholder')}
               />
 
               <Button onClick={handleSaveProfile} isLoading={saving}>
-                Save Changes
+                {tSettings('saveChanges')}
               </Button>
             </div>
           </Card>
@@ -238,17 +239,17 @@ export default function SettingsPage() {
               <div>
                 <p className="font-medium text-text">
                   {profile?.subscription_tier === 'free'
-                    ? 'Free Plan'
+                    ? tSettings('freePlan')
                     : profile?.subscription_tier === 'pro'
-                    ? 'Pro Plan'
-                    : 'Premium Plan'}
+                    ? tSettings('proPlan')
+                    : tSettings('premiumPlan')}
                 </p>
                 <p className="text-sm text-text-soft">
                   {profile?.subscription_tier === 'free'
-                    ? '10 documents, 2 AI explanations/day'
+                    ? tSettings('freePlanDesc')
                     : profile?.subscription_tier === 'pro'
-                    ? '100 documents, unlimited AI'
-                    : 'Unlimited documents, 100GB storage'}
+                    ? tSettings('proPlanDesc')
+                    : tSettings('premiumPlanDesc')}
                 </p>
               </div>
               <Badge
@@ -260,7 +261,7 @@ export default function SettingsPage() {
 
             {profile?.subscription_tier === 'free' && (
               <Button variant="secondary" className="mt-4">
-                Upgrade to Pro
+                {tSettings('upgradeToPro')}
               </Button>
             )}
           </Card>
@@ -269,11 +270,11 @@ export default function SettingsPage() {
           <Card padding="lg">
             <div className="flex items-center gap-3 mb-6">
               <Link2 className="w-5 h-5 text-accent" />
-              <h2 className="text-lg font-semibold text-text">Integrations</h2>
+              <h2 className="text-lg font-semibold text-text">{tSettings('integrations')}</h2>
             </div>
 
             <p className="text-sm text-text-soft mb-4">
-              Connect your cloud accounts to import files and sync calendar events.
+              {tSettings('integrationsDesc')}
             </p>
 
             <div className="space-y-3">
@@ -289,21 +290,21 @@ export default function SettingsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-text">Google</p>
-                    <p className="text-xs text-text-soft">Drive & Calendar</p>
+                    <p className="font-medium text-text">{tSettings('google')}</p>
+                    <p className="text-xs text-text-soft">{tSettings('googleDesc')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {isConnected('google_drive') ? (
                     <>
                       <CheckCircle className="w-4 h-4 text-success" />
-                      <span className="text-sm text-success">Connected</span>
+                      <span className="text-sm text-success">{tSettings('connected')}</span>
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => disconnectIntegration('google_drive')}
                       >
-                        Disconnect
+                        {tSettings('disconnect')}
                       </Button>
                     </>
                   ) : (
@@ -312,7 +313,7 @@ export default function SettingsPage() {
                       onClick={() => connectIntegration('google_drive')}
                       isLoading={connectingProvider === 'google_drive'}
                     >
-                      Connect
+                      {tSettings('connect')}
                     </Button>
                   )}
                 </div>
@@ -330,21 +331,21 @@ export default function SettingsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-text">Microsoft</p>
-                    <p className="text-xs text-text-soft">OneDrive & Calendar</p>
+                    <p className="font-medium text-text">{tSettings('microsoft')}</p>
+                    <p className="text-xs text-text-soft">{tSettings('microsoftDesc')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {isConnected('onedrive') ? (
                     <>
                       <CheckCircle className="w-4 h-4 text-success" />
-                      <span className="text-sm text-success">Connected</span>
+                      <span className="text-sm text-success">{tSettings('connected')}</span>
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => disconnectIntegration('onedrive')}
                       >
-                        Disconnect
+                        {tSettings('disconnect')}
                       </Button>
                     </>
                   ) : (
@@ -353,7 +354,7 @@ export default function SettingsPage() {
                       onClick={() => connectIntegration('onedrive')}
                       isLoading={connectingProvider === 'onedrive'}
                     >
-                      Connect
+                      {tSettings('connect')}
                     </Button>
                   )}
                 </div>
@@ -383,7 +384,7 @@ export default function SettingsPage() {
                 )}
               >
                 <Sun className="w-5 h-5" />
-                <span className="font-medium">Light</span>
+                <span className="font-medium">{tSettings('light')}</span>
               </button>
               <button
                 onClick={() => handleThemeChange('dark')}
@@ -395,7 +396,7 @@ export default function SettingsPage() {
                 )}
               >
                 <Moon className="w-5 h-5" />
-                <span className="font-medium">Dark</span>
+                <span className="font-medium">{tSettings('dark')}</span>
               </button>
             </div>
           </Card>
@@ -408,7 +409,7 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-sm text-text-soft mb-4">
-              Language can be changed using the language switcher in the header.
+              {tSettings('languageDesc')}
             </p>
           </Card>
 
@@ -416,13 +417,13 @@ export default function SettingsPage() {
           <Card padding="lg" className="border-error/30">
             <div className="flex items-center gap-3 mb-6">
               <AlertTriangle className="w-5 h-5 text-error" />
-              <h2 className="text-lg font-semibold text-error">Danger Zone</h2>
+              <h2 className="text-lg font-semibold text-error">{tSettings('dangerZone')}</h2>
             </div>
 
             <div className="space-y-4">
               <Button variant="secondary" onClick={() => signOut()}>
                 <LogOut className="w-4 h-4" />
-                Log Out
+                {tSettings('logOut')}
               </Button>
 
               {!showDeleteConfirm ? (
@@ -436,23 +437,21 @@ export default function SettingsPage() {
               ) : (
                 <div className="p-4 bg-error/10 border border-error/30 rounded-scholar">
                   <p className="text-sm text-error mb-4">
-                    Are you sure you want to delete your account? This action cannot be
-                    undone. All your workspaces, documents, and notes will be permanently
-                    deleted.
+                    {tSettings('deleteAccountConfirm')}
                   </p>
                   <div className="flex gap-3">
                     <Button
                       variant="secondary"
                       onClick={() => setShowDeleteConfirm(false)}
                     >
-                      Cancel
+                      {t('cancel')}
                     </Button>
                     <Button
                       variant="danger"
                       onClick={handleDeleteAccount}
                       isLoading={deleteLoading}
                     >
-                      Yes, Delete My Account
+                      {tSettings('yesDeleteAccount')}
                     </Button>
                   </div>
                 </div>

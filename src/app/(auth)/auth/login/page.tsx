@@ -24,7 +24,7 @@ export default function LoginPage() {
     setFormError(null);
 
     if (!email || !password) {
-      setFormError('Please fill in all fields');
+      setFormError(t('fillAllFields'));
       return;
     }
 
@@ -33,15 +33,15 @@ export default function LoginPage() {
     if (result.success) {
       router.push(redirectTo);
     } else {
-      setFormError(result.error?.message || 'Failed to sign in');
+      setFormError(result.error?.message || t('signInFailed'));
     }
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'apple' | 'azure') => {
     const result = await signInWithOAuth(provider);
     if (!result.success) {
-      const providerName = provider === 'azure' ? 'Microsoft' : provider;
-      setFormError(result.error?.message || `Failed to sign in with ${providerName}`);
+      const providerName = provider === 'azure' ? t('microsoft') : provider === 'google' ? t('google') : t('apple');
+      setFormError(result.error?.message || t('signInWith', { provider: providerName }));
     }
   };
 
@@ -49,7 +49,7 @@ export default function LoginPage() {
     <Card className="w-full max-w-md" padding="lg">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{t('login')}</CardTitle>
-        <CardDescription>Welcome back to Zohal</CardDescription>
+        <CardDescription>{t('welcomeBack')}</CardDescription>
       </CardHeader>
 
       <CardContent>

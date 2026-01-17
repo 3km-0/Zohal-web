@@ -65,6 +65,8 @@ export default function SearchPage() {
         } = await supabase.auth.getSession();
 
         if (!session) throw new Error('Not authenticated');
+        const userId = session.user?.id;
+        if (!userId) throw new Error('Missing user');
 
         // If it's a question, use ask-workspace for RAG
         if (isQuestion(searchQuery)) {
@@ -79,6 +81,7 @@ export default function SearchPage() {
               body: JSON.stringify({
                 question: searchQuery,
                 workspace_id: selectedWorkspace || undefined,
+                user_id: userId,
               }),
             }
           );
@@ -101,7 +104,8 @@ export default function SearchPage() {
               body: JSON.stringify({
                 query: searchQuery,
                 workspace_id: selectedWorkspace || undefined,
-                limit: 20,
+                user_id: userId,
+                options: { top_k: 20 },
               }),
             }
           );
