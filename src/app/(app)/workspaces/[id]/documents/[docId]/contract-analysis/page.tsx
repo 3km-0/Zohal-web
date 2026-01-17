@@ -158,20 +158,6 @@ export default function ContractAnalysisPage() {
     setError(null);
     setProgressStep(0);
 
-    // Client-side progress hints (the edge function is one call, so we simulate phases for UX).
-    const steps = [
-      'Preparing document…',
-      'Identifying parties & dates…',
-      'Extracting clauses…',
-      'Extracting obligations & deadlines…',
-      'Assessing risks…',
-      'Finalizing…',
-    ];
-    let tick = 0;
-    const timer = window.setInterval(() => {
-      tick = Math.min(tick + 1, steps.length - 1);
-      setProgressStep(tick);
-    }, 1600);
     try {
       const {
         data: { session },
@@ -197,20 +183,93 @@ export default function ContractAnalysisPage() {
 
       const json = await res.json().catch(() => null);
 
-      // 202 = document_not_ready (processing). Surface the localized message if present.
+      // Handle 4xx/5xx errors (except 202)
       if (!res.ok && res.status !== 202) {
         throw new Error(json?.error || json?.message || 'Contract analysis failed');
       }
 
-      if (res.status === 202) {
-        throw new Error(json?.user_message || json?.message || 'Document is still processing. Try again shortly.');
+      // 202 = Queued for batch processing. Poll for completion.
+      if (res.status === 202 && json?.accepted && json?.action_id) {
+        const actionId = json.action_id;
+        console.log('[Contract] Analysis queued, polling action:', actionId);
+        
+        // Poll the action for progress
+        const maxPolls = 120; // Max ~4 minutes (2s intervals)
+        let pollCount = 0;
+        
+        const pollInterval = setInterval(async () => {
+          pollCount++;
+          
+          try {
+            const { data: action, error: actionError } = await supabase
+              .from('actions')
+              .select('status, output_json')
+              .eq('id', actionId)
+              .maybeSingle();
+            
+            if (actionError) {
+              console.warn('[Contract] Poll error:', actionError.message);
+              return;
+            }
+            
+            if (!action) {
+              console.warn('[Contract] Action not found');
+              return;
+            }
+            
+            const output = action.output_json as any;
+            const totalBatches = output?.total_batches || 6;
+            const completedBatches = output?.completed_batches || 0;
+            const stage = output?.stage || 'queued';
+            
+            // Map progress to steps (0-5)
+            // Stage progression: queued -> running batches -> reducing -> done
+            if (stage === 'queued') {
+              setProgressStep(0); // Preparing
+            } else if (stage === 'reducing' || stage === 'finalizing') {
+              setProgressStep(5); // Finalizing
+            } else {
+              // Map completed batches to steps 1-4
+              const batchProgress = Math.min(4, Math.floor((completedBatches / totalBatches) * 4) + 1);
+              setProgressStep(batchProgress);
+            }
+            
+            // Check for completion
+            if (action.status === 'completed') {
+              clearInterval(pollInterval);
+              console.log('[Contract] Analysis complete');
+              await load();
+              setIsAnalyzing(false);
+              return;
+            }
+            
+            if (action.status === 'failed') {
+              clearInterval(pollInterval);
+              const errorMsg = output?.error || 'Contract analysis failed';
+              setError(errorMsg);
+              setIsAnalyzing(false);
+              return;
+            }
+            
+            // Timeout check
+            if (pollCount >= maxPolls) {
+              clearInterval(pollInterval);
+              setError('Analysis is taking longer than expected. Please check back later.');
+              setIsAnalyzing(false);
+            }
+          } catch (pollErr) {
+            console.warn('[Contract] Poll exception:', pollErr);
+          }
+        }, 2000); // Poll every 2 seconds
+        
+        return; // Exit early - polling handles the rest
       }
 
+      // Synchronous success (legacy path or immediate completion)
       await load();
+      setIsAnalyzing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Contract analysis failed');
-    } finally {
-      window.clearInterval(timer);
       setIsAnalyzing(false);
     }
   }
@@ -1004,12 +1063,12 @@ export default function ContractAnalysisPage() {
                 </div>
                 <div className="text-sm text-text-soft">
                   {[
-                    'Preparing document…',
-                    'Identifying parties & dates…',
-                    'Extracting clauses…',
-                    'Extracting obligations & deadlines…',
-                    'Assessing risks…',
-                    'Finalizing…',
+                    'Queuing analysis…',
+                    'Analyzing pages (batch 1)…',
+                    'Analyzing pages (batch 2)…',
+                    'Extracting clauses & obligations…',
+                    'Assessing risks & deadlines…',
+                    'Finalizing analysis…',
                   ][progressStep]}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1019,7 +1078,7 @@ export default function ContractAnalysisPage() {
                     'Extract obligations & deadlines',
                     'Assess risks',
                   ].map((label, idx) => {
-                    const complete = progressStep >= idx + 2; // heuristically mark later steps as we tick
+                    const complete = progressStep >= idx + 2;
                     const active = !complete && progressStep === idx + 1;
                     return (
                       <div
@@ -1045,7 +1104,7 @@ export default function ContractAnalysisPage() {
                   })}
                 </div>
                 <div className="text-xs text-text-soft">
-                  This can take ~10–20 seconds depending on document size.
+                  Analysis typically takes 30–60 seconds depending on document size.
                 </div>
               </CardContent>
             </Card>
