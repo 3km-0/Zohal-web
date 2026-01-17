@@ -216,26 +216,48 @@ export function DocumentUploadModal({
 
       if (insertError) throw insertError;
 
-      // Enqueue ingestion as backup (bounded concurrency, no fan-out)
-      supabase.functions
-        .invoke('enqueue-document-ingestion', {
+      // Process document synchronously: extract text -> create chunks -> classify
+      // This ensures document is ready for contract analysis immediately
+      try {
+        // 1. Extract text from PDF
+        const { data: textData } = await supabase.functions.invoke('extract-pdf-text-layer', {
           body: { document_id: documentId },
-        })
-        .catch((err) => console.warn('enqueue-document-ingestion failed:', err));
+        });
 
-      // Extract text and create chunks immediately (required for contract analysis)
-      supabase.functions
-        .invoke('extract-pdf-text-layer', {
-          body: { document_id: documentId },
-        })
-        .catch((err) => console.warn('extract-pdf-text-layer failed:', err));
+        // 2. Create chunks if we got pages
+        if (textData?.pages && textData.pages.length > 0) {
+          await supabase.functions.invoke('chunk-document', {
+            body: {
+              document_id: documentId,
+              workspace_id: workspaceId,
+              user_id: user.id,
+              pages: textData.pages,
+            },
+          });
 
-      // Trigger classification immediately (don't wait for queue worker)
-      supabase.functions
-        .invoke('classify-document', {
-          body: { document_id: documentId },
-        })
-        .catch((err) => console.warn('classify-document failed:', err));
+          // 3. Create embeddings
+          supabase.functions
+            .invoke('embed-and-store', {
+              body: { document_id: documentId, workspace_id: workspaceId },
+            })
+            .catch((err) => console.warn('embed-and-store failed:', err));
+        }
+
+        // 4. Classify document
+        supabase.functions
+          .invoke('classify-document', {
+            body: { document_id: documentId },
+          })
+          .catch((err) => console.warn('classify-document failed:', err));
+      } catch (err) {
+        console.warn('Document processing failed, falling back to queue:', err);
+        // Fallback: enqueue for background processing
+        supabase.functions
+          .invoke('enqueue-document-ingestion', {
+            body: { document_id: documentId },
+          })
+          .catch((e) => console.warn('enqueue-document-ingestion failed:', e));
+      }
 
       // Update status to success
       setFiles((prev) =>
