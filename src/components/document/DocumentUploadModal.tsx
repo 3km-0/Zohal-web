@@ -223,6 +223,13 @@ export function DocumentUploadModal({
         })
         .catch((err) => console.warn('enqueue-document-ingestion failed:', err));
 
+      // Trigger classification immediately (don't wait for queue worker)
+      supabase.functions
+        .invoke('classify-document', {
+          body: { document_id: documentId },
+        })
+        .catch((err) => console.warn('classify-document failed:', err));
+
       // Update status to success
       setFiles((prev) =>
         prev.map((f) =>
