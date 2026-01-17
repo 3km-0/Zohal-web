@@ -220,13 +220,26 @@ export function DocumentUploadModal({
       // This ensures document is ready for contract analysis immediately
       try {
         // 1. Extract text from PDF
-        const { data: textData } = await supabase.functions.invoke('extract-pdf-text-layer', {
+        console.log('[Upload] Extracting text for document:', documentId);
+        const { data: textData, error: textError } = await supabase.functions.invoke('extract-pdf-text-layer', {
           body: { document_id: documentId },
+        });
+        
+        if (textError) {
+          console.error('[Upload] Text extraction error:', textError);
+        }
+        console.log('[Upload] Text extraction result:', {
+          success: textData?.success,
+          pageCount: textData?.page_count,
+          pagesWithText: textData?.pages_with_text,
+          totalChars: textData?.total_chars,
+          pagesArrayLength: textData?.pages?.length,
         });
 
         // 2. Create chunks if we got pages
         if (textData?.pages && textData.pages.length > 0) {
-          await supabase.functions.invoke('chunk-document', {
+          console.log('[Upload] Creating chunks with', textData.pages.length, 'pages');
+          const { data: chunkData, error: chunkError } = await supabase.functions.invoke('chunk-document', {
             body: {
               document_id: documentId,
               workspace_id: workspaceId,
@@ -234,27 +247,40 @@ export function DocumentUploadModal({
               pages: textData.pages,
             },
           });
+          
+          if (chunkError) {
+            console.error('[Upload] Chunk creation error:', chunkError);
+          }
+          console.log('[Upload] Chunk creation result:', chunkData);
 
-          // 3. Create embeddings
+          // 3. Create embeddings (background)
           supabase.functions
             .invoke('embed-and-store', {
               body: { document_id: documentId, workspace_id: workspaceId },
             })
-            .catch((err) => console.warn('embed-and-store failed:', err));
+            .catch((err) => console.warn('[Upload] embed-and-store failed:', err));
+        } else {
+          console.warn('[Upload] No pages extracted, skipping chunk creation');
         }
 
         // 4. Classify document (wait for this so document type is set before navigation)
-        await supabase.functions.invoke('classify-document', {
+        console.log('[Upload] Classifying document:', documentId);
+        const { data: classifyData, error: classifyError } = await supabase.functions.invoke('classify-document', {
           body: { document_id: documentId },
         });
+        
+        if (classifyError) {
+          console.error('[Upload] Classification error:', classifyError);
+        }
+        console.log('[Upload] Classification result:', classifyData);
       } catch (err) {
-        console.warn('Document processing failed, falling back to queue:', err);
+        console.error('[Upload] Document processing failed:', err);
         // Fallback: enqueue for background processing
         supabase.functions
           .invoke('enqueue-document-ingestion', {
             body: { document_id: documentId },
           })
-          .catch((e) => console.warn('enqueue-document-ingestion failed:', e));
+          .catch((e) => console.warn('[Upload] enqueue-document-ingestion failed:', e));
       }
 
       // Update status to success
