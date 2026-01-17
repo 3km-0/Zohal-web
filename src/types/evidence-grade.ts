@@ -16,12 +16,21 @@
 
 export type SnapshotSchemaVersion = '1.0' | '2.0'
 
-export type SnapshotTemplate = 
-  | 'renewal_pack' 
-  | 'lease_pack' 
-  | 'diligence_pack' 
-  | 'coverage_pack' 
-  | 'contract_analysis'
+/**
+ * Template ID (lane).
+ *
+ * Forward-compatibility requirement:
+ * - Backend may introduce new template IDs after the web app is deployed.
+ * - Keep this type open so unknown templates don't break builds.
+ *
+ * Known values today include:
+ * - 'renewal_pack'
+ * - 'lease_pack'
+ * - 'diligence_pack'
+ * - 'coverage_pack'
+ * - 'contract_analysis'
+ */
+export type SnapshotTemplate = string
 
 // =============================================================================
 // Verification States
@@ -168,6 +177,18 @@ export interface RiskWithEvidence {
 export interface EvidenceGradeSnapshot {
   schema_version: SnapshotSchemaVersion
   template: SnapshotTemplate
+
+  /**
+   * Optional pack metadata (additive).
+   * Written by the reducer to capture template/module activation and computed outputs.
+   * Clients must tolerate unknown modules and payload shapes.
+   */
+  pack?: {
+    template_id?: string
+    template_version?: string
+    modules_activated?: string[]
+    modules?: Record<string, unknown>
+  }
   
   /** Verified variables (the core of evidence-grade data) */
   variables: VerifiedVariable[]

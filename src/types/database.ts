@@ -98,26 +98,52 @@ export interface Workspace {
 
 export interface Document {
   id: string;
-  workspace_id: string;
   user_id: string;
-  folder_id?: string | null;  // Folder within workspace
+  workspace_id?: string | null;
+  folder_id?: string | null;  // Folder within workspace (null = workspace root)
+  
+  // Document identity
   title: string;
-  original_filename?: string;
-  storage_path?: string;
-  file_size_bytes?: number;
-  mime_type?: string;
-  page_count?: number;
-  document_type?: DocumentType;
+  original_filename?: string | null;
+  document_type: DocumentType;  // Required, defaults to 'textbook' in DB
+  
+  // Storage
+  storage_path: string;
+  storage_bucket: string;  // 'documents' or 'gcs'
+  file_size_bytes?: number | null;
+  page_count?: number | null;
+  
+  // Source tracking
+  source_type?: string | null;  // 'local', 'gdrive', 'onedrive', etc.
+  source_integration_id?: string | null;
+  source_metadata?: Record<string, unknown> | null;
+  
+  // Metadata extraction
+  detected_subject?: string | null;
+  detected_level?: string | null;
+  isbn?: string | null;
+  author?: string | null;
+  publisher?: string | null;
+  edition?: string | null;
+  
+  // Processing status
   processing_status: ProcessingStatus;
-  ocr_status?: string;
-  has_text_layer?: boolean;
-  privacy_mode?: boolean;
-  embedding_completed?: boolean;
-  thumbnail_url?: string;
-  source_metadata?: Record<string, unknown>;
+  text_extraction_completed: boolean;
+  toc_extraction_completed: boolean;
+  embedding_completed: boolean;
+  ocr_status?: string | null;  // 'not_needed', 'pending', 'processing', 'completed', 'failed'
+  has_text_layer?: boolean | null;
+  privacy_mode?: boolean;  // True = original PDF stays on-device
+  
+  // User state
+  is_active: boolean;
+  last_opened_at?: string | null;
+  total_study_time_seconds: number;
+  
+  // Timestamps
   created_at: string;
   updated_at: string;
-  deleted_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface WorkspaceFolder {

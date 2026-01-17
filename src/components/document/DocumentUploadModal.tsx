@@ -207,7 +207,7 @@ export function DocumentUploadModal({
         storage_path: storagePath,
         storage_bucket: 'gcs', // Mark as GCS storage
         file_size_bytes: pdfFile.size,
-        mime_type: 'application/pdf',
+        document_type: 'other', // Required column with default - will be classified after ingestion
         processing_status: 'pending',
       });
 
