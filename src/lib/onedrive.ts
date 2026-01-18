@@ -152,7 +152,6 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     console.log('[OneDrive] Starting acquireTokenPopup...');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
-      redirectUri: window.location.origin + '/blank.html',
     });
     console.log('[OneDrive] Popup completed successfully');
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Source_Serif_4, Inter, JetBrains_Mono } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
+import { MsalProvider } from '@/components/providers/MsalProvider';
 import './globals.css';
 
 const sourceSerif = Source_Serif_4({
@@ -67,7 +68,9 @@ export default async function RootLayout({
     >
       <body>
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <MsalProvider>
+            {children}
+          </MsalProvider>
         </NextIntlClientProvider>
       </body>
     </html>
