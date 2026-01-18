@@ -109,10 +109,34 @@ export async function authenticateWithMicrosoft(): Promise<string> {
   const instance = await getMsalInstance();
   console.log('[OneDrive] MSAL instance ready');
 
-  // Try silent first
-  const accounts = instance.getAllAccounts();
+  // Check for existing accounts
+  let accounts = instance.getAllAccounts();
   console.log('[OneDrive] Found accounts:', accounts.length);
   
+  // If no accounts, do login popup first
+  if (accounts.length === 0) {
+    console.log('[OneDrive] No accounts, starting login popup...');
+    try {
+      const loginResponse = await instance.loginPopup({
+        scopes: MICROSOFT_SCOPES,
+      });
+      console.log('[OneDrive] Login popup completed, account:', loginResponse.account?.username);
+      
+      if (loginResponse.accessToken) {
+        cachedAccessToken = loginResponse.accessToken;
+        tokenExpiresAt = loginResponse.expiresOn?.getTime() || Date.now() + 3600000;
+        return loginResponse.accessToken;
+      }
+      
+      // Refresh accounts list after login
+      accounts = instance.getAllAccounts();
+    } catch (err) {
+      console.error('[OneDrive] Login popup failed:', err);
+      throw err;
+    }
+  }
+  
+  // Now try to get token silently (or via popup if needed)
   if (accounts.length > 0) {
     try {
       console.log('[OneDrive] Trying silent token acquisition...');
@@ -125,21 +149,18 @@ export async function authenticateWithMicrosoft(): Promise<string> {
       console.log('[OneDrive] Silent acquisition succeeded');
       return silentResult.accessToken;
     } catch (err) {
-      console.log('[OneDrive] Silent acquisition failed:', err);
-      // Silent failed, need popup
+      console.log('[OneDrive] Silent acquisition failed, trying popup:', err);
+      // Silent failed, try popup
+      const popupResult = await instance.acquireTokenPopup({
+        scopes: MICROSOFT_SCOPES,
+      });
+      cachedAccessToken = popupResult.accessToken;
+      tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
+      return popupResult.accessToken;
     }
   }
 
-  // Use popup for authentication
-  console.log('[OneDrive] Opening popup for authentication...');
-  const popupResult = await instance.acquireTokenPopup({
-    scopes: MICROSOFT_SCOPES,
-  });
-  console.log('[OneDrive] Popup completed');
-
-  cachedAccessToken = popupResult.accessToken;
-  tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
-  return popupResult.accessToken;
+  throw new Error('No Microsoft account available');
 }
 
 /**
