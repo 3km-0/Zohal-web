@@ -58,6 +58,9 @@ export function getAccessToken(): string | null {
   return null;
 }
 
+// Cached MSAL instance
+let msalInstance: InstanceType<typeof import('@azure/msal-browser').PublicClientApplication> | null = null;
+
 /**
  * Authenticate with Microsoft using popup flow
  * Returns the access token
@@ -72,23 +75,33 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     return cachedAccessToken;
   }
 
+  // Test if popups are blocked
+  const testPopup = window.open('', '_blank', 'width=1,height=1');
+  if (!testPopup || testPopup.closed) {
+    throw new Error('Popups are blocked. Please allow popups for this site and try again.');
+  }
+  testPopup.close();
+
   // Dynamic import of MSAL to avoid SSR issues
   const { PublicClientApplication } = await import('@azure/msal-browser');
 
-  const msalConfig = {
-    auth: {
-      clientId: MICROSOFT_CLIENT_ID,
-      authority: 'https://login.microsoftonline.com/common',
-      redirectUri: typeof window !== 'undefined' ? window.location.origin : '',
-    },
-    cache: {
-      cacheLocation: 'sessionStorage' as const,
-      storeAuthStateInCookie: false,
-    },
-  };
+  // Create or reuse MSAL instance
+  if (!msalInstance) {
+    const msalConfig = {
+      auth: {
+        clientId: MICROSOFT_CLIENT_ID,
+        authority: 'https://login.microsoftonline.com/common',
+        redirectUri: window.location.origin,
+      },
+      cache: {
+        cacheLocation: 'sessionStorage' as const,
+        storeAuthStateInCookie: false,
+      },
+    };
 
-  const msalInstance = new PublicClientApplication(msalConfig);
-  await msalInstance.initialize();
+    msalInstance = new PublicClientApplication(msalConfig);
+    await msalInstance.initialize();
+  }
 
   // Try to get token silently first
   const accounts = msalInstance.getAllAccounts();
@@ -107,13 +120,19 @@ export async function authenticateWithMicrosoft(): Promise<string> {
   }
 
   // Acquire token via popup
-  const popupResult = await msalInstance.acquireTokenPopup({
-    scopes: MICROSOFT_SCOPES,
-  });
+  try {
+    const popupResult = await msalInstance.acquireTokenPopup({
+      scopes: MICROSOFT_SCOPES,
+    });
 
-  cachedAccessToken = popupResult.accessToken;
-  tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
-  return popupResult.accessToken;
+    cachedAccessToken = popupResult.accessToken;
+    tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
+    return popupResult.accessToken;
+  } catch (err) {
+    // Reset instance on error so next attempt starts fresh
+    msalInstance = null;
+    throw err;
+  }
 }
 
 /**
