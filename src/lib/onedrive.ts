@@ -7,11 +7,22 @@
 
 // Microsoft OAuth configuration
 const MICROSOFT_CLIENT_ID = process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID || '';
+const MICROSOFT_REDIRECT_URI =
+  process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI || '';
 const MICROSOFT_SCOPES = [
   'Files.Read',
   'Files.Read.All',
   'User.Read',
 ];
+
+function getMicrosoftPopupRedirectUri(): string {
+  // Prefer an explicit, canonical redirect URI when provided.
+  // This prevents subtle issues where the app is accessed via an alias domain
+  // (e.g. www vs apex), causing the popup and opener to end up on different
+  // origins and MSAL can't complete/close the popup.
+  if (MICROSOFT_REDIRECT_URI) return MICROSOFT_REDIRECT_URI;
+  return window.location.origin + '/auth/microsoft/popup.html';
+}
 
 export interface OneDriveFile {
   id: string;
@@ -74,7 +85,7 @@ export async function initMsal(): Promise<void> {
 
     const { PublicClientApplication } = await import('@azure/msal-browser');
 
-    const popupRedirectUri = window.location.origin + '/auth/microsoft/popup.html';
+    const popupRedirectUri = getMicrosoftPopupRedirectUri();
     console.log('[OneDrive] Creating MSAL instance with redirectUri:', popupRedirectUri);
     const msalConfig = {
       auth: {
@@ -161,7 +172,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     console.log('[OneDrive] Starting acquireTokenPopup...');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
-      redirectUri: window.location.origin + '/auth/microsoft/popup.html',
+      redirectUri: getMicrosoftPopupRedirectUri(),
     });
     console.log('[OneDrive] Popup completed successfully');
 
