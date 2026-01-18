@@ -14,9 +14,6 @@ import { Button, Card, Spinner } from '@/components/ui';
 import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
 import {
   authenticateWithMicrosoft,
-  initOneDriveAuth,
-  hasPendingAuth,
-  clearPendingAuth,
   listOneDriveFiles,
   getFolderPath,
   isPdfFile,
@@ -55,56 +52,25 @@ export function OneDrivePicker({
   // Check if configured
   const isConfigured = isOneDriveConfigured();
 
-  // Initialize auth on mount (handles redirect response)
+  // Check for existing token on mount
   useEffect(() => {
-    const init = async () => {
-      if (!isConfigured) {
-        setLoading(false);
-        return;
-      }
+    const existingToken = getAccessToken();
+    if (existingToken) {
+      setAccessToken(existingToken);
+    }
+    setLoading(false);
+  }, []);
 
-      try {
-        // This handles the redirect response if we're coming back from Microsoft
-        const token = await initOneDriveAuth();
-        
-        if (token) {
-          setAccessToken(token);
-          // Clear pending state if we have a token
-          clearPendingAuth();
-        } else {
-          // No token yet, check for existing
-          const existingToken = getAccessToken();
-          if (existingToken) {
-            setAccessToken(existingToken);
-          }
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Authentication failed');
-      } finally {
-        setLoading(false);
-        setAuthenticating(false);
-      }
-    };
-
-    init();
-  }, [isConfigured]);
-
-  // Start authentication (redirect flow)
+  // Start authentication (popup flow)
   const authenticate = useCallback(async () => {
     setAuthenticating(true);
     setError(null);
     try {
-      // This will redirect to Microsoft login
-      await authenticateWithMicrosoft();
-      // If we get here, we already have a token (silent success)
-      const token = getAccessToken();
-      if (token) {
-        setAccessToken(token);
-        setAuthenticating(false);
-      }
-      // Otherwise, we've been redirected away
+      const token = await authenticateWithMicrosoft();
+      setAccessToken(token);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
+    } finally {
       setAuthenticating(false);
     }
   }, []);

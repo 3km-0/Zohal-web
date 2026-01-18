@@ -1,7 +1,7 @@
 /**
  * Microsoft OneDrive OAuth and API Client for Web
  *
- * Uses MSAL.js for OAuth 2.0 authentication
+ * Uses MSAL.js for OAuth 2.0 authentication (popup flow)
  * and Microsoft Graph API for file browsing and selection.
  */
 
@@ -48,7 +48,6 @@ let msalInstance: MSALClient | null = null;
  */
 export function hasValidToken(): boolean {
   if (!cachedAccessToken || !tokenExpiresAt) return false;
-  // Token is valid if it expires more than 5 minutes from now
   return Date.now() < tokenExpiresAt - 5 * 60 * 1000;
 }
 
@@ -85,65 +84,21 @@ async function getMsalInstance(): Promise<MSALClient> {
   msalInstance = new PublicClientApplication(msalConfig);
   await msalInstance.initialize();
 
-  // Handle redirect response
-  try {
-    const response = await msalInstance.handleRedirectPromise();
-    if (response) {
-      cachedAccessToken = response.accessToken;
-      tokenExpiresAt = response.expiresOn?.getTime() || Date.now() + 3600000;
-      console.log('[OneDrive] Token acquired from redirect');
-    }
-  } catch (err) {
-    console.error('[OneDrive] Redirect handling error:', err);
-  }
-
   return msalInstance;
 }
 
 /**
- * Initialize MSAL and handle any pending redirect
- * Call this on app load to complete the auth flow
+ * Authenticate with Microsoft using popup flow
+ * Returns the access token
  */
-export async function initOneDriveAuth(): Promise<string | null> {
-  if (!MICROSOFT_CLIENT_ID) return null;
-  
-  const instance = await getMsalInstance();
-  
-  // Check if we have a cached token
-  if (hasValidToken() && cachedAccessToken) {
-    return cachedAccessToken;
-  }
-
-  // Try silent token acquisition
-  const accounts = instance.getAllAccounts();
-  if (accounts.length > 0) {
-    try {
-      const silentResult = await instance.acquireTokenSilent({
-        scopes: MICROSOFT_SCOPES,
-        account: accounts[0],
-      });
-      cachedAccessToken = silentResult.accessToken;
-      tokenExpiresAt = silentResult.expiresOn?.getTime() || Date.now() + 3600000;
-      return silentResult.accessToken;
-    } catch {
-      // Silent failed, need interactive
-    }
-  }
-
-  return null;
-}
-
-/**
- * Start the authentication flow using redirect
- */
-export async function authenticateWithMicrosoft(): Promise<void> {
+export async function authenticateWithMicrosoft(): Promise<string> {
   if (!MICROSOFT_CLIENT_ID) {
     throw new Error('Microsoft Client ID not configured');
   }
 
   // Check if we already have a valid token
   if (hasValidToken() && cachedAccessToken) {
-    return;
+    return cachedAccessToken;
   }
 
   const instance = await getMsalInstance();
@@ -158,33 +113,20 @@ export async function authenticateWithMicrosoft(): Promise<void> {
       });
       cachedAccessToken = silentResult.accessToken;
       tokenExpiresAt = silentResult.expiresOn?.getTime() || Date.now() + 3600000;
-      return;
+      return silentResult.accessToken;
     } catch {
-      // Silent failed, need redirect
+      // Silent failed, need popup
     }
   }
 
-  // Store state to resume after redirect
-  sessionStorage.setItem('onedrive_pending', 'true');
-
-  // Redirect to Microsoft login
-  await instance.acquireTokenRedirect({
+  // Use popup for authentication
+  const popupResult = await instance.acquireTokenPopup({
     scopes: MICROSOFT_SCOPES,
   });
-}
 
-/**
- * Check if there's a pending OneDrive auth flow
- */
-export function hasPendingAuth(): boolean {
-  return sessionStorage.getItem('onedrive_pending') === 'true';
-}
-
-/**
- * Clear pending auth state
- */
-export function clearPendingAuth(): void {
-  sessionStorage.removeItem('onedrive_pending');
+  cachedAccessToken = popupResult.accessToken;
+  tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
+  return popupResult.accessToken;
 }
 
 /**
