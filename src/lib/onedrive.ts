@@ -75,13 +75,6 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     return cachedAccessToken;
   }
 
-  // Test if popups are blocked
-  const testPopup = window.open('', '_blank', 'width=1,height=1');
-  if (!testPopup || testPopup.closed) {
-    throw new Error('Popups are blocked. Please allow popups for this site and try again.');
-  }
-  testPopup.close();
-
   // Dynamic import of MSAL to avoid SSR issues
   const { PublicClientApplication } = await import('@azure/msal-browser');
 
@@ -121,17 +114,29 @@ export async function authenticateWithMicrosoft(): Promise<string> {
 
   // Acquire token via popup
   try {
+    console.log('[OneDrive] Starting acquireTokenPopup...');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
     });
+    console.log('[OneDrive] Popup completed successfully');
 
     cachedAccessToken = popupResult.accessToken;
     tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
     return popupResult.accessToken;
-  } catch (err) {
+  } catch (err: unknown) {
+    console.error('[OneDrive] Popup error:', err);
     // Reset instance on error so next attempt starts fresh
     msalInstance = null;
-    throw err;
+    
+    // Provide helpful error messages
+    const error = err as { errorCode?: string; errorMessage?: string; message?: string };
+    if (error.errorCode === 'popup_window_error') {
+      throw new Error('Popup was blocked or closed. Please allow popups and try again.');
+    }
+    if (error.errorCode === 'user_cancelled') {
+      throw new Error('Sign-in was cancelled.');
+    }
+    throw new Error(error.errorMessage || error.message || 'Authentication failed');
   }
 }
 
