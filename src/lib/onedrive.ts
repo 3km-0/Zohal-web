@@ -74,7 +74,7 @@ export async function initMsal(): Promise<void> {
 
     const { PublicClientApplication } = await import('@azure/msal-browser');
 
-    const popupRedirectUri = window.location.origin + '/auth/microsoft/popup';
+    const popupRedirectUri = window.location.origin + '/auth/microsoft/popup.html';
     console.log('[OneDrive] Creating MSAL instance with redirectUri:', popupRedirectUri);
     const msalConfig = {
       auth: {
@@ -91,7 +91,15 @@ export async function initMsal(): Promise<void> {
     msalInstance = new PublicClientApplication(msalConfig);
     await msalInstance.initialize();
     
-    // Handle popup/redirect response if this page was opened as a popup
+    // Check if this is a popup window with auth response
+    const isPopup = window.opener && window.opener !== window;
+    const hasAuthResponse = window.location.hash.includes('code=') || 
+                           window.location.hash.includes('access_token=') ||
+                           window.location.hash.includes('error=');
+    
+    console.log('[OneDrive] Is popup:', isPopup, 'Has auth response:', hasAuthResponse);
+    
+    // Handle popup/redirect response
     try {
       const response = await msalInstance.handleRedirectPromise();
       if (response) {
@@ -153,7 +161,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     console.log('[OneDrive] Starting acquireTokenPopup...');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
-      redirectUri: window.location.origin + '/auth/microsoft/popup',
+      redirectUri: window.location.origin + '/auth/microsoft/popup.html',
     });
     console.log('[OneDrive] Popup completed successfully');
 
