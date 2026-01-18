@@ -63,14 +63,22 @@ export function OneDrivePicker({
 
   // Start authentication (popup flow)
   const authenticate = useCallback(async () => {
+    console.log('[OneDrivePicker] Starting auth...');
     setAuthenticating(true);
     setError(null);
     try {
       const token = await authenticateWithMicrosoft();
-      setAccessToken(token);
+      console.log('[OneDrivePicker] Got token, length:', token?.length);
+      if (token) {
+        setAccessToken(token);
+      } else {
+        setError('No token received');
+      }
     } catch (err) {
+      console.error('[OneDrivePicker] Auth error:', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
+      console.log('[OneDrivePicker] Auth finished');
       setAuthenticating(false);
     }
   }, []);

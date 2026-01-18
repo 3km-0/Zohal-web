@@ -80,6 +80,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
 
   // Create or reuse MSAL instance
   if (!msalInstance) {
+    console.log('[OneDrive] Creating new MSAL instance with redirectUri:', window.location.origin);
     const msalConfig = {
       auth: {
         clientId: MICROSOFT_CLIENT_ID,
@@ -94,6 +95,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
 
     msalInstance = new PublicClientApplication(msalConfig);
     await msalInstance.initialize();
+    console.log('[OneDrive] MSAL initialized');
   }
 
   // Try to get token silently first
