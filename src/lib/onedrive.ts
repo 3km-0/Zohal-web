@@ -74,12 +74,13 @@ export async function initMsal(): Promise<void> {
 
     const { PublicClientApplication } = await import('@azure/msal-browser');
 
-    console.log('[OneDrive] Creating MSAL instance with redirectUri:', window.location.origin);
+    const popupRedirectUri = window.location.origin + '/auth/microsoft/popup';
+    console.log('[OneDrive] Creating MSAL instance with redirectUri:', popupRedirectUri);
     const msalConfig = {
       auth: {
         clientId: MICROSOFT_CLIENT_ID,
         authority: 'https://login.microsoftonline.com/common',
-        redirectUri: window.location.origin,
+        redirectUri: popupRedirectUri,
       },
       cache: {
         cacheLocation: 'sessionStorage' as const,
@@ -152,6 +153,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     console.log('[OneDrive] Starting acquireTokenPopup...');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
+      redirectUri: window.location.origin + '/auth/microsoft/popup',
     });
     console.log('[OneDrive] Popup completed successfully');
 
