@@ -10,6 +10,7 @@
     "gen:types": "supabase gen types typescript --project-id vqsyxrgvyxcbejhhgomf > src/types/supabase.ts"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.0.2",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",
     "clsx": "^2.1.1",
