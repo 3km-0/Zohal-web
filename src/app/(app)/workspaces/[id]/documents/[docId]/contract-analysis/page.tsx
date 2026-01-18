@@ -112,6 +112,10 @@ export default function ContractAnalysisPage() {
 
       setContract(contractData);
       setSnapshot(null);
+      
+      // If we found a contract, analysis is complete - reset analyzing state
+      // This handles the case where user left and came back after completion
+      setIsAnalyzing(false);
 
       const [clausesRes, obligationsRes, risksRes] = await Promise.all([
         supabase.from('legal_clauses').select('*').eq('contract_id', contractData.id).order('page_number', { ascending: true }),
@@ -364,6 +368,20 @@ export default function ContractAnalysisPage() {
 
   useEffect(() => {
     load();
+    
+    // Re-load when tab becomes visible (handles laptop sleep, tab switching)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Contract] Tab visible, refreshing data...');
+        load();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 
