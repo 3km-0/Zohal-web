@@ -161,7 +161,7 @@ export async function listDriveFiles(
   const query = `'${folderId}' in parents and trashed = false`;
   const fields = 'nextPageToken, files(id, name, mimeType, size, modifiedTime, iconLink, parents, webViewLink)';
   
-  let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&pageSize=50&orderBy=name`;
+  let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&pageSize=100&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true`;
   
   if (pageToken) {
     url += `&pageToken=${encodeURIComponent(pageToken)}`;
@@ -179,10 +179,43 @@ export async function listDriveFiles(
   }
 
   const data = await response.json();
+  console.log('[Google Drive] Files in folder:', folderId, data.files?.map((f: GoogleDriveFile) => ({ name: f.name, mimeType: f.mimeType })));
   return {
     files: data.files || [],
     nextPageToken: data.nextPageToken,
   };
+}
+
+/**
+ * Search for PDF files across all of Google Drive
+ */
+export async function searchDriveFiles(
+  accessToken: string,
+  searchQuery: string = ''
+): Promise<GoogleDriveFile[]> {
+  // Search for PDFs and folders matching the query
+  let query = "trashed = false and (mimeType = 'application/pdf' or mimeType = 'application/vnd.google-apps.folder')";
+  if (searchQuery) {
+    query += ` and name contains '${searchQuery.replace(/'/g, "\\'")}'`;
+  }
+  
+  const fields = 'files(id, name, mimeType, size, modifiedTime, iconLink, parents, webViewLink)';
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&pageSize=50&orderBy=modifiedTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Search failed');
+  }
+
+  const data = await response.json();
+  console.log('[Google Drive] Search results:', data.files?.length, 'files');
+  return data.files || [];
 }
 
 /**

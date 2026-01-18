@@ -11,12 +11,14 @@ import {
   ArrowLeft,
   Check,
   Cloud,
+  Search,
 } from 'lucide-react';
 import { Button, Card, Spinner } from '@/components/ui';
 import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
 import {
   authenticateWithGoogle,
   listDriveFiles,
+  searchDriveFiles,
   getFolderPath,
   isPdfFile,
   isFolder,
@@ -50,6 +52,9 @@ export function GoogleDrivePicker({
   const [folderPath, setFolderPath] = useState<GoogleDriveFolder[]>([{ id: 'root', name: 'My Drive' }]);
   const [selectedFile, setSelectedFile] = useState<GoogleDriveFile | null>(null);
   const [importing, setImporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<GoogleDriveFile[] | null>(null);
 
   // Check if configured
   const isConfigured = isGoogleDriveConfigured();
@@ -110,6 +115,30 @@ export function GoogleDrivePicker({
   const navigateToFolder = (folderId: string) => {
     setCurrentFolderId(folderId);
     setSelectedFile(null);
+    setSearchResults(null);
+    setSearchQuery('');
+  };
+
+  // Search for files
+  const handleSearch = useCallback(async () => {
+    if (!accessToken) return;
+    
+    setIsSearching(true);
+    setError(null);
+    try {
+      const results = await searchDriveFiles(accessToken, searchQuery);
+      setSearchResults(results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [accessToken, searchQuery]);
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchResults(null);
+    setSearchQuery('');
   };
 
   // Import selected file
@@ -188,8 +217,35 @@ export function GoogleDrivePicker({
           </button>
         </div>
 
-        {/* Breadcrumb */}
+        {/* Search Bar */}
         {accessToken && (
+          <div className="px-4 py-2 border-b border-border">
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-soft" />
+                <input
+                  type="text"
+                  placeholder="Search for PDFs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="w-full pl-9 pr-3 py-2 bg-surface-alt border border-border rounded-lg text-sm text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+              <Button onClick={handleSearch} disabled={isSearching} size="sm">
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+              </Button>
+              {searchResults && (
+                <Button variant="secondary" onClick={clearSearch} size="sm">
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Breadcrumb */}
+        {accessToken && !searchResults && (
           <div className="flex items-center gap-1 px-4 py-2 bg-surface-alt border-b border-border overflow-x-auto">
             {folderPath.map((folder, index) => (
               <div key={folder.id} className="flex items-center">
@@ -207,6 +263,15 @@ export function GoogleDrivePicker({
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Search Results Header */}
+        {searchResults && (
+          <div className="px-4 py-2 bg-accent/5 border-b border-border">
+            <p className="text-sm text-text">
+              Found <strong>{searchResults.length}</strong> PDF files
+            </p>
           </div>
         )}
 
@@ -240,14 +305,16 @@ export function GoogleDrivePicker({
                 Retry
               </Button>
             </div>
-          ) : files.length === 0 ? (
+          ) : (searchResults || files).length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
               <Folder className="w-12 h-12 text-text-soft mb-4" />
-              <p className="text-sm text-text-soft">This folder is empty</p>
+              <p className="text-sm text-text-soft">
+                {searchResults ? 'No PDFs found. Try a different search.' : 'This folder is empty'}
+              </p>
             </div>
           ) : (
             <div className="space-y-1">
-              {files.map((file) => {
+              {(searchResults || files).map((file) => {
                 const isPdf = isPdfFile(file);
                 const isFolderItem = isFolder(file);
                 const isSelected = selectedFile?.id === file.id;
