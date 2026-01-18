@@ -20,7 +20,7 @@ export default function DocumentViewerPage() {
   const searchParams = useSearchParams();
   const workspaceId = params.id as string;
   const documentId = params.docId as string;
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { show, showSuccess, showError } = useToast();
 
   const [document, setDocument] = useState<Document | null>(null);
@@ -129,6 +129,27 @@ export default function DocumentViewerPage() {
 
     fetchData();
   }, [supabase, documentId, workspaceId, show, showError]);
+
+  // Subscribe to document updates so type/status reflects background processing
+  // (e.g. classify-document updating document_type from 'other' to 'legal_filing').
+  useEffect(() => {
+    if (!documentId) return;
+
+    const channel = supabase
+      .channel(`document-${documentId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'documents', filter: `id=eq.${documentId}` },
+        (payload) => {
+          setDocument(payload.new as unknown as Document);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, documentId]);
 
   // Handle text selection for AI features
   const handleTextSelect = useCallback((text: string, pageNumber: number) => {

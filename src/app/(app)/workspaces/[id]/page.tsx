@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -68,7 +68,7 @@ export default function WorkspaceDetailPage() {
   const t = useTranslations('documents');
   const tFolders = useTranslations('folders');
   const tCommon = useTranslations('common');
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { showError, showSuccess } = useToast();
 
   // Data state
@@ -191,6 +191,54 @@ export default function WorkspaceDetailPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Keep document list fresh when background classification updates document_type.
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    const channel = supabase
+      .channel(`documents-workspace-${workspaceId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'documents', filter: `workspace_id=eq.${workspaceId}` },
+        (payload) => {
+          const updated = payload.new as unknown as Document;
+
+          const inCurrentFolder = currentFolderId
+            ? updated.folder_id === currentFolderId
+            : !updated.folder_id;
+
+          const shouldShow =
+            updated.deleted_at == null &&
+            updated.storage_path !== 'local' &&
+            inCurrentFolder;
+
+          setDocuments((prev) => {
+            const idx = prev.findIndex((d) => d.id === updated.id);
+
+            if (shouldShow) {
+              if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = updated;
+                return next;
+              }
+              // New to this view (e.g. moved folders) — add to top.
+              return [updated, ...prev];
+            }
+
+            if (idx >= 0) {
+              return prev.filter((d) => d.id !== updated.id);
+            }
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, workspaceId, currentFolderId]);
 
   // Navigate into folder
   const navigateToFolder = (folder: WorkspaceFolder) => {

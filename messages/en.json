@@ -158,6 +158,7 @@
       "paper": "Paper",
       "meeting_notes": "Meeting Notes",
       "invoice": "Invoice",
+      "legal_filing": "Legal Filing",
       "other": "Other"
     }
   },
