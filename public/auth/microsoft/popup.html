@@ -7,5 +7,121 @@
 </head>
 <body>
   <p>Completing sign-in...</p>
+  <script>
+    /**
+     * MSAL v5 popup redirect bridge.
+     *
+     * In msal-browser v5, acquireTokenPopup waits for the redirect window to
+     * broadcast the raw auth response payload via BroadcastChannel keyed by the
+     * MSAL state id. Without this, the popup will hang on this page and the main
+     * window promise never resolves.
+     *
+     * This intentionally avoids bundling MSAL into this static page.
+     */
+    (function () {
+      function decodeBase64Url(input) {
+        // Convert base64url to base64
+        var base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+        // Pad out to multiple of 4
+        while (base64.length % 4) base64 += '=';
+        try {
+          return atob(base64);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function parseAuthResponseFromUrl() {
+        var urlHash = window.location.hash || '';
+        var urlQuery = window.location.search || '';
+
+        var hasResponseInHash = false;
+        var hasResponseInQuery = false;
+        var payload = '';
+        var params = null;
+
+        if (urlHash && urlHash.length > 1) {
+          var hashContent = urlHash.charAt(0) === '#' ? urlHash.substring(1) : urlHash;
+          var hashParams = new URLSearchParams(hashContent);
+          if (hashParams.has('state')) {
+            hasResponseInHash = true;
+            payload = hashContent;
+            params = hashParams;
+          }
+        }
+
+        if (urlQuery && urlQuery.length > 1) {
+          var queryContent = urlQuery.charAt(0) === '?' ? urlQuery.substring(1) : urlQuery;
+          var queryParams = new URLSearchParams(queryContent);
+          if (queryParams.has('state')) {
+            hasResponseInQuery = true;
+            payload = queryContent;
+            params = queryParams;
+          }
+        }
+
+        // Hybrid format: combine query+hash
+        if (hasResponseInHash && hasResponseInQuery) {
+          var qc = urlQuery.charAt(0) === '?' ? urlQuery.substring(1) : urlQuery;
+          var hc = urlHash.charAt(0) === '#' ? urlHash.substring(1) : urlHash;
+          payload = '' + qc + hc;
+          params = new URLSearchParams(payload);
+        }
+
+        if (!payload || !params) return null;
+
+        var state = params.get('state');
+        if (!state) return null;
+
+        // state = base64(JSON({id, meta})) + "|" + userState (optional)
+        var parts = state.split('|');
+        var libraryStateB64 = parts[0];
+        var decoded = decodeBase64Url(libraryStateB64);
+        if (!decoded) return null;
+
+        try {
+          var libraryState = JSON.parse(decoded);
+          if (!libraryState || !libraryState.id) return null;
+          return { id: libraryState.id, payload: payload, hasResponseInHash: hasResponseInHash, hasResponseInQuery: hasResponseInQuery, urlHash: urlHash, urlQuery: urlQuery };
+        } catch (e) {
+          return null;
+        }
+      }
+
+      var parsed = parseAuthResponseFromUrl();
+      if (!parsed) {
+        // Nothing to do; allow user to close.
+        return;
+      }
+
+      // Clear only the part(s) containing the auth response from URL
+      try {
+        if (typeof window.history.replaceState === 'function') {
+          var newUrl = window.location.origin + window.location.pathname;
+          // Preserve hash if it didn't contain the response
+          if (!parsed.hasResponseInHash && parsed.urlHash) newUrl += parsed.urlHash;
+          // Preserve query if it didn't contain the response
+          if (!parsed.hasResponseInQuery && parsed.urlQuery) newUrl += parsed.urlQuery;
+          window.history.replaceState(null, '', newUrl);
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        var channel = new BroadcastChannel(parsed.id);
+        channel.postMessage({ v: 1, payload: parsed.payload });
+        channel.close();
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        window.close();
+      } catch (e) {
+        // ignore
+      }
+    })();
+  </script>
 </body>
 </html>
