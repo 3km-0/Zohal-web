@@ -5,8 +5,6 @@
  * and Microsoft Graph API for file browsing and selection.
  */
 
-import type { PublicClientApplication as MSALClient } from '@azure/msal-browser';
-
 // Microsoft OAuth configuration
 const MICROSOFT_CLIENT_ID = process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID || '';
 const MICROSOFT_SCOPES = [
@@ -41,7 +39,6 @@ export interface OneDriveFolder {
 // Store the access token in memory
 let cachedAccessToken: string | null = null;
 let tokenExpiresAt: number | null = null;
-let msalInstance: MSALClient | null = null;
 
 /**
  * Check if we have a valid access token
@@ -62,11 +59,20 @@ export function getAccessToken(): string | null {
 }
 
 /**
- * Get or create MSAL instance
+ * Authenticate with Microsoft using popup flow
+ * Returns the access token
  */
-async function getMsalInstance(): Promise<MSALClient> {
-  if (msalInstance) return msalInstance;
+export async function authenticateWithMicrosoft(): Promise<string> {
+  if (!MICROSOFT_CLIENT_ID) {
+    throw new Error('Microsoft Client ID not configured');
+  }
 
+  // Check if we already have a valid token
+  if (hasValidToken() && cachedAccessToken) {
+    return cachedAccessToken;
+  }
+
+  // Dynamic import of MSAL to avoid SSR issues
   const { PublicClientApplication } = await import('@azure/msal-browser');
 
   const msalConfig = {
@@ -81,86 +87,33 @@ async function getMsalInstance(): Promise<MSALClient> {
     },
   };
 
-  msalInstance = new PublicClientApplication(msalConfig);
+  const msalInstance = new PublicClientApplication(msalConfig);
   await msalInstance.initialize();
 
-  return msalInstance;
-}
-
-/**
- * Authenticate with Microsoft using popup flow
- * Returns the access token
- */
-export async function authenticateWithMicrosoft(): Promise<string> {
-  console.log('[OneDrive] authenticateWithMicrosoft called');
-  
-  if (!MICROSOFT_CLIENT_ID) {
-    console.error('[OneDrive] No client ID configured');
-    throw new Error('Microsoft Client ID not configured');
-  }
-
-  // Check if we already have a valid token
-  if (hasValidToken() && cachedAccessToken) {
-    console.log('[OneDrive] Using cached token');
-    return cachedAccessToken;
-  }
-
-  console.log('[OneDrive] Getting MSAL instance...');
-  const instance = await getMsalInstance();
-  console.log('[OneDrive] MSAL instance ready');
-
-  // Check for existing accounts
-  let accounts = instance.getAllAccounts();
-  console.log('[OneDrive] Found accounts:', accounts.length);
-  
-  // If no accounts, do login popup first
-  if (accounts.length === 0) {
-    console.log('[OneDrive] No accounts, starting login popup...');
-    try {
-      const loginResponse = await instance.loginPopup({
-        scopes: MICROSOFT_SCOPES,
-      });
-      console.log('[OneDrive] Login popup completed, account:', loginResponse.account?.username);
-      
-      if (loginResponse.accessToken) {
-        cachedAccessToken = loginResponse.accessToken;
-        tokenExpiresAt = loginResponse.expiresOn?.getTime() || Date.now() + 3600000;
-        return loginResponse.accessToken;
-      }
-      
-      // Refresh accounts list after login
-      accounts = instance.getAllAccounts();
-    } catch (err) {
-      console.error('[OneDrive] Login popup failed:', err);
-      throw err;
-    }
-  }
-  
-  // Now try to get token silently (or via popup if needed)
+  // Try to get token silently first
+  const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
     try {
-      console.log('[OneDrive] Trying silent token acquisition...');
-      const silentResult = await instance.acquireTokenSilent({
+      const silentResult = await msalInstance.acquireTokenSilent({
         scopes: MICROSOFT_SCOPES,
         account: accounts[0],
       });
       cachedAccessToken = silentResult.accessToken;
       tokenExpiresAt = silentResult.expiresOn?.getTime() || Date.now() + 3600000;
-      console.log('[OneDrive] Silent acquisition succeeded');
       return silentResult.accessToken;
-    } catch (err) {
-      console.log('[OneDrive] Silent acquisition failed, trying popup:', err);
-      // Silent failed, try popup
-      const popupResult = await instance.acquireTokenPopup({
-        scopes: MICROSOFT_SCOPES,
-      });
-      cachedAccessToken = popupResult.accessToken;
-      tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
-      return popupResult.accessToken;
+    } catch {
+      // Silent token acquisition failed, will try popup
     }
   }
 
-  throw new Error('No Microsoft account available');
+  // Acquire token via popup
+  const popupResult = await msalInstance.acquireTokenPopup({
+    scopes: MICROSOFT_SCOPES,
+  });
+
+  cachedAccessToken = popupResult.accessToken;
+  tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
+  return popupResult.accessToken;
 }
 
 /**
