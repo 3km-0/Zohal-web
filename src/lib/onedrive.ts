@@ -89,6 +89,19 @@ export async function initMsal(): Promise<void> {
 
     msalInstance = new PublicClientApplication(msalConfig);
     await msalInstance.initialize();
+    
+    // Handle popup/redirect response if this page was opened as a popup
+    try {
+      const response = await msalInstance.handleRedirectPromise();
+      if (response) {
+        console.log('[OneDrive] Handled redirect response, got token');
+        cachedAccessToken = response.accessToken;
+        tokenExpiresAt = response.expiresOn?.getTime() || Date.now() + 3600000;
+      }
+    } catch (err) {
+      console.error('[OneDrive] Error handling redirect:', err);
+    }
+    
     console.log('[OneDrive] MSAL initialized');
   })();
 
@@ -139,6 +152,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     console.log('[OneDrive] Starting acquireTokenPopup...');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
+      redirectUri: window.location.origin + '/blank.html',
     });
     console.log('[OneDrive] Popup completed successfully');
 
