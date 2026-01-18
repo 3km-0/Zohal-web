@@ -60,27 +60,21 @@ export function getAccessToken(): string | null {
 
 // Cached MSAL instance
 let msalInstance: InstanceType<typeof import('@azure/msal-browser').PublicClientApplication> | null = null;
+let msalInitPromise: Promise<void> | null = null;
 
 /**
- * Authenticate with Microsoft using popup flow
- * Returns the access token
+ * Initialize MSAL instance (call this early, before user interaction)
  */
-export async function authenticateWithMicrosoft(): Promise<string> {
-  if (!MICROSOFT_CLIENT_ID) {
-    throw new Error('Microsoft Client ID not configured');
-  }
+export async function initMsal(): Promise<void> {
+  if (msalInstance) return;
+  if (msalInitPromise) return msalInitPromise;
 
-  // Check if we already have a valid token
-  if (hasValidToken() && cachedAccessToken) {
-    return cachedAccessToken;
-  }
+  msalInitPromise = (async () => {
+    if (!MICROSOFT_CLIENT_ID) return;
 
-  // Dynamic import of MSAL to avoid SSR issues
-  const { PublicClientApplication } = await import('@azure/msal-browser');
+    const { PublicClientApplication } = await import('@azure/msal-browser');
 
-  // Create or reuse MSAL instance
-  if (!msalInstance) {
-    console.log('[OneDrive] Creating new MSAL instance with redirectUri:', window.location.origin);
+    console.log('[OneDrive] Creating MSAL instance with redirectUri:', window.location.origin);
     const msalConfig = {
       auth: {
         clientId: MICROSOFT_CLIENT_ID,
@@ -96,6 +90,32 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     msalInstance = new PublicClientApplication(msalConfig);
     await msalInstance.initialize();
     console.log('[OneDrive] MSAL initialized');
+  })();
+
+  return msalInitPromise;
+}
+
+/**
+ * Authenticate with Microsoft using popup flow
+ * Returns the access token
+ */
+export async function authenticateWithMicrosoft(): Promise<string> {
+  if (!MICROSOFT_CLIENT_ID) {
+    throw new Error('Microsoft Client ID not configured');
+  }
+
+  // Check if we already have a valid token
+  if (hasValidToken() && cachedAccessToken) {
+    return cachedAccessToken;
+  }
+
+  // Ensure MSAL is initialized
+  if (!msalInstance) {
+    await initMsal();
+  }
+
+  if (!msalInstance) {
+    throw new Error('MSAL failed to initialize');
   }
 
   // Try to get token silently first
@@ -129,6 +149,7 @@ export async function authenticateWithMicrosoft(): Promise<string> {
     console.error('[OneDrive] Popup error:', err);
     // Reset instance on error so next attempt starts fresh
     msalInstance = null;
+    msalInitPromise = null;
     
     // Provide helpful error messages
     const error = err as { errorCode?: string; errorMessage?: string; message?: string };

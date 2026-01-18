@@ -14,6 +14,7 @@ import { Button, Card, Spinner } from '@/components/ui';
 import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
 import {
   authenticateWithMicrosoft,
+  initMsal,
   listOneDriveFiles,
   getFolderPath,
   isPdfFile,
@@ -52,13 +53,19 @@ export function OneDrivePicker({
   // Check if configured
   const isConfigured = isOneDriveConfigured();
 
-  // Check for existing token on mount
+  // Initialize MSAL and check for existing token on mount
   useEffect(() => {
-    const existingToken = getAccessToken();
-    if (existingToken) {
-      setAccessToken(existingToken);
-    }
-    setLoading(false);
+    const init = async () => {
+      // Initialize MSAL early so popup can open immediately on click
+      await initMsal();
+      
+      const existingToken = getAccessToken();
+      if (existingToken) {
+        setAccessToken(existingToken);
+      }
+      setLoading(false);
+    };
+    init();
   }, []);
 
   // Start authentication (popup flow)
