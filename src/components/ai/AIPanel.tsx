@@ -6,12 +6,8 @@ import {
   X,
   Sparkles,
   MessageSquare,
-  BookOpen,
-  Scale,
-  Calculator,
   FileText,
   Send,
-  Lightbulb,
   Bookmark,
   Clock,
   Star,
@@ -48,31 +44,6 @@ interface ConversationSummary {
   messageCount: number;
 }
 
-// Capability buttons based on document type
-const getCapabilities = (docType?: DocumentType) => {
-  const baseCapabilities = [
-    { id: 'explain', icon: Lightbulb, label: 'Explain', color: 'text-amber-500' },
-    { id: 'summarize', icon: BookOpen, label: 'Summarize', color: 'text-blue-500' },
-  ];
-
-  if (docType === 'contract') {
-    return [
-      ...baseCapabilities,
-      { id: 'analyze', icon: Scale, label: 'Contract Analysis', color: 'text-purple-500' },
-      { id: 'risks', icon: FileText, label: 'Detect Risks', color: 'text-rose-500' },
-    ];
-  }
-
-  if (docType === 'problem_set' || docType === 'textbook') {
-    return [
-      ...baseCapabilities,
-      { id: 'hint', icon: Lightbulb, label: 'Get Hint', color: 'text-green-500' },
-      { id: 'verify', icon: Calculator, label: 'Verify Solution', color: 'text-cyan-500' },
-    ];
-  }
-
-  return baseCapabilities;
-};
 
 export function AIPanel({
   documentId,
@@ -93,8 +64,6 @@ export function AIPanel({
   const [pinnedNotes, setPinnedNotes] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-
-  const capabilities = getCapabilities(documentType);
 
   // Load pinned notes (from explanations table where they're saved as notes)
   const loadPinnedNotes = useCallback(async () => {
@@ -433,33 +402,6 @@ export function AIPanel({
                     <p className="text-sm text-text line-clamp-3">{selectedText}</p>
                   </div>
                 )}
-
-                {/* Capability buttons */}
-                <div className="grid grid-cols-2 gap-2">
-                  {capabilities.map((cap) => (
-                    <button
-                      key={cap.id}
-                      onClick={() => {
-                        if (cap.id === 'analyze') {
-                          goToContractAnalysis();
-                          return;
-                        }
-                        if (selectedText) {
-                          handleExplain(selectedText, cap.id);
-                        }
-                      }}
-                      disabled={(cap.id !== 'analyze' && !selectedText) || loading}
-                      className={cn(
-                        'flex items-center gap-2 p-3 rounded-scholar border border-border',
-                        'hover:border-accent/50 hover:bg-surface-alt transition-all',
-                        'disabled:opacity-50 disabled:cursor-not-allowed'
-                      )}
-                    >
-                      <cap.icon className={cn('w-4 h-4', cap.color)} />
-                      <span className="text-sm font-medium text-text">{cap.label}</span>
-                    </button>
-                  ))}
-                </div>
 
                 {/* Empty state */}
                 {!selectedText && (
