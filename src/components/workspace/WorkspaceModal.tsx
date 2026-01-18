@@ -7,6 +7,7 @@ import { Button, Input, Card } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { resolveIcon, isSFSymbol } from '@/lib/icon-mapping';
 
 interface WorkspaceModalProps {
   workspace?: Workspace | null;
@@ -35,7 +36,16 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
   const [workspaceType, setWorkspaceType] = useState<WorkspaceType>(
     workspace?.workspace_type || 'project'
   );
-  const [iconEmoji, setIconEmoji] = useState(workspace?.icon || '');
+  // Convert SF Symbol to emoji if needed when editing existing workspace
+  const getInitialIcon = () => {
+    if (!workspace?.icon) return '';
+    if (isSFSymbol(workspace.icon)) {
+      const resolved = resolveIcon(workspace.icon);
+      return resolved.type === 'emoji' ? resolved.emoji : '';
+    }
+    return workspace.icon;
+  };
+  const [iconEmoji, setIconEmoji] = useState(getInitialIcon());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

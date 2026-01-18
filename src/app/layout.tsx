@@ -28,6 +28,10 @@ export const metadata: Metadata = {
     'The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.',
   keywords: ['AI', 'STEM', 'notebook', 'PDF', 'education', 'math', 'science'],
   authors: [{ name: 'Zohal' }],
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     title: 'Zohal - AI STEM Notebook',
     description:

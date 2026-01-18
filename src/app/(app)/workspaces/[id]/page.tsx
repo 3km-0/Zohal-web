@@ -15,6 +15,7 @@ import {
   Home,
   FolderInput,
   RefreshCcw,
+  Share2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -24,6 +25,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Workspace, Document, DocumentType, ProcessingStatus, WorkspaceFolder, FolderWithStats } from '@/types/database';
 import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
+import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
 import { FolderIcon, CreateFolderModal } from '@/components/folder';
 
 // Document type icons
@@ -567,6 +569,7 @@ function DocumentCard({
   const supabase = createClient();
   const { showSuccess } = useToast();
   const [showMenu, setShowMenu] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const isProcessing = ['pending', 'uploading', 'processing', 'chunked', 'embedding'].includes(
     doc.processing_status
@@ -664,6 +667,18 @@ function DocumentCard({
                 {tCommon('open')}
               </Link>
 
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowMenu(false);
+                  setShowShareModal(true);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+              >
+                <Share2 className="w-4 h-4" />
+                {tCommon('share')}
+              </button>
+
               {canRetryIndexing && (
                 <button
                   onClick={(e) => {
@@ -727,6 +742,15 @@ function DocumentCard({
           </>
         )}
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareDocumentModal
+          document={doc}
+          workspaceId={workspaceId}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </Card>
   );
 }

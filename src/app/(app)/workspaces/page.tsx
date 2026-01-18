@@ -8,10 +8,11 @@ import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, WorkspaceType } from '@/types/database';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { resolveIcon } from '@/lib/icon-mapping';
 import Link from 'next/link';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
 
-// Workspace type icons
+// Workspace type icons (fallback emojis)
 const workspaceIcons: Record<WorkspaceType, string> = {
   project: '📁',
   case: '⚖️',
@@ -168,6 +169,19 @@ export default function WorkspacesPage() {
   );
 }
 
+// Component to render workspace icon - handles SF Symbol to emoji/icon conversion
+function WorkspaceIcon({ icon, fallback }: { icon: string | null | undefined; fallback: string }) {
+  const resolved = resolveIcon(icon, false);
+  
+  if (resolved.type === 'emoji') {
+    return <span>{resolved.emoji}</span>;
+  }
+  
+  // If we have a Lucide icon, render it
+  const IconComponent = resolved.icon;
+  return <IconComponent className="w-6 h-6" />;
+}
+
 interface WorkspaceCardProps {
   workspace: Workspace;
   onEdit: () => void;
@@ -195,7 +209,10 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
               workspaceColors[workspace.workspace_type]
             )}
           >
-            {workspace.icon || workspaceIcons[workspace.workspace_type]}
+            <WorkspaceIcon
+              icon={workspace.icon}
+              fallback={workspaceIcons[workspace.workspace_type]}
+            />
           </div>
 
           {/* Content */}
