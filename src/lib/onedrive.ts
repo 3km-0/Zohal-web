@@ -92,37 +92,50 @@ async function getMsalInstance(): Promise<MSALClient> {
  * Returns the access token
  */
 export async function authenticateWithMicrosoft(): Promise<string> {
+  console.log('[OneDrive] authenticateWithMicrosoft called');
+  
   if (!MICROSOFT_CLIENT_ID) {
+    console.error('[OneDrive] No client ID configured');
     throw new Error('Microsoft Client ID not configured');
   }
 
   // Check if we already have a valid token
   if (hasValidToken() && cachedAccessToken) {
+    console.log('[OneDrive] Using cached token');
     return cachedAccessToken;
   }
 
+  console.log('[OneDrive] Getting MSAL instance...');
   const instance = await getMsalInstance();
+  console.log('[OneDrive] MSAL instance ready');
 
   // Try silent first
   const accounts = instance.getAllAccounts();
+  console.log('[OneDrive] Found accounts:', accounts.length);
+  
   if (accounts.length > 0) {
     try {
+      console.log('[OneDrive] Trying silent token acquisition...');
       const silentResult = await instance.acquireTokenSilent({
         scopes: MICROSOFT_SCOPES,
         account: accounts[0],
       });
       cachedAccessToken = silentResult.accessToken;
       tokenExpiresAt = silentResult.expiresOn?.getTime() || Date.now() + 3600000;
+      console.log('[OneDrive] Silent acquisition succeeded');
       return silentResult.accessToken;
-    } catch {
+    } catch (err) {
+      console.log('[OneDrive] Silent acquisition failed:', err);
       // Silent failed, need popup
     }
   }
 
   // Use popup for authentication
+  console.log('[OneDrive] Opening popup for authentication...');
   const popupResult = await instance.acquireTokenPopup({
     scopes: MICROSOFT_SCOPES,
   });
+  console.log('[OneDrive] Popup completed');
 
   cachedAccessToken = popupResult.accessToken;
   tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
