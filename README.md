@@ -2,6 +2,10 @@
 
 Web companion for the Zohal document platform. Built with Next.js 14, React, and TypeScript.
 
+## Repo layout (important)
+
+This is a **separate git repository** from `zohal-core/` (which contains iOS + Supabase backend + core docs). Commit and push changes **inside each repo**.
+
 ## Quick Start
 
 ```bash
