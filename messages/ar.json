@@ -406,6 +406,21 @@
       "obligations": "الالتزامات",
       "risks": "المخاطر",
       "deadlines": "المواعيد النهائية"
+    },
+    "customModules": {
+      "title": "وحدات مخصّصة",
+      "add": "إضافة وحدة",
+      "empty": "لا توجد وحدات مخصّصة بعد.",
+      "defaultTitle": "وحدة مخصّصة",
+      "invalidJson": "مخطط JSON غير صالح (يجب أن يكون كائناً).",
+      "fields": {
+        "title": "العنوان",
+        "enabled": "مفعّل",
+        "showInReport": "إظهار في التقرير",
+        "prompt": "التوجيه",
+        "promptPlaceholder": "صف ما تريد استخراجه وكيف يجب تنظيمه.",
+        "jsonSchema": "مخطط JSON"
+      }
     }
   },
   "contractAnalysis": {

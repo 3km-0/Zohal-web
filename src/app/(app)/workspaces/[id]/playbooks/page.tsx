@@ -16,6 +16,14 @@ type PlaybookSpecV1 = {
   options?: { strictness?: 'default' | 'strict'; enable_verifier?: boolean; language?: 'en' | 'ar' };
   modules?: string[];
   outputs?: string[];
+  custom_modules?: Array<{
+    id: string;
+    title: string;
+    prompt: string;
+    json_schema: Record<string, unknown>;
+    enabled?: boolean;
+    show_in_report?: boolean;
+  }>;
   variables: Array<{
     key: string;
     type: string;
@@ -69,6 +77,21 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
       : undefined;
   const modules = Array.isArray(input?.modules) ? input.modules.map((x: any) => String(x).trim()).filter(Boolean) : undefined;
   const outputs = Array.isArray(input?.outputs) ? input.outputs.map((x: any) => String(x).trim()).filter(Boolean) : undefined;
+  const custom_modules = Array.isArray(input?.custom_modules)
+    ? input.custom_modules
+        .map((m: any) => ({
+          id: String(m?.id || '').trim(),
+          title: String(m?.title || '').trim(),
+          prompt: String(m?.prompt || ''),
+          json_schema: (m?.json_schema && typeof m.json_schema === 'object' && !Array.isArray(m.json_schema) ? m.json_schema : {}) as Record<
+            string,
+            unknown
+          >,
+          enabled: m?.enabled === true,
+          show_in_report: m?.show_in_report === true,
+        }))
+        .filter((m: any) => !!m.id)
+    : undefined;
   const variables = Array.isArray(input?.variables) ? input.variables : [];
   const normalizedVars = variables
     .map((v: any) => ({
@@ -123,6 +146,7 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
     options,
     modules,
     outputs,
+    custom_modules,
     variables: normalizedVars,
     checks: normalizedChecks,
   };
@@ -151,9 +175,28 @@ export default function WorkspacePlaybooksPage() {
     options: { strictness: 'default', enable_verifier: false, language: 'en' },
     modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
     outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
+    custom_modules: [],
     variables: [],
     checks: [],
   });
+
+  const [customSchemaTextById, setCustomSchemaTextById] = useState<Record<string, string>>({});
+  const [customSchemaErrorById, setCustomSchemaErrorById] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const cms = spec.custom_modules || [];
+    if (cms.length === 0) return;
+    setCustomSchemaTextById((prev) => {
+      const next = { ...prev };
+      for (const m of cms) {
+        if (!m?.id) continue;
+        if (next[m.id] == null) {
+          next[m.id] = JSON.stringify(m.json_schema || {}, null, 2);
+        }
+      }
+      return next;
+    });
+  }, [spec.custom_modules]);
 
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
 
@@ -201,6 +244,7 @@ export default function WorkspacePlaybooksPage() {
         options: { strictness: 'default', enable_verifier: false, language: 'en' },
         modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
         outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
+        custom_modules: [],
         variables: [],
         checks: [],
       };
@@ -483,6 +527,144 @@ export default function WorkspacePlaybooksPage() {
                         </label>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-text">{t('customModules.title')}</div>
+                      <Button
+                        onClick={() =>
+                          setSpec((p) => {
+                            const id = `custom_${crypto.randomUUID().replace(/-/g, '')}`;
+                            const mod = {
+                              id,
+                              title: t('customModules.defaultTitle'),
+                              prompt: '',
+                              json_schema: { type: 'object', properties: {}, required: [] },
+                              enabled: true,
+                              show_in_report: true,
+                            };
+                            return { ...p, custom_modules: [...(p.custom_modules || []), mod] };
+                          })
+                        }
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t('customModules.add')}
+                      </Button>
+                    </div>
+
+                    {(spec.custom_modules || []).length === 0 ? (
+                      <div className="text-sm text-text-soft">{t('customModules.empty')}</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(spec.custom_modules || []).map((m, idx) => (
+                          <Card key={`${m.id}-${idx}`}>
+                            <CardContent className="p-3 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <label className="space-y-1 text-sm">
+                                  <div className="text-text-soft font-semibold">{t('customModules.fields.title')}</div>
+                                  <Input
+                                    value={m.title}
+                                    onChange={(e) =>
+                                      setSpec((p) => {
+                                        const cms = (p.custom_modules || []).slice();
+                                        cms[idx] = { ...cms[idx], title: e.target.value };
+                                        return { ...p, custom_modules: cms };
+                                      })
+                                    }
+                                  />
+                                  <div className="text-xs text-text-soft">{m.id}</div>
+                                </label>
+                                <div className="flex flex-col justify-end gap-2">
+                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                                    <input
+                                      type="checkbox"
+                                      checked={m.enabled !== false}
+                                      onChange={(e) =>
+                                        setSpec((p) => {
+                                          const cms = (p.custom_modules || []).slice();
+                                          cms[idx] = { ...cms[idx], enabled: e.target.checked };
+                                          return { ...p, custom_modules: cms };
+                                        })
+                                      }
+                                    />
+                                    {t('customModules.fields.enabled')}
+                                  </label>
+                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                                    <input
+                                      type="checkbox"
+                                      checked={m.show_in_report === true}
+                                      onChange={(e) =>
+                                        setSpec((p) => {
+                                          const cms = (p.custom_modules || []).slice();
+                                          cms[idx] = { ...cms[idx], show_in_report: e.target.checked };
+                                          return { ...p, custom_modules: cms };
+                                        })
+                                      }
+                                    />
+                                    {t('customModules.fields.showInReport')}
+                                  </label>
+                                </div>
+                              </div>
+
+                              <label className="space-y-1 text-sm">
+                                <div className="text-text-soft font-semibold">{t('customModules.fields.prompt')}</div>
+                                <textarea
+                                  className="w-full min-h-[90px] px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                  value={m.prompt}
+                                  onChange={(e) =>
+                                    setSpec((p) => {
+                                      const cms = (p.custom_modules || []).slice();
+                                      cms[idx] = { ...cms[idx], prompt: e.target.value };
+                                      return { ...p, custom_modules: cms };
+                                    })
+                                  }
+                                  placeholder={t('customModules.fields.promptPlaceholder')}
+                                />
+                              </label>
+
+                              <label className="space-y-1 text-sm">
+                                <div className="text-text-soft font-semibold">{t('customModules.fields.jsonSchema')}</div>
+                                <textarea
+                                  className="w-full min-h-[140px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                  value={customSchemaTextById[m.id] ?? JSON.stringify(m.json_schema || {}, null, 2)}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setCustomSchemaTextById((prev) => ({ ...prev, [m.id]: text }));
+                                    try {
+                                      const parsed = JSON.parse(text);
+                                      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                                        throw new Error('schema_must_be_object');
+                                      }
+                                      setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: '' }));
+                                      setSpec((p) => {
+                                        const cms = (p.custom_modules || []).slice();
+                                        cms[idx] = { ...cms[idx], json_schema: parsed };
+                                        return { ...p, custom_modules: cms };
+                                      });
+                                    } catch {
+                                      setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: t('customModules.invalidJson') }));
+                                    }
+                                  }}
+                                />
+                                {customSchemaErrorById[m.id] ? (
+                                  <div className="text-xs text-error">{customSchemaErrorById[m.id]}</div>
+                                ) : null}
+                              </label>
+
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="danger"
+                                  onClick={() => setSpec((p) => ({ ...p, custom_modules: (p.custom_modules || []).filter((_, i) => i !== idx) }))}
+                                >
+                                  {tCommon('remove')}
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

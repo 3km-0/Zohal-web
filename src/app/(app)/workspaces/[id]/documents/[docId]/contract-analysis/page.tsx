@@ -12,7 +12,7 @@ import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
 import { parseSnapshot } from '@/types/evidence-grade';
 import { cn } from '@/lib/utils';
 
-type Tab = 'overview' | 'variables' | 'clauses' | 'obligations' | 'deadlines' | 'risks';
+type Tab = string;
 
 type PlaybookRecord = {
   id: string;
@@ -62,6 +62,22 @@ export default function ContractAnalysisPage() {
       .slice()
       .sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''));
   }, [obligations]);
+
+  const customModules = useMemo(() => {
+    const pb = (snapshot?.pack as any)?.playbook as any;
+    const arr = Array.isArray(pb?.custom_modules) ? pb.custom_modules : [];
+    return (arr as any[])
+      .map((m) => ({
+        id: String(m?.id || '').trim(),
+        title: String(m?.title || '').trim(),
+        status: String(m?.status || ''),
+        error: m?.error ? String(m.error) : null,
+        ai_confidence: m?.ai_confidence ? String(m.ai_confidence) : null,
+        result: m?.result ?? null,
+        evidence: Array.isArray(m?.evidence) ? (m.evidence as any[]) : [],
+      }))
+      .filter((m) => !!m.id && !!m.title);
+  }, [snapshot]);
 
   function computeNoticeDeadline(endDateIso: string | null | undefined, noticeDays: number | null | undefined): Date | null {
     if (!endDateIso || noticeDays == null) return null;
@@ -621,16 +637,15 @@ export default function ContractAnalysisPage() {
 
             {/* Tabs */}
             <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { id: 'overview', label: 'Overview', icon: FileText },
-                  { id: 'variables', label: `Variables (${snapshot?.variables.length ?? 0})`, icon: FileText },
-                  { id: 'clauses', label: `Clauses (${clauses.length})`, icon: FileText },
-                  { id: 'obligations', label: `Obligations (${obligations.length})`, icon: FileText },
-                  { id: 'deadlines', label: `Deadlines (${deadlines.length})`, icon: Calendar },
-                  { id: 'risks', label: `Risks (${risks.length})`, icon: ShieldAlert },
-                ] as const
-              ).map((t) => (
+              {[
+                { id: 'overview', label: 'Overview', icon: FileText },
+                { id: 'variables', label: `Variables (${snapshot?.variables.length ?? 0})`, icon: FileText },
+                { id: 'clauses', label: `Clauses (${clauses.length})`, icon: FileText },
+                { id: 'obligations', label: `Obligations (${obligations.length})`, icon: FileText },
+                { id: 'deadlines', label: `Deadlines (${deadlines.length})`, icon: Calendar },
+                { id: 'risks', label: `Risks (${risks.length})`, icon: ShieldAlert },
+                ...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText })),
+              ].map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
@@ -1170,6 +1185,64 @@ export default function ContractAnalysisPage() {
                     </Card>
                   ))
                 )}
+              </div>
+            )}
+
+            {tab.startsWith('custom:') && (
+              <div className="space-y-3">
+                {(() => {
+                  const id = tab.slice('custom:'.length);
+                  const m = customModules.find((x) => x.id === id);
+                  if (!m) return <EmptyState title="Missing module" description="This custom module was not found in the snapshot." />;
+
+                  const evidenceLinks = (m.evidence || [])
+                    .slice(0, 8)
+                    .map((e) => ({
+                      page: typeof (e as any)?.page_number === 'number' ? (e as any).page_number : null,
+                      quote: typeof (e as any)?.source_quote === 'string' ? (e as any).source_quote : '',
+                    }))
+                    .filter((e) => !!e.page && !!e.quote);
+
+                  return (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between gap-3">
+                          <span>{m.title}</span>
+                          <Badge size="sm">{m.status || 'unknown'}</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {m.error ? <div className="text-sm text-error">{m.error}</div> : null}
+                        {m.ai_confidence ? <div className="text-sm text-text-soft">Confidence: {m.ai_confidence}</div> : null}
+
+                        <div className="rounded-scholar border border-border bg-surface-alt p-3 font-mono text-xs whitespace-pre-wrap">
+                          {m.result == null ? 'null' : typeof m.result === 'string' ? m.result : JSON.stringify(m.result, null, 2)}
+                        </div>
+
+                        {evidenceLinks.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="text-sm font-semibold text-text">Evidence</div>
+                            <ul className="space-y-2">
+                              {evidenceLinks.map((e, idx) => (
+                                <li key={idx}>
+                                  <Link
+                                    href={`/workspaces/${workspaceId}/documents/${documentId}?page=${e.page}&quote=${encodeURIComponent(
+                                      e.quote.slice(0, 160)
+                                    )}`}
+                                    className="text-sm font-semibold text-accent hover:underline"
+                                  >
+                                    Page {e.page}
+                                  </Link>
+                                  <div className="text-sm text-text-soft">“{e.quote}”</div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
               </div>
             )}
           </div>

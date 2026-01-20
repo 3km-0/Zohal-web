@@ -406,6 +406,21 @@
       "obligations": "Obligations",
       "risks": "Risks",
       "deadlines": "Deadlines"
+    },
+    "customModules": {
+      "title": "Custom modules",
+      "add": "Add module",
+      "empty": "No custom modules yet.",
+      "defaultTitle": "Custom module",
+      "invalidJson": "Invalid JSON schema (must be an object).",
+      "fields": {
+        "title": "Title",
+        "enabled": "Enabled",
+        "showInReport": "Show in report",
+        "prompt": "Prompt",
+        "promptPlaceholder": "Describe what you want extracted and how to structure it.",
+        "jsonSchema": "JSON schema"
+      }
     }
   },
   "contractAnalysis": {
