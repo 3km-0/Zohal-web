@@ -370,4 +370,77 @@
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your workspaces, documents, and notes will be permanently deleted.",
     "yesDeleteAccount": "Yes, Delete My Account"
   }
+  ,
+  "playbooks": {
+    "title": "Playbooks",
+    "subtitle": "Define variables + checks for contract analysis. Publish versions to make them selectable.",
+    "list": {
+      "title": "Published & Draft",
+      "newNamePlaceholder": "New playbook name",
+      "empty": "No playbooks yet."
+    },
+    "builder": {
+      "title": "Builder",
+      "saveDraft": "Save draft",
+      "publish": "Publish",
+      "selectToEdit": "Select a playbook to edit."
+    },
+    "settingsFixed": "Settings (fixed)",
+    "strictMode": "Strict mode",
+    "enableVerifier": "Enable verifier",
+    "arabicOutput": "Arabic output",
+    "outputsModules": "Outputs (modules)",
+    "modules": {
+      "variables": "Variables",
+      "clauses": "Clauses",
+      "obligations": "Obligations",
+      "risks": "Risks",
+      "deadlines": "Deadlines"
+    },
+    "modulesHelp": "Disabling a module will store an empty array for it in the canonical snapshot.",
+    "reportSections": "Report sections (outputs)",
+    "outputs": {
+      "overview": "Overview",
+      "variables": "Variables",
+      "clauses": "Clauses",
+      "obligations": "Obligations",
+      "risks": "Risks",
+      "deadlines": "Deadlines"
+    }
+  },
+  "contractAnalysis": {
+    "playbook": {
+      "optional": "Playbook (optional)",
+      "manage": "Manage",
+      "label": "Playbook",
+      "defaultRenewalPack": "Default (Renewal Pack)"
+    },
+    "empty": {
+      "notAnalyzedTitle": "Not analyzed yet",
+      "notAnalyzedDescription": "This contract doesn't have a saved analysis. Run it once, then you can reopen it anytime.",
+      "noVariablesSnapshotTitle": "No variables snapshot",
+      "noVariablesSnapshotDescription": "This view is driven by the evidence-grade snapshot (canonical). Re-run analysis if needed.",
+      "noVariablesTitle": "No variables",
+      "noVariablesDescription": "No variables were stored in the canonical snapshot.",
+      "noClausesTitle": "No clauses",
+      "noClausesDescription": "No clauses were saved for this analysis.",
+      "noObligationsTitle": "No obligations",
+      "noObligationsDescription": "No obligations were saved for this analysis.",
+      "noDeadlinesTitle": "No deadlines",
+      "noDeadlinesDescription": "No contract dates or obligations with due dates were found.",
+      "noRisksTitle": "No risks",
+      "noRisksDescription": "No risks were saved for this analysis."
+    },
+    "needsReview": {
+      "title": "Needs review",
+      "subtitle": "Deterministic playbook checks / verifier findings computed post-reduce."
+    },
+    "privacyMode": {
+      "sanitizedTitle": "Sanitized document (Privacy Mode)",
+      "sanitizedSubtitle": "Some fields are masked before cloud processing. Do not guess redacted content."
+    },
+    "progress": {
+      "title": "Contract Analysis in progress"
+    }
+  }
 }

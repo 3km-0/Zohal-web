@@ -188,6 +188,10 @@ export interface EvidenceGradeSnapshot {
     template_version?: string
     modules_activated?: string[]
     modules?: Record<string, unknown>
+    // Playbooks (additive)
+    playbook?: Record<string, unknown>
+    exceptions_summary?: { blocker: number; warning: number }
+    exceptions?: Array<Record<string, unknown>>
   }
   
   /** Verified variables (the core of evidence-grade data) */

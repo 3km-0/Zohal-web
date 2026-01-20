@@ -370,4 +370,77 @@
     "deleteAccountConfirm": "هل أنت متأكد من حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع مساحات العمل والمستندات والملاحظات بشكل دائم.",
     "yesDeleteAccount": "نعم، احذف حسابي"
   }
+  ,
+  "playbooks": {
+    "title": "أدلة التحليل",
+    "subtitle": "عرّف المتغيرات والفحوصات لتحليل العقود. انشر الإصدارات لتصبح قابلة للاختيار.",
+    "list": {
+      "title": "منشور ومسودة",
+      "newNamePlaceholder": "اسم الدليل الجديد",
+      "empty": "لا توجد أدلة بعد."
+    },
+    "builder": {
+      "title": "المنشئ",
+      "saveDraft": "حفظ مسودة",
+      "publish": "نشر",
+      "selectToEdit": "اختر دليلاً لتعديله."
+    },
+    "settingsFixed": "الإعدادات (ثابتة)",
+    "strictMode": "الوضع الصارم",
+    "enableVerifier": "تفعيل المُدقِّق",
+    "arabicOutput": "مخرجات عربية",
+    "outputsModules": "المخرجات (الوحدات)",
+    "modules": {
+      "variables": "المتغيرات",
+      "clauses": "البنود",
+      "obligations": "الالتزامات",
+      "risks": "المخاطر",
+      "deadlines": "المواعيد النهائية"
+    },
+    "modulesHelp": "تعطيل وحدة سيؤدي إلى حفظ مصفوفة فارغة لها في اللقطة القانونية (snapshot) الرسمية.",
+    "reportSections": "أقسام التقرير (المخرجات)",
+    "outputs": {
+      "overview": "نظرة عامة",
+      "variables": "المتغيرات",
+      "clauses": "البنود",
+      "obligations": "الالتزامات",
+      "risks": "المخاطر",
+      "deadlines": "المواعيد النهائية"
+    }
+  },
+  "contractAnalysis": {
+    "playbook": {
+      "optional": "Playbook (اختياري)",
+      "manage": "إدارة",
+      "label": "Playbook",
+      "defaultRenewalPack": "الافتراضي (حزمة التجديد)"
+    },
+    "empty": {
+      "notAnalyzedTitle": "لم يتم التحليل بعد",
+      "notAnalyzedDescription": "لا يوجد تحليل محفوظ لهذا العقد. شغّل التحليل مرة واحدة ثم يمكنك فتحه لاحقاً في أي وقت.",
+      "noVariablesSnapshotTitle": "لا توجد لقطة متغيرات",
+      "noVariablesSnapshotDescription": "يعتمد هذا العرض على اللقطة القانونية (snapshot) الرسمية. أعد تشغيل التحليل إذا لزم الأمر.",
+      "noVariablesTitle": "لا توجد متغيرات",
+      "noVariablesDescription": "لم يتم حفظ أي متغيرات في اللقطة القانونية الرسمية.",
+      "noClausesTitle": "لا توجد بنود",
+      "noClausesDescription": "لم يتم حفظ أي بنود لهذا التحليل.",
+      "noObligationsTitle": "لا توجد التزامات",
+      "noObligationsDescription": "لم يتم حفظ أي التزامات لهذا التحليل.",
+      "noDeadlinesTitle": "لا توجد مواعيد نهائية",
+      "noDeadlinesDescription": "لم يتم العثور على تواريخ عقد أو التزامات لها مواعيد استحقاق.",
+      "noRisksTitle": "لا توجد مخاطر",
+      "noRisksDescription": "لم يتم حفظ أي مخاطر لهذا التحليل."
+    },
+    "needsReview": {
+      "title": "بحاجة إلى مراجعة",
+      "subtitle": "فحوصات playbook الحتمية / نتائج المُدقِّق المحسوبة بعد مرحلة الدمج."
+    },
+    "privacyMode": {
+      "sanitizedTitle": "مستند مُنقّى (وضع الخصوصية)",
+      "sanitizedSubtitle": "يتم إخفاء بعض الحقول قبل المعالجة السحابية. لا تقم بتخمين المحتوى المحجوب."
+    },
+    "progress": {
+      "title": "تحليل العقد قيد التنفيذ"
+    }
+  }
 }

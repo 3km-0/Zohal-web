@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert } from 'lucide-react';
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -13,12 +14,20 @@ import { cn } from '@/lib/utils';
 
 type Tab = 'overview' | 'variables' | 'clauses' | 'obligations' | 'deadlines' | 'risks';
 
+type PlaybookRecord = {
+  id: string;
+  name: string;
+  current_version_id?: string | null;
+  current_version?: { id: string; version_number: number } | null;
+};
+
 export default function ContractAnalysisPage() {
   const params = useParams();
   const router = useRouter();
   const workspaceId = params.id as string;
   const documentId = params.docId as string;
   const supabase = useMemo(() => createClient(), []);
+  const t = useTranslations('contractAnalysis');
 
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -33,6 +42,11 @@ export default function ContractAnalysisPage() {
   const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
   const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata'> | null>(null);
+
+  // Playbook selection (MVP): optional; defaults preserve current behavior.
+  const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>(''); // empty = default
+  const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
 
   function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
     if (!evidence?.page_number) return null;
@@ -157,6 +171,25 @@ export default function ContractAnalysisPage() {
     }
   }
 
+  async function loadPlaybooks() {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('playbooks-list', {
+        body: { workspace_id: workspaceId, kind: 'contract', status: 'published' },
+      });
+      if (error) return;
+      if (data?.ok && Array.isArray(data.playbooks)) {
+        setPlaybooks(data.playbooks as PlaybookRecord[]);
+      }
+    } catch {
+      // Best-effort: ignore and fall back to default analysis
+    }
+  }
+
   async function analyzeOnce() {
     setIsAnalyzing(true);
     setError(null);
@@ -182,6 +215,12 @@ export default function ContractAnalysisPage() {
           document_id: documentId,
           workspace_id: workspaceId,
           user_id: userId,
+          ...(selectedPlaybookId
+            ? {
+                playbook_id: selectedPlaybookId,
+                playbook_version_id: selectedPlaybookVersionId || undefined,
+              }
+            : {}),
         }),
       });
 
@@ -368,6 +407,7 @@ export default function ContractAnalysisPage() {
 
   useEffect(() => {
     load();
+    loadPlaybooks();
     
     // Re-load when tab becomes visible (handles laptop sleep, tab switching)
     const handleVisibilityChange = () => {
@@ -450,16 +490,62 @@ export default function ContractAnalysisPage() {
             <Spinner size="lg" />
           </div>
         ) : !contract ? (
-          <EmptyState
-            title="Not analyzed yet"
-            description="This contract doesn't have a saved analysis. Run it once, then you can reopen it anytime."
-            action={{
-              label: isAnalyzing ? 'Analyzing…' : 'Contract Analysis',
-              onClick: () => {
-                if (!isAnalyzing) analyzeOnce();
-              },
-            }}
-          />
+          <div className="space-y-4">
+            <EmptyState
+              title={t('empty.notAnalyzedTitle')}
+              description={t('empty.notAnalyzedDescription')}
+            />
+
+            <Card className="max-w-xl mx-auto">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between gap-3">
+                  <span>{t('playbook.optional')}</span>
+                  <Link
+                    href={`/workspaces/${workspaceId}/playbooks`}
+                    className="text-sm font-semibold text-accent hover:underline"
+                  >
+                    {t('playbook.manage')}
+                  </Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="space-y-1 text-sm">
+                    <div className="text-text-soft font-semibold">{t('playbook.label')}</div>
+                    <select
+                      className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                      value={selectedPlaybookId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedPlaybookId(id);
+                        const pb = playbooks.find((p) => p.id === id);
+                        setSelectedPlaybookVersionId(pb?.current_version?.id || '');
+                      }}
+                    >
+                      <option value="">{t('playbook.defaultRenewalPack')}</option>
+                      {playbooks.map((pb) => (
+                        <option key={pb.id} value={pb.id}>
+                          {pb.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => {
+                      if (!isAnalyzing) analyzeOnce();
+                    }}
+                    variant="primary"
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? 'Analyzing…' : 'Contract Analysis'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           <div className="space-y-4">
             {error && (
@@ -468,17 +554,44 @@ export default function ContractAnalysisPage() {
               </div>
             )}
 
+            {snapshot?.pack?.exceptions_summary &&
+              (snapshot.pack.exceptions_summary.blocker > 0 || snapshot.pack.exceptions_summary.warning > 0) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-error" />
+                      {t('needsReview.title')}
+                      <Badge size="sm">
+                        blockers:{snapshot.pack.exceptions_summary.blocker} warnings:{snapshot.pack.exceptions_summary.warning}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm text-text-soft">
+                      {t('needsReview.subtitle')}
+                    </p>
+                    {Array.isArray(snapshot.pack.exceptions) && snapshot.pack.exceptions.length > 0 && (
+                      <ul className="text-sm text-text list-disc pl-5 space-y-1">
+                        {snapshot.pack.exceptions.slice(0, 10).map((e: any, idx: number) => (
+                          <li key={e?.id || idx}>{e?.message || e?.type || 'Exception'}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
             {documentRow?.privacy_mode && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <span>🔒</span>
-                    Sanitized document (Privacy Mode)
+                    {t('privacyMode.sanitizedTitle')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-sm text-text-soft">
-                    Some fields are masked before cloud processing. Do not guess redacted content.
+                    {t('privacyMode.sanitizedSubtitle')}
                   </p>
                   {(() => {
                     const report = (documentRow.source_metadata as any)?.privacy_redaction_report;
@@ -652,11 +765,11 @@ export default function ContractAnalysisPage() {
               <div className="space-y-3">
                 {!snapshot ? (
                   <EmptyState
-                    title="No variables snapshot"
-                    description="This view is driven by the evidence-grade snapshot (canonical). Re-run analysis if needed."
+                    title={t('empty.noVariablesSnapshotTitle')}
+                    description={t('empty.noVariablesSnapshotDescription')}
                   />
                 ) : snapshot.variables.length === 0 ? (
-                  <EmptyState title="No variables" description="No variables were stored in the canonical snapshot." />
+                  <EmptyState title={t('empty.noVariablesTitle')} description={t('empty.noVariablesDescription')} />
                 ) : (
                   snapshot.variables.map((v) => (
                     <Card key={v.id}>
@@ -761,7 +874,7 @@ export default function ContractAnalysisPage() {
                     </Card>
                   ))
                 ) : clauses.length === 0 ? (
-                  <EmptyState title="No clauses" description="No clauses were saved for this analysis." />
+                  <EmptyState title={t('empty.noClausesTitle')} description={t('empty.noClausesDescription')} />
                 ) : (
                   clauses.map((c) => (
                     <Card key={c.id}>
@@ -798,7 +911,7 @@ export default function ContractAnalysisPage() {
             {tab === 'obligations' && (
               <div className="space-y-3">
                 {obligations.length === 0 ? (
-                  <EmptyState title="No obligations" description="No obligations were saved for this analysis." />
+                  <EmptyState title={t('empty.noObligationsTitle')} description={t('empty.noObligationsDescription')} />
                 ) : (
                   (() => {
                     const byType = obligations.reduce<Record<string, LegalObligation[]>>((acc, o) => {
@@ -972,7 +1085,7 @@ export default function ContractAnalysisPage() {
                   }
                   
                   if (items.length === 0) {
-                    return <EmptyState title="No deadlines" description="No contract dates or obligations with due dates were found." />;
+                    return <EmptyState title={t('empty.noDeadlinesTitle')} description={t('empty.noDeadlinesDescription')} />;
                   }
                   
                   return items.map((it) => (
@@ -1029,7 +1142,7 @@ export default function ContractAnalysisPage() {
                     </Card>
                   ))
                 ) : risks.length === 0 ? (
-                  <EmptyState title="No risks" description="No risks were saved for this analysis." />
+                  <EmptyState title={t('empty.noRisksTitle')} description={t('empty.noRisksDescription')} />
                 ) : (
                   risks.map((r) => (
                     <Card key={r.id}>
@@ -1069,7 +1182,7 @@ export default function ContractAnalysisPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Scale className="w-5 h-5 text-purple-500" />
-                  Contract Analysis in progress
+                  {t('progress.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
