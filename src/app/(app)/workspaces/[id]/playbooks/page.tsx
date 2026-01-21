@@ -463,72 +463,85 @@ export default function WorkspacePlaybooksPage() {
 
                   <div className="space-y-2">
                     <div className="font-semibold text-text">{t('outputsModules')}</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {(
-                        [
-                          { key: 'variables', label: t('modules.variables') },
-                          { key: 'clauses', label: t('modules.clauses') },
-                          { key: 'obligations', label: t('modules.obligations') },
-                          { key: 'risks', label: t('modules.risks') },
-                          { key: 'deadlines', label: t('modules.deadlines') },
-                        ] as const
-                      ).map((m) => (
-                        <label key={m.key} className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                          <input
-                            type="checkbox"
-                            checked={(spec.modules || []).includes(m.key)}
-                            onChange={(e) =>
-                              setSpec((p) => {
-                                const set = new Set(p.modules || []);
-                                if (e.target.checked) set.add(m.key);
-                                else set.delete(m.key);
-                                // Dependency rules:
-                                // - deadlines require variables (computed notice_deadline + evidence-grade dates).
-                                // - if user turns off variables, also turn off deadlines so variables can be disabled.
-                                if (!set.has('variables')) set.delete('deadlines');
-                                if (set.has('deadlines')) set.add('variables');
-                                return { ...p, modules: Array.from(set) };
-                              })
-                            }
-                          />
-                          {m.label}
-                        </label>
-                      ))}
-                    </div>
+                    {(() => {
+                      const order = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
+                      const labels: Record<(typeof order)[number], string> = {
+                        variables: t('modules.variables'),
+                        clauses: t('modules.clauses'),
+                        obligations: t('modules.obligations'),
+                        risks: t('modules.risks'),
+                        deadlines: t('modules.deadlines'),
+                      };
+                      const enabled = new Set(spec.modules || order);
+                      const enabledOrdered = order.filter((k) => enabled.has(k));
+                      const remaining = order.filter((k) => !enabled.has(k));
+
+                      function apply(next: Set<string>) {
+                        if (!next.has('variables')) next.delete('deadlines');
+                        if (next.has('deadlines')) next.add('variables');
+                        const outOrder = ['overview', ...order];
+                        const outputs = outOrder.filter((k) => k === 'overview' || next.has(k));
+                        setSpec((p) => ({ ...p, modules: Array.from(next), outputs }));
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="space-y-2">
+                            {enabledOrdered.map((k) => (
+                              <div
+                                key={k}
+                                className="flex items-center justify-between gap-3 rounded-scholar border border-border bg-surface-alt px-3 py-2"
+                              >
+                                <div className="text-sm font-semibold text-text">{labels[k]}</div>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => {
+                                    const next = new Set(enabled);
+                                    next.delete(k);
+                                    apply(next);
+                                  }}
+                                >
+                                  {tCommon('remove')}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+
+                          {remaining.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
+                                value=""
+                                onChange={(e) => {
+                                  const value = e.target.value as (typeof order)[number];
+                                  if (!value) return;
+                                  const next = new Set(enabled);
+                                  next.add(value);
+                                  apply(next);
+                                }}
+                              >
+                                <option value="">{t('customModules.add')}</option>
+                                {remaining.map((k) => (
+                                  <option key={k} value={k}>
+                                    {labels[k]}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                     <div className="text-sm text-text-soft">
                       {t('modulesHelp')}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <div className="font-semibold text-text">{t('reportSections')}</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {(
-                        [
-                          { key: 'overview', label: t('outputs.overview') },
-                          { key: 'variables', label: t('outputs.variables') },
-                          { key: 'clauses', label: t('outputs.clauses') },
-                          { key: 'obligations', label: t('outputs.obligations') },
-                          { key: 'risks', label: t('outputs.risks') },
-                          { key: 'deadlines', label: t('outputs.deadlines') },
-                        ] as const
-                      ).map((o) => (
-                        <label key={o.key} className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                          <input
-                            type="checkbox"
-                            checked={(spec.outputs || []).includes(o.key)}
-                            onChange={(e) =>
-                              setSpec((p) => {
-                                const set = new Set(p.outputs || []);
-                                if (e.target.checked) set.add(o.key);
-                                else set.delete(o.key);
-                                return { ...p, outputs: Array.from(set) };
-                              })
-                            }
-                          />
-                          {o.label}
-                        </label>
-                      ))}
+                    <div className="text-sm text-text-soft">
+                      Report sections are derived from enabled modules.
                     </div>
                   </div>
 

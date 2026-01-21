@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { X, FileSearch, Calendar, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, FileSearch, Calendar, Pencil, ChevronDown, ChevronUp, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // AI Confidence types matching iOS
@@ -39,7 +39,7 @@ export interface ToolAction {
 const toolActionConfig: Record<ToolActionType, { icon: typeof Calendar; label: string }> = {
   calendar: { icon: Calendar, label: 'Add to Calendar' },
   edit: { icon: Pencil, label: 'Edit' },
-  task: { icon: Calendar, label: 'Add Task' },
+  task: { icon: ListTodo, label: 'Add Task' },
 };
 
 // Main card props

@@ -63,6 +63,9 @@ export interface BoundingBox {
 
 /** Links extracted data back to source document location */
 export interface EvidenceAnchor {
+  /** Optional source document ID (for multi-document bundles). */
+  document_id?: string
+
   /** Page number where evidence was found (1-indexed) */
   page_number: number
   
@@ -188,6 +191,16 @@ export interface EvidenceGradeSnapshot {
     template_version?: string
     modules_activated?: string[]
     modules?: Record<string, unknown>
+    // Multi-document bundles (additive)
+    bundle?: {
+      bundle_id?: string
+      document_ids?: string[]
+      document_hashes?: Record<string, string>
+      precedence_policy?: string
+    }
+    discrepancies?: Array<Record<string, unknown>>
+    // Pinned context sets (manifest only; v1)
+    context?: Record<string, unknown>
     // Playbooks (additive)
     playbook?: Record<string, unknown>
     exceptions_summary?: { blocker: number; warning: number }

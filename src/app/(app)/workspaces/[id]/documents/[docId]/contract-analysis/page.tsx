@@ -1249,11 +1249,17 @@ export default function ContractAnalysisPage() {
                                 : null
                             }
                             sourcePage={o.page_number ?? undefined}
-                            toolAction={o.due_at ? { type: 'calendar', label: 'Add to Calendar' } : undefined}
+                            toolAction={o.due_at ? { type: 'calendar', label: 'Add to Calendar' } : { type: 'task', label: 'Add Task' }}
                             onReject={() => setRejectedObligationIds((prev) => new Set([...prev, o.id]))}
-                            onToolAction={o.due_at ? () => exportCalendar() : undefined}
+                            onToolAction={
+                              o.task_id
+                                ? undefined // Already has task
+                                : o.due_at
+                                  ? () => exportCalendar()
+                                  : () => addTaskFromObligation(o)
+                            }
                           >
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               {o.action && (
                                 <p className="text-sm text-text">
                                   <span className="text-text-soft">Action: </span>
@@ -1264,6 +1270,9 @@ export default function ContractAnalysisPage() {
                                 <p className="text-xs text-text-soft">
                                   Due: <span className="text-text font-medium">{o.due_at}</span>
                                 </p>
+                              )}
+                              {o.task_id && (
+                                <Badge size="sm" variant="success">Task added</Badge>
                               )}
                             </div>
                           </AnalysisRecordCard>
