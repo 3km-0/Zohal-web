@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch } from 'lucide-react';
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
+import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence } from '@/components/analysis';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
@@ -42,17 +43,31 @@ export default function ContractAnalysisPage() {
   const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
   const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata'> | null>(null);
+  const [bundleDocuments, setBundleDocuments] = useState<Array<{ id: string; title: string; role?: string }>>([]);
+  const [isRunningCompliance, setIsRunningCompliance] = useState(false);
+  const [isGeneratingKnowledgePack, setIsGeneratingKnowledgePack] = useState(false);
 
   // Playbook selection (MVP): optional; defaults preserve current behavior.
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>(''); // empty = default
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
 
+  // Rejection tracking (unified action model)
+  const [rejectedVariableIds, setRejectedVariableIds] = useState<Set<string>>(new Set());
+  const [rejectedClauseIds, setRejectedClauseIds] = useState<Set<string>>(new Set());
+  const [rejectedObligationIds, setRejectedObligationIds] = useState<Set<string>>(new Set());
+  const [rejectedRiskIds, setRejectedRiskIds] = useState<Set<string>>(new Set());
+  const [rejectedCustomModuleIds, setRejectedCustomModuleIds] = useState<Set<string>>(new Set());
+
+  // Expanded sections for collapsible groups
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
   function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
     if (!evidence?.page_number) return null;
     const quote = (evidence.snippet || '').slice(0, 160);
     const bbox = evidence.bbox ? `${evidence.bbox.x},${evidence.bbox.y},${evidence.bbox.width},${evidence.bbox.height}` : null;
-    const base = `/workspaces/${workspaceId}/documents/${documentId}?page=${evidence.page_number}&quote=${encodeURIComponent(quote)}`;
+    const targetDocId = (evidence as any).document_id ? String((evidence as any).document_id) : documentId;
+    const base = `/workspaces/${workspaceId}/documents/${targetDocId}?page=${evidence.page_number}&quote=${encodeURIComponent(quote)}`;
     return bbox ? `${base}&bbox=${encodeURIComponent(bbox)}` : base;
   }
 
@@ -203,6 +218,129 @@ export default function ContractAnalysisPage() {
       }
     } catch {
       // Best-effort: ignore and fall back to default analysis
+    }
+  }
+
+  // Multi-document bundles: load source document titles/roles for UI chips.
+  useEffect(() => {
+    const bundle = snapshot?.pack?.bundle;
+    const docIds = bundle?.document_ids;
+    if (!bundle || !Array.isArray(docIds) || docIds.length === 0) {
+      setBundleDocuments([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const ids = Array.from(new Set(docIds.map((x) => String(x)).filter(Boolean)));
+        const { data: docs, error: docsErr } = await supabase
+          .from('documents')
+          .select('id,title')
+          .in('id', ids);
+        if (docsErr) throw docsErr;
+
+        let rolesById: Record<string, string> = {};
+        if (bundle.bundle_id) {
+          const { data: members, error: memErr } = await supabase
+            .from('document_bundle_members')
+            .select('document_id, role, sort_order')
+            .eq('bundle_id', bundle.bundle_id)
+            .order('sort_order', { ascending: true });
+          if (!memErr && Array.isArray(members)) {
+            for (const m of members as any[]) {
+              const did = String(m?.document_id || '');
+              if (did) rolesById[did] = String(m?.role || '');
+            }
+          }
+        }
+
+        const byId: Record<string, string> = {};
+        for (const d of (docs || []) as any[]) byId[String(d.id)] = String(d.title || '');
+
+        const ordered = ids.map((id) => ({
+          id,
+          title: byId[id] || id,
+          role: rolesById[id] || undefined,
+        }));
+        if (!cancelled) setBundleDocuments(ordered);
+      } catch {
+        if (!cancelled) setBundleDocuments(docIds.map((id) => ({ id: String(id), title: String(id) })));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
+
+  async function createPinnedContextSetFromThisDocument() {
+    const name = window.prompt('Context set name (e.g., Company Policy Pack)');
+    if (!name) return;
+    const kind = window.prompt('Context kind (policy | regulation | template | other)', 'policy') || 'policy';
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data: cs, error: csErr } = await supabase
+        .from('context_sets')
+        .insert({ workspace_id: workspaceId, name, kind, created_by: userId })
+        .select('id')
+        .single();
+      if (csErr) throw csErr;
+
+      const { error: memErr } = await supabase
+        .from('context_set_members')
+        .insert({ context_set_id: cs.id, document_id: documentId, sort_order: 0, role: 'context', added_by: userId });
+      if (memErr) throw memErr;
+
+      const { error: pinErr } = await supabase
+        .from('workspace_default_context_sets')
+        .insert({ workspace_id: workspaceId, context_set_id: cs.id, created_by: userId });
+      if (pinErr) throw pinErr;
+
+      // Re-run load to reflect manifest on next analysis.
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create context set');
+    }
+  }
+
+  async function generateKnowledgePackForThisDocument() {
+    const kind = (window.prompt('Knowledge pack kind (policy | regulation)', 'policy') || 'policy') as any;
+    setIsGeneratingKnowledgePack(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-knowledge-pack', {
+        body: { workspace_id: workspaceId, document_id: documentId, kind },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || 'Failed to generate knowledge pack');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate knowledge pack');
+    } finally {
+      setIsGeneratingKnowledgePack(false);
+    }
+  }
+
+  async function runComplianceChecks() {
+    setIsRunningCompliance(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-compliance', {
+        body: { workspace_id: workspaceId, document_id: documentId },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || 'Compliance check failed');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Compliance check failed');
+    } finally {
+      setIsRunningCompliance(false);
     }
   }
 
@@ -701,6 +839,135 @@ export default function ContractAnalysisPage() {
                     <span className="text-text-soft">Notice: </span>
                     {contract.notice_period_days != null ? `${contract.notice_period_days} days` : '—'}
                   </div>
+
+                  {snapshot?.pack?.bundle?.document_ids?.length ? (
+                    <div className="pt-3 mt-3 border-t border-border space-y-2">
+                      <div className="text-sm font-semibold text-text">Sources used</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(bundleDocuments.length ? bundleDocuments : snapshot.pack.bundle.document_ids).map((d: any) => {
+                          const id = String(d?.id || d);
+                          const title = String(d?.title || id);
+                          const role = d?.role ? String(d.role) : '';
+                          return (
+                            <Link
+                              key={id}
+                              href={`/workspaces/${workspaceId}/documents/${id}`}
+                              className="inline-flex"
+                              title={role ? `${title} (${role})` : title}
+                            >
+                              <Badge variant="default" className="max-w-[260px] truncate">
+                                {role ? `${title} · ${role}` : title}
+                              </Badge>
+                            </Link>
+                          );
+                        })}
+                      </div>
+
+                      {Array.isArray(snapshot.pack.discrepancies) && snapshot.pack.discrepancies.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold text-text">Conflicts</div>
+                          {snapshot.pack.discrepancies
+                            .slice(0, 20)
+                            .map((d: any) => {
+                              const kind = String(d?.kind || '');
+                              if (kind === 'variable_conflict') {
+                                return (
+                                  <div key={String(d.id || `${d.variable_name}`)} className="rounded-scholar border border-border bg-surface-alt p-3">
+                                    <div className="text-sm font-semibold text-text">{String(d.variable_name || 'Variable')}</div>
+                                    <div className="mt-2 space-y-1">
+                                      {Array.isArray(d.values)
+                                        ? d.values.slice(0, 6).map((v: any, idx: number) => {
+                                            const ev = v?.evidence;
+                                            const href = proofHref(ev);
+                                            const label = `${String(v?.value ?? '—')} ${v?.ai_confidence ? `(${String(v.ai_confidence)})` : ''}`.trim();
+                                            return (
+                                              <div key={`${idx}-${String(v?.document_id || '')}`} className="text-xs text-text">
+                                                <span className="text-text-soft">{String(v?.document_id || '').slice(0, 8)}: </span>
+                                                {href ? (
+                                                  <Link href={href} className="font-semibold text-accent hover:underline">
+                                                    {label}
+                                                  </Link>
+                                                ) : (
+                                                  <span>{label}</span>
+                                                )}
+                                              </div>
+                                            );
+                                          })
+                                        : null}
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              if (kind === 'policy_conflict' || kind === 'regulatory_conflict') {
+                                const contractHref = proofHref(d?.contract?.evidence);
+                                const ruleHref = proofHref(d?.rule?.evidence);
+                                return (
+                                  <div key={String(d.id || `${kind}-${d?.rule?.rule_id}`)} className="rounded-scholar border border-border bg-surface-alt p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="text-sm font-semibold text-text">{String(d?.rule?.title || 'Compliance finding')}</div>
+                                      <Badge size="sm">{String(d?.severity || '').toLowerCase() || 'medium'}</Badge>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                                      {contractHref ? (
+                                        <Link href={contractHref} className="font-semibold text-accent hover:underline">
+                                          View contract evidence
+                                        </Link>
+                                      ) : (
+                                        <span className="text-text-soft">Contract evidence unavailable</span>
+                                      )}
+                                      {ruleHref ? (
+                                        <Link href={ruleHref} className="font-semibold text-accent hover:underline">
+                                          View policy/regulation evidence
+                                        </Link>
+                                      ) : (
+                                        <span className="text-text-soft">Rule evidence unavailable</span>
+                                      )}
+                                    </div>
+                                    {d?.explanation ? (
+                                      <div className="mt-2 text-xs text-text-soft">{String(d.explanation).slice(0, 220)}</div>
+                                    ) : null}
+                                  </div>
+                                );
+                              }
+
+                              return null;
+                            })}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="pt-3 mt-3 border-t border-border space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-text">Pinned context sets</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={createPinnedContextSetFromThisDocument}>
+                          Pin this document
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={generateKnowledgePackForThisDocument} disabled={isGeneratingKnowledgePack}>
+                          {isGeneratingKnowledgePack ? 'Generating…' : 'Generate pack'}
+                        </Button>
+                        <Button size="sm" onClick={runComplianceChecks} disabled={isRunningCompliance}>
+                          {isRunningCompliance ? 'Checking…' : 'Run compliance'}
+                        </Button>
+                      </div>
+                    </div>
+                    {snapshot?.pack?.context ? (
+                      <div className="text-xs text-text-soft">
+                        {(() => {
+                          const ctx = snapshot.pack?.context as any;
+                          const sets = Array.isArray(ctx?.sets) ? (ctx.sets as any[]) : [];
+                          if (!sets.length) return 'Context sets are pinned, but no set metadata was recorded.';
+                          return `Included: ${sets.map((s) => `${s.name || s.id}${s.kind ? ` (${s.kind})` : ''}`).join(', ')}`;
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-text-soft">
+                        No context sets recorded on this run. Create one, then re-run analysis to attach it to the run manifest.
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="pt-3 mt-3 border-t border-border space-y-2">
                     <div className="text-sm font-semibold text-text">Renewal Timeline</div>
@@ -783,260 +1050,227 @@ export default function ContractAnalysisPage() {
                     title={t('empty.noVariablesSnapshotTitle')}
                     description={t('empty.noVariablesSnapshotDescription')}
                   />
-                ) : snapshot.variables.length === 0 ? (
+                ) : snapshot.variables.filter((v) => !rejectedVariableIds.has(v.id)).length === 0 ? (
                   <EmptyState title={t('empty.noVariablesTitle')} description={t('empty.noVariablesDescription')} />
                 ) : (
-                  snapshot.variables.map((v) => (
-                    <Card key={v.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{v.display_name}</span>
-                          <div className="flex items-center gap-2">
-                            {v.verifier?.status && (
-                              <span
-                                className={cn(
-                                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold',
-                                  v.verifier.status === 'green'
-                                    ? 'border-success/30 bg-success/5 text-text'
-                                    : v.verifier.status === 'red'
-                                      ? 'border-error/30 bg-error/5 text-text'
-                                      : 'border-accent-alt/30 bg-accent-alt/5 text-text'
-                                )}
-                                title={v.verifier.reasons?.join(', ') || undefined}
-                              >
-                                <span
-                                  className={cn(
-                                    'inline-flex w-2.5 h-2.5 rounded-full',
-                                    v.verifier.status === 'green'
-                                      ? 'bg-success'
-                                      : v.verifier.status === 'red'
-                                        ? 'bg-error'
-                                        : 'bg-accent-alt'
-                                  )}
-                                />
-                                {v.verifier.status.toUpperCase()}
-                              </span>
-                            )}
-                            <Badge size="sm">{v.verification_state}</Badge>
-                          </div>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="text-sm text-text">
-                          <span className="text-text-soft">Value: </span>
-                          {v.value == null ? '—' : String(v.value)}
-                          {v.unit ? ` ${v.unit}` : ''}
-                        </div>
-                        <div className="text-xs text-text-soft">
-                          AI confidence: <span className="text-text">{v.ai_confidence}</span>
-                        </div>
-                        {v.evidence?.page_number != null && (
-                          <div>
-                            <Link
-                              href={
-                                proofHref(v.evidence) ||
-                                `/workspaces/${workspaceId}/documents/${documentId}?page=${v.evidence.page_number}&quote=${encodeURIComponent(
-                                  (v.evidence.snippet || '').slice(0, 140)
-                                )}`
-                              }
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF (p. {v.evidence.page_number})
-                            </Link>
+                  snapshot.variables
+                    .filter((v) => !rejectedVariableIds.has(v.id))
+                    .map((v) => (
+                      <AnalysisRecordCard
+                        key={v.id}
+                        icon={<FileText className="w-4 h-4" />}
+                        title={v.display_name}
+                        subtitle={v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`}
+                        confidence={v.ai_confidence as AIConfidence}
+                        sourceHref={proofHref(v.evidence)}
+                        sourcePage={v.evidence?.page_number ?? undefined}
+                        toolAction={{ type: 'edit', label: 'Edit' }}
+                        onReject={() => setRejectedVariableIds((prev) => new Set([...prev, v.id]))}
+                        onToolAction={() => {
+                          // TODO: Open edit modal
+                        }}
+                      >
+                        {v.verifier?.status && (
+                          <div className="flex items-center gap-2 text-xs">
+                            <span
+                              className={cn(
+                                'inline-flex w-2 h-2 rounded-full',
+                                v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-highlight'
+                              )}
+                            />
+                            <span className="text-text-soft">
+                              Verifier: {v.verifier.status.toUpperCase()}
+                              {v.verifier.reasons?.length ? ` (${v.verifier.reasons.join(', ')})` : ''}
+                            </span>
                           </div>
                         )}
-                        {v.verifier?.reasons?.length ? (
-                          <div className="text-xs text-text-soft">
-                            {v.verifier.reasons.map((r) => (
-                              <div key={r}>• {r.replace(/_/g, ' ')}</div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </CardContent>
-                    </Card>
-                  ))
+                      </AnalysisRecordCard>
+                    ))
                 )}
               </div>
             )}
 
             {tab === 'clauses' && (
               <div className="space-y-3">
-                {snapshot?.clauses?.length ? (
-                  snapshot.clauses.map((c) => (
-                    <Card key={c.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{c.clause_title || c.clause_type}</span>
-                          <Badge size="sm">{c.risk_level}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-xs text-text-soft mb-2">
-                          Page {c.evidence?.page_number ?? '—'} {c.clause_number ? `• ${c.clause_number}` : ''}
-                        </div>
-                        {c.evidence?.page_number != null && (
-                          <div className="mb-2">
-                            <Link
-                              href={proofHref(c.evidence) || '#'}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
+                {(() => {
+                  // Use snapshot clauses if available, otherwise fall back to DB clauses
+                  const allClauses = snapshot?.clauses?.length
+                    ? snapshot.clauses.map((c) => ({
+                        id: c.id,
+                        title: c.clause_title || c.clause_type,
+                        text: c.text,
+                        riskLevel: c.risk_level,
+                        pageNumber: c.evidence?.page_number,
+                        clauseNumber: c.clause_number,
+                        href: proofHref(c.evidence),
+                      }))
+                    : clauses.map((c) => ({
+                        id: c.id,
+                        title: c.clause_title || c.clause_type,
+                        text: c.text,
+                        riskLevel: c.risk_level,
+                        pageNumber: c.page_number,
+                        clauseNumber: c.clause_number,
+                        href: c.page_number
+                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent((c.text || '').slice(0, 120))}`
+                          : null,
+                      }));
+
+                  const visibleClauses = allClauses.filter((c) => !rejectedClauseIds.has(c.id));
+
+                  if (visibleClauses.length === 0) {
+                    return <EmptyState title={t('empty.noClausesTitle')} description={t('empty.noClausesDescription')} />;
+                  }
+
+                  // Group by risk level
+                  const byRisk = visibleClauses.reduce<Record<string, typeof visibleClauses>>((acc, c) => {
+                    const k = c.riskLevel || 'unknown';
+                    (acc[k] ||= []).push(c);
+                    return acc;
+                  }, {});
+
+                  const riskOrder = ['high', 'medium', 'low', 'unknown'];
+                  const riskIcons: Record<string, string> = { high: 'text-error', medium: 'text-highlight', low: 'text-success', unknown: 'text-text-soft' };
+
+                  return Object.entries(byRisk)
+                    .sort(([a], [b]) => riskOrder.indexOf(a) - riskOrder.indexOf(b))
+                    .map(([risk, items]) => (
+                      <div key={risk} className="space-y-2">
+                        <AnalysisSectionHeader
+                          icon={<AlertTriangle className="w-4 h-4" />}
+                          iconColor={riskIcons[risk] || 'text-text-soft'}
+                          title={risk.charAt(0).toUpperCase() + risk.slice(1) + ' Risk'}
+                          count={items.length}
+                          isExpanded={expandedSections.has(`clause-${risk}`) || expandedSections.size === 0}
+                          onToggle={() => {
+                            setExpandedSections((prev) => {
+                              const next = new Set(prev);
+                              const key = `clause-${risk}`;
+                              if (next.has(key)) next.delete(key);
+                              else next.add(key);
+                              return next;
+                            });
+                          }}
+                        />
+                        {(expandedSections.has(`clause-${risk}`) || expandedSections.size === 0) &&
+                          items.map((c) => (
+                            <AnalysisRecordCard
+                              key={c.id}
+                              icon={<FileText className="w-4 h-4" />}
+                              iconColor={riskIcons[risk] || 'text-text-soft'}
+                              title={c.title || 'Clause'}
+                              subtitle={c.clauseNumber ? `Clause ${c.clauseNumber}` : undefined}
+                              sourceHref={c.href}
+                              sourcePage={c.pageNumber ?? undefined}
+                              onReject={() => setRejectedClauseIds((prev) => new Set([...prev, c.id]))}
                             >
-                              View in PDF
-                            </Link>
-                          </div>
-                        )}
-                        <div className="text-sm text-text whitespace-pre-wrap">{c.text}</div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : clauses.length === 0 ? (
-                  <EmptyState title={t('empty.noClausesTitle')} description={t('empty.noClausesDescription')} />
-                ) : (
-                  clauses.map((c) => (
-                    <Card key={c.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{c.clause_title || c.clause_type}</span>
-                          <Badge size="sm">{c.risk_level}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-xs text-text-soft mb-2">
-                          Page {c.page_number ?? '—'} {c.clause_number ? `• ${c.clause_number}` : ''}
-                        </div>
-                        {c.page_number != null && (
-                          <div className="mb-2">
-                            <Link
-                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent(
-                                (c.text || '').slice(0, 120)
-                              )}`}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF
-                            </Link>
-                          </div>
-                        )}
-                        <div className="text-sm text-text whitespace-pre-wrap">{c.text}</div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
+                              <p className="text-sm text-text whitespace-pre-wrap line-clamp-4">{c.text}</p>
+                            </AnalysisRecordCard>
+                          ))}
+                      </div>
+                    ));
+                })()}
               </div>
             )}
 
             {tab === 'obligations' && (
               <div className="space-y-3">
-                {obligations.length === 0 ? (
-                  <EmptyState title={t('empty.noObligationsTitle')} description={t('empty.noObligationsDescription')} />
-                ) : (
-                  (() => {
-                    const byType = obligations.reduce<Record<string, LegalObligation[]>>((acc, o) => {
-                      const k = o.obligation_type || 'other';
-                      (acc[k] ||= []).push(o);
-                      return acc;
-                    }, {});
-                    
-                    const typeOrder = [
-                      'renewal',
-                      'notice',
-                      'payment',
-                      'milestone',
-                      'deliverable',
-                      'reporting',
-                      'compliance',
-                      'termination',
-                      'confidentiality',
-                      'indemnification',
-                      'insurance',
-                      'audit',
-                      'other',
-                    ];
-                    
-                    const groups = Object.entries(byType).sort(([a], [b]) => {
-                      const ia = typeOrder.indexOf(a);
-                      const ib = typeOrder.indexOf(b);
-                      if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-                      return a.localeCompare(b);
+                {(() => {
+                  const visibleObligations = obligations.filter((o) => !rejectedObligationIds.has(o.id));
+                  
+                  if (visibleObligations.length === 0) {
+                    return <EmptyState title={t('empty.noObligationsTitle')} description={t('empty.noObligationsDescription')} />;
+                  }
+
+                  const byType = visibleObligations.reduce<Record<string, LegalObligation[]>>((acc, o) => {
+                    const k = o.obligation_type || 'other';
+                    (acc[k] ||= []).push(o);
+                    return acc;
+                  }, {});
+
+                  const typeOrder = [
+                    'renewal', 'notice', 'payment', 'milestone', 'deliverable',
+                    'reporting', 'compliance', 'termination', 'confidentiality',
+                    'indemnification', 'insurance', 'audit', 'other',
+                  ];
+
+                  const groups = Object.entries(byType).sort(([a], [b]) => {
+                    const ia = typeOrder.indexOf(a);
+                    const ib = typeOrder.indexOf(b);
+                    if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+                    return a.localeCompare(b);
+                  });
+
+                  const sorted = (items: LegalObligation[]) =>
+                    items.slice().sort((a, b) => {
+                      const da = a.due_at || '';
+                      const db = b.due_at || '';
+                      if (da && db && da !== db) return da.localeCompare(db);
+                      if (da && !db) return -1;
+                      if (!da && db) return 1;
+                      return (a.page_number ?? 999999) - (b.page_number ?? 999999);
                     });
-                    
-                    const sorted = (items: LegalObligation[]) =>
-                      items.slice().sort((a, b) => {
-                        const da = a.due_at || '';
-                        const db = b.due_at || '';
-                        if (da && db && da !== db) return da.localeCompare(db);
-                        if (da && !db) return -1;
-                        if (!da && db) return 1;
-                        const pa = a.page_number ?? 999999;
-                        const pb = b.page_number ?? 999999;
-                        if (pa !== pb) return pa - pb;
-                        return a.id.localeCompare(b.id);
-                      });
-                    
-                    return groups.map(([type, items]) => (
-                      <div key={type} className="space-y-2">
-                        <div className="flex items-center justify-between px-1">
-                          <div className="text-sm font-semibold text-text">{type}</div>
-                          <div className="text-xs text-text-soft">{items.length}</div>
-                        </div>
-                        {sorted(items).map((o) => (
-                          <Card key={o.id}>
-                            <CardHeader>
-                              <CardTitle className="flex items-center justify-between gap-3">
-                                <span className="min-w-0 truncate">{o.summary || o.action || o.obligation_type}</span>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Badge size="sm">{o.confidence_state}</Badge>
-                                  {o.due_at ? <Badge size="sm">{o.due_at}</Badge> : null}
-                                </div>
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              <div className="flex items-center justify-between gap-3">
-                                {o.page_number != null ? (
-                                  <Link
-                                    href={`/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
-                                      (o.summary || o.action || '').slice(0, 140)
-                                    )}`}
-                                    className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                                  >
-                                    View in PDF
-                                  </Link>
-                                ) : (
-                                  <span className="text-xs text-text-soft">No source page</span>
-                                )}
-                                
-                                {!o.task_id ? (
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    disabled={creatingTaskFor === o.id}
-                                    onClick={() => addTaskFromObligation(o)}
-                                  >
-                                    {creatingTaskFor === o.id ? 'Adding…' : 'Add Task'}
-                                  </Button>
-                                ) : (
-                                  <Badge size="sm">Task added</Badge>
-                                )}
-                              </div>
-                              
-                              {o.summary && <div className="text-sm text-text">{o.summary}</div>}
+
+                  const confidenceMap: Record<string, AIConfidence> = {
+                    confirmed: 'high',
+                    extracted: 'medium',
+                    needs_review: 'low',
+                  };
+
+                  return groups.map(([type, items]) => (
+                    <div key={type} className="space-y-2">
+                      <AnalysisSectionHeader
+                        icon={<CheckCircle className="w-4 h-4" />}
+                        iconColor="text-accent"
+                        title={type.charAt(0).toUpperCase() + type.slice(1)}
+                        count={items.length}
+                        isExpanded={expandedSections.has(`ob-${type}`) || expandedSections.size === 0}
+                        onToggle={() => {
+                          setExpandedSections((prev) => {
+                            const next = new Set(prev);
+                            const key = `ob-${type}`;
+                            if (next.has(key)) next.delete(key);
+                            else next.add(key);
+                            return next;
+                          });
+                        }}
+                      />
+                      {(expandedSections.has(`ob-${type}`) || expandedSections.size === 0) &&
+                        sorted(items).map((o) => (
+                          <AnalysisRecordCard
+                            key={o.id}
+                            icon={<CheckCircle className="w-4 h-4" />}
+                            title={o.summary || o.action || o.obligation_type || 'Obligation'}
+                            subtitle={o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined}
+                            confidence={confidenceMap[o.confidence_state || ''] || 'medium'}
+                            sourceHref={
+                              o.page_number != null
+                                ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
+                                : null
+                            }
+                            sourcePage={o.page_number ?? undefined}
+                            toolAction={o.due_at ? { type: 'calendar', label: 'Add to Calendar' } : undefined}
+                            onReject={() => setRejectedObligationIds((prev) => new Set([...prev, o.id]))}
+                            onToolAction={o.due_at ? () => exportCalendar() : undefined}
+                          >
+                            <div className="space-y-1">
                               {o.action && (
-                                <div className="text-sm text-text">
+                                <p className="text-sm text-text">
                                   <span className="text-text-soft">Action: </span>
                                   {o.action}
-                                </div>
+                                </p>
                               )}
-                              {o.responsible_party && (
-                                <div className="text-xs text-text-soft">
-                                  Responsible: <span className="text-text">{o.responsible_party}</span>
-                                </div>
+                              {o.due_at && (
+                                <p className="text-xs text-text-soft">
+                                  Due: <span className="text-text font-medium">{o.due_at}</span>
+                                </p>
                               )}
-                              {o.page_number != null && <div className="text-xs text-text-soft">Page {o.page_number}</div>}
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </AnalysisRecordCard>
                         ))}
-                      </div>
-                    ));
-                  })()
-                )}
+                    </div>
+                  ));
+                })()}
               </div>
             )}
 
@@ -1132,59 +1366,93 @@ export default function ContractAnalysisPage() {
 
             {tab === 'risks' && (
               <div className="space-y-3">
-                {snapshot?.risks?.length ? (
-                  snapshot.risks.map((r) => (
-                    <Card key={r.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{r.description}</span>
-                          <Badge size="sm">{r.severity}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {r.evidence?.page_number != null && (
-                          <div>
-                            <Link
-                              href={proofHref(r.evidence) || '#'}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF
-                            </Link>
-                          </div>
-                        )}
-                        {r.explanation && <div className="text-sm text-text whitespace-pre-wrap">{r.explanation}</div>}
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : risks.length === 0 ? (
-                  <EmptyState title={t('empty.noRisksTitle')} description={t('empty.noRisksDescription')} />
-                ) : (
-                  risks.map((r) => (
-                    <Card key={r.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{r.description}</span>
-                          <Badge size="sm">{r.severity}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {r.page_number != null && (
-                          <div>
-                            <Link
-                              href={`/workspaces/${workspaceId}/documents/${documentId}?page=${r.page_number}&quote=${encodeURIComponent(
-                                (r.description || '').slice(0, 140)
-                              )}`}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF
-                            </Link>
-                          </div>
-                        )}
-                        {r.explanation && <div className="text-sm text-text whitespace-pre-wrap">{r.explanation}</div>}
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
+                {(() => {
+                  // Use snapshot risks if available, otherwise fall back to DB risks
+                  const allRisks = snapshot?.risks?.length
+                    ? snapshot.risks.map((r) => ({
+                        id: r.id,
+                        description: r.description,
+                        explanation: r.explanation,
+                        severity: r.severity,
+                        pageNumber: r.evidence?.page_number,
+                        href: proofHref(r.evidence),
+                      }))
+                    : risks.map((r) => ({
+                        id: r.id,
+                        description: r.description,
+                        explanation: r.explanation,
+                        severity: r.severity,
+                        pageNumber: r.page_number,
+                        href: r.page_number
+                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${r.page_number}&quote=${encodeURIComponent((r.description || '').slice(0, 140))}`
+                          : null,
+                      }));
+
+                  const visibleRisks = allRisks.filter((r) => !rejectedRiskIds.has(r.id));
+
+                  if (visibleRisks.length === 0) {
+                    return <EmptyState title={t('empty.noRisksTitle')} description={t('empty.noRisksDescription')} />;
+                  }
+
+                  // Group by severity
+                  const bySeverity = visibleRisks.reduce<Record<string, typeof visibleRisks>>((acc, r) => {
+                    const k = r.severity || 'unknown';
+                    (acc[k] ||= []).push(r);
+                    return acc;
+                  }, {});
+
+                  const severityOrder = ['critical', 'high', 'medium', 'low', 'unknown'];
+                  const severityConfig: Record<string, { icon: string; confidence: AIConfidence }> = {
+                    critical: { icon: 'text-error', confidence: 'high' },
+                    high: { icon: 'text-error', confidence: 'high' },
+                    medium: { icon: 'text-highlight', confidence: 'medium' },
+                    low: { icon: 'text-success', confidence: 'low' },
+                    unknown: { icon: 'text-text-soft', confidence: 'medium' },
+                  };
+
+                  return Object.entries(bySeverity)
+                    .sort(([a], [b]) => severityOrder.indexOf(a) - severityOrder.indexOf(b))
+                    .map(([severity, items]) => {
+                      const config = severityConfig[severity] || severityConfig.unknown;
+                      return (
+                        <div key={severity} className="space-y-2">
+                          <AnalysisSectionHeader
+                            icon={<ShieldAlert className="w-4 h-4" />}
+                            iconColor={config.icon}
+                            title={severity.charAt(0).toUpperCase() + severity.slice(1) + ' Risk'}
+                            count={items.length}
+                            isExpanded={expandedSections.has(`risk-${severity}`) || expandedSections.size === 0}
+                            onToggle={() => {
+                              setExpandedSections((prev) => {
+                                const next = new Set(prev);
+                                const key = `risk-${severity}`;
+                                if (next.has(key)) next.delete(key);
+                                else next.add(key);
+                                return next;
+                              });
+                            }}
+                          />
+                          {(expandedSections.has(`risk-${severity}`) || expandedSections.size === 0) &&
+                            items.map((r) => (
+                              <AnalysisRecordCard
+                                key={r.id}
+                                icon={<ShieldAlert className="w-4 h-4" />}
+                                iconColor={config.icon}
+                                title={r.description || 'Risk'}
+                                confidence={config.confidence}
+                                sourceHref={r.href}
+                                sourcePage={r.pageNumber ?? undefined}
+                                onReject={() => setRejectedRiskIds((prev) => new Set([...prev, r.id]))}
+                              >
+                                {r.explanation && (
+                                  <p className="text-sm text-text-soft whitespace-pre-wrap line-clamp-3">{r.explanation}</p>
+                                )}
+                              </AnalysisRecordCard>
+                            ))}
+                        </div>
+                      );
+                    });
+                })()}
               </div>
             )}
 
@@ -1192,6 +1460,12 @@ export default function ContractAnalysisPage() {
               <div className="space-y-3">
                 {(() => {
                   const id = tab.slice('custom:'.length);
+                  
+                  // Check if rejected (unified action model)
+                  if (rejectedCustomModuleIds.has(id)) {
+                    return <EmptyState title="Module Rejected" description="This custom module was marked as rejected." />;
+                  }
+                  
                   const m = customModules.find((x) => x.id === id);
                   if (!m) return <EmptyState title="Missing module" description="This custom module was not found in the snapshot." />;
 
