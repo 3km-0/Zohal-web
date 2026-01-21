@@ -482,7 +482,10 @@ export default function WorkspacePlaybooksPage() {
                                 const set = new Set(p.modules || []);
                                 if (e.target.checked) set.add(m.key);
                                 else set.delete(m.key);
-                                // deadlines implies variables
+                                // Dependency rules:
+                                // - deadlines require variables (computed notice_deadline + evidence-grade dates).
+                                // - if user turns off variables, also turn off deadlines so variables can be disabled.
+                                if (!set.has('variables')) set.delete('deadlines');
                                 if (set.has('deadlines')) set.add('variables');
                                 return { ...p, modules: Array.from(set) };
                               })
