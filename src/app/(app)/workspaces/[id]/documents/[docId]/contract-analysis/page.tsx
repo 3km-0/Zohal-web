@@ -112,23 +112,27 @@ export default function ContractAnalysisPage() {
   // Verification-based attention counts
   // This is about AI confidence / needs_review status, NOT content risk.
   // - Variables: Items with verification_state = needs_review (handled inline in tab definition)
-  // - Obligations: Items with confidence_state = needs_review (low AI confidence)
+  // - Obligations: Items with low AI confidence OR needs_review state
   // - Clauses: No verification field in projection, so 0 (risk level is content-based, not verification)
   // - Risks: No AI confidence in projection, so 0 (severity is content-based, not verification)
   const attention = useMemo(() => {
-    // Obligations with needs_review confidence state (low AI confidence)
-    const obligationsNeedsReview = obligations.filter((o) => o.confidence_state === 'needs_review').length;
+    // Obligations needing verification: low confidence OR needs_review state
+    const obligationsNeedVerification = obligations.filter(
+      (o) => o.confidence_state === 'needs_review' || o.confidence === 'low'
+    ).length;
     
-    // Deadlines are obligations - count those with needs_review
-    const deadlinesNeedsReview = deadlines.filter((o) => o.confidence_state === 'needs_review').length;
+    // Deadlines needing verification
+    const deadlinesNeedVerification = deadlines.filter(
+      (o) => o.confidence_state === 'needs_review' || o.confidence === 'low'
+    ).length;
     
     return {
       // Clauses don't have verification_state in projection - risk level is content-based
       clauses: 0,
-      // Obligations with low AI confidence
-      obligations: obligationsNeedsReview,
-      // Deadlines with low AI confidence  
-      deadlines: deadlinesNeedsReview,
+      // Obligations needing verification
+      obligations: obligationsNeedVerification,
+      // Deadlines needing verification
+      deadlines: deadlinesNeedVerification,
       // Risks don't have ai_confidence in projection - severity is content-based
       risks: 0,
     };
@@ -1324,15 +1328,26 @@ export default function ContractAnalysisPage() {
                         }}
                       />
                       {(expandedSections.has(`ob-${type}`) || expandedSections.size === 0) &&
-                        sorted(items).map((o) => (
+                        sorted(items).map((o) => {
+                          // Determine if this obligation needs verification
+                          const needsVerification = o.confidence_state === 'needs_review' || o.confidence === 'low';
+                          const suggestSpotCheck = o.confidence === 'medium' && o.confidence_state !== 'needs_review';
+                          const attentionLabel = o.confidence_state === 'needs_review' 
+                            ? 'Needs Review' 
+                            : o.confidence === 'low' 
+                              ? 'Low Confidence' 
+                              : undefined;
+                          
+                          return (
                           <AnalysisRecordCard
                             key={o.id}
                             icon={<CheckCircle className="w-4 h-4" />}
                             title={o.summary || o.action || o.obligation_type || 'Obligation'}
                             subtitle={o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined}
-                            confidence={confidenceMap[o.confidence_state || ''] || 'medium'}
-                            needsAttention={o.confidence_state === 'needs_review'}
-                            attentionLabel={o.confidence_state === 'needs_review' ? 'Needs Review' : undefined}
+                            confidence={o.confidence || confidenceMap[o.confidence_state || ''] || 'medium'}
+                            needsAttention={needsVerification}
+                            attentionLabel={attentionLabel}
+                            spotCheckSuggested={suggestSpotCheck}
                             sourceHref={
                               o.page_number != null
                                 ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
@@ -1366,7 +1381,8 @@ export default function ContractAnalysisPage() {
                               )}
                             </div>
                           </AnalysisRecordCard>
-                        ))}
+                        );
+                        })}
                     </div>
                   ));
                 })()}

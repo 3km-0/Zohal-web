@@ -45,6 +45,17 @@ export function VerifyBanner({ label }: VerifyBannerProps) {
   );
 }
 
+// Subtle spot check suggestion banner (for medium confidence items)
+export function SpotCheckBanner() {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-alt text-text-soft text-xs font-medium mb-3 border border-border">
+      <FileSearch className="w-3.5 h-3.5" />
+      <span>Spot Check Suggested</span>
+      <span className="ml-auto">Medium Confidence</span>
+    </div>
+  );
+}
+
 // Tool action types
 export type ToolActionType = 'calendar' | 'edit' | 'task';
 
@@ -68,6 +79,7 @@ export interface AnalysisRecordCardProps {
   confidence?: AIConfidence;
   needsAttention?: boolean;
   attentionLabel?: string;
+  spotCheckSuggested?: boolean;
   sourceHref?: string | null;
   sourcePage?: number;
   toolAction?: ToolAction;
@@ -84,6 +96,7 @@ export function AnalysisRecordCard({
   confidence,
   needsAttention,
   attentionLabel,
+  spotCheckSuggested,
   sourceHref,
   sourcePage,
   toolAction,
@@ -97,6 +110,9 @@ export function AnalysisRecordCard({
     <div className="rounded-scholar border border-border bg-surface p-4 space-y-3">
       {/* Verification Attention banner (for low confidence / needs_review items) */}
       {needsAttention && <VerifyBanner label={attentionLabel} />}
+      
+      {/* Spot check suggestion banner (for medium confidence items) */}
+      {!needsAttention && spotCheckSuggested && <SpotCheckBanner />}
       
       {/* Header */}
       <div className="flex items-start gap-3">

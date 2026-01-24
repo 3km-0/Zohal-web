@@ -329,8 +329,12 @@ export interface LegalObligation {
   condition?: string;         // Under what conditions?
   responsible_party?: string; // Who must perform (us/counterparty/mutual)
   
-  // Confidence state system
+  // Confidence state system (workflow state: extracted → needs_review → confirmed)
   confidence_state: ObligationConfidenceState;
+  
+  // AI's self-reported confidence in the extraction (high/medium/low)
+  // This is separate from confidence_state which is a workflow state
+  confidence?: 'high' | 'medium' | 'low';
   
   // Source clause linking for highlight/navigation
   source_clause_id?: string;
