@@ -321,7 +321,45 @@
       "allPluginsIncluded": "All plugins included",
       "calendarSync": "Calendar sync",
       "driveSync": "Google Drive sync",
-      "prioritySupport": "Priority support"
+      "prioritySupport": "Priority support",
+      "customLimits": "Custom usage limits",
+      "teamManagement": "Team management",
+      "slaSupport": "SLA & dedicated support",
+      "dedicatedManager": "Dedicated account manager",
+      "customIntegrations": "Custom integrations",
+      "onboarding": "Onboarding & training"
+    },
+    "enterprise": {
+      "title": "Enterprise",
+      "description": "Custom solutions for teams and organizations",
+      "contactUs": "Contact Us",
+      "customPricing": "Custom Pricing",
+      "modalTitle": "Contact Sales",
+      "modalSubtitle": "Tell us about your needs and we'll get back to you shortly",
+      "name": "Name",
+      "namePlaceholder": "Your full name",
+      "email": "Email",
+      "emailPlaceholder": "you@company.com",
+      "company": "Company",
+      "companyPlaceholder": "Your company name",
+      "companySize": "Company Size",
+      "companySizePlaceholder": "Select company size",
+      "companySizes": {
+        "1-10": "1-10 employees",
+        "11-50": "11-50 employees",
+        "51-200": "51-200 employees",
+        "201-500": "201-500 employees",
+        "500+": "500+ employees"
+      },
+      "phone": "Phone (optional)",
+      "phonePlaceholder": "+1 (555) 000-0000",
+      "message": "Message",
+      "messagePlaceholder": "Tell us about your use case and requirements...",
+      "submit": "Submit Inquiry",
+      "submitting": "Submitting...",
+      "successTitle": "Thank you!",
+      "successMessage": "We've received your inquiry and will be in touch within 1-2 business days.",
+      "errorMessage": "Something went wrong. Please try again or email us directly."
     }
   },
   "subscriptionSuccess": {
@@ -421,6 +459,30 @@
         "promptPlaceholder": "Describe what you want extracted and how to structure it.",
         "jsonSchema": "JSON schema"
       }
+    }
+  },
+  "runAnalysis": {
+    "title": "Run Analysis",
+    "templatesComingSoon": "Templates for this document type are coming soon. You can still use AI Tools for Q&A and summaries.",
+    "openAiTools": "Open AI Tools",
+    "close": "Close",
+    "cancel": "Cancel",
+    "run": "Run",
+    "scope": {
+      "label": "Scope",
+      "single": "Single document",
+      "bundle": "Bundle"
+    },
+    "bundle": {
+      "label": "Bundle",
+      "select": "Select a bundle…",
+      "create": "Create",
+      "newNamePlaceholder": "New bundle name (optional)",
+      "requirementsTitle": "Bundle requirements"
+    },
+    "playbook": {
+      "label": "Playbook",
+      "default": "Default (Renewal Pack)"
     }
   },
   "contractAnalysis": {

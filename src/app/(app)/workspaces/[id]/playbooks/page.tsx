@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Plus, Save, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, Save, UploadCloud } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -14,6 +14,11 @@ import { cn } from '@/lib/utils';
 type PlaybookSpecV1 = {
   meta: { name: string; kind: string };
   options?: { strictness?: 'default' | 'strict'; enable_verifier?: boolean; language?: 'en' | 'ar' };
+  scope?: 'single' | 'bundle' | 'either';
+  bundle_schema?: {
+    roles?: Array<{ role: string; required: boolean; multiple: boolean }>;
+    allowed_document_types?: string[];
+  };
   modules?: string[];
   outputs?: string[];
   custom_modules?: Array<{
@@ -50,6 +55,8 @@ type PlaybookSpecV1 = {
   >;
 };
 
+type BundleRoleRow = { role: string; required: boolean; multiple: boolean };
+
 type PlaybookRow = {
   id: string;
   name: string;
@@ -77,6 +84,27 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
       : undefined;
   const modules = Array.isArray(input?.modules) ? input.modules.map((x: any) => String(x).trim()).filter(Boolean) : undefined;
   const outputs = Array.isArray(input?.outputs) ? input.outputs.map((x: any) => String(x).trim()).filter(Boolean) : undefined;
+  const scopeRaw = String(input?.scope || '').trim();
+  const scope: PlaybookSpecV1['scope'] =
+    scopeRaw === 'single' ? 'single' : scopeRaw === 'bundle' ? 'bundle' : 'either';
+
+  const bundleSchemaRaw = input?.bundle_schema && typeof input.bundle_schema === 'object' ? input.bundle_schema : null;
+  const bundle_schema: PlaybookSpecV1['bundle_schema'] = bundleSchemaRaw
+    ? {
+        roles: Array.isArray(bundleSchemaRaw.roles)
+          ? bundleSchemaRaw.roles
+              .map((r: any) => ({
+                role: String(r?.role || '').trim(),
+                required: r?.required === true,
+                multiple: r?.multiple === true,
+              }))
+              .filter((r: any) => !!r.role)
+          : undefined,
+        allowed_document_types: Array.isArray(bundleSchemaRaw.allowed_document_types)
+          ? bundleSchemaRaw.allowed_document_types.map((x: any) => String(x).trim()).filter(Boolean)
+          : undefined,
+      }
+    : undefined;
   const custom_modules = Array.isArray(input?.custom_modules)
     ? input.custom_modules
         .map((m: any) => ({
@@ -144,6 +172,8 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
   return {
     meta: { name: metaName, kind: metaKind },
     options,
+    scope,
+    bundle_schema,
     modules,
     outputs,
     custom_modules,
@@ -173,6 +203,7 @@ export default function WorkspacePlaybooksPage() {
   const [spec, setSpec] = useState<PlaybookSpecV1>({
     meta: { name: '', kind: 'contract' },
     options: { strictness: 'default', enable_verifier: false, language: 'en' },
+    scope: 'either',
     modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
     outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
     custom_modules: [],
@@ -182,6 +213,7 @@ export default function WorkspacePlaybooksPage() {
 
   const [customSchemaTextById, setCustomSchemaTextById] = useState<Record<string, string>>({});
   const [customSchemaErrorById, setCustomSchemaErrorById] = useState<Record<string, string>>({});
+  const [expandedSchemaIds, setExpandedSchemaIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const cms = spec.custom_modules || [];
@@ -462,6 +494,113 @@ export default function WorkspacePlaybooksPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <div className="font-semibold text-text">Scope</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {(['either', 'single', 'bundle'] as const).map((s) => (
+                        <label key={s} className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                          <input
+                            type="radio"
+                            name="scope"
+                            checked={(spec.scope || 'either') === s}
+                            onChange={() => setSpec((p) => ({ ...p, scope: s }))}
+                          />
+                          {s === 'either' ? 'Either (single or bundle)' : s === 'single' ? 'Single only' : 'Bundle only'}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="text-xs text-text-soft">
+                      Use “Bundle only” for templates that require multiple documents (e.g., MSA + amendments).
+                    </div>
+                  </div>
+
+                  {(spec.scope || 'either') !== 'single' ? (
+                    <div className="space-y-3">
+                      <div className="font-semibold text-text">Bundle schema (optional)</div>
+                      <div className="text-xs text-text-soft">
+                        Define required/optional roles for bundle members. When set, “Run Analysis” will enforce required roles.
+                      </div>
+
+                      {(() => {
+                        const roles = (spec.bundle_schema?.roles || []) as BundleRoleRow[];
+                        return (
+                          <div className="space-y-2">
+                            {roles.length === 0 ? (
+                              <div className="text-sm text-text-soft">No roles defined.</div>
+                            ) : (
+                              roles.map((r, idx) => (
+                                <div
+                                  key={`${r.role}-${idx}`}
+                                  className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-scholar border border-border bg-surface-alt p-3"
+                                >
+                                  <Input
+                                    value={r.role}
+                                    onChange={(e) => {
+                                      const next = roles.slice();
+                                      next[idx] = { ...r, role: e.target.value };
+                                      setSpec((p) => ({
+                                        ...p,
+                                        bundle_schema: { ...(p.bundle_schema || {}), roles: next.filter((x) => !!x.role.trim()) },
+                                      }));
+                                    }}
+                                    placeholder="role (e.g., master, amendment)"
+                                  />
+                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                                    <input
+                                      type="checkbox"
+                                      checked={r.required}
+                                      onChange={(e) => {
+                                        const next = roles.slice();
+                                        next[idx] = { ...r, required: e.target.checked };
+                                        setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
+                                      }}
+                                    />
+                                    required
+                                  </label>
+                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                                    <input
+                                      type="checkbox"
+                                      checked={r.multiple}
+                                      onChange={(e) => {
+                                        const next = roles.slice();
+                                        next[idx] = { ...r, multiple: e.target.checked };
+                                        setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
+                                      }}
+                                    />
+                                    multiple
+                                  </label>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => {
+                                      const next = roles.filter((_, i) => i !== idx);
+                                      setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
+                                    }}
+                                  >
+                                    {tCommon('remove')}
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+
+                            <div>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  const next = roles.concat([{ role: '', required: false, multiple: false }]);
+                                  setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
+                                }}
+                              >
+                                + Add role
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-2">
                     <div className="font-semibold text-text">{t('outputsModules')}</div>
                     {(() => {
                       const order = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
@@ -606,20 +745,6 @@ export default function WorkspacePlaybooksPage() {
                                     />
                                     {t('customModules.fields.enabled')}
                                   </label>
-                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                                    <input
-                                      type="checkbox"
-                                      checked={m.show_in_report === true}
-                                      onChange={(e) =>
-                                        setSpec((p) => {
-                                          const cms = (p.custom_modules || []).slice();
-                                          cms[idx] = { ...cms[idx], show_in_report: e.target.checked };
-                                          return { ...p, custom_modules: cms };
-                                        })
-                                      }
-                                    />
-                                    {t('customModules.fields.showInReport')}
-                                  </label>
                                 </div>
                               </div>
 
@@ -639,34 +764,60 @@ export default function WorkspacePlaybooksPage() {
                                 />
                               </label>
 
-                              <label className="space-y-1 text-sm">
-                                <div className="text-text-soft font-semibold">{t('customModules.fields.jsonSchema')}</div>
-                                <textarea
-                                  className="w-full min-h-[140px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
-                                  value={customSchemaTextById[m.id] ?? JSON.stringify(m.json_schema || {}, null, 2)}
-                                  onChange={(e) => {
-                                    const text = e.target.value;
-                                    setCustomSchemaTextById((prev) => ({ ...prev, [m.id]: text }));
-                                    try {
-                                      const parsed = JSON.parse(text);
-                                      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                                        throw new Error('schema_must_be_object');
-                                      }
-                                      setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: '' }));
-                                      setSpec((p) => {
-                                        const cms = (p.custom_modules || []).slice();
-                                        cms[idx] = { ...cms[idx], json_schema: parsed };
-                                        return { ...p, custom_modules: cms };
-                                      });
-                                    } catch {
-                                      setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: t('customModules.invalidJson') }));
+                              {/* Advanced: JSON Schema (collapsible) */}
+                              <div className="space-y-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedSchemaIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(m.id)) {
+                                      next.delete(m.id);
+                                    } else {
+                                      next.add(m.id);
                                     }
-                                  }}
-                                />
-                                {customSchemaErrorById[m.id] ? (
-                                  <div className="text-xs text-error">{customSchemaErrorById[m.id]}</div>
-                                ) : null}
-                              </label>
+                                    return next;
+                                  })}
+                                  className="flex items-center gap-2 text-sm text-text-soft hover:text-text transition-colors"
+                                >
+                                  {expandedSchemaIds.has(m.id) ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                  <span className="font-semibold">Advanced: JSON Schema</span>
+                                </button>
+                                
+                                {expandedSchemaIds.has(m.id) && (
+                                  <div className="pl-6 space-y-2">
+                                    <textarea
+                                      className="w-full min-h-[140px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                      value={customSchemaTextById[m.id] ?? JSON.stringify(m.json_schema || {}, null, 2)}
+                                      onChange={(e) => {
+                                        const text = e.target.value;
+                                        setCustomSchemaTextById((prev) => ({ ...prev, [m.id]: text }));
+                                        try {
+                                          const parsed = JSON.parse(text);
+                                          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                                            throw new Error('schema_must_be_object');
+                                          }
+                                          setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: '' }));
+                                          setSpec((p) => {
+                                            const cms = (p.custom_modules || []).slice();
+                                            cms[idx] = { ...cms[idx], json_schema: parsed };
+                                            return { ...p, custom_modules: cms };
+                                          });
+                                        } catch {
+                                          setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: t('customModules.invalidJson') }));
+                                        }
+                                      }}
+                                    />
+                                    {customSchemaErrorById[m.id] ? (
+                                      <div className="text-xs text-error">{customSchemaErrorById[m.id]}</div>
+                                    ) : null}
+                                    <div className="text-xs text-text-soft">ID: {m.id}</div>
+                                  </div>
+                                )}
+                              </div>
 
                               <div className="flex justify-end">
                                 <Button
@@ -743,7 +894,7 @@ export default function WorkspacePlaybooksPage() {
                                   }
                                   placeholder="type (text|date|number|...)"
                                 />
-                                <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                                <label className="inline-flex items-center gap-2 text-sm text-text">
                                   <input
                                     type="checkbox"
                                     checked={v.required === true}
@@ -755,7 +906,10 @@ export default function WorkspacePlaybooksPage() {
                                       })
                                     }
                                   />
-                                  Required
+                                  <span className="flex flex-col">
+                                    <span className="font-semibold">Flag if missing</span>
+                                    <span className="text-xs text-text-soft">Marks as 'Needs Review' if not found</span>
+                                  </span>
                                 </label>
                               </div>
 

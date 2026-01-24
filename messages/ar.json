@@ -321,7 +321,45 @@
       "allPluginsIncluded": "جميع الإضافات",
       "calendarSync": "مزامنة التقويم",
       "driveSync": "مزامنة Google Drive",
-      "prioritySupport": "دعم مميز"
+      "prioritySupport": "دعم مميز",
+      "customLimits": "حدود استخدام مخصصة",
+      "teamManagement": "إدارة الفريق",
+      "slaSupport": "اتفاقية مستوى الخدمة ودعم مخصص",
+      "dedicatedManager": "مدير حساب مخصص",
+      "customIntegrations": "تكاملات مخصصة",
+      "onboarding": "تدريب وإعداد"
+    },
+    "enterprise": {
+      "title": "للمؤسسات",
+      "description": "حلول مخصصة للفرق والمؤسسات",
+      "contactUs": "تواصل معنا",
+      "customPricing": "أسعار مخصصة",
+      "modalTitle": "تواصل مع المبيعات",
+      "modalSubtitle": "أخبرنا عن احتياجاتك وسنتواصل معك قريباً",
+      "name": "الاسم",
+      "namePlaceholder": "اسمك الكامل",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "you@company.com",
+      "company": "الشركة",
+      "companyPlaceholder": "اسم شركتك",
+      "companySize": "حجم الشركة",
+      "companySizePlaceholder": "اختر حجم الشركة",
+      "companySizes": {
+        "1-10": "1-10 موظفين",
+        "11-50": "11-50 موظف",
+        "51-200": "51-200 موظف",
+        "201-500": "201-500 موظف",
+        "500+": "أكثر من 500 موظف"
+      },
+      "phone": "الهاتف (اختياري)",
+      "phonePlaceholder": "+966 5X XXX XXXX",
+      "message": "الرسالة",
+      "messagePlaceholder": "أخبرنا عن حالة استخدامك ومتطلباتك...",
+      "submit": "إرسال الطلب",
+      "submitting": "جاري الإرسال...",
+      "successTitle": "شكراً لك!",
+      "successMessage": "استلمنا طلبك وسنتواصل معك خلال 1-2 يوم عمل.",
+      "errorMessage": "حدث خطأ. يرجى المحاولة مرة أخرى أو مراسلتنا مباشرة."
     }
   },
   "subscriptionSuccess": {
@@ -421,6 +459,30 @@
         "promptPlaceholder": "صف ما تريد استخراجه وكيف يجب تنظيمه.",
         "jsonSchema": "مخطط JSON"
       }
+    }
+  },
+  "runAnalysis": {
+    "title": "تشغيل التحليل",
+    "templatesComingSoon": "قوالب هذا النوع من المستندات ستتوفر قريباً. يمكنك استخدام أدوات الذكاء الاصطناعي للأسئلة والملخصات.",
+    "openAiTools": "فتح أدوات الذكاء الاصطناعي",
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "run": "تشغيل",
+    "scope": {
+      "label": "النطاق",
+      "single": "مستند واحد",
+      "bundle": "حزمة مستندات"
+    },
+    "bundle": {
+      "label": "الحزمة",
+      "select": "اختر حزمة…",
+      "create": "إنشاء",
+      "newNamePlaceholder": "اسم الحزمة (اختياري)",
+      "requirementsTitle": "متطلبات الحزمة"
+    },
+    "playbook": {
+      "label": "Playbook",
+      "default": "الافتراضي (حزمة التجديد)"
     }
   },
   "contractAnalysis": {

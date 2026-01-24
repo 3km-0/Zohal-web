@@ -12,9 +12,11 @@ import {
   CreditCard,
   ArrowRight,
   X,
+  Building2,
+  CheckCircle,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card, Badge, Spinner } from '@/components/ui';
+import { Button, Card, Badge, Spinner, Input } from '@/components/ui';
 import { MoyasarPaymentForm } from '@/components/payment/MoyasarPaymentForm';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +44,7 @@ export default function SubscriptionPage() {
   const { user } = useAuth();
   const t = useTranslations('subscriptionPage');
   const tFeatures = useTranslations('subscriptionPage.features');
+  const tEnterprise = useTranslations('subscriptionPage.enterprise');
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +56,20 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+
+  // Enterprise contact form state
+  const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
+  const [enterpriseForm, setEnterpriseForm] = useState({
+    name: '',
+    email: '',
+    company: '',
+    companySize: '',
+    phone: '',
+    message: '',
+  });
+  const [enterpriseSubmitting, setEnterpriseSubmitting] = useState(false);
+  const [enterpriseSuccess, setEnterpriseSuccess] = useState(false);
+  const [enterpriseError, setEnterpriseError] = useState<string | null>(null);
 
   // Fetch plans and current subscription
   useEffect(() => {
@@ -135,6 +152,51 @@ export default function SubscriptionPage() {
 
     // Show success or redirect
     router.push('/subscription/success');
+  };
+
+  const handleEnterpriseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEnterpriseSubmitting(true);
+    setEnterpriseError(null);
+
+    try {
+      const { error } = await supabase.from('enterprise_inquiries').insert({
+        user_id: user?.id || null,
+        name: enterpriseForm.name,
+        email: enterpriseForm.email,
+        company: enterpriseForm.company || null,
+        company_size: enterpriseForm.companySize || null,
+        phone: enterpriseForm.phone || null,
+        message: enterpriseForm.message || null,
+      });
+
+      if (error) throw error;
+
+      setEnterpriseSuccess(true);
+      // Reset form after success
+      setEnterpriseForm({
+        name: '',
+        email: '',
+        company: '',
+        companySize: '',
+        phone: '',
+        message: '',
+      });
+    } catch (err) {
+      console.error('Enterprise inquiry error:', err);
+      setEnterpriseError(tEnterprise('errorMessage'));
+    } finally {
+      setEnterpriseSubmitting(false);
+    }
+  };
+
+  const handleCloseEnterpriseModal = () => {
+    setShowEnterpriseModal(false);
+    // Reset state after a delay to avoid UI flash
+    setTimeout(() => {
+      setEnterpriseSuccess(false);
+      setEnterpriseError(null);
+    }, 300);
   };
 
   const tierIcons: Record<string, typeof Crown> = {
@@ -225,7 +287,7 @@ export default function SubscriptionPage() {
           </div>
 
           {/* Plans Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {plans.map((plan) => {
               const Icon = tierIcons[plan.tier] || Zap;
               const price = getPrice(plan);
@@ -329,6 +391,53 @@ export default function SubscriptionPage() {
                 </Card>
               );
             })}
+
+            {/* Enterprise Card */}
+            <Card
+              className="relative flex flex-col transition-all border-accent/50 bg-gradient-to-br from-surface to-accent/5"
+              padding="lg"
+            >
+              {/* Plan Header */}
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 bg-accent/10">
+                  <Building2 className="w-6 h-6 text-accent" />
+                </div>
+                <h3 className="text-lg font-bold text-text">{tEnterprise('title')}</h3>
+                <p className="text-sm text-text-soft mt-1">{tEnterprise('description')}</p>
+              </div>
+
+              {/* Price */}
+              <div className="text-center mb-6">
+                <div className="text-3xl font-bold text-text">
+                  {tEnterprise('customPricing')}
+                </div>
+                <p className="text-sm text-text-soft">
+                  {tEnterprise('contactUs')}
+                </p>
+              </div>
+
+              {/* Features */}
+              <ul className="space-y-3 mb-6 flex-1">
+                <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
+                <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
+                <FeatureItem>{tFeatures('customLimits')}</FeatureItem>
+                <FeatureItem>{tFeatures('teamManagement')}</FeatureItem>
+                <FeatureItem>{tFeatures('slaSupport')}</FeatureItem>
+                <FeatureItem>{tFeatures('dedicatedManager')}</FeatureItem>
+                <FeatureItem>{tFeatures('customIntegrations')}</FeatureItem>
+                <FeatureItem>{tFeatures('onboarding')}</FeatureItem>
+              </ul>
+
+              {/* Action Button */}
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={() => setShowEnterpriseModal(true)}
+              >
+                {tEnterprise('contactUs')}
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Card>
           </div>
 
           {/* FAQ or Additional Info */}
@@ -393,6 +502,161 @@ export default function SubscriptionPage() {
                     setProcessingPayment(true);
                   }}
                 />
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Enterprise Contact Modal */}
+      {showEnterpriseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !enterpriseSubmitting && handleCloseEnterpriseModal()}
+          />
+
+          <Card className="relative w-full max-w-lg z-10 animate-slide-up" padding="none">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div>
+                <h2 className="text-lg font-semibold text-text">
+                  {tEnterprise('modalTitle')}
+                </h2>
+                <p className="text-sm text-text-soft">
+                  {tEnterprise('modalSubtitle')}
+                </p>
+              </div>
+              <button
+                onClick={() => !enterpriseSubmitting && handleCloseEnterpriseModal()}
+                className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
+                disabled={enterpriseSubmitting}
+              >
+                <X className="w-5 h-5 text-text-soft" />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-5">
+              {enterpriseSuccess ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
+                    <CheckCircle className="w-8 h-8 text-success" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-text mb-2">
+                    {tEnterprise('successTitle')}
+                  </h3>
+                  <p className="text-text-soft max-w-sm">
+                    {tEnterprise('successMessage')}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    className="mt-6"
+                    onClick={handleCloseEnterpriseModal}
+                  >
+                    {t('free') === 'Free' ? 'Close' : 'إغلاق'}
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleEnterpriseSubmit} className="space-y-4">
+                  {enterpriseError && (
+                    <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm">
+                      {enterpriseError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label={tEnterprise('name')}
+                      placeholder={tEnterprise('namePlaceholder')}
+                      value={enterpriseForm.name}
+                      onChange={(e) =>
+                        setEnterpriseForm({ ...enterpriseForm, name: e.target.value })
+                      }
+                      required
+                      disabled={enterpriseSubmitting}
+                    />
+                    <Input
+                      label={tEnterprise('email')}
+                      type="email"
+                      placeholder={tEnterprise('emailPlaceholder')}
+                      value={enterpriseForm.email}
+                      onChange={(e) =>
+                        setEnterpriseForm({ ...enterpriseForm, email: e.target.value })
+                      }
+                      required
+                      disabled={enterpriseSubmitting}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label={tEnterprise('company')}
+                      placeholder={tEnterprise('companyPlaceholder')}
+                      value={enterpriseForm.company}
+                      onChange={(e) =>
+                        setEnterpriseForm({ ...enterpriseForm, company: e.target.value })
+                      }
+                      disabled={enterpriseSubmitting}
+                    />
+                    <div className="w-full">
+                      <label className="block text-sm font-medium text-text mb-1.5">
+                        {tEnterprise('companySize')}
+                      </label>
+                      <select
+                        className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background focus:border-accent"
+                        value={enterpriseForm.companySize}
+                        onChange={(e) =>
+                          setEnterpriseForm({ ...enterpriseForm, companySize: e.target.value })
+                        }
+                        disabled={enterpriseSubmitting}
+                      >
+                        <option value="">{tEnterprise('companySizePlaceholder')}</option>
+                        <option value="1-10">{tEnterprise('companySizes.1-10')}</option>
+                        <option value="11-50">{tEnterprise('companySizes.11-50')}</option>
+                        <option value="51-200">{tEnterprise('companySizes.51-200')}</option>
+                        <option value="201-500">{tEnterprise('companySizes.201-500')}</option>
+                        <option value="500+">{tEnterprise('companySizes.500+')}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <Input
+                    label={tEnterprise('phone')}
+                    type="tel"
+                    placeholder={tEnterprise('phonePlaceholder')}
+                    value={enterpriseForm.phone}
+                    onChange={(e) =>
+                      setEnterpriseForm({ ...enterpriseForm, phone: e.target.value })
+                    }
+                    disabled={enterpriseSubmitting}
+                  />
+
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-text mb-1.5">
+                      {tEnterprise('message')}
+                    </label>
+                    <textarea
+                      className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text placeholder:text-text-soft transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background focus:border-accent min-h-[100px] resize-y"
+                      placeholder={tEnterprise('messagePlaceholder')}
+                      value={enterpriseForm.message}
+                      onChange={(e) =>
+                        setEnterpriseForm({ ...enterpriseForm, message: e.target.value })
+                      }
+                      disabled={enterpriseSubmitting}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full"
+                    isLoading={enterpriseSubmitting}
+                    disabled={enterpriseSubmitting || !enterpriseForm.name || !enterpriseForm.email}
+                  >
+                    {enterpriseSubmitting ? tEnterprise('submitting') : tEnterprise('submit')}
+                  </Button>
+                </form>
               )}
             </div>
           </Card>
