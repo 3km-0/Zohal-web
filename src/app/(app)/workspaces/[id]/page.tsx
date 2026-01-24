@@ -27,6 +27,7 @@ import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
 import { FolderIcon, CreateFolderModal } from '@/components/folder';
+import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 
 // Document type icons
 const documentIcons: Record<DocumentType, string> = {
@@ -438,6 +439,8 @@ export default function WorkspaceDetailPage() {
           </div>
         }
       />
+
+      <WorkspaceTabs workspaceId={workspaceId} active="documents" />
 
       {/* Breadcrumb */}
       {folderPath.length > 0 && (

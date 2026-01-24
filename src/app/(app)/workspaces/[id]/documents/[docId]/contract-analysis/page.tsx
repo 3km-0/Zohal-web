@@ -34,6 +34,8 @@ export default function ContractAnalysisPage() {
 
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportSavedMessage, setReportSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [progressStep, setProgressStep] = useState(0);
@@ -601,6 +603,46 @@ export default function ContractAnalysisPage() {
     }
   }
 
+  async function generateAndSaveReport() {
+    setError(null);
+    setReportSavedMessage(null);
+    setIsGeneratingReport(true);
+    try {
+      // 1) Generate HTML via the existing exporter (same as iOS).
+      const { data: reportData, error: reportErr } = await supabase.functions.invoke('export-contract-report', {
+        body: {
+          document_id: documentId,
+          template: 'decision_pack',
+          // The exporter accepts an optional title, but this page doesn't load full document metadata.
+        },
+      });
+      if (reportErr) throw reportErr;
+      const html = String(reportData?.html || '').trim();
+      if (!html) throw new Error('Report generation returned empty content');
+
+      // 2) Persist it as a workspace report.
+      const { error: createErr } = await supabase.functions.invoke('create-report', {
+        body: {
+          workspace_id: workspaceId,
+          document_id: documentId,
+          title: `Decision Pack${contract?.counterparty_name ? ` • ${contract.counterparty_name}` : ''}`,
+          subtitle: null,
+          template: 'decision_pack',
+          output_type: 'download',
+          format: 'html',
+          html,
+        },
+      });
+      if (createErr) throw createErr;
+
+      setReportSavedMessage('Report saved to Workspace → Reports.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate report');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }
+
   async function addTaskFromObligation(o: LegalObligation) {
     try {
       setCreatingTaskFor(o.id);
@@ -712,6 +754,21 @@ export default function ContractAnalysisPage() {
                     Export Calendar
                   </button>
                 )}
+                {contract && (
+                  <button
+                    onClick={() => generateAndSaveReport()}
+                    disabled={isGeneratingReport}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold transition-colors',
+                      isGeneratingReport
+                        ? 'text-text-soft bg-surface-alt cursor-not-allowed'
+                        : 'text-text hover:bg-surface-alt'
+                    )}
+                  >
+                    <FileText className="w-4 h-4 text-text-soft" />
+                    {isGeneratingReport ? 'Generating report…' : 'Generate Report'}
+                  </button>
+                )}
                 <button
                   onClick={() => router.push(`/workspaces/${workspaceId}/documents/${documentId}`)}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold text-text hover:bg-surface-alt transition-colors"
@@ -727,6 +784,11 @@ export default function ContractAnalysisPage() {
 
       {/* Body */}
       <div className="flex-1 overflow-auto p-4">
+        {reportSavedMessage && (
+          <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-scholar text-success text-sm font-medium">
+            {reportSavedMessage}
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Spinner size="lg" />

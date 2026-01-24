@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Note, NoteType } from '@/types/database';
 import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { NoteModal } from '@/components/notes/NoteModal';
+import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 
 // Note type icons and colors (matching database enum)
 const noteTypeConfig: Record<NoteType, { icon: string; color: string; label: string }> = {
@@ -74,6 +75,8 @@ export default function WorkspaceNotesPage() {
           </Button>
         }
       />
+
+      <WorkspaceTabs workspaceId={workspaceId} active="notes" />
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
