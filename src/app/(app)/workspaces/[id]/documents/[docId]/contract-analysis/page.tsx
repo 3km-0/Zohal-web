@@ -1231,6 +1231,8 @@ export default function ContractAnalysisPage() {
                               iconColor={riskIcons[risk] || 'text-text-soft'}
                               title={c.title || 'Clause'}
                               subtitle={c.clauseNumber ? `Clause ${c.clauseNumber}` : undefined}
+                              needsAttention={risk === 'high'}
+                              attentionLabel={risk === 'high' ? 'High Risk' : undefined}
                               sourceHref={c.href}
                               sourcePage={c.pageNumber ?? undefined}
                               onReject={() => setRejectedClauseIds((prev) => new Set([...prev, c.id]))}
@@ -1272,13 +1274,28 @@ export default function ContractAnalysisPage() {
                     return a.localeCompare(b);
                   });
 
+                  // Sort by attention needed first, then confidence, then due date
                   const sorted = (items: LegalObligation[]) =>
                     items.slice().sort((a, b) => {
+                      // 1. Needs review items first
+                      const aNeedsReview = a.confidence_state === 'needs_review';
+                      const bNeedsReview = b.confidence_state === 'needs_review';
+                      if (aNeedsReview !== bNeedsReview) return aNeedsReview ? -1 : 1;
+                      
+                      // 2. Then by confidence (low → medium → high)
+                      const confOrder = ['needs_review', 'extracted', 'confirmed'];
+                      const aConf = confOrder.indexOf(a.confidence_state || 'extracted');
+                      const bConf = confOrder.indexOf(b.confidence_state || 'extracted');
+                      if (aConf !== bConf) return aConf - bConf;
+                      
+                      // 3. Then by due date
                       const da = a.due_at || '';
                       const db = b.due_at || '';
                       if (da && db && da !== db) return da.localeCompare(db);
                       if (da && !db) return -1;
                       if (!da && db) return 1;
+                      
+                      // 4. Finally by page number
                       return (a.page_number ?? 999999) - (b.page_number ?? 999999);
                     });
 
@@ -1314,6 +1331,8 @@ export default function ContractAnalysisPage() {
                             title={o.summary || o.action || o.obligation_type || 'Obligation'}
                             subtitle={o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined}
                             confidence={confidenceMap[o.confidence_state || ''] || 'medium'}
+                            needsAttention={o.confidence_state === 'needs_review'}
+                            attentionLabel={o.confidence_state === 'needs_review' ? 'Low Confidence' : undefined}
                             sourceHref={
                               o.page_number != null
                                 ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
@@ -1520,6 +1539,8 @@ export default function ContractAnalysisPage() {
                                 iconColor={config.icon}
                                 title={r.description || 'Risk'}
                                 confidence={config.confidence}
+                                needsAttention={severity === 'critical' || severity === 'high'}
+                                attentionLabel={severity === 'critical' ? 'Critical' : severity === 'high' ? 'High Risk' : undefined}
                                 sourceHref={r.href}
                                 sourcePage={r.pageNumber ?? undefined}
                                 onReject={() => setRejectedRiskIds((prev) => new Set([...prev, r.id]))}

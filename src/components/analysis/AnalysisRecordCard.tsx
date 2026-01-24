@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { X, FileSearch, Calendar, Pencil, ChevronDown, ChevronUp, ListTodo } from 'lucide-react';
+import { X, FileSearch, Calendar, Pencil, ChevronDown, ChevronUp, ListTodo, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // AI Confidence types matching iOS
@@ -28,6 +28,21 @@ export function AIConfidenceBadge({ confidence }: AIConfidenceBadgeProps) {
   );
 }
 
+// Needs Attention banner component
+export interface NeedsAttentionBannerProps {
+  label?: string;
+}
+
+export function NeedsAttentionBanner({ label }: NeedsAttentionBannerProps) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500 text-white text-xs font-bold mb-3">
+      <AlertTriangle className="w-4 h-4" />
+      <span>Needs Attention</span>
+      {label && <span className="ml-auto text-xs font-medium">{label}</span>}
+    </div>
+  );
+}
+
 // Tool action types
 export type ToolActionType = 'calendar' | 'edit' | 'task';
 
@@ -49,6 +64,8 @@ export interface AnalysisRecordCardProps {
   title: string;
   subtitle?: string;
   confidence?: AIConfidence;
+  needsAttention?: boolean;
+  attentionLabel?: string;
   sourceHref?: string | null;
   sourcePage?: number;
   toolAction?: ToolAction;
@@ -63,6 +80,8 @@ export function AnalysisRecordCard({
   title,
   subtitle,
   confidence,
+  needsAttention,
+  attentionLabel,
   sourceHref,
   sourcePage,
   toolAction,
@@ -74,6 +93,9 @@ export function AnalysisRecordCard({
 
   return (
     <div className="rounded-scholar border border-border bg-surface p-4 space-y-3">
+      {/* Needs Attention banner */}
+      {needsAttention && <NeedsAttentionBanner label={attentionLabel} />}
+      
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className={cn('flex-shrink-0 mt-0.5', iconColor)}>{icon}</div>

@@ -444,7 +444,7 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
     >
       {highlightRect && status === 'rendered' && (
         <div
-          className="absolute z-10 border border-accent/40 bg-accent/15 rounded-scholar-sm pointer-events-none"
+          className="absolute z-10 border-2 border-yellow-400 bg-yellow-300/50 rounded-scholar-sm pointer-events-none"
           style={{
             left: highlightRect.left,
             top: highlightRect.top,
