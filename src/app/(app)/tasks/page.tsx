@@ -106,6 +106,20 @@ export default function TasksPage() {
       <AppHeader title={t('title')} />
 
       <div className="flex-1 overflow-auto p-6">
+        {/* Migration notice */}
+        <div className="mb-6 p-4 rounded-scholar border border-amber-500/30 bg-amber-500/5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-text">Tasks now use Apple Reminders</h3>
+              <p className="text-sm text-text-soft mt-1">
+                On iOS, obligation tasks are now added directly to Apple Reminders for better 
+                integration with your workflow. Existing tasks are shown below for reference.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="flex items-center gap-2 mb-6 flex-wrap">
           {(['all', 'pending', 'in_progress', 'completed', 'cancelled'] as const).map(

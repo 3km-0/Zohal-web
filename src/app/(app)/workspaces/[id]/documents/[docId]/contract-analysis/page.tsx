@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch } from 'lucide-react';
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
 import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence } from '@/components/analysis';
@@ -19,16 +19,18 @@ type PlaybookRecord = {
   id: string;
   name: string;
   current_version_id?: string | null;
-  current_version?: { id: string; version_number: number } | null;
+  current_version?: { id: string; version_number: number; spec_json?: any } | null;
 };
 
 export default function ContractAnalysisPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
   const documentId = params.docId as string;
   const supabase = useMemo(() => createClient(), []);
   const t = useTranslations('contractAnalysis');
+  const locale = useLocale();
 
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -51,6 +53,10 @@ export default function ContractAnalysisPage() {
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>(''); // empty = default
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
+
+  // Bundle selection for run (MVP): optional; default is single-doc.
+  const [selectedBundleId, setSelectedBundleId] = useState<string>('');
+  const autoRunTriggered = useRef(false);
 
   // Rejection tracking (unified action model)
   const [rejectedVariableIds, setRejectedVariableIds] = useState<Set<string>>(new Set());
@@ -359,6 +365,40 @@ export default function ContractAnalysisPage() {
       if (userErr) throw userErr;
       const userId = userData.user.id;
 
+      // Resolve playbook options (language/strictness/verifier) deterministically:
+      // playbook spec options > UI locale > defaults.
+      const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
+      const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
+      const languagePref =
+        (specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null) ||
+        (locale === 'ar' ? 'ar' : 'en');
+      const strictnessPref = specOptions?.strictness === 'strict' ? 'strict' : undefined;
+      const enableVerifierPref = specOptions?.enable_verifier === true ? true : undefined;
+      const playbook_options =
+        selectedPlaybookId || languagePref === 'ar' || strictnessPref || enableVerifierPref
+          ? {
+              strictness: strictnessPref,
+              enable_verifier: enableVerifierPref,
+              language: languagePref,
+            }
+          : undefined;
+
+      // If a bundle is selected, include it (and document_ids for reproducibility).
+      let bundleDocumentIds: string[] | undefined = undefined;
+      const bundleId = selectedBundleId || '';
+      if (bundleId) {
+        const { data: members, error: memErr } = await supabase
+          .from('document_bundle_members')
+          .select('document_id, sort_order')
+          .eq('bundle_id', bundleId)
+          .order('sort_order', { ascending: true });
+        if (!memErr && Array.isArray(members)) {
+          bundleDocumentIds = (members as any[])
+            .map((m) => String(m?.document_id || '').toLowerCase())
+            .filter(Boolean);
+        }
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-contract`, {
         method: 'POST',
         headers: {
@@ -369,6 +409,13 @@ export default function ContractAnalysisPage() {
           document_id: documentId,
           workspace_id: workspaceId,
           user_id: userId,
+          ...(playbook_options ? { playbook_options } : {}),
+          ...(bundleId
+            ? {
+                bundle_id: bundleId,
+                document_ids: bundleDocumentIds && bundleDocumentIds.length > 0 ? bundleDocumentIds : undefined,
+              }
+            : {}),
           ...(selectedPlaybookId
             ? {
                 playbook_id: selectedPlaybookId,
@@ -462,6 +509,13 @@ export default function ContractAnalysisPage() {
         return; // Exit early - polling handles the rest
       }
 
+      // 202 without accepted: document not ready / fast-return informational responses.
+      if (res.status === 202 && json?.error === 'document_not_ready') {
+        setError(json?.message || 'Document is still being processed. Please wait a few seconds and try again.');
+        setIsAnalyzing(false);
+        return;
+      }
+
       // Synchronous success (legacy path or immediate completion)
       await load();
       setIsAnalyzing(false);
@@ -470,6 +524,34 @@ export default function ContractAnalysisPage() {
       setIsAnalyzing(false);
     }
   }
+
+  // If navigated with autorun params, hydrate local state and kick off analysis once.
+  useEffect(() => {
+    const autorun = searchParams.get('autorun') === '1';
+    if (!autorun) return;
+
+    const pbId = searchParams.get('playbook_id') || '';
+    const pbVid = searchParams.get('playbook_version_id') || '';
+    const bId = searchParams.get('bundle_id') || '';
+
+    if (pbId) setSelectedPlaybookId(pbId);
+    if (pbVid) setSelectedPlaybookVersionId(pbVid);
+    if (bId) setSelectedBundleId(bId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    const autorun = searchParams.get('autorun') === '1';
+    if (!autorun) return;
+    if (autoRunTriggered.current) return;
+    if (loading) return;
+    if (isAnalyzing) return;
+    // If analysis already exists, don't rerun.
+    if (contract) return;
+    autoRunTriggered.current = true;
+    void analyzeOnce();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loading, isAnalyzing, contract]);
 
   async function exportCalendar() {
     setError(null);
@@ -776,13 +858,13 @@ export default function ContractAnalysisPage() {
             {/* Tabs */}
             <div className="flex flex-wrap gap-2">
               {[
-                { id: 'overview', label: 'Overview', icon: FileText },
-                { id: 'variables', label: `Variables (${snapshot?.variables.length ?? 0})`, icon: FileText },
-                { id: 'clauses', label: `Clauses (${clauses.length})`, icon: FileText },
-                { id: 'obligations', label: `Obligations (${obligations.length})`, icon: FileText },
-                { id: 'deadlines', label: `Deadlines (${deadlines.length})`, icon: Calendar },
-                { id: 'risks', label: `Risks (${risks.length})`, icon: ShieldAlert },
-                ...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText })),
+                { id: 'overview', label: 'Overview', icon: FileText, total: null, attentionCount: 0 },
+                { id: 'variables', label: 'Variables', icon: FileText, total: snapshot?.variables.length ?? 0, attentionCount: snapshot?.variables.filter((v) => v.verification_state === 'needs_review').length ?? 0 },
+                { id: 'clauses', label: 'Clauses', icon: FileText, total: clauses.length, attentionCount: attention.clauses },
+                { id: 'obligations', label: 'Obligations', icon: FileText, total: obligations.length, attentionCount: attention.obligations },
+                { id: 'deadlines', label: 'Deadlines', icon: Calendar, total: deadlines.length, attentionCount: attention.deadlines },
+                { id: 'risks', label: 'Risks', icon: ShieldAlert, total: risks.length, attentionCount: attention.risks },
+                ...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText, total: null, attentionCount: 0 })),
               ].map((t) => (
                 <button
                   key={t.id}
@@ -792,27 +874,16 @@ export default function ContractAnalysisPage() {
                     tab === t.id ? 'border-accent text-accent bg-accent/5' : 'border-border text-text hover:bg-surface-alt'
                   )}
                 >
-                  <span className="relative inline-flex">
-                    <t.icon className="w-4 h-4" />
-                    {t.id !== 'overview' &&
-                      (t.id === 'variables'
-                        ? (snapshot?.variables.some((v) => v.verification_state === 'needs_review') ?? false)
-                        : t.id === 'clauses'
-                        ? attention.clauses > 0
-                        : t.id === 'obligations'
-                          ? attention.obligations > 0
-                          : t.id === 'deadlines'
-                            ? attention.deadlines > 0
-                            : t.id === 'risks'
-                              ? attention.risks > 0
-                              : false) && (
-                        <span
-                          className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent-alt ring-2 ring-surface"
-                          aria-label="Needs attention"
-                        />
+                  <t.icon className="w-4 h-4" />
+                  <span>{t.label}</span>
+                  {t.total !== null && t.total > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-white text-xs font-bold">
+                      {t.total}
+                      {t.attentionCount > 0 && (
+                        <span className="text-amber-300">({t.attentionCount})</span>
                       )}
-                  </span>
-                  {t.label}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

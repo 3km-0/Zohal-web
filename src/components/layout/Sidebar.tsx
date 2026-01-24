@@ -31,10 +31,11 @@ export function Sidebar({ className }: SidebarProps) {
   const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
+  // NOTE: Tasks removed from sidebar as we now use Apple Reminders integration on iOS.
+  // Web users can still access /tasks page if needed, but it's hidden from main nav.
   const navItems = [
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
     { href: '/search', label: t('search'), icon: Search },
-    { href: '/tasks', label: t('tasks'), icon: CheckSquare },
   ];
 
   const bottomItems = [
