@@ -109,28 +109,30 @@ export default function ContractAnalysisPage() {
     return d;
   }
   
+  // Verification-based attention counts
+  // This is about AI confidence / needs_review status, NOT content risk.
+  // - Variables: Items with verification_state = needs_review (handled inline in tab definition)
+  // - Obligations: Items with confidence_state = needs_review (low AI confidence)
+  // - Clauses: No verification field in projection, so 0 (risk level is content-based, not verification)
+  // - Risks: No AI confidence in projection, so 0 (severity is content-based, not verification)
   const attention = useMemo(() => {
-    const highRiskClauses = clauses.filter((c) => c.risk_level === 'high').length;
+    // Obligations with needs_review confidence state (low AI confidence)
     const obligationsNeedsReview = obligations.filter((o) => o.confidence_state === 'needs_review').length;
-    const unresolvedRisks = risks.filter((r) => !r.resolved).length;
     
-    // Upcoming deadlines: within next 30 days
-    const now = new Date();
-    const upcomingDeadlines = deadlines.filter((o) => {
-      if (!o.due_at) return false;
-      const d = new Date(o.due_at);
-      if (Number.isNaN(d.getTime())) return false;
-      const days = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return days >= 0 && days <= 30;
-    }).length;
+    // Deadlines are obligations - count those with needs_review
+    const deadlinesNeedsReview = deadlines.filter((o) => o.confidence_state === 'needs_review').length;
     
     return {
-      clauses: highRiskClauses,
+      // Clauses don't have verification_state in projection - risk level is content-based
+      clauses: 0,
+      // Obligations with low AI confidence
       obligations: obligationsNeedsReview,
-      deadlines: upcomingDeadlines,
-      risks: unresolvedRisks,
+      // Deadlines with low AI confidence  
+      deadlines: deadlinesNeedsReview,
+      // Risks don't have ai_confidence in projection - severity is content-based
+      risks: 0,
     };
-  }, [clauses, obligations, risks, deadlines]);
+  }, [obligations, deadlines]);
 
   async function load() {
     setLoading(true);
@@ -1231,8 +1233,6 @@ export default function ContractAnalysisPage() {
                               iconColor={riskIcons[risk] || 'text-text-soft'}
                               title={c.title || 'Clause'}
                               subtitle={c.clauseNumber ? `Clause ${c.clauseNumber}` : undefined}
-                              needsAttention={risk === 'high'}
-                              attentionLabel={risk === 'high' ? 'High Risk' : undefined}
                               sourceHref={c.href}
                               sourcePage={c.pageNumber ?? undefined}
                               onReject={() => setRejectedClauseIds((prev) => new Set([...prev, c.id]))}
@@ -1332,7 +1332,7 @@ export default function ContractAnalysisPage() {
                             subtitle={o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined}
                             confidence={confidenceMap[o.confidence_state || ''] || 'medium'}
                             needsAttention={o.confidence_state === 'needs_review'}
-                            attentionLabel={o.confidence_state === 'needs_review' ? 'Low Confidence' : undefined}
+                            attentionLabel={o.confidence_state === 'needs_review' ? 'Needs Review' : undefined}
                             sourceHref={
                               o.page_number != null
                                 ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
@@ -1539,8 +1539,6 @@ export default function ContractAnalysisPage() {
                                 iconColor={config.icon}
                                 title={r.description || 'Risk'}
                                 confidence={config.confidence}
-                                needsAttention={severity === 'critical' || severity === 'high'}
-                                attentionLabel={severity === 'critical' ? 'Critical' : severity === 'high' ? 'High Risk' : undefined}
                                 sourceHref={r.href}
                                 sourcePage={r.pageNumber ?? undefined}
                                 onReject={() => setRejectedRiskIds((prev) => new Set([...prev, r.id]))}

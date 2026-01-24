@@ -28,16 +28,18 @@ export function AIConfidenceBadge({ confidence }: AIConfidenceBadgeProps) {
   );
 }
 
-// Needs Attention banner component
-export interface NeedsAttentionBannerProps {
+// Verification Attention banner component
+// This indicates the AI extraction needs human verification (low confidence or conflict)
+// NOT to be confused with content risk level (high-risk clause vs low-confidence extraction)
+export interface VerifyBannerProps {
   label?: string;
 }
 
-export function NeedsAttentionBanner({ label }: NeedsAttentionBannerProps) {
+export function VerifyBanner({ label }: VerifyBannerProps) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500 text-white text-xs font-bold mb-3">
       <AlertTriangle className="w-4 h-4" />
-      <span>Needs Attention</span>
+      <span>Verify This</span>
       {label && <span className="ml-auto text-xs font-medium">{label}</span>}
     </div>
   );
@@ -93,8 +95,8 @@ export function AnalysisRecordCard({
 
   return (
     <div className="rounded-scholar border border-border bg-surface p-4 space-y-3">
-      {/* Needs Attention banner */}
-      {needsAttention && <NeedsAttentionBanner label={attentionLabel} />}
+      {/* Verification Attention banner (for low confidence / needs_review items) */}
+      {needsAttention && <VerifyBanner label={attentionLabel} />}
       
       {/* Header */}
       <div className="flex items-start gap-3">
