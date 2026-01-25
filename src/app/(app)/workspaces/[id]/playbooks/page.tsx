@@ -21,6 +21,14 @@ type PlaybookSpecV1 = {
   };
   modules?: string[];
   outputs?: string[];
+  modules_v2?: Array<{
+    id: string;
+    title: string;
+    prompt: string;
+    json_schema: Record<string, unknown>;
+    enabled?: boolean;
+    show_in_report?: boolean;
+  }>;
   custom_modules?: Array<{
     id: string;
     title: string;
@@ -54,6 +62,46 @@ type PlaybookSpecV1 = {
       }
   >;
 };
+
+const CORE_MODULE_ORDER = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
+
+function defaultModuleTitle(id: string) {
+  if (id === 'variables') return 'Variables';
+  if (id === 'clauses') return 'Clauses';
+  if (id === 'obligations') return 'Obligations';
+  if (id === 'risks') return 'Risks';
+  if (id === 'deadlines') return 'Deadlines';
+  return id;
+}
+
+function defaultModulePrompt(id: string) {
+  if (id === 'variables') return 'Extract key fields as structured variables. Prefer exact dates/numbers; be conservative.';
+  if (id === 'clauses') return 'Summarize important clauses. Cite evidence. Avoid speculation.';
+  if (id === 'obligations') return 'Extract obligations (who must do what, by when). Capture due dates when explicit.';
+  if (id === 'risks') return 'Identify risk flags with severity (low|medium|high|critical). Cite evidence.';
+  if (id === 'deadlines') return 'Extract actionable deadlines/events with ISO due dates when explicit. Cite evidence.';
+  return 'Extract structured findings as JSON that matches the schema. Be conservative and cite evidence.';
+}
+
+function defaultModuleSchema(id: string): Record<string, unknown> {
+  if (id === 'variables') return { type: 'object', properties: { variables: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, type: { type: 'string' }, value: {}, unit: { type: ['string', 'null'] }, display_name: { type: ['string', 'null'] }, document_id: { type: ['string', 'null'] }, page_number: { type: ['number', 'null'] }, source_quote: { type: ['string', 'null'] }, ai_confidence: { type: ['string', 'null'] } }, required: ['name', 'type'] } } }, required: ['variables'] };
+  if (id === 'clauses') return { type: 'object', properties: { clauses: { type: 'array', items: { type: 'object', properties: { clause_type: { type: 'string' }, clause_title: { type: ['string', 'null'] }, clause_number: { type: ['string', 'null'] }, text: { type: 'string' }, risk_level: { type: ['string', 'null'] }, is_missing_standard_protection: { type: ['boolean', 'null'] }, document_id: { type: ['string', 'null'] }, page_number: { type: ['number', 'null'] }, source_quote: { type: ['string', 'null'] } }, required: ['clause_type', 'text'] } } }, required: ['clauses'] };
+  if (id === 'obligations') return { type: 'object', properties: { obligations: { type: 'array', items: { type: 'object', properties: { obligation_type: { type: ['string', 'null'] }, summary: { type: ['string', 'null'] }, action: { type: ['string', 'null'] }, responsible_party: { type: ['string', 'null'] }, due_at: { type: ['string', 'null'] }, recurrence: { type: ['string', 'null'] }, condition: { type: ['string', 'null'] }, document_id: { type: ['string', 'null'] }, page_number: { type: ['number', 'null'] }, source_quote: { type: ['string', 'null'] }, ai_confidence: { type: ['string', 'null'] } } } } }, required: ['obligations'] };
+  if (id === 'risks') return { type: 'object', properties: { risks: { type: 'array', items: { type: 'object', properties: { severity: { type: ['string', 'null'] }, description: { type: 'string' }, explanation: { type: ['string', 'null'] }, document_id: { type: ['string', 'null'] }, page_number: { type: ['number', 'null'] }, source_quote: { type: ['string', 'null'] } }, required: ['description'] } } }, required: ['risks'] };
+  if (id === 'deadlines') return { type: 'object', properties: { deadlines: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, due_at: { type: 'string' }, related_variable: { type: ['string', 'null'] }, document_id: { type: ['string', 'null'] }, page_number: { type: ['number', 'null'] }, source_quote: { type: ['string', 'null'] }, ai_confidence: { type: ['string', 'null'] } }, required: ['title', 'due_at'] } } }, required: ['deadlines'] };
+  return { type: 'object', properties: {}, required: [] };
+}
+
+function syncLegacyFromModulesV2(p: PlaybookSpecV1): PlaybookSpecV1 {
+  const mods = Array.isArray(p.modules_v2) ? p.modules_v2 : [];
+  const enabled = new Set(mods.filter((m) => m.enabled !== false).map((m) => m.id));
+  // Dependency rules: deadlines implies variables; variables off => deadlines off
+  if (!enabled.has('variables')) enabled.delete('deadlines');
+  if (enabled.has('deadlines')) enabled.add('variables');
+  const modules = Array.from(enabled);
+  const outputs = ['overview', ...CORE_MODULE_ORDER].filter((k) => k === 'overview' || enabled.has(k));
+  return { ...p, modules, outputs, custom_modules: undefined };
+}
 
 type BundleRoleRow = { role: string; required: boolean; multiple: boolean };
 
@@ -120,6 +168,54 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
         }))
         .filter((m: any) => !!m.id)
     : undefined;
+
+  let modules_v2 = Array.isArray(input?.modules_v2)
+    ? input.modules_v2
+        .map((m: any) => ({
+          id: String(m?.id || '').trim(),
+          title: String(m?.title || '').trim(),
+          prompt: String(m?.prompt || ''),
+          json_schema: (m?.json_schema && typeof m.json_schema === 'object' && !Array.isArray(m.json_schema) ? m.json_schema : {}) as Record<
+            string,
+            unknown
+          >,
+          enabled: m?.enabled === false ? false : true,
+          show_in_report: m?.show_in_report === true,
+        }))
+        .filter((m: any) => !!m.id)
+    : undefined;
+
+  // Migration path: if modules_v2 is absent, derive it from legacy modules + custom_modules.
+  if (!modules_v2 || modules_v2.length === 0) {
+    const legacy = Array.isArray(modules) && modules.length ? modules : Array.from(CORE_MODULE_ORDER);
+    const derived: NonNullable<PlaybookSpecV1['modules_v2']> = [];
+    const seen = new Set<string>();
+    for (const id of legacy) {
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      derived.push({
+        id,
+        title: defaultModuleTitle(id),
+        prompt: defaultModulePrompt(id),
+        json_schema: defaultModuleSchema(id),
+        enabled: true,
+        show_in_report: true,
+      });
+    }
+    for (const cm of custom_modules || []) {
+      if (!cm?.id || seen.has(cm.id)) continue;
+      seen.add(cm.id);
+      derived.push({
+        id: cm.id,
+        title: cm.title || cm.id,
+        prompt: cm.prompt || '',
+        json_schema: cm.json_schema || { type: 'object', properties: {}, required: [] },
+        enabled: cm.enabled !== false,
+        show_in_report: cm.show_in_report === true,
+      });
+    }
+    modules_v2 = derived;
+  }
   const variables = Array.isArray(input?.variables) ? input.variables : [];
   const normalizedVars = variables
     .map((v: any) => ({
@@ -169,17 +265,17 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
     })
     .filter(Boolean) as PlaybookSpecV1['checks'];
 
-  return {
+  return syncLegacyFromModulesV2({
     meta: { name: metaName, kind: metaKind },
     options,
     scope,
     bundle_schema,
     modules,
     outputs,
-    custom_modules,
+    modules_v2,
     variables: normalizedVars,
     checks: normalizedChecks,
-  };
+  });
 }
 
 export default function WorkspacePlaybooksPage() {
@@ -206,7 +302,14 @@ export default function WorkspacePlaybooksPage() {
     scope: 'either',
     modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
     outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
-    custom_modules: [],
+    modules_v2: Array.from(CORE_MODULE_ORDER).map((id) => ({
+      id,
+      title: defaultModuleTitle(id),
+      prompt: defaultModulePrompt(id),
+      json_schema: defaultModuleSchema(id),
+      enabled: true,
+      show_in_report: true,
+    })),
     variables: [],
     checks: [],
   });
@@ -216,11 +319,11 @@ export default function WorkspacePlaybooksPage() {
   const [expandedSchemaIds, setExpandedSchemaIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const cms = spec.custom_modules || [];
-    if (cms.length === 0) return;
+    const mods = spec.modules_v2 || [];
+    if (mods.length === 0) return;
     setCustomSchemaTextById((prev) => {
       const next = { ...prev };
-      for (const m of cms) {
+      for (const m of mods) {
         if (!m?.id) continue;
         if (next[m.id] == null) {
           next[m.id] = JSON.stringify(m.json_schema || {}, null, 2);
@@ -228,7 +331,7 @@ export default function WorkspacePlaybooksPage() {
       }
       return next;
     });
-  }, [spec.custom_modules]);
+  }, [spec.modules_v2]);
 
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
 
@@ -276,7 +379,14 @@ export default function WorkspacePlaybooksPage() {
         options: { strictness: 'default', enable_verifier: false, language: 'en' },
         modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
         outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
-        custom_modules: [],
+        modules_v2: Array.from(CORE_MODULE_ORDER).map((id) => ({
+          id,
+          title: defaultModuleTitle(id),
+          prompt: defaultModulePrompt(id),
+          json_schema: defaultModuleSchema(id),
+          enabled: true,
+          show_in_report: true,
+        })),
         variables: [],
         checks: [],
       };
@@ -305,10 +415,11 @@ export default function WorkspacePlaybooksPage() {
     if (!selected) return;
     setSaving(true);
     try {
+      const specToSave = syncLegacyFromModulesV2(spec);
       const { data, error } = await supabase.functions.invoke('playbooks-create-version', {
         body: {
           playbook_id: selected.id,
-          spec_json: spec,
+          spec_json: specToSave,
           changelog: 'Draft update',
           make_current: true,
         },
@@ -620,7 +731,16 @@ export default function WorkspacePlaybooksPage() {
                         if (next.has('deadlines')) next.add('variables');
                         const outOrder = ['overview', ...order];
                         const outputs = outOrder.filter((k) => k === 'overview' || next.has(k));
-                        setSpec((p) => ({ ...p, modules: Array.from(next), outputs }));
+                        setSpec((p) => {
+                          const current = Array.isArray(p.modules_v2) ? p.modules_v2 : [];
+                          const updated = current.map((m) => {
+                            if (order.includes(m.id as any)) {
+                              return { ...m, enabled: next.has(m.id) };
+                            }
+                            return m;
+                          });
+                          return syncLegacyFromModulesV2({ ...p, modules: Array.from(next), outputs, modules_v2: updated });
+                        });
                       }
 
                       return (
@@ -660,7 +780,7 @@ export default function WorkspacePlaybooksPage() {
                                   apply(next);
                                 }}
                               >
-                                <option value="">{t('customModules.add')}</option>
+                                <option value="">Add module</option>
                                 {remaining.map((k) => (
                                   <option key={k} value={k}>
                                     {labels[k]}
@@ -686,33 +806,33 @@ export default function WorkspacePlaybooksPage() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="font-semibold text-text">{t('customModules.title')}</div>
+                      <div className="font-semibold text-text">Modules</div>
                       <Button
                         onClick={() =>
                           setSpec((p) => {
-                            const id = `custom_${crypto.randomUUID().replace(/-/g, '')}`;
+                            const id = `module_${crypto.randomUUID().replace(/-/g, '')}`;
                             const mod = {
                               id,
-                              title: t('customModules.defaultTitle'),
-                              prompt: '',
-                              json_schema: { type: 'object', properties: {}, required: [] },
+                              title: 'New Module',
+                              prompt: defaultModulePrompt(id),
+                              json_schema: { type: 'object', properties: {}, required: [] } as Record<string, unknown>,
                               enabled: true,
                               show_in_report: true,
                             };
-                            return { ...p, custom_modules: [...(p.custom_modules || []), mod] };
+                            return syncLegacyFromModulesV2({ ...p, modules_v2: [...(p.modules_v2 || []), mod] });
                           })
                         }
                       >
                         <Plus className="w-4 h-4" />
-                        {t('customModules.add')}
+                        Add module
                       </Button>
                     </div>
 
-                    {(spec.custom_modules || []).length === 0 ? (
-                      <div className="text-sm text-text-soft">{t('customModules.empty')}</div>
+                    {(spec.modules_v2 || []).length === 0 ? (
+                      <div className="text-sm text-text-soft">No modules yet.</div>
                     ) : (
                       <div className="space-y-2">
-                        {(spec.custom_modules || []).map((m, idx) => (
+                        {(spec.modules_v2 || []).map((m, idx) => (
                           <Card key={`${m.id}-${idx}`}>
                             <CardContent className="p-3 space-y-3">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -722,9 +842,9 @@ export default function WorkspacePlaybooksPage() {
                                     value={m.title}
                                     onChange={(e) =>
                                       setSpec((p) => {
-                                        const cms = (p.custom_modules || []).slice();
-                                        cms[idx] = { ...cms[idx], title: e.target.value };
-                                        return { ...p, custom_modules: cms };
+                                        const mods = (p.modules_v2 || []).slice();
+                                        mods[idx] = { ...mods[idx], title: e.target.value };
+                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
                                       })
                                     }
                                   />
@@ -737,13 +857,27 @@ export default function WorkspacePlaybooksPage() {
                                       checked={m.enabled !== false}
                                       onChange={(e) =>
                                         setSpec((p) => {
-                                          const cms = (p.custom_modules || []).slice();
-                                          cms[idx] = { ...cms[idx], enabled: e.target.checked };
-                                          return { ...p, custom_modules: cms };
+                                          const mods = (p.modules_v2 || []).slice();
+                                          mods[idx] = { ...mods[idx], enabled: e.target.checked };
+                                          return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
                                         })
                                       }
                                     />
                                     {t('customModules.fields.enabled')}
+                                  </label>
+                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                                    <input
+                                      type="checkbox"
+                                      checked={m.show_in_report === true}
+                                      onChange={(e) =>
+                                        setSpec((p) => {
+                                          const mods = (p.modules_v2 || []).slice();
+                                          mods[idx] = { ...mods[idx], show_in_report: e.target.checked };
+                                          return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                        })
+                                      }
+                                    />
+                                    {t('customModules.fields.showInReport')}
                                   </label>
                                 </div>
                               </div>
@@ -755,28 +889,26 @@ export default function WorkspacePlaybooksPage() {
                                   value={m.prompt}
                                   onChange={(e) =>
                                     setSpec((p) => {
-                                      const cms = (p.custom_modules || []).slice();
-                                      cms[idx] = { ...cms[idx], prompt: e.target.value };
-                                      return { ...p, custom_modules: cms };
+                                      const mods = (p.modules_v2 || []).slice();
+                                      mods[idx] = { ...mods[idx], prompt: e.target.value };
+                                      return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
                                     })
                                   }
                                   placeholder={t('customModules.fields.promptPlaceholder')}
                                 />
                               </label>
 
-                              {/* Advanced: JSON Schema (collapsible) */}
                               <div className="space-y-2">
                                 <button
                                   type="button"
-                                  onClick={() => setExpandedSchemaIds(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(m.id)) {
-                                      next.delete(m.id);
-                                    } else {
-                                      next.add(m.id);
-                                    }
-                                    return next;
-                                  })}
+                                  onClick={() =>
+                                    setExpandedSchemaIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(m.id)) next.delete(m.id);
+                                      else next.add(m.id);
+                                      return next;
+                                    })
+                                  }
                                   className="flex items-center gap-2 text-sm text-text-soft hover:text-text transition-colors"
                                 >
                                   {expandedSchemaIds.has(m.id) ? (
@@ -784,9 +916,9 @@ export default function WorkspacePlaybooksPage() {
                                   ) : (
                                     <ChevronRight className="w-4 h-4" />
                                   )}
-                                  <span className="font-semibold">Advanced: JSON Schema</span>
+                                  <span className="font-semibold">{t('customModules.fields.jsonSchema')}</span>
                                 </button>
-                                
+
                                 {expandedSchemaIds.has(m.id) && (
                                   <div className="pl-6 space-y-2">
                                     <textarea
@@ -802,9 +934,9 @@ export default function WorkspacePlaybooksPage() {
                                           }
                                           setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: '' }));
                                           setSpec((p) => {
-                                            const cms = (p.custom_modules || []).slice();
-                                            cms[idx] = { ...cms[idx], json_schema: parsed };
-                                            return { ...p, custom_modules: cms };
+                                            const mods = (p.modules_v2 || []).slice();
+                                            mods[idx] = { ...mods[idx], json_schema: parsed };
+                                            return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
                                           });
                                         } catch {
                                           setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: t('customModules.invalidJson') }));
@@ -822,7 +954,12 @@ export default function WorkspacePlaybooksPage() {
                               <div className="flex justify-end">
                                 <Button
                                   variant="danger"
-                                  onClick={() => setSpec((p) => ({ ...p, custom_modules: (p.custom_modules || []).filter((_, i) => i !== idx) }))}
+                                  onClick={() =>
+                                    setSpec((p) => {
+                                      const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
+                                      return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                    })
+                                  }
                                 >
                                   {tCommon('remove')}
                                 </Button>

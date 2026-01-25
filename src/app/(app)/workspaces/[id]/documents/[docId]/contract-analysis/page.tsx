@@ -87,20 +87,84 @@ export default function ContractAnalysisPage() {
   }, [obligations]);
 
   const customModules = useMemo(() => {
-    const pb = (snapshot?.pack as any)?.playbook as any;
-    const arr = Array.isArray(pb?.custom_modules) ? pb.custom_modules : [];
-    return (arr as any[])
-      .map((m) => ({
-        id: String(m?.id || '').trim(),
-        title: String(m?.title || '').trim(),
-        status: String(m?.status || ''),
-        error: m?.error ? String(m.error) : null,
-        ai_confidence: m?.ai_confidence ? String(m.ai_confidence) : null,
-        result: m?.result ?? null,
-        evidence: Array.isArray(m?.evidence) ? (m.evidence as any[]) : [],
-      }))
-      .filter((m) => !!m.id && !!m.title);
+    // v2: modules live at snapshot.pack.modules as a map keyed by module id.
+    const pack: any = snapshot?.pack as any;
+    const dict = pack?.modules && typeof pack.modules === 'object' && !Array.isArray(pack.modules) ? pack.modules : null;
+    if (!dict) return [];
+    const core = new Set(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
+    return Object.entries(dict)
+      .map(([id, raw]) => {
+        const m: any = raw && typeof raw === 'object' ? raw : {};
+        return {
+          id: String(m?.id || id || '').trim(),
+          title: String(m?.title || id || '').trim(),
+          status: String(m?.status || ''),
+          error: m?.error ? String(m.error) : null,
+          ai_confidence: m?.ai_confidence ? String(m.ai_confidence) : null,
+          result: m?.result ?? null,
+          evidence: Array.isArray(m?.evidence) ? (m.evidence as any[]) : [],
+        };
+      })
+      .filter((m) => !!m.id && !!m.title && !core.has(m.id));
   }, [snapshot]);
+
+  const enabledModules = useMemo<Set<string>>(() => {
+    const defaults = new Set(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
+    const pb = (snapshot?.pack as any)?.playbook as any;
+    const raw = Array.isArray(pb?.modules_enabled) ? pb.modules_enabled : Array.isArray(pb?.modules) ? pb.modules : null;
+    const set = new Set(
+      (raw || [])
+        .map((x: any) => String(x || '').trim())
+        .filter(Boolean)
+    );
+    if (set.size === 0) return defaults;
+    // Dependency rules (match backend intent)
+    if (set.has('deadlines')) set.add('variables');
+    if (!set.has('obligations')) set.delete('deadlines');
+    return set;
+  }, [snapshot]);
+
+  const tabs = useMemo(() => {
+    const out: Array<{ id: string; label: string; icon: any; total: number | null; attentionCount: number }> = [
+      { id: 'overview', label: t('tabs.overview'), icon: FileText, total: null, attentionCount: 0 },
+    ];
+    if (enabledModules.has('variables')) {
+      out.push({
+        id: 'variables',
+        label: t('tabs.variables'),
+        icon: FileText,
+        total: snapshot?.variables.length ?? 0,
+        attentionCount: snapshot?.variables.filter((v) => v.verification_state === 'needs_review').length ?? 0,
+      });
+    }
+    if (enabledModules.has('clauses')) {
+      out.push({ id: 'clauses', label: t('tabs.clauses'), icon: FileText, total: clauses.length, attentionCount: attention.clauses });
+    }
+    if (enabledModules.has('obligations')) {
+      out.push({
+        id: 'obligations',
+        label: t('tabs.obligations'),
+        icon: FileText,
+        total: obligations.length,
+        attentionCount: attention.obligations,
+      });
+    }
+    if (enabledModules.has('deadlines')) {
+      out.push({ id: 'deadlines', label: t('tabs.deadlines'), icon: Calendar, total: deadlines.length, attentionCount: attention.deadlines });
+    }
+    if (enabledModules.has('risks')) {
+      out.push({ id: 'risks', label: t('tabs.risks'), icon: ShieldAlert, total: risks.length, attentionCount: attention.risks });
+    }
+    out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText, total: null, attentionCount: 0 })));
+    return out;
+  }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules]);
+
+  useEffect(() => {
+    // If the current tab becomes unavailable due to template module gating, fall back to overview.
+    const ids = new Set(tabs.map((t) => t.id));
+    if (!ids.has(tab)) setTab('overview');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs.map((t) => t.id).join('|')]);
 
   function computeNoticeDeadline(endDateIso: string | null | undefined, noticeDays: number | null | undefined): Date | null {
     if (!endDateIso || noticeDays == null) return null;
@@ -224,7 +288,7 @@ export default function ContractAnalysisPage() {
       if (!session) return;
 
       const { data, error } = await supabase.functions.invoke('playbooks-list', {
-        body: { workspace_id: workspaceId, kind: 'contract', status: 'published' },
+        body: { workspace_id: workspaceId, kind: 'contract' },
       });
       if (error) return;
       if (data?.ok && Array.isArray(data.playbooks)) {
@@ -925,15 +989,7 @@ export default function ContractAnalysisPage() {
 
             {/* Tabs */}
             <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'overview', label: 'Overview', icon: FileText, total: null, attentionCount: 0 },
-                { id: 'variables', label: 'Variables', icon: FileText, total: snapshot?.variables.length ?? 0, attentionCount: snapshot?.variables.filter((v) => v.verification_state === 'needs_review').length ?? 0 },
-                { id: 'clauses', label: 'Clauses', icon: FileText, total: clauses.length, attentionCount: attention.clauses },
-                { id: 'obligations', label: 'Obligations', icon: FileText, total: obligations.length, attentionCount: attention.obligations },
-                { id: 'deadlines', label: 'Deadlines', icon: Calendar, total: deadlines.length, attentionCount: attention.deadlines },
-                { id: 'risks', label: 'Risks', icon: ShieldAlert, total: risks.length, attentionCount: attention.risks },
-                ...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText, total: null, attentionCount: 0 })),
-              ].map((t) => (
+              {tabs.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}

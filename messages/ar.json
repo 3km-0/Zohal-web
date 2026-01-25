@@ -243,6 +243,12 @@
     "expandSidebar": "توسيع الشريط الجانبي",
     "collapseSidebar": "طي الشريط الجانبي"
   },
+  "workspaceTabs": {
+    "documents": "المستندات",
+    "notes": "الملاحظات",
+    "reports": "التقارير",
+    "packs": "الحزم"
+  },
   "workspaceCard": {
     "updated": "محدّث",
     "edit": "تعديل",
@@ -259,12 +265,17 @@
     "dropFiles": "أفلت الملفات هنا",
     "dragDrop": "اسحب وأفلت الملفات هنا",
     "browseFiles": "تصفح الملفات",
+    "googleDrive": "Google Drive",
+    "oneDrive": "OneDrive",
+    "zohalLibrary": "مكتبة زوهال",
     "maxSize": "PDF أو صور JPG/PNG، بحد أقصى 100 ميجابايت لكل ملف",
     "uploading": "جاري الرفع...",
     "uploadCount": "رفع ({count})",
     "fileTooLarge": "الملف كبير جداً (الحد الأقصى 100 ميجابايت)",
     "uploadFailed": "فشل الرفع",
-    "privateNotSupported": "الوضع الخاص (محلي فقط) غير مدعوم على الويب بعد."
+    "privateNotSupported": "الوضع الخاص (محلي فقط) غير مدعوم على الويب بعد.",
+    "analyzePrivately": "تحليل خاص",
+    "privateLeaveWarning": "لديك مستند جلسة خاصة. المغادرة ستفقد ملف PDF."
   },
   "workspaceModal": {
     "editWorkspace": "تعديل مساحة العمل",
@@ -410,18 +421,18 @@
   }
   ,
   "playbooks": {
-    "title": "أدلة التحليل",
+    "title": "القوالب",
     "subtitle": "عرّف المتغيرات والفحوصات لتحليل العقود. انشر الإصدارات لتصبح قابلة للاختيار.",
     "list": {
       "title": "منشور ومسودة",
-      "newNamePlaceholder": "اسم الدليل الجديد",
-      "empty": "لا توجد أدلة بعد."
+      "newNamePlaceholder": "اسم القالب الجديد",
+      "empty": "لا توجد قوالب بعد."
     },
     "builder": {
       "title": "المنشئ",
       "saveDraft": "حفظ مسودة",
       "publish": "نشر",
-      "selectToEdit": "اختر دليلاً لتعديله."
+      "selectToEdit": "اختر قالباً لتعديله."
     },
     "settingsFixed": "الإعدادات (ثابتة)",
     "strictMode": "الوضع الصارم",
@@ -461,6 +472,53 @@
       }
     }
   },
+  "packs": {
+    "title": "الحزم",
+    "backToPacks": "العودة إلى الحزم",
+    "bundles": {
+      "title": "حزم المستندات",
+      "subtitle": "حزم العقود (اتفاقية رئيسية + ملاحق + أوامر عمل) تُحلَّل معًا."
+    },
+    "contextSets": {
+      "title": "مجموعات السياق",
+      "subtitle": "سياسات/قوانين/معايير قابلة لإعادة الاستخدام تُثبّت عبر التحليلات."
+    },
+    "bundlesManager": {
+      "title": "حزم المستندات",
+      "aboutTitle": "حول",
+      "aboutBody": "الحزم لتحليل حزمة عقد (اتفاقية رئيسية + ملاحق + أوامر عمل) معًا. وهي مختلفة عن السياسات/القوانين القابلة لإعادة الاستخدام (مجموعات السياق).",
+      "newNamePlaceholder": "اسم حزمة جديدة (اختياري)",
+      "emptyTitle": "لا توجد حزم",
+      "emptyDescription": "أنشئ حزمة لتجميع المستندات المرتبطة للتحليل متعدد المستندات.",
+      "unnamed": "حزمة بدون اسم",
+      "precedence": "الأولوية: {value}",
+      "manageMembersHint": "ستتوفر إدارة الأعضاء هنا (MVP).",
+      "confirmDelete": "حذف هذه الحزمة؟"
+    },
+    "contextSetsManager": {
+      "title": "مجموعات السياق",
+      "aboutTitle": "حول",
+      "aboutBody": "مجموعات السياق هي مستندات قابلة لإعادة الاستخدام (سياسات، قوانين، معايير) يمكنك تثبيتها لمساحة العمل وتطبيقها عبر التحليلات.",
+      "newNamePlaceholder": "اسم مجموعة سياق جديدة",
+      "emptyTitle": "لا توجد مجموعات سياق",
+      "emptyDescription": "أنشئ مجموعة سياق لإعادة استخدامها عبر التحليلات.",
+      "kind": "النوع: {value}",
+      "pin": "تثبيت",
+      "unpin": "إلغاء التثبيت",
+      "confirmDelete": "حذف مجموعة السياق هذه؟"
+    }
+  },
+  "zohalLibrary": {
+    "title": "مكتبة زوهال",
+    "close": "إغلاق",
+    "searchPlaceholder": "بحث…",
+    "import": "استيراد",
+    "empty": "لا توجد عناصر في المكتبة.",
+    "errors": {
+      "loadFailed": "فشل تحميل المكتبة.",
+      "downloadFailed": "فشل تنزيل الملف."
+    }
+  },
   "runAnalysis": {
     "title": "تشغيل التحليل",
     "templatesComingSoon": "قوالب هذا النوع من المستندات ستتوفر قريباً. يمكنك استخدام أدوات الذكاء الاصطناعي للأسئلة والملخصات.",
@@ -471,26 +529,45 @@
     "scope": {
       "label": "النطاق",
       "single": "مستند واحد",
-      "bundle": "حزمة مستندات"
+      "bundle": "حزمة مستندات",
+      "help": "الحزم مناسبة لاتفاقية رئيسية + أوامر عمل + ملاحق. يتم إظهار التعارضات بشكل صريح.",
+      "enforced": "يتطلب هذا القالب نطاقًا"
     },
     "bundle": {
       "label": "الحزمة",
       "select": "اختر حزمة…",
       "create": "إنشاء",
       "newNamePlaceholder": "اسم الحزمة (اختياري)",
-      "requirementsTitle": "متطلبات الحزمة"
+      "fallbackHint": "إذا لم يتم اختيار حزمة، سيعود التشغيل إلى تحليل مستند واحد.",
+      "requirementsTitle": "متطلبات الحزمة",
+      "issues": {
+        "selectBundle": "اختر حزمة لتشغيل هذا التحليل.",
+        "currentDocNotMember": "المستند الحالي ليس عضوًا في الحزمة المحددة.",
+        "missingRequiredRole": "دور مطلوب مفقود: {role}",
+        "roleMustBeUnique": "يجب أن يكون الدور فريدًا ولكنه يظهر عدة مرات: {role}"
+      }
     },
     "playbook": {
-      "label": "Playbook",
-      "default": "الافتراضي (حزمة التجديد)"
+      "label": "القالب",
+      "default": "الافتراضي (حزمة التجديد)",
+      "helperSelected": "يستخدم القالب المحدد للتحكم في المتغيرات/الوحدات.",
+      "helperDefault": "يشغّل قالب العقود الافتراضي."
     }
   },
   "contractAnalysis": {
     "playbook": {
-      "optional": "Playbook (اختياري)",
+      "optional": "القالب (اختياري)",
       "manage": "إدارة",
-      "label": "Playbook",
+      "label": "القالب",
       "defaultRenewalPack": "الافتراضي (حزمة التجديد)"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "variables": "المتغيرات",
+      "clauses": "البنود",
+      "obligations": "الالتزامات",
+      "deadlines": "المواعيد النهائية",
+      "risks": "المخاطر"
     },
     "empty": {
       "notAnalyzedTitle": "لم يتم التحليل بعد",

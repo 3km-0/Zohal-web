@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { X, Play, Layers, FileText } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -35,6 +36,8 @@ export function RunAnalysisModal(props: {
   onOpenAITools?: () => void;
 }) {
   const { open, onClose, workspaceId, documentId, documentType, onOpenAITools } = props;
+  const t = useTranslations('runAnalysis');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -56,7 +59,7 @@ export function RunAnalysisModal(props: {
   const loadPlaybooks = useCallback(async () => {
     try {
       const { data, error } = await supabase.functions.invoke('playbooks-list', {
-        body: { workspace_id: workspaceId, kind: 'contract', status: 'published' },
+        body: { workspace_id: workspaceId, kind: 'contract' },
       });
       if (error) return;
       if (data?.ok && Array.isArray(data.playbooks)) {
@@ -153,7 +156,7 @@ export function RunAnalysisModal(props: {
         return;
       }
       if (!selectedBundleId) {
-        setBundleMemberIssues(['Select a bundle to run this analysis.']);
+        setBundleMemberIssues([t('bundle.issues.selectBundle')]);
         return;
       }
 
@@ -168,7 +171,7 @@ export function RunAnalysisModal(props: {
 
         const docIds = new Set(rows.map((m) => String(m?.document_id || '').toLowerCase()).filter(Boolean));
         if (!docIds.has(String(documentId).toLowerCase())) {
-          issues.push('Current document is not a member of the selected bundle.');
+          issues.push(t('bundle.issues.currentDocNotMember'));
         }
 
         const counts: Record<string, number> = {};
@@ -181,8 +184,8 @@ export function RunAnalysisModal(props: {
         for (const def of bundleSchemaRoles) {
           const key = def.role.trim().toLowerCase();
           const n = counts[key] || 0;
-          if (def.required && n === 0) issues.push(`Missing required role: ${def.role}`);
-          if (!def.multiple && n > 1) issues.push(`Role must be unique but appears multiple times: ${def.role}`);
+          if (def.required && n === 0) issues.push(t('bundle.issues.missingRequiredRole', { role: def.role }));
+          if (!def.multiple && n > 1) issues.push(t('bundle.issues.roleMustBeUnique', { role: def.role }));
         }
       } catch {
         issues.push('Could not validate bundle members. You can still run single-document analysis.');
@@ -276,13 +279,13 @@ export function RunAnalysisModal(props: {
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-text-soft" />
-            <CardTitle>Run Analysis</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
             {documentType ? <Badge size="sm">{documentType}</Badge> : null}
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-surface-alt transition-colors"
-            aria-label="Close"
+            aria-label={tCommon('close')}
           >
             <X className="w-5 h-5 text-text-soft" />
           </button>
@@ -292,7 +295,7 @@ export function RunAnalysisModal(props: {
           {!isContract ? (
             <div className="space-y-3">
               <p className="text-sm text-text-soft">
-                Templates for this document type are coming soon. You can still use AI Tools for Q&A and summaries.
+                {t('templatesComingSoon')}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -302,10 +305,10 @@ export function RunAnalysisModal(props: {
                     onClose();
                   }}
                 >
-                  Open AI Tools
+                  {t('openAiTools')}
                 </Button>
                 <Button variant="secondary" onClick={onClose}>
-                  Close
+                  {t('close')}
                 </Button>
               </div>
             </div>
@@ -313,13 +316,13 @@ export function RunAnalysisModal(props: {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-text">Playbook</div>
+                  <div className="text-sm font-medium text-text">{t('playbook.label')}</div>
                   <select
                     className="w-full px-3 py-2 rounded-lg bg-surface-alt border border-border text-sm"
                     value={selectedPlaybookId}
                     onChange={(e) => setSelectedPlaybookId(e.target.value)}
                   >
-                    <option value="">Default (Renewal Pack)</option>
+                    <option value="">{t('playbook.default')}</option>
                     {playbooks.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -327,12 +330,12 @@ export function RunAnalysisModal(props: {
                     ))}
                   </select>
                   <div className="text-xs text-text-soft">
-                    {selectedPlaybookId ? 'Uses the selected playbook to gate variables/modules.' : 'Runs the default contract template.'}
+                    {selectedPlaybookId ? t('playbook.helperSelected') : t('playbook.helperDefault')}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-text">Scope</div>
+                  <div className="text-sm font-medium text-text">{t('scope.label')}</div>
                   <div className="flex gap-2">
                     <Button
                       variant={effectiveScope === 'single' ? 'primary' : 'secondary'}
@@ -340,7 +343,7 @@ export function RunAnalysisModal(props: {
                       onClick={() => setScope('single')}
                       disabled={enforcedScope === 'bundle'}
                     >
-                      Single document
+                      {t('scope.single')}
                     </Button>
                     <Button
                       variant={effectiveScope === 'bundle' ? 'primary' : 'secondary'}
@@ -349,33 +352,33 @@ export function RunAnalysisModal(props: {
                       disabled={enforcedScope === 'single'}
                     >
                       <Layers className="w-4 h-4" />
-                      Bundle
+                      {t('scope.bundle')}
                     </Button>
                   </div>
                   <div className="text-xs text-text-soft">
-                    Bundles are for MSA + SOWs + amendments. Conflicts are surfaced explicitly.
+                    {t('scope.help')}
                   </div>
                 </div>
               </div>
 
               {enforcedScope !== 'either' ? (
                 <div className="text-xs text-text-soft">
-                  This playbook requires scope: <span className="font-semibold">{enforcedScope}</span>.
+                  {t('scope.enforced')}: <span className="font-semibold">{enforcedScope}</span>.
                 </div>
               ) : null}
 
               {effectiveScope === 'bundle' ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-text">Bundle</div>
+                    <div className="text-sm font-medium text-text">{t('bundle.label')}</div>
                     <div className="flex items-center gap-2">
                       <Input
                         value={newBundleName}
                         onChange={(e) => setNewBundleName(e.target.value)}
-                        placeholder="New bundle name (optional)"
+                        placeholder={t('bundle.newNamePlaceholder')}
                       />
                       <Button variant="secondary" size="sm" onClick={createBundle} disabled={creatingBundle}>
-                        {creatingBundle ? <Spinner size="sm" /> : 'Create'}
+                        {creatingBundle ? <Spinner size="sm" /> : t('bundle.create')}
                       </Button>
                     </div>
                   </div>
@@ -385,7 +388,7 @@ export function RunAnalysisModal(props: {
                     value={selectedBundleId}
                     onChange={(e) => setSelectedBundleId(e.target.value)}
                   >
-                    <option value="">Select a bundle…</option>
+                    <option value="">{t('bundle.select')}</option>
                     {bundles.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name || `Bundle ${b.id.slice(0, 8)}`}
@@ -393,14 +396,14 @@ export function RunAnalysisModal(props: {
                     ))}
                   </select>
                   <div className="text-xs text-text-soft">
-                    If no bundle is selected, the run will fall back to single-document analysis.
+                    {t('bundle.fallbackHint')}
                   </div>
                 </div>
               ) : null}
 
               {effectiveScope === 'bundle' && bundleMemberIssues.length > 0 ? (
                 <div className="rounded-lg border border-border bg-surface-alt p-3">
-                  <div className="text-sm font-semibold text-text">Bundle requirements</div>
+                  <div className="text-sm font-semibold text-text">{t('bundle.requirementsTitle')}</div>
                   <ul className="mt-2 list-disc pl-5 text-sm text-text-soft">
                     {bundleMemberIssues.map((m, idx) => (
                       <li key={idx}>{m}</li>
@@ -411,7 +414,7 @@ export function RunAnalysisModal(props: {
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button variant="secondary" onClick={onClose}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button
                   variant="primary"
@@ -419,7 +422,7 @@ export function RunAnalysisModal(props: {
                   disabled={loading || (effectiveScope === 'bundle' && bundleMemberIssues.length > 0)}
                 >
                   <Play className="w-4 h-4" />
-                  Run
+                  {t('run')}
                 </Button>
               </div>
             </>

@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-type WorkspaceTabKey = 'documents' | 'notes' | 'reports';
+type WorkspaceTabKey = 'documents' | 'notes' | 'reports' | 'packs';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -14,6 +15,7 @@ interface WorkspaceTabsProps {
 
 export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsProps) {
   const pathname = usePathname();
+  const t = useTranslations('workspaceTabs');
 
   const resolved: WorkspaceTabKey =
     active ||
@@ -21,12 +23,15 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
       ? 'notes'
       : pathname.includes('/reports')
         ? 'reports'
+        : pathname.includes('/packs')
+          ? 'packs'
         : 'documents');
 
   const tabs: { key: WorkspaceTabKey; label: string; href: string }[] = [
-    { key: 'documents', label: 'Documents', href: `/workspaces/${workspaceId}` },
-    { key: 'notes', label: 'Notes', href: `/workspaces/${workspaceId}/notes` },
-    { key: 'reports', label: 'Reports', href: `/workspaces/${workspaceId}/reports` },
+    { key: 'documents', label: t('documents'), href: `/workspaces/${workspaceId}` },
+    { key: 'notes', label: t('notes'), href: `/workspaces/${workspaceId}/notes` },
+    { key: 'reports', label: t('reports'), href: `/workspaces/${workspaceId}/reports` },
+    { key: 'packs', label: t('packs'), href: `/workspaces/${workspaceId}/packs` },
   ];
 
   return (

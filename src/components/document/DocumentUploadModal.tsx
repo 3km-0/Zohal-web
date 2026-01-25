@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, formatFileSize } from '@/lib/utils';
 import { GoogleDrivePicker } from './GoogleDrivePicker';
 import { OneDrivePicker } from './OneDrivePicker';
+import { ZohalLibraryPicker } from './ZohalLibraryPicker';
 import { PrivacySettingsPanel } from './PrivacySettingsPanel';
 import { isGoogleDriveConfigured } from '@/lib/google-drive';
 import { isOneDriveConfigured } from '@/lib/onedrive';
@@ -87,6 +88,7 @@ export function DocumentUploadModal({
   const [privacyConfig, setPrivacyConfig] = useState<PrivacyModeConfig>(getDefaultPrivacyConfig());
   const [showGoogleDrive, setShowGoogleDrive] = useState(false);
   const [showOneDrive, setShowOneDrive] = useState(false);
+  const [showZohalLibrary, setShowZohalLibrary] = useState(false);
 
   // Check if cloud imports are available
   const hasGoogleDrive = isGoogleDriveConfigured();
@@ -101,7 +103,7 @@ export function DocumentUploadModal({
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = 'You have a private session document. Leaving will lose the PDF.';
+      e.returnValue = t('privateLeaveWarning');
       return e.returnValue;
     };
 
@@ -500,7 +502,7 @@ export function DocumentUploadModal({
           </div>
 
           {/* Cloud Import Options - only for standard mode */}
-          {!isPrivateMode && (hasGoogleDrive || hasOneDrive) && (
+          {!isPrivateMode && (
             <div className="flex gap-3">
               {hasGoogleDrive && (
                 <button
@@ -515,7 +517,7 @@ export function DocumentUploadModal({
                     <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
                     <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
                   </svg>
-                  <span className="text-sm font-medium text-text">Google Drive</span>
+                  <span className="text-sm font-medium text-text">{t('googleDrive')}</span>
                 </button>
               )}
               {hasOneDrive && (
@@ -524,9 +526,16 @@ export function DocumentUploadModal({
                   className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
                 >
                   <Cloud className="w-5 h-5 text-blue-500" />
-                  <span className="text-sm font-medium text-text">OneDrive</span>
+                  <span className="text-sm font-medium text-text">{t('oneDrive')}</span>
                 </button>
               )}
+              <button
+                onClick={() => setShowZohalLibrary(true)}
+                className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
+              >
+                <Cloud className="w-5 h-5 text-accent" />
+                <span className="text-sm font-medium text-text">{t('zohalLibrary')}</span>
+              </button>
             </div>
           )}
 
@@ -588,7 +597,9 @@ export function DocumentUploadModal({
               disabled={pendingCount === 0 || uploading}
               isLoading={uploading}
             >
-              {isPrivateMode ? 'Analyze Privately' : t('uploadCount', { count: pendingCount > 0 ? pendingCount : '' })}
+              {isPrivateMode
+                ? t('analyzePrivately')
+                : t('uploadCount', { count: pendingCount > 0 ? pendingCount : '' })}
             </Button>
           </div>
         </div>
@@ -614,6 +625,16 @@ export function DocumentUploadModal({
           onImported={(documentId) => {
             setShowOneDrive(false);
             onUploaded(documentId);
+          }}
+        />
+      )}
+
+      {showZohalLibrary && (
+        <ZohalLibraryPicker
+          onClose={() => setShowZohalLibrary(false)}
+          onSelectFile={(file) => {
+            setShowZohalLibrary(false);
+            addFiles([file]);
           }}
         />
       )}

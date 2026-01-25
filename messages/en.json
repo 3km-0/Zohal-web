@@ -243,6 +243,12 @@
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar"
   },
+  "workspaceTabs": {
+    "documents": "Documents",
+    "notes": "Notes",
+    "reports": "Reports",
+    "packs": "Packs"
+  },
   "workspaceCard": {
     "updated": "Updated",
     "edit": "Edit",
@@ -259,12 +265,17 @@
     "dropFiles": "Drop files here",
     "dragDrop": "Drag & drop files here",
     "browseFiles": "Browse Files",
+    "googleDrive": "Google Drive",
+    "oneDrive": "OneDrive",
+    "zohalLibrary": "Zohal Library",
     "maxSize": "PDF or JPG/PNG images, max 100MB each",
     "uploading": "Uploading...",
     "uploadCount": "Upload ({count})",
     "fileTooLarge": "File too large (max 100MB)",
     "uploadFailed": "Upload failed",
-    "privateNotSupported": "Private (local-only) is not supported on web yet."
+    "privateNotSupported": "Private (local-only) is not supported on web yet.",
+    "analyzePrivately": "Analyze Privately",
+    "privateLeaveWarning": "You have a private session document. Leaving will lose the PDF."
   },
   "workspaceModal": {
     "editWorkspace": "Edit Workspace",
@@ -410,18 +421,18 @@
   }
   ,
   "playbooks": {
-    "title": "Playbooks",
+    "title": "Templates",
     "subtitle": "Define variables + checks for contract analysis. Publish versions to make them selectable.",
     "list": {
       "title": "Published & Draft",
-      "newNamePlaceholder": "New playbook name",
-      "empty": "No playbooks yet."
+      "newNamePlaceholder": "New template name",
+      "empty": "No templates yet."
     },
     "builder": {
       "title": "Builder",
       "saveDraft": "Save draft",
       "publish": "Publish",
-      "selectToEdit": "Select a playbook to edit."
+      "selectToEdit": "Select a template to edit."
     },
     "settingsFixed": "Settings (fixed)",
     "strictMode": "Strict mode",
@@ -461,6 +472,53 @@
       }
     }
   },
+  "packs": {
+    "title": "Packs",
+    "backToPacks": "Back to Packs",
+    "bundles": {
+      "title": "Document Bundles",
+      "subtitle": "Contract packets (MSA + amendments + SOWs) analyzed together."
+    },
+    "contextSets": {
+      "title": "Context Sets",
+      "subtitle": "Reusable policies/laws/standards pinned across analyses."
+    },
+    "bundlesManager": {
+      "title": "Document Bundles",
+      "aboutTitle": "About",
+      "aboutBody": "Bundles are for analyzing a contract packet (MSA + amendments + SOWs) together. They are different from reusable policies/laws (Context Sets).",
+      "newNamePlaceholder": "New bundle name (optional)",
+      "emptyTitle": "No bundles",
+      "emptyDescription": "Create a bundle to group related documents for multi-document analysis.",
+      "unnamed": "Unnamed bundle",
+      "precedence": "Precedence: {value}",
+      "manageMembersHint": "Member management will be available here (MVP).",
+      "confirmDelete": "Delete this bundle?"
+    },
+    "contextSetsManager": {
+      "title": "Context Sets",
+      "aboutTitle": "About",
+      "aboutBody": "Context Sets are reusable documents (policies, laws, standards) you can pin to a workspace and apply across analyses.",
+      "newNamePlaceholder": "New context set name",
+      "emptyTitle": "No context sets",
+      "emptyDescription": "Create a context set to reuse across analyses.",
+      "kind": "Kind: {value}",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "confirmDelete": "Delete this context set?"
+    }
+  },
+  "zohalLibrary": {
+    "title": "Zohal Library",
+    "close": "Close",
+    "searchPlaceholder": "Search…",
+    "import": "Import",
+    "empty": "No library items found.",
+    "errors": {
+      "loadFailed": "Failed to load library.",
+      "downloadFailed": "Failed to download file."
+    }
+  },
   "runAnalysis": {
     "title": "Run Analysis",
     "templatesComingSoon": "Templates for this document type are coming soon. You can still use AI Tools for Q&A and summaries.",
@@ -471,26 +529,45 @@
     "scope": {
       "label": "Scope",
       "single": "Single document",
-      "bundle": "Bundle"
+      "bundle": "Bundle",
+      "help": "Bundles are for MSA + SOWs + amendments. Conflicts are surfaced explicitly.",
+      "enforced": "This template requires scope"
     },
     "bundle": {
       "label": "Bundle",
       "select": "Select a bundle…",
       "create": "Create",
       "newNamePlaceholder": "New bundle name (optional)",
-      "requirementsTitle": "Bundle requirements"
+      "fallbackHint": "If no bundle is selected, the run will fall back to single-document analysis.",
+      "requirementsTitle": "Bundle requirements",
+      "issues": {
+        "selectBundle": "Select a bundle to run this analysis.",
+        "currentDocNotMember": "Current document is not a member of the selected bundle.",
+        "missingRequiredRole": "Missing required role: {role}",
+        "roleMustBeUnique": "Role must be unique but appears multiple times: {role}"
+      }
     },
     "playbook": {
-      "label": "Playbook",
-      "default": "Default (Renewal Pack)"
+      "label": "Template",
+      "default": "Default (Renewal Pack)",
+      "helperSelected": "Uses the selected template to gate variables/modules.",
+      "helperDefault": "Runs the default contract template."
     }
   },
   "contractAnalysis": {
     "playbook": {
-      "optional": "Playbook (optional)",
+      "optional": "Template (optional)",
       "manage": "Manage",
-      "label": "Playbook",
+      "label": "Template",
       "defaultRenewalPack": "Default (Renewal Pack)"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "variables": "Variables",
+      "clauses": "Clauses",
+      "obligations": "Obligations",
+      "deadlines": "Deadlines",
+      "risks": "Risks"
     },
     "empty": {
       "notAnalyzedTitle": "Not analyzed yet",
