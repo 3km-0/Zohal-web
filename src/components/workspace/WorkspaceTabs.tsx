@@ -36,7 +36,8 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
 
   return (
     <div className={cn('px-6 py-3 border-b border-border bg-surface', className)}>
-      <div className="inline-flex items-center bg-surface-alt border border-border rounded-scholar overflow-hidden">
+      <div className="max-w-full overflow-x-auto">
+        <div className="inline-flex items-center bg-surface-alt border border-border rounded-scholar min-w-max">
         {tabs.map((t) => {
           const isActive = resolved === t.key;
           return (
@@ -44,7 +45,7 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
               key={t.key}
               href={t.href}
               className={cn(
-                'px-4 py-2 text-sm font-semibold transition-colors',
+                'px-3 sm:px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap',
                 isActive ? 'bg-accent text-white' : 'text-text-soft hover:text-text hover:bg-surface'
               )}
             >
@@ -52,6 +53,7 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
             </Link>
           );
         })}
+        </div>
       </div>
     </div>
   );

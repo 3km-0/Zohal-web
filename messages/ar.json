@@ -508,6 +508,35 @@
       "confirmDelete": "حذف مجموعة السياق هذه؟"
     }
   },
+  "packsUnified": {
+    "title": "الحزم",
+    "subtitle": "مكان واحد لحزم العقود والحزم المرجعية القابلة لإعادة الاستخدام.",
+    "types": {
+      "bundle": "حزمة عقد",
+      "context": "حزمة مرجعية"
+    },
+    "kinds": {
+      "policy": "سياسة",
+      "regulation": "نظام",
+      "standard": "معيار",
+      "other": "أخرى"
+    },
+    "create": {
+      "name": "الاسم",
+      "namePlaceholder": "اسم الحزمة (اختياري)",
+      "type": "النوع",
+      "kind": "التصنيف",
+      "pin": "تثبيت إلى مساحة العمل"
+    },
+    "empty": {
+      "title": "لا توجد حزم",
+      "description": "أنشئ حزمة لتجميع مستندات العقد المرتبطة أو لتثبيت مراجع قابلة لإعادة الاستخدام."
+    },
+    "unnamed": "حزمة بدون اسم",
+    "pin": "تثبيت",
+    "unpin": "إلغاء التثبيت",
+    "kindBadge": "التصنيف: {value}"
+  },
   "zohalLibrary": {
     "title": "مكتبة زوهال",
     "close": "إغلاق",
@@ -518,6 +547,27 @@
       "loadFailed": "فشل تحميل المكتبة.",
       "downloadFailed": "فشل تنزيل الملف."
     }
+  },
+  "reportsPage": {
+    "title": "التقارير",
+    "subtitle": "الصادرات المحفوظة لهذه المساحة",
+    "errors": {
+      "loadFailed": "فشل تحميل التقارير",
+      "openFailed": "فشل فتح التقرير",
+      "deleteFailed": "فشل حذف التقرير"
+    },
+    "empty": {
+      "title": "لا توجد تقارير بعد",
+      "description": "قم بإنشاء تقرير من تحليل العقد وسيظهر هنا."
+    },
+    "confirmDelete": "حذف \"{title}\"؟",
+    "badges": {
+      "link": "رابط",
+      "html": "HTML"
+    },
+    "documentLabel": "المستند: {id}",
+    "shareableLinkNotice": "تم إنشاء هذا التقرير كرابط قابل للمشاركة.",
+    "openShareLink": "فتح رابط المشاركة"
   },
   "runAnalysis": {
     "title": "تشغيل التحليل",

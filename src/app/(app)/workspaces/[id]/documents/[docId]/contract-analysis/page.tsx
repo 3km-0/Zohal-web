@@ -299,7 +299,7 @@ export default function ContractAnalysisPage() {
     }
   }
 
-  // Multi-document bundles: load source document titles/roles for UI chips.
+  // Multi-document bundle packs: load source document titles/roles for UI chips.
   useEffect(() => {
     const bundle = snapshot?.pack?.bundle;
     const docIds = bundle?.document_ids;
@@ -319,11 +319,12 @@ export default function ContractAnalysisPage() {
         if (docsErr) throw docsErr;
 
         let rolesById: Record<string, string> = {};
-        if (bundle.bundle_id) {
+        const bundlePackId = String((bundle as any).pack_id || (bundle as any).bundle_id || '').toLowerCase();
+        if (bundlePackId) {
           const { data: members, error: memErr } = await supabase
-            .from('document_bundle_members')
+            .from('pack_members')
             .select('document_id, role, sort_order')
-            .eq('bundle_id', bundle.bundle_id)
+            .eq('pack_id', bundlePackId)
             .order('sort_order', { ascending: true });
           if (!memErr && Array.isArray(members)) {
             for (const m of members as any[]) {
@@ -350,12 +351,12 @@ export default function ContractAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
+  }, [snapshot?.pack?.bundle?.pack_id, snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
 
   async function createPinnedContextSetFromThisDocument() {
-    const name = window.prompt('Context set name (e.g., Company Policy Pack)');
+    const name = window.prompt('Reference pack name (e.g., Company Policy Pack)');
     if (!name) return;
-    const kind = window.prompt('Context kind (policy | regulation | template | other)', 'policy') || 'policy';
+    const kind = window.prompt('Kind (policy | regulation | standard | other)', 'policy') || 'policy';
     try {
       const {
         data: { session },
@@ -363,27 +364,26 @@ export default function ContractAnalysisPage() {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
-      const { data: cs, error: csErr } = await supabase
-        .from('context_sets')
-        .insert({ workspace_id: workspaceId, name, kind, created_by: userId })
+      const { data: p, error: pErr } = await supabase
+        .from('packs')
+        .insert({ workspace_id: workspaceId, name, kind, pack_type: 'context', created_by: userId })
         .select('id')
         .single();
-      if (csErr) throw csErr;
+      if (pErr) throw pErr;
 
       const { error: memErr } = await supabase
-        .from('context_set_members')
-        .insert({ context_set_id: cs.id, document_id: documentId, sort_order: 0, role: 'context', added_by: userId });
+        .from('pack_members')
+        .insert({ pack_id: p.id, document_id: documentId, sort_order: 0, role: 'context', added_by: userId });
       if (memErr) throw memErr;
 
       const { error: pinErr } = await supabase
-        .from('workspace_default_context_sets')
-        .insert({ workspace_id: workspaceId, context_set_id: cs.id, created_by: userId });
+        .from('workspace_pinned_packs')
+        .insert({ workspace_id: workspaceId, pack_id: p.id, created_by: userId });
       if (pinErr) throw pinErr;
 
-      // Re-run load to reflect manifest on next analysis.
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create context set');
+      setError(e instanceof Error ? e.message : 'Failed to create reference pack');
     }
   }
 
@@ -455,14 +455,14 @@ export default function ContractAnalysisPage() {
             }
           : undefined;
 
-      // If a bundle is selected, include it (and document_ids for reproducibility).
+      // If a bundle pack is selected, include it (and document_ids for reproducibility).
       let bundleDocumentIds: string[] | undefined = undefined;
-      const bundleId = selectedBundleId || '';
-      if (bundleId) {
+      const packId = selectedBundleId || '';
+      if (packId) {
         const { data: members, error: memErr } = await supabase
-          .from('document_bundle_members')
+          .from('pack_members')
           .select('document_id, sort_order')
-          .eq('bundle_id', bundleId)
+          .eq('pack_id', packId)
           .order('sort_order', { ascending: true });
         if (!memErr && Array.isArray(members)) {
           bundleDocumentIds = (members as any[])
@@ -482,9 +482,9 @@ export default function ContractAnalysisPage() {
           workspace_id: workspaceId,
           user_id: userId,
           ...(playbook_options ? { playbook_options } : {}),
-          ...(bundleId
+          ...(packId
             ? {
-                bundle_id: bundleId,
+                pack_id: packId,
                 document_ids: bundleDocumentIds && bundleDocumentIds.length > 0 ? bundleDocumentIds : undefined,
               }
             : {}),
@@ -604,7 +604,7 @@ export default function ContractAnalysisPage() {
 
     const pbId = searchParams.get('playbook_id') || '';
     const pbVid = searchParams.get('playbook_version_id') || '';
-    const bId = searchParams.get('bundle_id') || '';
+    const bId = searchParams.get('pack_id') || searchParams.get('bundle_id') || '';
 
     if (pbId) setSelectedPlaybookId(pbId);
     if (pbVid) setSelectedPlaybookVersionId(pbVid);

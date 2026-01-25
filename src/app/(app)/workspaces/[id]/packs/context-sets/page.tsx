@@ -10,23 +10,29 @@ import { Button, Card, EmptyState, Input, Spinner } from '@/components/ui';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { createClient } from '@/lib/supabase/client';
 
-type ContextSet = {
+type PackRow = {
   id: string;
   workspace_id: string;
   name: string;
   kind: string;
   created_at?: string | null;
+  pack_type?: string | null;
 };
 
 export default function WorkspaceContextSetsPage() {
   const params = useParams();
   const workspaceId = params.id as string;
+  // Legacy route: kept for backward compatibility, but Packs are unified at /packs.
+  // We intentionally avoid duplicating two mental models in the UI.
+  useEffect(() => {
+    window.location.replace(`/workspaces/${workspaceId}/packs`);
+  }, [workspaceId]);
   const supabase = useMemo(() => createClient(), []);
   const t = useTranslations('packs');
   const tCommon = useTranslations('common');
 
   const [loading, setLoading] = useState(true);
-  const [sets, setSets] = useState<ContextSet[]>([]);
+  const [sets, setSets] = useState<PackRow[]>([]);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -35,20 +41,19 @@ export default function WorkspaceContextSetsPage() {
     setLoading(true);
     const [{ data: setsData }, { data: pinnedData }] = await Promise.all([
       supabase
-        .from('context_sets')
+        .from('packs')
         .select('*')
         .eq('workspace_id', workspaceId)
+        .eq('pack_type', 'context')
         .order('updated_at', { ascending: false }),
       supabase
-        .from('workspace_default_context_sets')
-        .select('context_set_id')
+        .from('workspace_pinned_packs')
+        .select('pack_id')
         .eq('workspace_id', workspaceId),
     ]);
 
     setSets((setsData as any[]) || []);
-    setPinnedIds(
-      new Set(((pinnedData as any[]) || []).map((r) => String(r?.context_set_id || '').trim()).filter(Boolean))
-    );
+    setPinnedIds(new Set(((pinnedData as any[]) || []).map((r) => String(r?.pack_id || '').trim()).filter(Boolean)));
     setLoading(false);
   }, [supabase, workspaceId]);
 
@@ -63,10 +68,11 @@ export default function WorkspaceContextSetsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      await supabase.from('context_sets').insert({
+      await supabase.from('packs').insert({
         workspace_id: workspaceId,
         name: newName.trim(),
-        kind: 'reusable',
+        pack_type: 'context',
+        kind: 'policy',
         created_by: user.id,
       });
       setNewName('');
@@ -80,19 +86,19 @@ export default function WorkspaceContextSetsPage() {
     const isPinned = pinnedIds.has(setId);
     if (isPinned) {
       await supabase
-        .from('workspace_default_context_sets')
+        .from('workspace_pinned_packs')
         .delete()
         .eq('workspace_id', workspaceId)
-        .eq('context_set_id', setId);
+        .eq('pack_id', setId);
       setPinnedIds((prev) => {
         const next = new Set(prev);
         next.delete(setId);
         return next;
       });
     } else {
-      await supabase.from('workspace_default_context_sets').insert({
+      await supabase.from('workspace_pinned_packs').insert({
         workspace_id: workspaceId,
-        context_set_id: setId,
+        pack_id: setId,
       });
       setPinnedIds((prev) => new Set(prev).add(setId));
     }
@@ -100,7 +106,7 @@ export default function WorkspaceContextSetsPage() {
 
   const deleteSet = async (id: string) => {
     if (!confirm(t('contextSetsManager.confirmDelete'))) return;
-    await supabase.from('context_sets').delete().eq('id', id);
+    await supabase.from('packs').delete().eq('id', id);
     setSets((prev) => prev.filter((s) => s.id !== id));
     setPinnedIds((prev) => {
       const next = new Set(prev);

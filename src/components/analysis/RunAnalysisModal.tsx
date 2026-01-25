@@ -50,7 +50,7 @@ export function RunAnalysisModal(props: {
 
   const [scope, setScope] = useState<Scope>('single');
   const [bundles, setBundles] = useState<DocumentBundleRow[]>([]);
-  const [selectedBundleId, setSelectedBundleId] = useState<string>('');
+  const [selectedBundleId, setSelectedBundleId] = useState<string>(''); // pack_id for bundle packs
   const [bundleMemberIssues, setBundleMemberIssues] = useState<string[]>([]);
 
   const [creatingBundle, setCreatingBundle] = useState(false);
@@ -73,9 +73,10 @@ export function RunAnalysisModal(props: {
   const loadBundles = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('document_bundles')
+        .from('packs')
         .select('id,name,precedence_policy,primary_document_id,updated_at')
         .eq('workspace_id', workspaceId)
+        .eq('pack_type', 'bundle')
         .order('updated_at', { ascending: false });
       if (error) return;
       setBundles((data || []) as DocumentBundleRow[]);
@@ -163,9 +164,9 @@ export function RunAnalysisModal(props: {
       const issues: string[] = [];
       try {
         const { data: members, error: memErr } = await supabase
-          .from('document_bundle_members')
+          .from('pack_members')
           .select('document_id, role')
-          .eq('bundle_id', selectedBundleId);
+          .eq('pack_id', selectedBundleId);
         if (memErr) throw memErr;
         const rows = Array.isArray(members) ? (members as any[]) : [];
 
@@ -188,7 +189,7 @@ export function RunAnalysisModal(props: {
           if (!def.multiple && n > 1) issues.push(t('bundle.issues.roleMustBeUnique', { role: def.role }));
         }
       } catch {
-        issues.push('Could not validate bundle members. You can still run single-document analysis.');
+        issues.push('Could not validate pack members. You can still run single-document analysis.');
       }
 
       if (!cancelled) setBundleMemberIssues(issues);
@@ -208,10 +209,11 @@ export function RunAnalysisModal(props: {
       if (!userId) throw new Error('Not authenticated');
 
       const { data: b, error: bErr } = await supabase
-        .from('document_bundles')
+        .from('packs')
         .insert({
           workspace_id: workspaceId,
           name: newBundleName.trim() || null,
+          pack_type: 'bundle',
           precedence_policy: 'manual',
           primary_document_id: documentId,
           created_by: userId,
@@ -221,15 +223,15 @@ export function RunAnalysisModal(props: {
       if (bErr) throw bErr;
 
       // Add current doc as a member (best-effort; ignore conflict).
-      await supabase.from('document_bundle_members').upsert(
+      await supabase.from('pack_members').upsert(
         {
-          bundle_id: b.id,
+          pack_id: b.id,
           document_id: documentId,
           role: 'master',
           sort_order: 0,
           added_by: userId,
         },
-        { onConflict: 'bundle_id,document_id' }
+        { onConflict: 'pack_id,document_id' }
       );
 
       await loadBundles();
@@ -254,7 +256,7 @@ export function RunAnalysisModal(props: {
     params.set('autorun', '1');
     if (selectedPlaybookId) params.set('playbook_id', selectedPlaybookId);
     if (selectedPlaybookVersionId) params.set('playbook_version_id', selectedPlaybookVersionId);
-    if (effectiveScope === 'bundle' && selectedBundleId) params.set('bundle_id', selectedBundleId);
+    if (effectiveScope === 'bundle' && selectedBundleId) params.set('pack_id', selectedBundleId);
 
     onClose();
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis?${params.toString()}`);

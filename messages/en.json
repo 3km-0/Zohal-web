@@ -508,6 +508,35 @@
       "confirmDelete": "Delete this context set?"
     }
   },
+  "packsUnified": {
+    "title": "Packs",
+    "subtitle": "One place for contract packets and reusable references.",
+    "types": {
+      "bundle": "Contract packet",
+      "context": "Reference pack"
+    },
+    "kinds": {
+      "policy": "Policy",
+      "regulation": "Regulation",
+      "standard": "Standard",
+      "other": "Other"
+    },
+    "create": {
+      "name": "Name",
+      "namePlaceholder": "Pack name (optional)",
+      "type": "Type",
+      "kind": "Kind",
+      "pin": "Pin to workspace"
+    },
+    "empty": {
+      "title": "No packs",
+      "description": "Create a pack to group related contract documents or to pin reusable references."
+    },
+    "unnamed": "Unnamed pack",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "kindBadge": "Kind: {value}"
+  },
   "zohalLibrary": {
     "title": "Zohal Library",
     "close": "Close",
@@ -518,6 +547,27 @@
       "loadFailed": "Failed to load library.",
       "downloadFailed": "Failed to download file."
     }
+  },
+  "reportsPage": {
+    "title": "Reports",
+    "subtitle": "Saved exports for this workspace",
+    "errors": {
+      "loadFailed": "Failed to load reports",
+      "openFailed": "Failed to open report",
+      "deleteFailed": "Failed to delete report"
+    },
+    "empty": {
+      "title": "No reports yet",
+      "description": "Generate a report from Contract Analysis and it will appear here."
+    },
+    "confirmDelete": "Delete \"{title}\"?",
+    "badges": {
+      "link": "Link",
+      "html": "HTML"
+    },
+    "documentLabel": "Document: {id}",
+    "shareableLinkNotice": "This report was generated as a shareable link.",
+    "openShareLink": "Open share link"
   },
   "runAnalysis": {
     "title": "Run Analysis",

@@ -10,32 +10,39 @@ import { Button, Card, EmptyState, Input, Spinner } from '@/components/ui';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { createClient } from '@/lib/supabase/client';
 
-type DocumentBundle = {
+type PackRow = {
   id: string;
   workspace_id: string;
   name: string | null;
   precedence_policy?: string | null;
   created_at?: string | null;
+  pack_type?: string | null;
 };
 
 export default function WorkspaceBundlesPage() {
   const params = useParams();
   const workspaceId = params.id as string;
+  // Legacy route: kept for backward compatibility, but Packs are unified at /packs.
+  // We intentionally avoid duplicating two mental models in the UI.
+  useEffect(() => {
+    window.location.replace(`/workspaces/${workspaceId}/packs`);
+  }, [workspaceId]);
   const supabase = useMemo(() => createClient(), []);
   const t = useTranslations('packs');
   const tCommon = useTranslations('common');
 
   const [loading, setLoading] = useState(true);
-  const [bundles, setBundles] = useState<DocumentBundle[]>([]);
+  const [bundles, setBundles] = useState<PackRow[]>([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
 
   const fetchBundles = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
-      .from('document_bundles')
+      .from('packs')
       .select('*')
       .eq('workspace_id', workspaceId)
+      .eq('pack_type', 'bundle')
       .order('created_at', { ascending: false });
 
     setBundles((data as any[]) || []);
@@ -52,10 +59,11 @@ export default function WorkspaceBundlesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      await supabase.from('document_bundles').insert({
+      await supabase.from('packs').insert({
         workspace_id: workspaceId,
         name: newName.trim() ? newName.trim() : null,
         created_by: user.id,
+        pack_type: 'bundle',
         precedence_policy: 'manual',
       });
       setNewName('');
@@ -67,7 +75,7 @@ export default function WorkspaceBundlesPage() {
 
   const deleteBundle = async (id: string) => {
     if (!confirm(t('bundlesManager.confirmDelete'))) return;
-    await supabase.from('document_bundles').delete().eq('id', id);
+    await supabase.from('packs').delete().eq('id', id);
     setBundles((prev) => prev.filter((b) => b.id !== id));
   };
 
