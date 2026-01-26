@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-type WorkspaceTabKey = 'documents' | 'notes' | 'reports' | 'bundles' | 'packs';
+type WorkspaceTabKey = 'documents' | 'notes' | 'reports' | 'packs';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -23,8 +23,6 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
       ? 'notes'
       : pathname.includes('/reports')
         ? 'reports'
-        : pathname.includes('/packs/bundles')
-          ? 'bundles'
         : pathname.includes('/packs')
           ? 'packs'
         : 'documents');
@@ -33,7 +31,6 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
     { key: 'documents', label: t('documents'), href: `/workspaces/${workspaceId}` },
     { key: 'notes', label: t('notes'), href: `/workspaces/${workspaceId}/notes` },
     { key: 'reports', label: t('reports'), href: `/workspaces/${workspaceId}/reports` },
-    { key: 'bundles', label: t('bundles'), href: `/workspaces/${workspaceId}/packs/bundles` },
     { key: 'packs', label: t('packs'), href: `/workspaces/${workspaceId}/packs` },
   ];
 

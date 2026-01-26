@@ -88,7 +88,7 @@ export default function WorkspaceBundlesPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="bundles" />
+      <WorkspaceTabs workspaceId={workspaceId} active="packs" />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
         <Card className="p-4">
