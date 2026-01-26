@@ -247,6 +247,7 @@
     "documents": "Documents",
     "notes": "Notes",
     "reports": "Reports",
+    "bundles": "Bundles",
     "packs": "Packs"
   },
   "workspaceCard": {

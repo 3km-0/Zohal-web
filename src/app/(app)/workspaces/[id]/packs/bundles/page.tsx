@@ -22,11 +22,6 @@ type PackRow = {
 export default function WorkspaceBundlesPage() {
   const params = useParams();
   const workspaceId = params.id as string;
-  // Legacy route: kept for backward compatibility, but Packs are unified at /packs.
-  // We intentionally avoid duplicating two mental models in the UI.
-  useEffect(() => {
-    window.location.replace(`/workspaces/${workspaceId}/packs`);
-  }, [workspaceId]);
   const supabase = useMemo(() => createClient(), []);
   const t = useTranslations('packs');
   const tCommon = useTranslations('common');
@@ -93,7 +88,7 @@ export default function WorkspaceBundlesPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="packs" />
+      <WorkspaceTabs workspaceId={workspaceId} active="bundles" />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
         <Card className="p-4">

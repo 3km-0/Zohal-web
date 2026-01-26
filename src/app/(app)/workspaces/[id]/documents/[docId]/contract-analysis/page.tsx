@@ -109,20 +109,43 @@ export default function ContractAnalysisPage() {
   }, [snapshot]);
 
   const enabledModules = useMemo<Set<string>>(() => {
-    const defaults = new Set(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
+    const defaults = new Set<string>(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
     const pb = (snapshot?.pack as any)?.playbook as any;
     const raw = Array.isArray(pb?.modules_enabled) ? pb.modules_enabled : Array.isArray(pb?.modules) ? pb.modules : null;
-    const set = new Set(
-      (raw || [])
-        .map((x: any) => String(x || '').trim())
-        .filter(Boolean)
-    );
+    const set = new Set<string>((raw || []).map((x: any) => String(x || '').trim()).filter(Boolean));
     if (set.size === 0) return defaults;
     // Dependency rules (match backend intent)
     if (set.has('deadlines')) set.add('variables');
     if (!set.has('obligations')) set.delete('deadlines');
     return set;
   }, [snapshot]);
+
+  // Verification-based attention counts
+  // This is about AI confidence / needs_review status, NOT content risk.
+  // - Variables: Items with verification_state = needs_review (handled inline in tab definition)
+  // - Obligations: Items with low AI confidence OR needs_review state
+  // - Clauses: No verification field in projection, so 0 (risk level is content-based, not verification)
+  // - Risks: No AI confidence in projection, so 0 (severity is content-based, not verification)
+  const attention = useMemo(() => {
+    // Obligations needing verification: low confidence OR needs_review state
+    const obligationsNeedVerification = obligations.filter(
+      (o) => o.confidence_state === 'needs_review' || o.confidence === 'low'
+    ).length;
+
+    // Deadlines needing verification
+    const deadlinesNeedVerification = deadlines.filter((o) => o.confidence_state === 'needs_review' || o.confidence === 'low').length;
+
+    return {
+      // Clauses don't have verification_state in projection - risk level is content-based
+      clauses: 0,
+      // Obligations needing verification
+      obligations: obligationsNeedVerification,
+      // Deadlines needing verification
+      deadlines: deadlinesNeedVerification,
+      // Risks don't have ai_confidence in projection - severity is content-based
+      risks: 0,
+    };
+  }, [obligations, deadlines]);
 
   const tabs = useMemo(() => {
     const out: Array<{ id: string; label: string; icon: any; total: number | null; attentionCount: number }> = [
@@ -174,35 +197,6 @@ export default function ContractAnalysisPage() {
     d.setDate(d.getDate() - noticeDays);
     return d;
   }
-  
-  // Verification-based attention counts
-  // This is about AI confidence / needs_review status, NOT content risk.
-  // - Variables: Items with verification_state = needs_review (handled inline in tab definition)
-  // - Obligations: Items with low AI confidence OR needs_review state
-  // - Clauses: No verification field in projection, so 0 (risk level is content-based, not verification)
-  // - Risks: No AI confidence in projection, so 0 (severity is content-based, not verification)
-  const attention = useMemo(() => {
-    // Obligations needing verification: low confidence OR needs_review state
-    const obligationsNeedVerification = obligations.filter(
-      (o) => o.confidence_state === 'needs_review' || o.confidence === 'low'
-    ).length;
-    
-    // Deadlines needing verification
-    const deadlinesNeedVerification = deadlines.filter(
-      (o) => o.confidence_state === 'needs_review' || o.confidence === 'low'
-    ).length;
-    
-    return {
-      // Clauses don't have verification_state in projection - risk level is content-based
-      clauses: 0,
-      // Obligations needing verification
-      obligations: obligationsNeedVerification,
-      // Deadlines needing verification
-      deadlines: deadlinesNeedVerification,
-      // Risks don't have ai_confidence in projection - severity is content-based
-      risks: 0,
-    };
-  }, [obligations, deadlines]);
 
   async function load() {
     setLoading(true);
@@ -351,7 +345,7 @@ export default function ContractAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [snapshot?.pack?.bundle?.pack_id, snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
+  }, [(snapshot?.pack as any)?.bundle?.pack_id, snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
 
   async function createPinnedContextSetFromThisDocument() {
     const name = window.prompt('Reference pack name (e.g., Company Policy Pack)');

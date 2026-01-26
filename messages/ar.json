@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "زُهل",
+    "appName": "زحل",
     "tagline": "دفتر الذكاء الاصطناعي للعلوم",
     "loading": "جاري التحميل...",
     "error": "حدث خطأ",
@@ -58,8 +58,8 @@
     "continueWith": "أو تابع باستخدام",
     "termsAgree": "بالتسجيل، أنت توافق على",
     "and": "و",
-    "welcomeBack": "مرحباً بعودتك إلى زُهل",
-    "joinZohal": "انضم إلى زُهل",
+    "welcomeBack": "مرحباً بعودتك إلى زحل",
+    "joinZohal": "انضم إلى زحل",
     "fillAllFields": "يرجى ملء جميع الحقول",
     "fillRequiredFields": "يرجى ملء جميع الحقول المطلوبة",
     "passwordsDoNotMatch": "كلمات المرور غير متطابقة",
@@ -73,17 +73,17 @@
     "apple": "Apple",
     "google": "Google",
     "microsoft": "Microsoft",
-    "createAccount": "أنشئ حسابك في زُهل"
+    "createAccount": "أنشئ حسابك في زحل"
   },
   "landing": {
     "hero": {
-      "title": "زُهل",
+      "title": "زحل",
       "subtitle": "دفتر الذكاء الاصطناعي للطلاب والمهندسين. اقرأ ملفات PDF، اكتب بخط اليد، واحصل على شروحات ذكية في الهامش.",
       "downloadApp": "حمّل من App Store",
       "getSupport": "احصل على الدعم"
     },
     "features": {
-      "title": "ما هو زُهل؟",
+      "title": "ما هو زحل؟",
       "pdfReader": {
         "title": "قارئ PDF",
         "description": "استورد واقرأ كتبك ومستنداتك بواجهة نظيفة وخالية من التشتت."
@@ -227,7 +227,7 @@
     }
   },
   "footer": {
-    "copyright": "© {year} زُهل. جميع الحقوق محفوظة."
+    "copyright": "© {year} زحل. جميع الحقوق محفوظة."
   },
   "home": {
     "getStartedFree": "ابدأ مجاناً",
@@ -247,6 +247,7 @@
     "documents": "المستندات",
     "notes": "الملاحظات",
     "reports": "التقارير",
+    "bundles": "حزم العقود",
     "packs": "الحزم"
   },
   "workspaceCard": {
@@ -267,7 +268,7 @@
     "browseFiles": "تصفح الملفات",
     "googleDrive": "Google Drive",
     "oneDrive": "OneDrive",
-    "zohalLibrary": "مكتبة زوهال",
+    "zohalLibrary": "مكتبة زحل",
     "maxSize": "PDF أو صور JPG/PNG، بحد أقصى 100 ميجابايت لكل ملف",
     "uploading": "جاري الرفع...",
     "uploadCount": "رفع ({count})",
@@ -378,7 +379,7 @@
     "activating": "تفعيل اشتراكك",
     "pleaseWait": "يرجى الانتظار بينما نؤكد دفعتك...",
     "welcome": "مرحباً!",
-    "welcomeTo": "مرحباً بك في زُهل {tier}!",
+    "welcomeTo": "مرحباً بك في زحل {tier}!",
     "subscriptionActive": "اشتراكك نشط الآن. استمتع بوصول غير محدود إلى جميع ميزات {tier}.",
     "youNowHave": "لديك الآن وصول إلى:",
     "unlimitedAi": "شروحات ذكاء اصطناعي غير محدودة",
@@ -387,7 +388,7 @@
     "driveSync": "مزامنة Google Drive",
     "prioritySupport": "دعم مميز",
     "renewsOn": "سيتجدد اشتراكك في {date}",
-    "startUsing": "ابدأ استخدام زُهل",
+    "startUsing": "ابدأ استخدام زحل",
     "viewDetails": "عرض تفاصيل الاشتراك"
   },
   "settingsPage": {
@@ -418,8 +419,7 @@
     "logOut": "تسجيل الخروج",
     "deleteAccountConfirm": "هل أنت متأكد من حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع مساحات العمل والمستندات والملاحظات بشكل دائم.",
     "yesDeleteAccount": "نعم، احذف حسابي"
-  }
-  ,
+  },
   "playbooks": {
     "title": "القوالب",
     "subtitle": "عرّف المتغيرات والفحوصات لتحليل العقود. انشر الإصدارات لتصبح قابلة للاختيار.",
@@ -538,7 +538,7 @@
     "kindBadge": "التصنيف: {value}"
   },
   "zohalLibrary": {
-    "title": "مكتبة زوهال",
+    "title": "مكتبة زحل",
     "close": "إغلاق",
     "searchPlaceholder": "بحث…",
     "import": "استيراد",
