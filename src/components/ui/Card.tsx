@@ -21,11 +21,11 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const baseStyles = 'rounded-scholar';
+    const baseStyles = 'rounded-scholar shadow-[var(--shadowSm)]';
 
     const variants = {
       default: 'bg-surface border border-border',
-      elevated: 'bg-surface shadow-scholar',
+      elevated: 'bg-surface border border-border shadow-[var(--shadowMd)]',
       outlined: 'bg-transparent border border-border',
     };
 
@@ -37,7 +37,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     };
 
     const interactiveStyles = interactive
-      ? 'cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-scholar-lg'
+      ? 'cursor-pointer transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent'
       : '';
 
     return (

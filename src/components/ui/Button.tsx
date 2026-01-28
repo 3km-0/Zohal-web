@@ -23,20 +23,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center gap-2 font-semibold rounded-scholar transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+      'inline-flex min-h-[44px] items-center justify-center gap-2 font-semibold rounded-scholar transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2';
 
     const variants = {
       primary:
-        'bg-accent text-white hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0',
+        'bg-accent text-background hover:bg-highlight hover:-translate-y-0.5 active:translate-y-0',
       secondary:
-        'bg-surface border border-border text-text hover:border-accent hover:text-accent',
-      ghost: 'text-text-soft hover:text-text hover:bg-surface-alt',
+        'bg-transparent border border-border text-text hover:border-highlight hover:text-highlight',
+      ghost: 'text-text-soft hover:text-text hover:bg-surface-alt border border-transparent',
       danger:
-        'bg-error text-white hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0',
+        'bg-error text-background hover:-translate-y-0.5 active:translate-y-0',
     };
 
     const sizes = {
-      sm: 'px-3 py-1.5 text-sm',
+      sm: 'px-3 py-2 text-sm',
       md: 'px-5 py-2.5 text-base',
       lg: 'px-7 py-3.5 text-lg',
     };

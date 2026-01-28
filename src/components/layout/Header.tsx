@@ -19,6 +19,7 @@ export function Header({
   showAuthButtons = true,
   className,
 }: HeaderProps) {
+  const tCommon = useTranslations('common');
   const t = useTranslations('nav');
   const authT = useTranslations('auth');
 
@@ -33,7 +34,7 @@ export function Header({
       className={cn(
         'fixed top-0 left-0 right-0 z-50',
         'flex items-center justify-between',
-        'px-6 py-4 md:px-8',
+        'px-6 h-[72px] md:px-8',
         variant === 'default' && 'bg-surface/80 backdrop-blur-md border-b border-border',
         variant === 'transparent' && 'bg-transparent',
         className
@@ -41,9 +42,9 @@ export function Header({
     >
       <Link
         href="/"
-        className="text-2xl font-bold text-accent tracking-tight hover:opacity-80 transition-opacity"
+        className="text-2xl font-semibold text-accent tracking-tight hover:opacity-80 transition-opacity"
       >
-        Zohal
+        {tCommon('appName')}
       </Link>
 
       <div className="flex items-center gap-4 md:gap-6">
@@ -53,7 +54,7 @@ export function Header({
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-text-soft hover:text-accent transition-colors font-medium"
+                className="text-text-soft hover:text-text transition-colors font-medium"
               >
                 {link.label}
               </Link>

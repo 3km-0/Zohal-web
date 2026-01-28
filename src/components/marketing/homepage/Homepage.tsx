@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
@@ -12,6 +12,12 @@ type Content = {
     links: Array<{ label: string; href: string }>;
     actions: {
       languageToggle: { left: string; right: string };
+      a11y: {
+        switchToArabic: string;
+        switchToEnglish: string;
+        openMenu: string;
+        closeMenu: string;
+      };
       login: { label: string; href: string };
       primaryCta: { label: string; href: string };
     };
@@ -111,7 +117,63 @@ type Content = {
     locations: Array<{ city: string; address: string; phone: string }>;
     legalNote: string;
   };
+  ui: {
+    mentalModelLine: string;
+    beforeLabel: string;
+    afterLabel: string;
+    modal: {
+      demoTitle: string;
+      demoPlaceholderBody: string;
+      demoShowsLabel: string;
+      demoShowsBody: string;
+      close: string;
+    };
+    mock: {
+      decisionPackLabel: string;
+      samplePackTitle: string;
+      provisional: string;
+      finalized: string;
+      samplePartyAValue: string;
+      sampleEffectiveDateValue: string;
+      sampleTermMonthsValue: string;
+      documentViewer: string;
+      verifiedVariables: string;
+      exports: string;
+      showEvidence: string;
+      hideEvidence: string;
+      evidence: string;
+      pageLabel: string;
+      highlightSnippet: string;
+      verificationObjectFilename: string;
+      uiMockLabel: string;
+      exceptionsQueueTitle: string;
+      exceptionsQueueBody: string;
+      claimKey: string;
+      statusKey: string;
+      confidenceKey: string;
+      citationsKey: string;
+    };
+    decisionPackPreview: {
+      deliverablesLabel: string;
+      deliverables: string[];
+      deliverablesBody: string;
+    };
+    security: {
+      buyersCareTitle: string;
+    };
+    finalCta: {
+      previewLabel: string;
+    };
+    footer: {
+      locationsLabel: string;
+    };
+  };
 };
+
+function useMarketingHomeContent(): Content {
+  const t = useTranslations('marketingHome');
+  return t.raw('content') as Content;
+}
 
 function useScrolled(thresholdPx = 12) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -282,7 +344,17 @@ function TertiaryLink({
   );
 }
 
-function LanguageToggle() {
+function LanguageToggle({
+  leftLabel,
+  rightLabel,
+  ariaSwitchToArabic,
+  ariaSwitchToEnglish,
+}: {
+  leftLabel: string;
+  rightLabel: string;
+  ariaSwitchToArabic: string;
+  ariaSwitchToEnglish: string;
+}) {
   const locale = useLocale();
   const isEn = locale === 'en';
 
@@ -302,10 +374,10 @@ function LanguageToggle() {
         'hover:border-highlight hover:text-highlight',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
       )}
-      aria-label={`Switch to ${isEn ? 'Arabic' : 'English'}`}
+      aria-label={isEn ? ariaSwitchToArabic : ariaSwitchToEnglish}
     >
       <span className="text-xs tracking-[0.10em] uppercase">
-        {isEn ? 'EN' : 'AR'} <span className="text-text-soft">|</span> {isEn ? 'AR' : 'EN'}
+        {leftLabel} <span className="text-text-soft">|</span> {rightLabel}
       </span>
     </button>
   );
@@ -314,11 +386,13 @@ function LanguageToggle() {
 function MarketingModal({
   isOpen,
   title,
+  closeAriaLabel,
   onClose,
   children,
 }: {
   isOpen: boolean;
   title: string;
+  closeAriaLabel: string;
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -406,7 +480,7 @@ function MarketingModal({
               'text-text-soft hover:text-text hover:border-highlight transition-colors duration-200',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
             )}
-            aria-label="Close modal"
+            aria-label={closeAriaLabel}
           >
             ✕
           </button>
@@ -427,12 +501,14 @@ function StatCard({ value, label }: { value: string; label: string }) {
 }
 
 function Card({
+  brandLabel,
   title,
   subtitle,
   bullets,
   footer,
   onClick,
 }: {
+  brandLabel: string;
   title: string;
   subtitle?: string;
   bullets: string[];
@@ -460,7 +536,7 @@ function Card({
           : undefined
       }
     >
-      <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Zohal</div>
+      <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{brandLabel}</div>
       <h3 className="mt-2 text-lg font-semibold text-text">{title}</h3>
       {subtitle ? <p className="mt-2 text-text-soft">{subtitle}</p> : null}
       <ul className="mt-4 space-y-2 text-sm text-text-soft">
@@ -624,7 +700,12 @@ function Nav({ content }: { content: Content }) {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden sm:block">
-            <LanguageToggle />
+            <LanguageToggle
+              leftLabel={content.nav.actions.languageToggle.left}
+              rightLabel={content.nav.actions.languageToggle.right}
+              ariaSwitchToArabic={content.nav.actions.a11y.switchToArabic}
+              ariaSwitchToEnglish={content.nav.actions.a11y.switchToEnglish}
+            />
           </div>
 
           <Link
@@ -653,7 +734,7 @@ function Nav({ content }: { content: Content }) {
               'text-text-soft hover:text-text hover:border-highlight transition-colors duration-200',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
             )}
-            aria-label="Open menu"
+            aria-label={content.nav.actions.a11y.openMenu}
             onClick={() => setMobileOpen(true)}
           >
             ☰
@@ -665,14 +746,19 @@ function Nav({ content }: { content: Content }) {
         <div className="md:hidden border-t border-[color:var(--nav-border)]">
           <div className="max-w-[1280px] mx-auto px-5 sm:px-8 py-4 space-y-2">
             <div className="flex items-center justify-between">
-              <LanguageToggle />
+              <LanguageToggle
+                leftLabel={content.nav.actions.languageToggle.left}
+                rightLabel={content.nav.actions.languageToggle.right}
+                ariaSwitchToArabic={content.nav.actions.a11y.switchToArabic}
+                ariaSwitchToEnglish={content.nav.actions.a11y.switchToEnglish}
+              />
               <button
                 className={cn(
                   'min-h-[44px] min-w-[44px] rounded-[var(--rSm)] border border-border bg-transparent',
                   'text-text-soft hover:text-text hover:border-highlight transition-colors duration-200',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                 )}
-                aria-label="Close menu"
+                aria-label={content.nav.actions.a11y.closeMenu}
                 onClick={() => setMobileOpen(false)}
               >
                 ✕
@@ -724,20 +810,25 @@ function Nav({ content }: { content: Content }) {
 
 function DecisionPackMock() {
   const [showEvidence, setShowEvidence] = useState(false);
+  const content = useMarketingHomeContent();
+  const pageLabel = (page: number) =>
+    content.ui.mock.pageLabel.replace('{page}', String(page));
 
   return (
     <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowMd)] overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between">
         <div>
-          <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Decision Pack</div>
-          <div className="text-lg font-semibold text-text">Sample Review Pack</div>
+          <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+            {content.ui.mock.decisionPackLabel}
+          </div>
+          <div className="text-lg font-semibold text-text">{content.ui.mock.samplePackTitle}</div>
         </div>
         <div className="hidden sm:flex items-center gap-2">
           <span className="px-3 py-1 rounded-[var(--rPill)] border border-[color:var(--accent-alt)] text-xs font-semibold text-text">
-            Provisional
+            {content.ui.mock.provisional}
           </span>
           <span className="px-3 py-1 rounded-[var(--rPill)] border border-success text-xs font-semibold text-text">
-            Finalized
+            {content.ui.mock.finalized}
           </span>
         </div>
       </div>
@@ -745,24 +836,28 @@ function DecisionPackMock() {
       <div className="p-5 grid gap-4">
         <div className="grid gap-3 sm:grid-cols-[1fr,360px]">
           <div className="rounded-[var(--rMd)] border border-border bg-[rgba(0,0,0,0.12)] p-4">
-            <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Document Viewer</div>
+            <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+              {content.ui.mock.documentViewer}
+            </div>
             <div className="mt-3 grid gap-2">
               <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-11/12" />
               <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-10/12" />
               <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-9/12" />
               <div className="mt-3 rounded-[var(--rSm)] border border-[color:var(--highlight)] bg-[rgba(243,207,122,0.10)] p-3">
-                <div className="text-xs font-mono text-highlight">“Governing law: Kingdom of Saudi Arabia”</div>
+                <div className="text-xs font-mono text-highlight">{content.ui.mock.highlightSnippet}</div>
               </div>
             </div>
           </div>
 
           <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-            <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Verified Variables</div>
+            <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+              {content.ui.mock.verifiedVariables}
+            </div>
             <div className="mt-3 space-y-3">
               {[
-                { k: 'party_a', v: 'Al Noor Trading Co.', s: 'Finalized' },
-                { k: 'effective_date', v: '2026-01-15', s: 'Provisional' },
-                { k: 'term_months', v: '24', s: 'Finalized' }
+                { k: 'party_a', v: content.ui.mock.samplePartyAValue, s: content.ui.mock.finalized },
+                { k: 'effective_date', v: content.ui.mock.sampleEffectiveDateValue, s: content.ui.mock.provisional },
+                { k: 'term_months', v: content.ui.mock.sampleTermMonthsValue, s: content.ui.mock.finalized }
               ].map((row) => (
                 <div key={row.k} className="rounded-[var(--rSm)] border border-border bg-surface p-3">
                   <div className="flex items-center justify-between gap-3">
@@ -770,7 +865,7 @@ function DecisionPackMock() {
                     <span
                       className={cn(
                         'px-2 py-0.5 rounded-[var(--rPill)] border text-[11px] font-semibold',
-                        row.s === 'Finalized'
+                        row.s === content.ui.mock.finalized
                           ? 'border-success text-text'
                           : 'border-[color:var(--accent-alt)] text-text'
                       )}
@@ -789,19 +884,21 @@ function DecisionPackMock() {
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                 )}
               >
-                {showEvidence ? 'Hide evidence' : 'Show evidence'}
+                {showEvidence ? content.ui.mock.hideEvidence : content.ui.mock.showEvidence}
               </button>
               {showEvidence ? (
                 <div className="rounded-[var(--rMd)] border border-border bg-surface p-4">
-                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Evidence</div>
+                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+                    {content.ui.mock.evidence}
+                  </div>
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div className="rounded-[var(--rSm)] border border-border bg-[rgba(0,0,0,0.10)] p-3">
-                      <div className="text-xs text-text-soft">Page 3</div>
+                      <div className="text-xs text-text-soft">{pageLabel(3)}</div>
                       <div className="mt-2 h-12 rounded bg-[rgba(255,255,255,0.08)]" />
                       <div className="mt-2 h-2 rounded bg-[rgba(243,207,122,0.22)] w-10/12" />
                     </div>
                     <div className="rounded-[var(--rSm)] border border-border bg-[rgba(0,0,0,0.10)] p-3">
-                      <div className="text-xs text-text-soft">Page 5</div>
+                      <div className="text-xs text-text-soft">{pageLabel(5)}</div>
                       <div className="mt-2 h-12 rounded bg-[rgba(255,255,255,0.08)]" />
                       <div className="mt-2 h-2 rounded bg-[rgba(243,207,122,0.22)] w-9/12" />
                     </div>
@@ -813,9 +910,9 @@ function DecisionPackMock() {
         </div>
 
         <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-          <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Exports</div>
+          <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{content.ui.mock.exports}</div>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {['Export PDF', 'Export CSV', 'Export JSON', 'Finalize Snapshot'].map((label) => (
+            {content.decisionPack.exportButtons.map((label) => (
               <button
                 key={label}
                 className={cn(
@@ -835,7 +932,8 @@ function DecisionPackMock() {
   );
 }
 
-export function Homepage({ content }: { content: Content }) {
+export function Homepage() {
+  const content = useMarketingHomeContent();
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
@@ -846,7 +944,7 @@ export function Homepage({ content }: { content: Content }) {
   );
 
   return (
-    <div data-theme={content.brand.theme} className="marketing-grid-bg min-h-screen">
+    <div className="marketing-grid-bg min-h-screen">
       <Nav content={content} />
 
       <main className="pt-[72px]">
@@ -855,7 +953,7 @@ export function Homepage({ content }: { content: Content }) {
           <div className="grid gap-10 lg:grid-cols-[7fr,5fr] lg:items-center">
             <Reveal>
               <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
-                Inputs → Verified Variables → Checks + Exceptions → Decision Pack → Forward
+                {content.ui.mentalModelLine}
               </div>
               <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-text">
                 {content.hero.headline}
@@ -869,7 +967,7 @@ export function Homepage({ content }: { content: Content }) {
                   href={content.nav.actions.primaryCta.href}
                   onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'hero' })}
                 >
-                  {content.hero.ctas.find((c) => c.type === 'primary')?.label ?? 'Start free'}
+                  {content.hero.ctas.find((c) => c.type === 'primary')?.label}
                 </PrimaryLinkButton>
                 <SecondaryButton
                   onClick={() => {
@@ -877,7 +975,7 @@ export function Homepage({ content }: { content: Content }) {
                     setIsDemoOpen(true);
                   }}
                 >
-                  {content.hero.ctas.find((c) => c.type === 'secondary')?.label ?? 'Watch 60s demo'}
+                  {content.hero.ctas.find((c) => c.type === 'secondary')?.label}
                 </SecondaryButton>
               </div>
 
@@ -935,7 +1033,7 @@ export function Homepage({ content }: { content: Content }) {
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-                    <div className="text-sm font-semibold text-text">Before</div>
+                    <div className="text-sm font-semibold text-text">{content.ui.beforeLabel}</div>
                     <ul className="mt-2 space-y-2 text-sm text-text-soft">
                       {content.problem.sideCard.before.map((b) => (
                         <li key={b} className="flex gap-2">
@@ -946,7 +1044,7 @@ export function Homepage({ content }: { content: Content }) {
                     </ul>
                   </div>
                   <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-                    <div className="text-sm font-semibold text-text">After</div>
+                    <div className="text-sm font-semibold text-text">{content.ui.afterLabel}</div>
                     <ul className="mt-2 space-y-2 text-sm text-text-soft">
                       {content.problem.sideCard.after.map((b) => (
                         <li key={b} className="flex gap-2">
@@ -976,14 +1074,14 @@ export function Homepage({ content }: { content: Content }) {
           <div className="mt-10 grid gap-4 lg:grid-cols-3">
             {content.howItWorks.steps.map((step, idx) => (
               <Reveal key={step.title} delayMs={idx * 90}>
-                <Card title={step.title} bullets={[step.body]} />
+                <Card brandLabel={content.brand.name} title={step.title} bullets={[step.body]} />
               </Reveal>
             ))}
           </div>
 
           <Reveal className="mt-8 flex flex-col sm:flex-row gap-3" delayMs={90}>
             <TertiaryLink href={content.howItWorks.ctas[0]?.href ?? '#decision-pack'}>
-              {content.howItWorks.ctas[0]?.label ?? 'See a sample Decision Pack'} →
+              {content.howItWorks.ctas[0]?.label} →
             </TertiaryLink>
             <Link
               href={content.howItWorks.ctas[1]?.href ?? '#playbooks'}
@@ -993,7 +1091,7 @@ export function Homepage({ content }: { content: Content }) {
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
               )}
             >
-              {content.howItWorks.ctas[1]?.label ?? 'How Playbooks work'}
+              {content.howItWorks.ctas[1]?.label}
             </Link>
           </Reveal>
         </Section>
@@ -1051,24 +1149,28 @@ export function Homepage({ content }: { content: Content }) {
 
             <Reveal delayMs={180}>
               <div className="rounded-[var(--rLg)] border border-border bg-surface-alt p-6">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">UI mock</div>
+                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+                  {content.ui.mock.uiMockLabel}
+                </div>
                 <div className="mt-4 space-y-3">
                   <div className="rounded-[var(--rMd)] border border-border bg-surface p-4">
-                    <div className="font-mono text-xs text-text-soft">verification_object.json</div>
+                    <div className="font-mono text-xs text-text-soft">
+                      {content.ui.mock.verificationObjectFilename}
+                    </div>
                     <pre className="mt-3 text-xs text-text overflow-auto font-mono leading-relaxed">
 {`{
-  "claim": "…",
-  "status": "${capability?.id === 'verification' ? 'Finalized' : 'Provisional'}",
-  "confidence": ${capability?.id === 'exceptions' ? '0.62' : '0.91'},
-  "citations": ["p3:12-18", "p5:4-9"]
+  "${content.ui.mock.claimKey}": "…",
+  "${content.ui.mock.statusKey}": "${capability?.id === 'verification' ? content.ui.mock.finalized : content.ui.mock.provisional}",
+  "${content.ui.mock.confidenceKey}": ${capability?.id === 'exceptions' ? '0.62' : '0.91'},
+  "${content.ui.mock.citationsKey}": ["p3:12-18", "p5:4-9"]
 }`}
                     </pre>
                   </div>
                   <div className="rounded-[var(--rMd)] border border-border bg-surface p-4">
-                    <div className="text-sm font-semibold text-text">Exceptions queue</div>
-                    <div className="mt-2 text-sm text-text-soft">
-                      Not found / unsupported routes to review with clear next actions.
+                    <div className="text-sm font-semibold text-text">
+                      {content.ui.mock.exceptionsQueueTitle}
                     </div>
+                    <div className="mt-2 text-sm text-text-soft">{content.ui.mock.exceptionsQueueBody}</div>
                   </div>
                 </div>
               </div>
@@ -1087,6 +1189,7 @@ export function Homepage({ content }: { content: Content }) {
             {content.applications.cards.map((c, idx) => (
               <Reveal key={c.id} delayMs={idx * 90}>
                 <Card
+                  brandLabel={content.brand.name}
                   title={c.title}
                   subtitle={c.subtitle}
                   bullets={c.bullets}
@@ -1142,21 +1245,21 @@ export function Homepage({ content }: { content: Content }) {
 
             <Reveal delayMs={120}>
               <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Deliverables</div>
+                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+                  {content.ui.decisionPackPreview.deliverablesLabel}
+                </div>
                 <div className="mt-4 space-y-3">
-                  {['Citation-backed memo', 'Tracker (CSV/JSON)', 'Evidence map', 'Finalized snapshot'].map(
-                    (label) => (
-                      <div
-                        key={label}
-                        className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4"
-                      >
-                        <div className="text-sm font-semibold text-text">{label}</div>
-                        <div className="mt-2 text-sm text-text-soft">
-                          Structured output designed to survive scrutiny.
-                        </div>
+                  {content.ui.decisionPackPreview.deliverables.map((label) => (
+                    <div
+                      key={label}
+                      className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4"
+                    >
+                      <div className="text-sm font-semibold text-text">{label}</div>
+                      <div className="mt-2 text-sm text-text-soft">
+                        {content.ui.decisionPackPreview.deliverablesBody}
                       </div>
-                    )
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </Reveal>
@@ -1172,10 +1275,18 @@ export function Homepage({ content }: { content: Content }) {
           </Reveal>
           <div className="mt-10 grid gap-4 lg:grid-cols-2">
             <Reveal delayMs={90}>
-              <Card title="What buyers care about" bullets={content.security.leftBullets} />
+              <Card
+                brandLabel={content.brand.name}
+                title={content.ui.security.buyersCareTitle}
+                bullets={content.security.leftBullets}
+              />
             </Reveal>
             <Reveal delayMs={180}>
-              <Card title={content.security.rightCard.title} bullets={content.security.rightCard.bullets} />
+              <Card
+                brandLabel={content.brand.name}
+                title={content.security.rightCard.title}
+                bullets={content.security.rightCard.bullets}
+              />
             </Reveal>
           </div>
         </Section>
@@ -1317,7 +1428,7 @@ export function Homepage({ content }: { content: Content }) {
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                     )}
                   >
-                    {content.faq.contactRow.ctas[0]?.label ?? 'Contact us'}
+                    {content.faq.contactRow.ctas[0]?.label}
                   </Link>
                   <PrimaryLinkButton
                     href={content.faq.contactRow.ctas[1]?.href ?? content.nav.actions.primaryCta.href}
@@ -1363,12 +1474,14 @@ export function Homepage({ content }: { content: Content }) {
                         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                       )}
                     >
-                      {content.finalCta.ctas[1]?.label ?? 'Book a demo'}
+                      {content.finalCta.ctas[1]?.label}
                     </Link>
                   </div>
                 </div>
                 <div className="rounded-[var(--rLg)] border border-border bg-[rgba(0,0,0,0.12)] p-6">
-                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Preview</div>
+                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+                    {content.ui.finalCta.previewLabel}
+                  </div>
                   <div className="mt-4 space-y-3">
                     <div className="h-10 rounded bg-[rgba(255,255,255,0.08)]" />
                     <div className="h-10 rounded bg-[rgba(255,255,255,0.08)]" />
@@ -1412,7 +1525,9 @@ export function Homepage({ content }: { content: Content }) {
             </div>
 
             <div className="mt-12 rounded-[var(--rLg)] border border-border bg-surface p-6">
-              <div className="text-xs tracking-[0.10em] uppercase text-text-soft">Locations</div>
+              <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+                {content.ui.footer.locationsLabel}
+              </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
                 {content.footer.locations.map((loc) => (
                   <div key={loc.city} className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
@@ -1434,17 +1549,18 @@ export function Homepage({ content }: { content: Content }) {
 
       <MarketingModal
         isOpen={isDemoOpen}
-        title="60s demo"
+        title={content.ui.modal.demoTitle}
+        closeAriaLabel={content.ui.modal.close}
         onClose={() => setIsDemoOpen(false)}
       >
         <div className="rounded-[var(--rLg)] border border-border bg-surface-alt p-6">
           <div className="text-text-soft">
-            Demo video placeholder. Replace this panel with your hosted demo video when ready.
+            {content.ui.modal.demoPlaceholderBody}
           </div>
           <div className="mt-4 rounded-[var(--rMd)] border border-border bg-[rgba(0,0,0,0.20)] p-6">
             <div className="text-text">▶︎</div>
             <div className="mt-2 text-sm text-text-soft">
-              Shows: citations + visual grounding, provisional → finalized, and decision pack export.
+              {content.ui.modal.demoShowsLabel} {content.ui.modal.demoShowsBody}
             </div>
           </div>
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
@@ -1452,9 +1568,9 @@ export function Homepage({ content }: { content: Content }) {
               href={content.nav.actions.primaryCta.href}
               onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'demo_modal' })}
             >
-              Start free
+              {content.nav.actions.primaryCta.label}
             </PrimaryLinkButton>
-            <SecondaryButton onClick={() => setIsDemoOpen(false)}>Close</SecondaryButton>
+            <SecondaryButton onClick={() => setIsDemoOpen(false)}>{content.ui.modal.close}</SecondaryButton>
           </div>
         </div>
       </MarketingModal>

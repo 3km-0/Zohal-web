@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { 
   AlertCircle, 
   WifiOff, 
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { create } from 'zustand';
 import { UserFacingError, mapError } from '@/lib/errors';
+import { cn } from '@/lib/utils';
 
 // MARK: - Toast Store
 
@@ -49,6 +51,9 @@ interface ToastProps {
 
 export function Toast({ onAction }: ToastProps) {
   const { error, success, dismiss } = useToast();
+  const tCommon = useTranslations('common');
+  const tAuth = useTranslations('auth');
+  const tSubscription = useTranslations('subscription');
 
   // Auto-dismiss after 5 seconds (except for auth/limit errors)
   useEffect(() => {
@@ -67,6 +72,7 @@ export function Toast({ onAction }: ToastProps) {
   };
 
   const showToast = error || success;
+  const isSuccess = Boolean(success);
 
   return (
     <AnimatePresence>
@@ -78,30 +84,24 @@ export function Toast({ onAction }: ToastProps) {
           transition={{ type: 'spring', duration: 0.4 }}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4"
         >
-          <div className={`rounded-xl shadow-lg border p-4 flex items-start gap-3 ${
-            success 
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-              : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-          }`}>
+          <div
+            className="rounded-scholar shadow-[var(--shadowMd)] border border-border bg-surface p-4 flex items-start gap-3"
+            role="status"
+            aria-live="polite"
+          >
             {/* Icon */}
-            <div className={`flex-shrink-0 ${success ? 'text-green-500' : getIconColor(error!.category)}`}>
-              {success ? (
-                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">✓</span>
-                </div>
-              ) : (
-                getIcon(error!.category)
-              )}
+            <div className={cn('flex-shrink-0', isSuccess ? 'text-success' : getIconColor(error!.category))}>
+              {isSuccess ? <CheckIcon /> : getIcon(error!.category)}
             </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <h4 className={`font-medium text-sm ${success ? 'text-green-800 dark:text-green-200' : 'text-zinc-900 dark:text-white'}`}>
-                {success ? success.title : error!.title}
+              <h4 className="font-semibold text-sm text-text">
+                {isSuccess ? success!.title : error!.title}
               </h4>
               {(success?.message || error?.message) && (
-                <p className={`text-sm mt-0.5 line-clamp-2 ${success ? 'text-green-600 dark:text-green-300' : 'text-zinc-600 dark:text-zinc-400'}`}>
-                  {success ? success.message : error!.message}
+                <p className="text-sm mt-0.5 line-clamp-2 text-text-soft">
+                  {isSuccess ? success!.message : error!.message}
                 </p>
               )}
             </div>
@@ -111,14 +111,19 @@ export function Toast({ onAction }: ToastProps) {
               {error?.action && error.action !== 'dismiss' && (
                 <button
                   onClick={handleAction}
-                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                  className="text-sm font-semibold text-accent hover:underline underline-offset-4 transition-colors"
                 >
-                  {getActionLabel(error.action)}
+                  {getActionLabel(error.action, {
+                    tCommon,
+                    tAuth,
+                    tSubscription,
+                  })}
                 </button>
               )}
               <button
                 onClick={dismiss}
-                className={`p-1 transition-colors ${success ? 'text-green-400 hover:text-green-600' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                className="p-1 rounded-scholar-sm text-text-soft hover:text-text hover:bg-surface-alt transition-colors"
+                aria-label={tCommon('close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -131,6 +136,14 @@ export function Toast({ onAction }: ToastProps) {
 }
 
 // MARK: - Helpers
+
+function CheckIcon() {
+  return (
+    <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
+      <span className="text-background text-xs font-bold">✓</span>
+    </div>
+  );
+}
 
 function getIcon(category: UserFacingError['category']) {
   switch (category) {
@@ -154,32 +167,39 @@ function getIcon(category: UserFacingError['category']) {
 function getIconColor(category: UserFacingError['category']) {
   switch (category) {
     case 'auth':
-      return 'text-orange-500';
+      return 'text-highlight';
     case 'network':
-      return 'text-zinc-500';
+      return 'text-text-soft';
     case 'not_found':
-      return 'text-zinc-400';
+      return 'text-text-soft';
     case 'limit':
-      return 'text-yellow-500';
+      return 'text-highlight';
     case 'permission':
-      return 'text-red-500';
+      return 'text-error';
     case 'server':
     case 'unknown':
     default:
-      return 'text-red-500';
+      return 'text-error';
   }
 }
 
-function getActionLabel(action: UserFacingError['action']) {
+function getActionLabel(
+  action: UserFacingError['action'],
+  t: {
+    tCommon: ReturnType<typeof useTranslations>;
+    tAuth: ReturnType<typeof useTranslations>;
+    tSubscription: ReturnType<typeof useTranslations>;
+  }
+) {
   switch (action) {
     case 'retry':
-      return 'Retry';
+      return t.tCommon('retry');
     case 'sign-in':
-      return 'Sign In';
+      return t.tAuth('login');
     case 'upgrade':
-      return 'Upgrade';
+      return t.tSubscription('upgrade');
     default:
-      return 'OK';
+      return t.tCommon('confirm');
   }
 }
 

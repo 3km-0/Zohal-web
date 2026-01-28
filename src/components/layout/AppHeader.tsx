@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Search, Bell, User } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,9 @@ interface AppHeaderProps {
 
 export function AppHeader({ title, subtitle, actions, className }: AppHeaderProps) {
   const { user, signOut } = useAuth();
+  const tCommon = useTranslations('common');
+  const tNav = useTranslations('nav');
+  const tSidebar = useTranslations('sidebar');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +37,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
   return (
     <header
       className={cn(
-        'flex items-center justify-between px-6 py-4 bg-surface border-b border-border',
+        'flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md border-b border-border',
         className
       )}
     >
@@ -51,8 +54,8 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
         {/* Global Search */}
         <Link
           href="/search"
-          className="p-2 rounded-lg hover:bg-surface-alt transition-colors"
-          aria-label="Search"
+          className="p-2 rounded-scholar-sm hover:bg-surface-alt transition-colors"
+          aria-label={tCommon('search')}
         >
           <Search className="w-5 h-5 text-text-soft" />
         </Link>
@@ -64,7 +67,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
+            className="flex items-center gap-2 p-1.5 rounded-scholar-sm hover:bg-surface-alt transition-colors"
           >
             <div className="w-8 h-8 bg-accent/10 border border-accent/20 rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-accent" />
@@ -72,13 +75,13 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-scholar shadow-scholar-lg z-50 overflow-hidden animate-fade-in">
+            <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)] z-50 overflow-hidden animate-fade-in">
               <div className="px-4 py-3 border-b border-border">
                 <p className="text-sm font-medium text-text truncate">
-                  {user?.email || 'User'}
+                  {user?.email || tCommon('user')}
                 </p>
                 <p className="text-xs text-text-soft">
-                  {user?.user_metadata?.full_name || 'Zohal User'}
+                  {user?.user_metadata?.full_name || tCommon('zohalUser')}
                 </p>
               </div>
               <div className="py-1">
@@ -87,14 +90,14 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
                   className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
-                  Settings
+                  {tNav('settings')}
                 </Link>
                 <Link
                   href="/settings/subscription"
                   className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
-                  Subscription
+                  {tSidebar('subscription')}
                 </Link>
                 <hr className="my-1 border-border" />
                 <button
@@ -104,7 +107,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors"
                 >
-                  Log Out
+                  {tSidebar('logOut')}
                 </button>
               </div>
             </div>

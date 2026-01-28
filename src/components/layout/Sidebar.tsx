@@ -26,6 +26,7 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
+  const tCommon = useTranslations('common');
   const t = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
   const { signOut } = useAuth();
@@ -53,7 +54,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen bg-surface border-r border-border transition-all duration-300',
+        'flex flex-col h-screen bg-surface/80 backdrop-blur-md border-r border-border transition-all duration-300',
         collapsed ? 'w-16' : 'w-64',
         className
       )}
@@ -62,16 +63,16 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="flex items-center justify-between p-4 border-b border-border">
         {!collapsed && (
           <Link href="/workspaces" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-accent/10 rounded-scholar-sm flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-accent" />
             </div>
-            <span className="text-xl font-bold text-accent">Zohal</span>
+            <span className="text-xl font-bold text-accent">{tCommon('appName')}</span>
           </Link>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            'p-1.5 rounded-lg hover:bg-surface-alt transition-colors',
+            'p-1.5 rounded-scholar-sm hover:bg-surface-alt transition-colors',
             collapsed && 'mx-auto'
           )}
           aria-label={collapsed ? tSidebar('expandSidebar') : tSidebar('collapseSidebar')}

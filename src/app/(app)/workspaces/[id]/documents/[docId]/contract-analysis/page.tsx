@@ -268,7 +268,7 @@ export default function ContractAnalysisPage() {
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load contract analysis');
+      setError(e instanceof Error ? e.message : t('errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -348,14 +348,14 @@ export default function ContractAnalysisPage() {
   }, [(snapshot?.pack as any)?.bundle?.pack_id, snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
 
   async function createPinnedContextSetFromThisDocument() {
-    const name = window.prompt('Reference pack name (e.g., Company Policy Pack)');
+    const name = window.prompt(t('prompts.referencePackName'));
     if (!name) return;
-    const kind = window.prompt('Kind (policy | regulation | standard | other)', 'policy') || 'policy';
+    const kind = window.prompt(t('prompts.referencePackKind'), 'policy') || 'policy';
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session) throw new Error(t('errors.notAuthenticated'));
       const userId = session.user.id;
 
       const { data: p, error: pErr } = await supabase
@@ -377,12 +377,12 @@ export default function ContractAnalysisPage() {
 
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create reference pack');
+      setError(e instanceof Error ? e.message : t('errors.createReferencePackFailed'));
     }
   }
 
   async function generateKnowledgePackForThisDocument() {
-    const kind = (window.prompt('Knowledge pack kind (policy | regulation)', 'policy') || 'policy') as any;
+    const kind = (window.prompt(t('prompts.knowledgePackKind'), 'policy') || 'policy') as any;
     setIsGeneratingKnowledgePack(true);
     setError(null);
     try {
@@ -390,10 +390,10 @@ export default function ContractAnalysisPage() {
         body: { workspace_id: workspaceId, document_id: documentId, kind },
       });
       if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || 'Failed to generate knowledge pack');
+      if (!data?.ok) throw new Error(data?.message || t('errors.generateKnowledgePackFailed'));
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate knowledge pack');
+      setError(e instanceof Error ? e.message : t('errors.generateKnowledgePackFailed'));
     } finally {
       setIsGeneratingKnowledgePack(false);
     }
@@ -407,10 +407,10 @@ export default function ContractAnalysisPage() {
         body: { workspace_id: workspaceId, document_id: documentId },
       });
       if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || 'Compliance check failed');
+      if (!data?.ok) throw new Error(data?.message || t('errors.complianceCheckFailed'));
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Compliance check failed');
+      setError(e instanceof Error ? e.message : t('errors.complianceCheckFailed'));
     } finally {
       setIsRunningCompliance(false);
     }
@@ -495,7 +495,7 @@ export default function ContractAnalysisPage() {
 
       // Handle 4xx/5xx errors (except 202)
       if (!res.ok && res.status !== 202) {
-        throw new Error(json?.error || json?.message || 'Contract analysis failed');
+        throw new Error(json?.error || json?.message || t('errors.contractAnalysisFailed'));
       }
 
       // 202 = Queued for batch processing. Poll for completion.
@@ -555,7 +555,7 @@ export default function ContractAnalysisPage() {
             
             if (action.status === 'failed') {
               clearInterval(pollInterval);
-              const errorMsg = output?.error || 'Contract analysis failed';
+              const errorMsg = output?.error || t('errors.contractAnalysisFailed');
               setError(errorMsg);
               setIsAnalyzing(false);
               return;
@@ -586,7 +586,7 @@ export default function ContractAnalysisPage() {
       await load();
       setIsAnalyzing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Contract analysis failed');
+      setError(e instanceof Error ? e.message : t('errors.contractAnalysisFailed'));
       setIsAnalyzing(false);
     }
   }
@@ -657,7 +657,7 @@ export default function ContractAnalysisPage() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to export calendar');
+      setError(e instanceof Error ? e.message : t('errors.exportCalendarFailed'));
     }
   }
 
@@ -695,7 +695,7 @@ export default function ContractAnalysisPage() {
 
       setReportSavedMessage('Report saved to Workspace → Reports.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate report');
+      setError(e instanceof Error ? e.message : t('errors.generateReportFailed'));
     } finally {
       setIsGeneratingReport(false);
     }
@@ -741,7 +741,7 @@ export default function ContractAnalysisPage() {
 
       setObligations((prev) => prev.map((x) => (x.id === o.id ? { ...x, task_id: task.id } : x)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create task');
+      setError(e instanceof Error ? e.message : t('errors.createTaskFailed'));
     } finally {
       setCreatingTaskFor(null);
     }

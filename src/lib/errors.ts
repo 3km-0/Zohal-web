@@ -42,6 +42,19 @@ interface BackendErrorResponse {
   error?: string;
 }
 
+type UiLocale = 'en' | 'ar';
+
+function getUiLocale(): UiLocale {
+  if (typeof document === 'undefined') return 'en';
+  const match = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
+  const raw = match ? decodeURIComponent(match[1]) : 'en';
+  return raw === 'ar' ? 'ar' : 'en';
+}
+
+function tr(en: string, ar: string): string {
+  return getUiLocale() === 'ar' ? ar : en;
+}
+
 /**
  * Map any error to a user-facing error
  */
@@ -103,8 +116,8 @@ export function mapHttpError(
   switch (status) {
     case 400:
       return {
-        title: 'Invalid Request',
-        message: serverMessage ?? 'The request couldn\'t be processed.',
+        title: tr('Invalid Request', 'طلب غير صالح'),
+        message: serverMessage ?? tr("The request couldn't be processed.", 'تعذر معالجة الطلب.'),
         category: 'unknown',
         action: 'dismiss',
         requestId,
@@ -139,8 +152,8 @@ function mapErrorCode(code: ErrorCode, requestId?: string): UserFacingError {
       return notFound(undefined, requestId);
     case 'invalid_input':
       return {
-        title: 'Invalid Input',
-        message: 'Please check your input and try again.',
+        title: tr('Invalid Input', 'إدخال غير صالح'),
+        message: tr('Please check your input and try again.', 'يرجى التحقق من المدخلات والمحاولة مرة أخرى.'),
         category: 'unknown',
         action: 'dismiss',
         requestId,
@@ -159,8 +172,11 @@ function mapErrorCode(code: ErrorCode, requestId?: string): UserFacingError {
 
 export function networkError(requestId?: string): UserFacingError {
   return {
-    title: 'Connection Error',
-    message: 'Unable to connect. Please check your internet connection.',
+    title: tr('Connection Error', 'مشكلة في الاتصال'),
+    message: tr(
+      'Unable to connect. Please check your internet connection.',
+      'تعذر الاتصال. يرجى التحقق من اتصال الإنترنت.'
+    ),
     category: 'network',
     action: 'retry',
     requestId,
@@ -169,8 +185,8 @@ export function networkError(requestId?: string): UserFacingError {
 
 export function authRequired(requestId?: string): UserFacingError {
   return {
-    title: 'Sign In Required',
-    message: 'Please sign in to continue.',
+    title: tr('Sign In Required', 'يتطلب تسجيل الدخول'),
+    message: tr('Please sign in to continue.', 'يرجى تسجيل الدخول للمتابعة.'),
     category: 'auth',
     action: 'sign-in',
     requestId,
@@ -179,8 +195,8 @@ export function authRequired(requestId?: string): UserFacingError {
 
 export function notFound(resource = 'content', requestId?: string): UserFacingError {
   return {
-    title: 'Not Found',
-    message: `The requested ${resource} could not be found.`,
+    title: tr('Not Found', 'غير موجود'),
+    message: tr(`The requested ${resource} could not be found.`, 'لم يتم العثور على المحتوى المطلوب.'),
     category: 'not_found',
     action: 'dismiss',
     requestId,
@@ -189,8 +205,11 @@ export function notFound(resource = 'content', requestId?: string): UserFacingEr
 
 export function limitExceeded(requestId?: string): UserFacingError {
   return {
-    title: 'Limit Reached',
-    message: 'You\'ve reached your usage limit. Upgrade for unlimited access.',
+    title: tr('Limit Reached', 'تم الوصول إلى الحد'),
+    message: tr(
+      "You've reached your usage limit. Upgrade for unlimited access.",
+      'لقد وصلت إلى حد الاستخدام. قم بالترقية للوصول غير المحدود.'
+    ),
     category: 'limit',
     action: 'upgrade',
     requestId,
@@ -199,8 +218,8 @@ export function limitExceeded(requestId?: string): UserFacingError {
 
 export function permissionDenied(requestId?: string): UserFacingError {
   return {
-    title: 'Access Denied',
-    message: 'You don\'t have permission to access this content.',
+    title: tr('Access Denied', 'تم رفض الوصول'),
+    message: tr("You don't have permission to access this content.", 'ليست لديك صلاحية للوصول إلى هذا المحتوى.'),
     category: 'permission',
     action: 'dismiss',
     requestId,
@@ -209,8 +228,11 @@ export function permissionDenied(requestId?: string): UserFacingError {
 
 export function serverError(requestId?: string, originalMessage?: string): UserFacingError {
   return {
-    title: 'Something Went Wrong',
-    message: 'We\'re having trouble processing your request. Please try again.',
+    title: tr('Something Went Wrong', 'حدث خطأ'),
+    message: tr(
+      "We're having trouble processing your request. Please try again.",
+      'نواجه مشكلة في معالجة طلبك. يرجى المحاولة مرة أخرى.'
+    ),
     category: 'server',
     action: 'retry',
     requestId,
@@ -219,8 +241,11 @@ export function serverError(requestId?: string, originalMessage?: string): UserF
 
 export function upstreamFailed(requestId?: string): UserFacingError {
   return {
-    title: 'Service Unavailable',
-    message: 'The service is temporarily unavailable. Please try again in a moment.',
+    title: tr('Service Unavailable', 'الخدمة غير متاحة'),
+    message: tr(
+      'The service is temporarily unavailable. Please try again in a moment.',
+      'الخدمة غير متاحة مؤقتاً. يرجى المحاولة بعد قليل.'
+    ),
     category: 'server',
     action: 'retry',
     requestId,
@@ -229,8 +254,8 @@ export function upstreamFailed(requestId?: string): UserFacingError {
 
 export function unknownError(requestId?: string): UserFacingError {
   return {
-    title: 'Error',
-    message: 'An unexpected error occurred. Please try again.',
+    title: tr('Error', 'خطأ'),
+    message: tr('An unexpected error occurred. Please try again.', 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.'),
     category: 'unknown',
     action: 'retry',
     requestId,

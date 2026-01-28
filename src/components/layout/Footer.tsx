@@ -14,16 +14,16 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-border mt-10 pt-12 pb-8">
+    <footer className="border-t border-border mt-10 pt-12 pb-10">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        <div className="text-xl font-bold text-accent mb-4">Zohal</div>
+        <div className="text-xl font-semibold text-accent mb-4">{t('common.appName')}</div>
 
         <div className="flex flex-wrap justify-center gap-6 mb-6">
           {footerLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-text-soft hover:text-accent transition-colors"
+              className="text-text-soft hover:text-text transition-colors"
             >
               {link.label}
             </Link>

@@ -22,26 +22,18 @@
   --font-source-serif: 'Source Serif 4', Georgia, serif;
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
+
+  /* Shared semantic radii + shadows */
+  --rSm: 6px;
+  --rMd: 10px;
+  --rLg: 16px;
+  --rPill: 999px;
+  --shadowSm: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --shadowMd: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
-/* Dark Theme */
+/* Dark Theme (Default = Scholar Neutral) */
 [data-theme='dark'] {
-  --bg: #1a1f1c;
-  --surface: #252b27;
-  --surface-alt: #2d3430;
-  --text: #e8e4df;
-  --text-soft: #a3a89f;
-  --border: #3d4340;
-  --accent: #3da08e;
-  --accent-alt: #d4a64a;
-  --success: #34d399;
-  --error: #f87171;
-  --highlight: #d4a64a;
-  --grid-color: rgba(255, 255, 255, 0.03);
-}
-
-/* Scholar Neutral (Marketing / Homepage) */
-[data-theme='scholar-neutral'] {
   --bg: #18181b;
   --surface: #27272a;
   --surface-alt: #303033;
@@ -60,13 +52,29 @@
 
   --grid-color: rgba(255, 255, 255, 0.03);
 
-  /* Optional token aliases for marketing-specific CSS */
-  --fontSerif: var(--font-source-serif);
-  --fontMono: var(--font-jetbrains);
-  --rSm: 6px;
-  --rMd: 10px;
-  --rLg: 16px;
-  --rPill: 999px;
+  --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Scholar Neutral (alias; used by marketing page) */
+[data-theme='scholar-neutral'] {
+  --bg: #18181b;
+  --surface: #27272a;
+  --surface-alt: #303033;
+
+  --text: #e8e4dc;
+  --text-soft: rgba(232, 228, 220, 0.55);
+
+  --border: rgba(255, 255, 255, 0.1);
+
+  --accent: #c9973e;
+  --highlight: #f3cf7a;
+  --accent-alt: #e0d3b5;
+
+  --success: #22c55e;
+  --error: #ef4444;
+
+  --grid-color: rgba(255, 255, 255, 0.03);
   --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
   --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
 
@@ -120,7 +128,7 @@ body {
 /* Focus Ring */
 @layer base {
   *:focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-highlight ring-offset-2 ring-offset-background;
   }
 }
 

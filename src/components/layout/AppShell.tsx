@@ -16,7 +16,7 @@ export function AppShell({ children, className }: AppShellProps) {
   const handleErrorAction = (action: 'retry' | 'sign-in' | 'upgrade' | 'dismiss' | undefined) => {
     switch (action) {
       case 'sign-in':
-        router.push('/auth');
+        router.push('/auth/login');
         break;
       case 'upgrade':
         router.push('/subscription');
@@ -26,12 +26,15 @@ export function AppShell({ children, className }: AppShellProps) {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar />
-      <main className={cn('flex-1 flex flex-col overflow-hidden', className)}>
-        {children}
-      </main>
-      <Toast onAction={handleErrorAction} />
+    <div className="relative h-screen bg-background overflow-hidden">
+      <div className="grid-bg" aria-hidden="true" />
+      <div className="relative z-10 flex h-full">
+        <Sidebar />
+        <main className={cn('flex-1 flex flex-col overflow-hidden', className)}>
+          {children}
+        </main>
+        <Toast onAction={handleErrorAction} />
+      </div>
     </div>
   );
 }
