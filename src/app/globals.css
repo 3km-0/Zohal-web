@@ -40,6 +40,41 @@
   --grid-color: rgba(255, 255, 255, 0.03);
 }
 
+/* Scholar Neutral (Marketing / Homepage) */
+[data-theme='scholar-neutral'] {
+  --bg: #18181b;
+  --surface: #27272a;
+  --surface-alt: #303033;
+
+  --text: #e8e4dc;
+  --text-soft: rgba(232, 228, 220, 0.55);
+
+  --border: rgba(255, 255, 255, 0.1);
+
+  --accent: #c9973e;
+  --highlight: #f3cf7a;
+  --accent-alt: #e0d3b5;
+
+  --success: #22c55e;
+  --error: #ef4444;
+
+  --grid-color: rgba(255, 255, 255, 0.03);
+
+  /* Optional token aliases for marketing-specific CSS */
+  --fontSerif: var(--font-source-serif);
+  --fontMono: var(--font-jetbrains);
+  --rSm: 6px;
+  --rMd: 10px;
+  --rLg: 16px;
+  --rPill: 999px;
+  --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --nav-bg-top: rgba(24, 24, 27, 0.55);
+  --nav-bg-scrolled: rgba(24, 24, 27, 0.85);
+  --nav-border: rgba(255, 255, 255, 0.06);
+}
+
 /* Base Styles */
 html {
   scroll-behavior: smooth;
@@ -71,6 +106,14 @@ body {
   z-index: 0;
   background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Marketing page grid background (non-fixed) */
+.marketing-grid-bg {
+  background-color: var(--bg);
+  background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 

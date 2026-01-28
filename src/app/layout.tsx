@@ -24,6 +24,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://zohal.ai'),
   title: 'Zohal - AI STEM Notebook',
   description:
     'The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.',
