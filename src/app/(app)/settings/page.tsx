@@ -33,7 +33,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -126,10 +126,10 @@ export default function SettingsPage() {
   // Load theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    }
+    const resolvedTheme = savedTheme ?? 'dark';
+    setTheme(resolvedTheme);
+    localStorage.setItem('theme', resolvedTheme);
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, []);
 
   const handleThemeChange = (newTheme: 'light' | 'dark') => {

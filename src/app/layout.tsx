@@ -3,6 +3,7 @@ import { Source_Serif_4, Inter, JetBrains_Mono } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { MsalProvider } from '@/components/providers/MsalProvider';
+import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
 import './globals.css';
 
 const sourceSerif = Source_Serif_4({
@@ -64,12 +65,14 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir}
+      data-theme="dark"
       className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <body>
         <NextIntlClientProvider messages={messages}>
           <MsalProvider>
+            <ThemeInitializer />
             {children}
           </MsalProvider>
         </NextIntlClientProvider>
