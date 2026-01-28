@@ -56,6 +56,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
           href="/search"
           className="p-2 rounded-scholar-sm hover:bg-surface-alt transition-colors"
           aria-label={tCommon('search')}
+          data-tour="global-search"
         >
           <Search className="w-5 h-5 text-text-soft" />
         </Link>

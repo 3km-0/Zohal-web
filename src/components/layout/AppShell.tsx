@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { TourManager } from '@/components/tour';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -33,6 +34,7 @@ export function AppShell({ children, className }: AppShellProps) {
         <main className={cn('flex-1 flex flex-col overflow-hidden', className)}>
           {children}
         </main>
+        <TourManager />
         <Toast onAction={handleErrorAction} />
       </div>
     </div>

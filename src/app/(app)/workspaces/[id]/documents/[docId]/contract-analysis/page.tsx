@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp } from 'lucide-react';
 import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
 import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence } from '@/components/analysis';
 import { createClient } from '@/lib/supabase/client';
@@ -791,9 +791,25 @@ export default function ContractAnalysisPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('zohal:start-tour', {
+                  detail: { tourId: 'contract-analysis', force: true },
+                })
+              );
+            }}
+            aria-label="Take a tour"
+            title="Take a tour"
+          >
+            <CircleHelp className="w-4 h-4" />
+            Tour
+          </Button>
           <details className="relative">
             <summary className="list-none">
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" data-tour="contract-actions">
                 Actions
                 <span className="ml-1 text-text-soft">▾</span>
               </Button>
@@ -901,6 +917,7 @@ export default function ContractAnalysisPage() {
                     }}
                     variant="primary"
                     disabled={isAnalyzing}
+                    data-tour="contract-analyze"
                   >
                     {isAnalyzing ? 'Analyzing…' : 'Contract Analysis'}
                   </Button>
@@ -982,7 +999,7 @@ export default function ContractAnalysisPage() {
             )}
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" data-tour="contract-tabs">
               {tabs.map((t) => (
                 <button
                   key={t.id}

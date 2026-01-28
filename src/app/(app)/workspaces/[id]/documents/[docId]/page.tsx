@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, PanelRight, Scale, Sparkles, X, PlayCircle } from 'lucide-react';
+import { ArrowLeft, PanelRight, Scale, Sparkles, X, PlayCircle, CircleHelp } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Spinner, Badge, Card, CardContent } from '@/components/ui';
@@ -233,6 +233,22 @@ export default function DocumentViewerPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('zohal:start-tour', {
+                  detail: { tourId: 'viewer', force: true },
+                })
+              );
+            }}
+            aria-label="Take a tour"
+            title="Take a tour"
+          >
+            <CircleHelp className="w-4 h-4" />
+            Tour
+          </Button>
           {runAnalysisEnabled ? (
             <Button variant="secondary" size="sm" onClick={() => setShowRunAnalysis(true)}>
               <PlayCircle className="w-4 h-4" />
@@ -243,6 +259,7 @@ export default function DocumentViewerPage() {
             <Button
               variant="secondary"
               size="sm"
+              data-tour="viewer-contract-analysis"
               onClick={() =>
                 router.push(
                   `/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`
@@ -256,6 +273,7 @@ export default function DocumentViewerPage() {
           <Button
             variant={showAIPanel ? 'primary' : 'secondary'}
             size="sm"
+            data-tour="viewer-ai-tools"
             onClick={() => setShowAIPanel(!showAIPanel)}
           >
             <Sparkles className="w-4 h-4" />
@@ -276,7 +294,10 @@ export default function DocumentViewerPage() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* PDF Viewer */}
-        <div className={cn('flex-1 overflow-hidden', showAIPanel && 'border-r border-border')}>
+        <div
+          className={cn('flex-1 overflow-hidden', showAIPanel && 'border-r border-border')}
+          data-tour="viewer-pdf"
+        >
           {pdfUrl ? (
             <PDFViewer
               url={pdfUrl}

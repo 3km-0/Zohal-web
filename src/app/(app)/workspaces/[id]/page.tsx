@@ -16,6 +16,7 @@ import {
   FolderInput,
   RefreshCcw,
   Share2,
+  CircleHelp,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -422,6 +423,22 @@ export default function WorkspaceDetailPage() {
         subtitle={workspace?.description || undefined}
         actions={
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('zohal:start-tour', {
+                    detail: { tourId: 'workspace', force: true },
+                  })
+                );
+              }}
+              aria-label="Take a tour"
+              title="Take a tour"
+            >
+              <CircleHelp className="w-4 h-4" />
+              Tour
+            </Button>
             <Link href="/workspaces">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4" />
@@ -432,7 +449,7 @@ export default function WorkspaceDetailPage() {
               <FolderPlus className="w-4 h-4" />
               {tFolders('newFolder')}
             </Button>
-            <Button onClick={() => setShowUploadModal(true)}>
+            <Button onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
               <Upload className="w-4 h-4" />
               {t('upload')}
             </Button>
@@ -651,6 +668,7 @@ function DocumentCard({
       <Link
         href={`/workspaces/${workspaceId}/documents/${doc.id}`}
         className="block p-5"
+        data-tour="workspace-document-card"
       >
         <div className="flex items-start gap-4">
           {/* Icon */}
