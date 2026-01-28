@@ -675,7 +675,7 @@
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Cursor for sensitive documents.",
+        "tagline": "The AI studio for regulated documents.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -699,7 +699,7 @@
         }
       },
       "hero": {
-        "headline": "Cursor for sensitive documents.",
+        "headline": "The AI studio for regulated documents.",
         "subhead": "Drop contracts, invoices, portal exports, scans, and attachments — Arabic or English — and produce verified variables and decision packs with evidence you can forward.",
         "ctas": [
           { "type": "primary", "label": "Start free", "href": "/auth/signup" },
@@ -1091,11 +1091,6 @@
             ]
           }
         ],
-        "locations": [
-          { "city": "Riyadh", "address": "Address line (placeholder)", "phone": "+966 (placeholder)" },
-          { "city": "Dubai", "address": "Address line (placeholder)", "phone": "+971 (placeholder)" },
-          { "city": "Manama", "address": "Address line (placeholder)", "phone": "+973 (placeholder)" }
-        ],
         "legalNote": "Zohal provides workflow assistance and evidence-backed outputs. Teams remain responsible for review and approvals."
       },
       "ui": {
@@ -1144,9 +1139,6 @@
         },
         "finalCta": {
           "previewLabel": "Preview"
-        },
-        "footer": {
-          "locationsLabel": "Locations"
         }
       }
     }

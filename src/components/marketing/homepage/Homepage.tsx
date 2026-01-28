@@ -114,7 +114,6 @@ type Content = {
   };
   footer: {
     columns: Array<{ title: string; links: Array<{ label: string; href: string }> }>;
-    locations: Array<{ city: string; address: string; phone: string }>;
     legalNote: string;
   };
   ui: {
@@ -163,9 +162,6 @@ type Content = {
     };
     finalCta: {
       previewLabel: string;
-    };
-    footer: {
-      locationsLabel: string;
     };
   };
 };
@@ -1519,21 +1515,6 @@ export function Homepage() {
                         </Link>
                       ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-12 rounded-[var(--rLg)] border border-border bg-surface p-6">
-              <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
-                {content.ui.footer.locationsLabel}
-              </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                {content.footer.locations.map((loc) => (
-                  <div key={loc.city} className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-                    <div className="font-semibold text-text">{loc.city}</div>
-                    <div className="mt-2 text-sm text-text-soft">{loc.address}</div>
-                    <div className="mt-1 text-sm text-text-soft">{loc.phone}</div>
                   </div>
                 ))}
               </div>
