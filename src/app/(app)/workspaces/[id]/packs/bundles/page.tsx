@@ -30,6 +30,7 @@ export default function WorkspaceBundlesPage() {
   const [bundles, setBundles] = useState<PackRow[]>([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState(false);
 
   const fetchBundles = useCallback(async () => {
     setLoading(true);
@@ -47,6 +48,20 @@ export default function WorkspaceBundlesPage() {
   useEffect(() => {
     fetchBundles();
   }, [fetchBundles]);
+
+  useEffect(() => {
+    async function loadOrgFlag() {
+      const { data } = await supabase.from('workspaces').select('org_id').eq('id', workspaceId).single();
+      const orgId = data?.org_id;
+      if (!orgId) {
+        setOrgMultiUserEnabled(false);
+        return;
+      }
+      const { data: org } = await supabase.from('organizations').select('multi_user_enabled').eq('id', orgId).maybeSingle();
+      setOrgMultiUserEnabled(org?.multi_user_enabled === true);
+    }
+    loadOrgFlag();
+  }, [supabase, workspaceId]);
 
   const createBundle = async () => {
     setCreating(true);
@@ -88,7 +103,7 @@ export default function WorkspaceBundlesPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="packs" />
+      <WorkspaceTabs workspaceId={workspaceId} active="packs" showMembersTab={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
         <Card className="p-4">

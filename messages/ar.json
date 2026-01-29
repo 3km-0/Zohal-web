@@ -77,7 +77,12 @@
     "apple": "Apple",
     "google": "Google",
     "microsoft": "Microsoft",
-    "createAccount": "أنشئ حسابك في زحل"
+    "createAccount": "أنشئ حسابك في زحل",
+    "acceptInvite": "قبول الدعوة",
+    "acceptInviteLoginRequired": "يرجى تسجيل الدخول (أو إنشاء حساب) لقبول هذه الدعوة.",
+    "acceptingInvite": "جارٍ قبول الدعوة…",
+    "invalidInvite": "رابط دعوة غير صالح",
+    "invalidInviteDesc": "رابط الدعوة هذا يفتقد رمز الدعوة."
   },
   "landing": {
     "hero": {
@@ -251,7 +256,8 @@
     "documents": "المستندات",
     "notes": "الملاحظات",
     "reports": "التقارير",
-    "packs": "الحزم"
+    "packs": "الحزم",
+    "members": "الأعضاء"
   },
   "workspaceCard": {
     "updated": "محدّث",

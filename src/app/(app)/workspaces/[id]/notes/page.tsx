@@ -31,6 +31,21 @@ export default function WorkspaceNotesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState(false);
+
+  useEffect(() => {
+    async function loadOrgFlag() {
+      const { data } = await supabase.from('workspaces').select('org_id').eq('id', workspaceId).single();
+      const orgId = data?.org_id;
+      if (!orgId) {
+        setOrgMultiUserEnabled(false);
+        return;
+      }
+      const { data: org } = await supabase.from('organizations').select('multi_user_enabled').eq('id', orgId).maybeSingle();
+      setOrgMultiUserEnabled(org?.multi_user_enabled === true);
+    }
+    loadOrgFlag();
+  }, [supabase, workspaceId]);
 
   const fetchNotes = useCallback(async () => {
     setLoading(true);
@@ -76,7 +91,7 @@ export default function WorkspaceNotesPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="notes" />
+      <WorkspaceTabs workspaceId={workspaceId} active="notes" showMembersTab={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (

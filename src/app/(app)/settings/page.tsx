@@ -39,6 +39,9 @@ export default function SettingsPage() {
 
   // Profile form state
   const [displayName, setDisplayName] = useState('');
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; owner_id: string; multi_user_enabled?: boolean }>>([]);
+  const [defaultOrgId, setDefaultOrgId] = useState<string | null>(null);
+  const [savingOrg, setSavingOrg] = useState(false);
 
   // Integration states
   interface IntegrationAccount {
@@ -66,11 +69,19 @@ export default function SettingsPage() {
       if (profileRes.data) {
         setProfile(profileRes.data);
         setDisplayName(profileRes.data.display_name || '');
+        setDefaultOrgId(profileRes.data.default_org_id || null);
       }
 
       if (integrationsRes.data) {
         setIntegrations(integrationsRes.data);
       }
+
+      // Best-effort org list (RLS may restrict in some environments)
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('id, name, owner_id, multi_user_enabled')
+        .order('created_at', { ascending: false });
+      setOrganizations((orgs as any[]) || []);
 
       setLoading(false);
     }
@@ -152,6 +163,31 @@ export default function SettingsPage() {
     }
 
     setSaving(false);
+  };
+
+  const handleSaveDefaultOrg = async () => {
+    if (!user) return;
+    setSavingOrg(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ default_org_id: defaultOrgId }).eq('id', user.id);
+      if (error) throw error;
+      setProfile((prev) => (prev ? { ...prev, default_org_id: defaultOrgId } : prev));
+    } catch (e) {
+      console.error('Save default org error:', e);
+    } finally {
+      setSavingOrg(false);
+    }
+  };
+
+  const handleToggleOrgMultiUser = async (orgId: string, enabled: boolean) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('organizations').update({ multi_user_enabled: enabled }).eq('id', orgId);
+      if (error) throw error;
+      setOrganizations((prev) => prev.map((o) => (o.id === orgId ? { ...o, multi_user_enabled: enabled } : o)));
+    } catch (e) {
+      console.error('Toggle multi-user error:', e);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -265,6 +301,76 @@ export default function SettingsPage() {
               </Button>
             )}
           </Card>
+
+          {/* Organization Section (Enterprise) */}
+          {organizations.length > 0 && (
+            <Card padding="lg">
+              <div className="flex items-center gap-3 mb-6">
+                <User className="w-5 h-5 text-accent" />
+                <h2 className="text-lg font-semibold text-text">Organization</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Default organization</label>
+                  <select
+                    className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text"
+                    value={defaultOrgId ?? ''}
+                    onChange={(e) => setDefaultOrgId(e.target.value || null)}
+                  >
+                    <option value="">None</option>
+                    {organizations.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button className="mt-3" onClick={handleSaveDefaultOrg} isLoading={savingOrg}>
+                    Save
+                  </Button>
+                </div>
+
+                {/* Multi-user switch for org owners */}
+                {defaultOrgId && (
+                  <>
+                    {(() => {
+                      const org = organizations.find((o) => o.id === defaultOrgId);
+                      if (!org) return null;
+                      const isOwner = org.owner_id === user?.id;
+                      if (!isOwner) return null;
+                      return (
+                        <div className="p-4 bg-surface-alt rounded-scholar border border-border">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <div className="font-medium text-text">Enterprise multi-user</div>
+                              <div className="text-sm text-text-soft">
+                                Enable workspace sharing via members. Safe to keep off until you’re ready to flip.
+                              </div>
+                            </div>
+                            <button
+                              className={cn(
+                                'w-12 h-7 rounded-full border transition-colors flex items-center px-1',
+                                org.multi_user_enabled ? 'bg-accent border-accent' : 'bg-surface border-border'
+                              )}
+                              onClick={() => handleToggleOrgMultiUser(org.id, !org.multi_user_enabled)}
+                              aria-label="Toggle enterprise multi-user"
+                            >
+                              <span
+                                className={cn(
+                                  'w-5 h-5 rounded-full bg-white transition-transform',
+                                  org.multi_user_enabled ? 'translate-x-5' : 'translate-x-0'
+                                )}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Integrations Section */}
           <Card padding="lg">

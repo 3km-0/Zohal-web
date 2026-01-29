@@ -33,6 +33,7 @@ export default function WorkspaceReportsPage() {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState(false);
 
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('Report');
@@ -56,6 +57,20 @@ export default function WorkspaceReportsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    async function loadOrgFlag() {
+      const { data } = await supabase.from('workspaces').select('org_id').eq('id', workspaceId).single();
+      const orgId = data?.org_id;
+      if (!orgId) {
+        setOrgMultiUserEnabled(false);
+        return;
+      }
+      const { data: org } = await supabase.from('organizations').select('multi_user_enabled').eq('id', orgId).maybeSingle();
+      setOrgMultiUserEnabled(org?.multi_user_enabled === true);
+    }
+    loadOrgFlag();
+  }, [supabase, workspaceId]);
 
   const openReport = useCallback(
     async (report: GeneratedReport) => {
@@ -110,7 +125,7 @@ export default function WorkspaceReportsPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="reports" />
+      <WorkspaceTabs workspaceId={workspaceId} active="reports" showMembersTab={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (

@@ -78,6 +78,7 @@ export default function WorkspaceDetailPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folders, setFolders] = useState<FolderWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState<boolean>(false);
   
   // Navigation state
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -100,10 +101,47 @@ export default function WorkspaceDetailPage() {
       .eq('id', workspaceId)
       .single();
 
-    if (error) {
-      showError(error, 'workspaces');
-    } else if (data) {
+    if (!error && data) {
       setWorkspace(data);
+      if (data.org_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('multi_user_enabled')
+          .eq('id', data.org_id)
+          .maybeSingle();
+        setOrgMultiUserEnabled(org?.multi_user_enabled === true);
+      } else {
+        setOrgMultiUserEnabled(false);
+      }
+      return;
+    }
+
+    // Fallback for shared workspaces: use RPC listing (does not rely on workspaces RLS).
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('list_accessible_workspaces');
+    if (rpcErr || !rpcData) {
+      showError(error || rpcErr, 'workspaces');
+      return;
+    }
+
+    const found = (rpcData as Array<Workspace & { access_role?: string; access_source?: string }>).find(
+      (w) => w.id === workspaceId
+    );
+
+    if (!found) {
+      showError(error || rpcErr, 'workspaces');
+      return;
+    }
+
+    setWorkspace(found);
+    if (found.org_id) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('multi_user_enabled')
+        .eq('id', found.org_id)
+        .maybeSingle();
+      setOrgMultiUserEnabled(org?.multi_user_enabled === true);
+    } else {
+      setOrgMultiUserEnabled(false);
     }
   }, [supabase, workspaceId, showError]);
 
@@ -457,7 +495,7 @@ export default function WorkspaceDetailPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="documents" />
+      <WorkspaceTabs workspaceId={workspaceId} active="documents" showMembersTab={orgMultiUserEnabled} />
 
       {/* Breadcrumb */}
       {folderPath.length > 0 && (

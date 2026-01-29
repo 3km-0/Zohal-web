@@ -45,36 +45,43 @@ export default function WorkspacesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
 
+  type AccessibleWorkspaceRow = Workspace & {
+    access_role?: string;
+    access_source?: string;
+  };
+
   const fetchWorkspaces = useCallback(async () => {
     setLoading(true);
-    
-    // Debug: Check if user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('[Workspaces] Current user ID:', user?.id);
-    console.log('[Workspaces] Current user email:', user?.email);
-    
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
-      console.error('[Workspaces] No authenticated user!');
       setLoading(false);
       return;
     }
 
-    // Query workspaces - RLS will filter by owner_id = auth.uid()
+    // Prefer RPC listing (supports org multi-user without changing old client behavior).
+    // If not deployed yet, fall back to owner-only workspaces table query.
+    const { data: rpcData, error: rpcError } = await supabase.rpc('list_accessible_workspaces');
+
+    if (!rpcError && rpcData) {
+      setWorkspaces((rpcData as AccessibleWorkspaceRow[]).map((w) => w as Workspace));
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('workspaces')
       .select('*')
-      .is('deleted_at', null) // Use soft delete filter instead of archived
+      .is('deleted_at', null)
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('[Workspaces] Error fetching:', error.message, error.details, error.hint);
-    } else {
-      console.log('[Workspaces] Fetched:', data?.length, 'workspaces');
-      if (data && data.length > 0) {
-        console.log('[Workspaces] First workspace owner_id:', data[0].owner_id);
-      }
-      setWorkspaces(data || []);
+      console.error('[Workspaces] Error fetching:', error.message);
     }
+    setWorkspaces(data || []);
     setLoading(false);
   }, [supabase]);
 

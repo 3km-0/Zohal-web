@@ -77,7 +77,12 @@
     "apple": "Apple",
     "google": "Google",
     "microsoft": "Microsoft",
-    "createAccount": "Create your Zohal account"
+    "createAccount": "Create your Zohal account",
+    "acceptInvite": "Accept invite",
+    "acceptInviteLoginRequired": "Please sign in (or create an account) to accept this invite.",
+    "acceptingInvite": "Accepting invite…",
+    "invalidInvite": "Invalid invite link",
+    "invalidInviteDesc": "This invite link is missing a token."
   },
   "landing": {
     "hero": {
@@ -251,7 +256,8 @@
     "documents": "Documents",
     "notes": "Notes",
     "reports": "Reports",
-    "packs": "Packs"
+    "packs": "Packs",
+    "members": "Members"
   },
   "workspaceCard": {
     "updated": "Updated",
