@@ -35,7 +35,7 @@ export function WorkspaceTabs({ workspaceId, active, className }: WorkspaceTabsP
   ];
 
   return (
-    <div className={cn('px-6 py-3 border-b border-border bg-surface', className)}>
+    <div className={cn('px-6 py-3 border-b border-border bg-surface', className)} data-tour="workspace-tabs">
       <div className="max-w-full overflow-x-auto">
         <div className="inline-flex items-center bg-surface-alt border border-border rounded-scholar min-w-max">
         {tabs.map((t) => {

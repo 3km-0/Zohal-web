@@ -37,6 +37,16 @@ export function getTourSteps(tourId: TourId): TourStep[] {
           },
         },
         {
+          element: '[data-tour="workspace-tabs"]',
+          popover: {
+            title: 'Workspace tabs (4)',
+            description:
+              'These tabs are the main workspace surfaces: Documents (your files), Notes (workspace notes), Reports (saved outputs like decision packs), and Packs (bundles + pinned reference context).',
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
           element: '[data-tour="workspace-document-card"]',
           popover: {
             title: 'Open a document',
