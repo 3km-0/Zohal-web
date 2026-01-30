@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -36,6 +36,12 @@ type PlaybookRecord = {
   name: string;
   current_version_id?: string | null;
   current_version?: { id: string; version_number: number; spec_json?: any } | null;
+};
+
+type BundlePack = {
+  id: string;
+  name: string | null;
+  member_count?: number;
 };
 
 export default function ContractAnalysisPage() {
@@ -73,6 +79,7 @@ export default function ContractAnalysisPage() {
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
 
   // Bundle selection for run (MVP): optional; default is single-doc.
+  const [bundlePacks, setBundlePacks] = useState<BundlePack[]>([]);
   const [selectedBundleId, setSelectedBundleId] = useState<string>('');
   const autoRunTriggered = useRef(false);
 
@@ -306,6 +313,35 @@ export default function ContractAnalysisPage() {
       }
     } catch {
       // Best-effort: ignore and fall back to default analysis
+    }
+  }
+
+  async function loadBundlePacks() {
+    try {
+      // Fetch bundle packs for this workspace
+      const { data: packs, error } = await supabase
+        .from('packs')
+        .select('id, name')
+        .eq('workspace_id', workspaceId)
+        .eq('pack_type', 'bundle')
+        .order('created_at', { ascending: false });
+
+      if (error || !packs) return;
+
+      // Get member counts for each pack
+      const packsWithCounts = await Promise.all(
+        packs.map(async (p) => {
+          const { count } = await supabase
+            .from('pack_members')
+            .select('id', { count: 'exact', head: true })
+            .eq('pack_id', p.id);
+          return { id: p.id, name: p.name, member_count: count ?? 0 };
+        })
+      );
+
+      setBundlePacks(packsWithCounts);
+    } catch {
+      // Best-effort
     }
   }
 
@@ -766,6 +802,7 @@ export default function ContractAnalysisPage() {
   useEffect(() => {
     load();
     loadPlaybooks();
+    loadBundlePacks();
     
     // Re-load when tab becomes visible (handles laptop sleep, tab switching)
     const handleVisibilityChange = () => {
@@ -874,6 +911,43 @@ export default function ContractAnalysisPage() {
               variant="card"
             />
 
+            {/* Bundle Selection */}
+            <ScholarNotebookCard
+              headerContent={
+                <div className="flex items-center justify-between gap-3 w-full">
+                  <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
+                    CONTRACT PACKET
+                  </span>
+                  <Link
+                    href={`/workspaces/${workspaceId}/packs/bundles`}
+                    className="text-xs font-semibold text-accent hover:underline"
+                  >
+                    Manage Bundles
+                  </Link>
+                </div>
+              }
+            >
+              <div className="p-4 space-y-3">
+                <p className="text-sm text-text-soft">
+                  Optionally select a contract packet to analyze multiple related documents together (e.g., MSA + amendments).
+                </p>
+                <ScholarSelect
+                  label="Bundle"
+                  icon={<Package className="w-4 h-4" />}
+                  options={[
+                    { value: '', label: 'Single document (this file only)' },
+                    ...bundlePacks.map((b) => ({
+                      value: b.id,
+                      label: `${b.name || 'Unnamed Bundle'} (${b.member_count} docs)`,
+                    })),
+                  ]}
+                  value={selectedBundleId}
+                  onChange={(e) => setSelectedBundleId(e.target.value)}
+                />
+              </div>
+            </ScholarNotebookCard>
+
+            {/* Playbook Selection */}
             <ScholarNotebookCard
               headerContent={
                 <div className="flex items-center justify-between gap-3 w-full">
