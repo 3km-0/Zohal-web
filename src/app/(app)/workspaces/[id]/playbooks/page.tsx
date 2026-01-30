@@ -6,7 +6,16 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, ChevronDown, ChevronRight, Plus, Save, UploadCloud } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  Input,
+  Spinner,
+  ScholarNotebookCard,
+  ScholarToggle,
+  ScholarSelect,
+  EmptyState,
+} from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -497,35 +506,38 @@ export default function WorkspacePlaybooksPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left: list + create */}
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle>{t('list.title')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  placeholder={t('list.newNamePlaceholder')}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-                <Button onClick={createPlaybook} disabled={saving || !newName.trim()}>
-                  <Plus className="w-4 h-4" />
-                </Button>
+          <div className="lg:col-span-1 space-y-4">
+            {/* Create new */}
+            <ScholarNotebookCard header="CREATE">
+              <div className="p-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={t('list.newNamePlaceholder')}
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                  <Button onClick={createPlaybook} disabled={saving || !newName.trim()}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
+            </ScholarNotebookCard>
 
-              <div className="space-y-2">
-                {playbooks.length === 0 ? (
-                  <div className="text-sm text-text-soft">{t('list.empty')}</div>
-                ) : (
-                  playbooks.map((pb) => (
+            {/* Templates list */}
+            <ScholarNotebookCard header={t('list.title')}>
+              {playbooks.length === 0 ? (
+                <div className="p-4 text-sm text-text-soft">{t('list.empty')}</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {playbooks.map((pb) => (
                     <button
                       key={pb.id}
                       onClick={() => selectPlaybook(pb.id)}
                       className={cn(
-                        'w-full text-left px-3 py-2 rounded-scholar border transition-colors',
+                        'w-full text-left px-4 py-3 transition-colors',
                         pb.id === selectedId
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border hover:bg-surface-alt'
+                          ? 'bg-accent/5'
+                          : 'hover:bg-surface-alt'
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -536,73 +548,78 @@ export default function WorkspacePlaybooksPage() {
                         v{pb.current_version?.version_number ?? '—'}
                       </div>
                     </button>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              )}
+            </ScholarNotebookCard>
+          </div>
 
           {/* Right: editor */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between gap-3">
-                <span>{t('builder.title')}</span>
-                <div className="flex items-center gap-2">
-                  {selected?.status ? statusBadge(selected.status) : null}
-                  <Button onClick={saveDraft} disabled={!selected || saving}>
-                    <Save className="w-4 h-4" />
-                    {t('builder.saveDraft')}
-                  </Button>
-                  <Button onClick={publish} disabled={!selected || publishing} variant="primary">
-                    <UploadCloud className="w-4 h-4" />
-                    {t('builder.publish')}
-                  </Button>
+          <div className="lg:col-span-2 space-y-4">
+            {/* Header actions */}
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-text">{t('builder.title')}</h2>
+                {selected?.status ? statusBadge(selected.status) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={saveDraft} disabled={!selected || saving}>
+                  <Save className="w-4 h-4" />
+                  {t('builder.saveDraft')}
+                </Button>
+                <Button onClick={publish} disabled={!selected || publishing} variant="primary">
+                  <UploadCloud className="w-4 h-4" />
+                  {t('builder.publish')}
+                </Button>
+              </div>
+            </div>
+
+            {!selected ? (
+              <ScholarNotebookCard header="SELECT A TEMPLATE">
+                <div className="p-6">
+                  <EmptyState
+                    title={t('builder.selectToEdit')}
+                    description="Choose a template from the list or create a new one."
+                    variant="inline"
+                  />
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!selected ? (
-                <div className="text-sm text-text-soft">{t('builder.selectToEdit')}</div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <div className="font-semibold text-text">{t('settingsFixed')}</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                        <input
-                          type="checkbox"
-                          checked={(spec.options?.strictness || 'default') === 'strict'}
-                          onChange={(e) =>
-                            setSpec((p) => ({
-                              ...p,
-                              options: { ...(p.options || {}), strictness: e.target.checked ? 'strict' : 'default' },
-                            }))
-                          }
-                        />
-                        {t('strictMode')}
-                      </label>
-                      <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                        <input
-                          type="checkbox"
-                          checked={spec.options?.enable_verifier === true}
-                          onChange={(e) =>
-                            setSpec((p) => ({ ...p, options: { ...(p.options || {}), enable_verifier: e.target.checked } }))
-                          }
-                        />
-                        {t('enableVerifier')}
-                      </label>
-                      <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                        <input
-                          type="checkbox"
-                          checked={(spec.options?.language || 'en') === 'ar'}
-                          onChange={(e) =>
-                            setSpec((p) => ({ ...p, options: { ...(p.options || {}), language: e.target.checked ? 'ar' : 'en' } }))
-                          }
-                        />
-                        {t('arabicOutput')}
-                      </label>
+              </ScholarNotebookCard>
+            ) : (
+              <>
+                {/* Settings */}
+                <ScholarNotebookCard header={t('settingsFixed')}>
+                  <div className="p-4 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <ScholarToggle
+                        label={t('strictMode')}
+                        caption="More conservative extraction"
+                        checked={(spec.options?.strictness || 'default') === 'strict'}
+                        onCheckedChange={(checked) =>
+                          setSpec((p) => ({
+                            ...p,
+                            options: { ...(p.options || {}), strictness: checked ? 'strict' : 'default' },
+                          }))
+                        }
+                      />
+                      <ScholarToggle
+                        label={t('enableVerifier')}
+                        caption="AI confidence verification"
+                        checked={spec.options?.enable_verifier === true}
+                        onCheckedChange={(checked) =>
+                          setSpec((p) => ({ ...p, options: { ...(p.options || {}), enable_verifier: checked } }))
+                        }
+                      />
+                      <ScholarToggle
+                        label={t('arabicOutput')}
+                        caption="Arabic language output"
+                        checked={(spec.options?.language || 'en') === 'ar'}
+                        onCheckedChange={(checked) =>
+                          setSpec((p) => ({ ...p, options: { ...(p.options || {}), language: checked ? 'ar' : 'en' } }))
+                        }
+                      />
                     </div>
                   </div>
+                </ScholarNotebookCard>
 
                   <div className="space-y-2">
                     <div className="font-semibold text-text">Scope</div>
@@ -711,8 +728,9 @@ export default function WorkspacePlaybooksPage() {
                     </div>
                   ) : null}
 
-                  <div className="space-y-2">
-                    <div className="font-semibold text-text">{t('outputsModules')}</div>
+                {/* Output Modules */}
+                <ScholarNotebookCard header={t('outputsModules')}>
+                  <div className="p-4">
                     {(() => {
                       const order = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
                       const labels: Record<(typeof order)[number], string> = {
@@ -744,7 +762,7 @@ export default function WorkspacePlaybooksPage() {
                       }
 
                       return (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <div className="space-y-2">
                             {enabledOrdered.map((k) => (
                               <div
@@ -768,46 +786,46 @@ export default function WorkspacePlaybooksPage() {
                           </div>
 
                           {remaining.length > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <select
-                                className="px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
-                                value=""
-                                onChange={(e) => {
-                                  const value = e.target.value as (typeof order)[number];
-                                  if (!value) return;
-                                  const next = new Set(enabled);
-                                  next.add(value);
-                                  apply(next);
-                                }}
-                              >
-                                <option value="">Add module</option>
-                                {remaining.map((k) => (
-                                  <option key={k} value={k}>
-                                    {labels[k]}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                            <ScholarSelect
+                              placeholder="Add module"
+                              options={remaining.map((k) => ({ value: k, label: labels[k] }))}
+                              value=""
+                              onChange={(e) => {
+                                const value = e.target.value as (typeof order)[number];
+                                if (!value) return;
+                                const next = new Set(enabled);
+                                next.add(value);
+                                apply(next);
+                              }}
+                            />
                           ) : null}
                         </div>
                       );
                     })()}
-                    <div className="text-sm text-text-soft">
+                    <p className="text-sm text-text-soft mt-3">
                       {t('modulesHelp')}
-                    </div>
+                    </p>
                   </div>
+                </ScholarNotebookCard>
 
-                  <div className="space-y-1">
-                    <div className="font-semibold text-text">{t('reportSections')}</div>
-                    <div className="text-sm text-text-soft">
+                {/* Report Sections Note */}
+                <ScholarNotebookCard header={t('reportSections')}>
+                  <div className="p-4">
+                    <p className="text-sm text-text-soft">
                       Report sections are derived from enabled modules.
-                    </div>
+                    </p>
                   </div>
+                </ScholarNotebookCard>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-text">Modules</div>
+                {/* Custom Modules */}
+                <ScholarNotebookCard
+                  headerContent={
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
+                        MODULES
+                      </span>
                       <Button
+                        size="sm"
                         onClick={() =>
                           setSpec((p) => {
                             const id = `module_${crypto.randomUUID().replace(/-/g, '')}`;
@@ -824,20 +842,21 @@ export default function WorkspacePlaybooksPage() {
                         }
                       >
                         <Plus className="w-4 h-4" />
-                        Add module
+                        Add
                       </Button>
                     </div>
-
+                  }
+                >
+                  <div className="p-4 space-y-3">
                     {(spec.modules_v2 || []).length === 0 ? (
-                      <div className="text-sm text-text-soft">No modules yet.</div>
+                      <div className="text-sm text-text-soft py-2">No modules yet.</div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {(spec.modules_v2 || []).map((m, idx) => (
-                          <Card key={`${m.id}-${idx}`}>
-                            <CardContent className="p-3 space-y-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <label className="space-y-1 text-sm">
-                                  <div className="text-text-soft font-semibold">{t('customModules.fields.title')}</div>
+                          <div key={`${m.id}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-sm font-semibold text-text-soft">{t('customModules.fields.title')}</label>
                                   <Input
                                     value={m.title}
                                     onChange={(e) =>
@@ -849,36 +868,30 @@ export default function WorkspacePlaybooksPage() {
                                     }
                                   />
                                   <div className="text-xs text-text-soft">{m.id}</div>
-                                </label>
+                                </div>
                                 <div className="flex flex-col justify-end gap-2">
-                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                                    <input
-                                      type="checkbox"
-                                      checked={m.enabled !== false}
-                                      onChange={(e) =>
-                                        setSpec((p) => {
-                                          const mods = (p.modules_v2 || []).slice();
-                                          mods[idx] = { ...mods[idx], enabled: e.target.checked };
-                                          return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                        })
-                                      }
-                                    />
-                                    {t('customModules.fields.enabled')}
-                                  </label>
-                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                                    <input
-                                      type="checkbox"
-                                      checked={m.show_in_report === true}
-                                      onChange={(e) =>
-                                        setSpec((p) => {
-                                          const mods = (p.modules_v2 || []).slice();
-                                          mods[idx] = { ...mods[idx], show_in_report: e.target.checked };
-                                          return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                        })
-                                      }
-                                    />
-                                    {t('customModules.fields.showInReport')}
-                                  </label>
+                                  <ScholarToggle
+                                    label={t('customModules.fields.enabled')}
+                                    checked={m.enabled !== false}
+                                    onCheckedChange={(checked) =>
+                                      setSpec((p) => {
+                                        const mods = (p.modules_v2 || []).slice();
+                                        mods[idx] = { ...mods[idx], enabled: checked };
+                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                      })
+                                    }
+                                  />
+                                  <ScholarToggle
+                                    label={t('customModules.fields.showInReport')}
+                                    checked={m.show_in_report === true}
+                                    onCheckedChange={(checked) =>
+                                      setSpec((p) => {
+                                        const mods = (p.modules_v2 || []).slice();
+                                        mods[idx] = { ...mods[idx], show_in_report: checked };
+                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                      })
+                                    }
+                                  />
                                 </div>
                               </div>
 
@@ -954,6 +967,7 @@ export default function WorkspacePlaybooksPage() {
                               <div className="flex justify-end">
                                 <Button
                                   variant="danger"
+                                  size="sm"
                                   onClick={() =>
                                     setSpec((p) => {
                                       const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
@@ -964,31 +978,39 @@ export default function WorkspacePlaybooksPage() {
                                   {tCommon('remove')}
                                 </Button>
                               </div>
-                            </CardContent>
-                          </Card>
+                          </div>
                         ))}
                       </div>
                     )}
                   </div>
+                </ScholarNotebookCard>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label className="space-y-1 text-sm">
-                      <div className="text-text-soft font-semibold">Name (meta)</div>
+                {/* Meta */}
+                <ScholarNotebookCard header="META">
+                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-text-soft">Name</label>
                       <Input
                         value={spec.meta.name}
                         onChange={(e) => setSpec((p) => ({ ...p, meta: { ...p.meta, name: e.target.value } }))}
                       />
-                    </label>
-                    <label className="space-y-1 text-sm">
-                      <div className="text-text-soft font-semibold">Kind</div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-text-soft">Kind</label>
                       <Input value={spec.meta.kind} disabled />
-                    </label>
+                    </div>
                   </div>
+                </ScholarNotebookCard>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-text">Inputs: Variables</div>
+                {/* Variables */}
+                <ScholarNotebookCard
+                  headerContent={
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
+                        VARIABLES
+                      </span>
                       <Button
+                        size="sm"
                         onClick={() =>
                           setSpec((p) => ({
                             ...p,
@@ -997,18 +1019,18 @@ export default function WorkspacePlaybooksPage() {
                         }
                       >
                         <Plus className="w-4 h-4" />
-                        Add variable
+                        Add
                       </Button>
                     </div>
-
-                    <div className="space-y-2">
-                      {spec.variables.length === 0 ? (
-                        <div className="text-sm text-text-soft">No variables yet.</div>
-                      ) : (
-                        spec.variables.map((v, idx) => (
-                          <Card key={`${v.key}-${idx}`}>
-                            <CardContent className="p-3 space-y-2">
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  }
+                >
+                  <div className="p-4 space-y-3">
+                    {spec.variables.length === 0 ? (
+                      <div className="text-sm text-text-soft py-2">No variables yet.</div>
+                    ) : (
+                      spec.variables.map((v, idx) => (
+                        <div key={`${v.key}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <Input
                                   value={v.key}
                                   onChange={(e) =>
@@ -1031,23 +1053,18 @@ export default function WorkspacePlaybooksPage() {
                                   }
                                   placeholder="type (text|date|number|...)"
                                 />
-                                <label className="inline-flex items-center gap-2 text-sm text-text">
-                                  <input
-                                    type="checkbox"
-                                    checked={v.required === true}
-                                    onChange={(e) =>
-                                      setSpec((p) => {
-                                        const vars = p.variables.slice();
-                                        vars[idx] = { ...vars[idx], required: e.target.checked };
-                                        return { ...p, variables: vars };
-                                      })
-                                    }
-                                  />
-                                  <span className="flex flex-col">
-                                    <span className="font-semibold">Flag if missing</span>
-                                    <span className="text-xs text-text-soft">Marks as 'Needs Review' if not found</span>
-                                  </span>
-                                </label>
+                                <ScholarToggle
+                                  label="Flag if missing"
+                                  caption="Marks as 'Needs Review' if not found"
+                                  checked={v.required === true}
+                                  onCheckedChange={(checked) =>
+                                    setSpec((p) => {
+                                      const vars = p.variables.slice();
+                                      vars[idx] = { ...vars[idx], required: checked };
+                                      return { ...p, variables: vars };
+                                    })
+                                  }
+                                />
                               </div>
 
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1100,7 +1117,8 @@ export default function WorkspacePlaybooksPage() {
 
                               <div className="flex justify-end">
                                 <Button
-                                  variant="ghost"
+                                  variant="danger"
+                                  size="sm"
                                   onClick={() =>
                                     setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }))
                                   }
@@ -1108,17 +1126,21 @@ export default function WorkspacePlaybooksPage() {
                                   Remove
                                 </Button>
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </div>
+                        </div>
+                      ))
+                    )}
                   </div>
+                </ScholarNotebookCard>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-text">Checks</div>
+                {/* Checks */}
+                <ScholarNotebookCard
+                  headerContent={
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
+                        CHECKS
+                      </span>
                       <Button
+                        size="sm"
                         onClick={() =>
                           setSpec((p) => ({
                             ...p,
@@ -1135,28 +1157,33 @@ export default function WorkspacePlaybooksPage() {
                         }
                       >
                         <Plus className="w-4 h-4" />
-                        Add check
+                        Add
                       </Button>
                     </div>
-
+                  }
+                >
+                  <div className="p-4 space-y-3">
                     {(spec.checks || []).length === 0 ? (
-                      <div className="text-sm text-text-soft">No checks yet.</div>
+                      <div className="text-sm text-text-soft py-2">No checks yet.</div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {(spec.checks || []).map((c: any, idx: number) => (
-                          <Card key={c.id || idx}>
-                            <CardContent className="p-3 space-y-2">
-                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                                <select
-                                  className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                          <div key={c.id || idx} className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                <ScholarSelect
+                                  label="Type"
+                                  options={[
+                                    { value: 'required', label: 'Required' },
+                                    { value: 'range', label: 'Range' },
+                                    { value: 'allowed', label: 'Allowed' },
+                                    { value: 'term_present', label: 'Term Present' },
+                                    { value: 'custom', label: 'Custom' },
+                                  ]}
                                   value={c.type}
                                   onChange={(e) =>
                                     setSpec((p) => {
                                       const checks = (p.checks || []).slice();
-                                      const type = (e.target.value === 'range' || e.target.value === 'enum' ? e.target.value : 'required') as
-                                        | 'required'
-                                        | 'range'
-                                        | 'enum';
+                                      const type = e.target.value as 'required' | 'range' | 'enum';
                                       const base = {
                                         id: String(checks[idx]?.id || crypto.randomUUID()),
                                         variable_key: String(checks[idx]?.variable_key || ''),
@@ -1177,13 +1204,13 @@ export default function WorkspacePlaybooksPage() {
                                       return { ...p, checks };
                                     })
                                   }
-                                >
-                                  <option value="required">required</option>
-                                  <option value="range">range</option>
-                                  <option value="enum">enum</option>
-                                </select>
-                                <select
-                                  className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                />
+                                <ScholarSelect
+                                  label="Variable"
+                                  options={[
+                                    { value: '', label: 'Select variable' },
+                                    ...spec.variables.map((v) => ({ value: v.key, label: v.key })),
+                                  ]}
                                   value={c.variable_key}
                                   onChange={(e) =>
                                     setSpec((p) => {
@@ -1192,16 +1219,13 @@ export default function WorkspacePlaybooksPage() {
                                       return { ...p, checks };
                                     })
                                   }
-                                >
-                                  <option value="">Select variable</option>
-                                  {spec.variables.map((v) => (
-                                    <option key={v.key} value={v.key}>
-                                      {v.key}
-                                    </option>
-                                  ))}
-                                </select>
-                                <select
-                                  className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                />
+                                <ScholarSelect
+                                  label="Severity"
+                                  options={[
+                                    { value: 'warning', label: 'Warning' },
+                                    { value: 'blocker', label: 'Blocker' },
+                                  ]}
                                   value={c.severity}
                                   onChange={(e) =>
                                     setSpec((p) => {
@@ -1211,11 +1235,10 @@ export default function WorkspacePlaybooksPage() {
                                       return { ...p, checks };
                                     })
                                   }
-                                >
-                                  <option value="warning">warning</option>
-                                  <option value="blocker">blocker</option>
-                                </select>
-                                <Badge size="sm">id: {String(c.id).slice(0, 8)}</Badge>
+                                />
+                                <div className="flex items-end">
+                                  <Badge size="sm">id: {String(c.id).slice(0, 8)}</Badge>
+                                </div>
                               </div>
 
                               {c.type === 'range' && (
@@ -1267,7 +1290,8 @@ export default function WorkspacePlaybooksPage() {
 
                               <div className="flex justify-end">
                                 <Button
-                                  variant="ghost"
+                                  variant="danger"
+                                  size="sm"
                                   onClick={() =>
                                     setSpec((p) => ({ ...p, checks: (p.checks || []).filter((_, i) => i !== idx) }))
                                   }
@@ -1275,18 +1299,17 @@ export default function WorkspacePlaybooksPage() {
                                   Remove
                                 </Button>
                               </div>
-                            </CardContent>
-                          </Card>
+                          </div>
                         ))}
                       </div>
                     )}
                   </div>
+                </ScholarNotebookCard>
 
                   {/* Outputs are now explicitly configured above (modules + report sections). */}
                 </>
               )}
-            </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

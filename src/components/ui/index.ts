@@ -15,3 +15,34 @@ export { IconBox, type IconBoxProps } from './IconBox';
 export { Spinner, type SpinnerProps } from './Spinner';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 
+// Scholar-themed components (iOS parity)
+export {
+  ScholarNotebookCard,
+  ScholarOverline,
+  ScholarSectionHeader,
+  type ScholarNotebookCardProps,
+  type ScholarOverlineProps,
+  type ScholarSectionHeaderProps,
+} from './ScholarNotebookCard';
+export {
+  ScholarTabs,
+  ScholarTabContent,
+  type ScholarTab,
+  type ScholarTabsProps,
+  type ScholarTabContentProps,
+} from './ScholarTabs';
+export {
+  ScholarActionMenu,
+  type ScholarActionMenuItem,
+  type ScholarActionMenuProps,
+} from './ScholarActionMenu';
+export { ScholarSelect, type ScholarSelectProps } from './ScholarSelect';
+export { ScholarToggle, type ScholarToggleProps } from './ScholarToggle';
+export {
+  ScholarProgress,
+  ScholarProgressCard,
+  type ScholarProgressStep,
+  type ScholarProgressProps,
+  type ScholarProgressCardProps,
+} from './ScholarProgress';
+

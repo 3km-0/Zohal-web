@@ -4,8 +4,24 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp } from 'lucide-react';
-import { Button, Spinner, Badge, Card, CardHeader, CardTitle, CardContent, EmptyState } from '@/components/ui';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap } from 'lucide-react';
+import {
+  Button,
+  Spinner,
+  Badge,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  EmptyState,
+  ScholarNotebookCard,
+  ScholarTabs,
+  ScholarTabContent,
+  ScholarActionMenu,
+  ScholarProgressCard,
+  ScholarSelect,
+  type ScholarTab,
+} from '@/components/ui';
 import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence } from '@/components/analysis';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
@@ -807,52 +823,35 @@ export default function ContractAnalysisPage() {
             <CircleHelp className="w-4 h-4" />
             Tour
           </Button>
-          <details className="relative">
-            <summary className="list-none">
-              <Button variant="secondary" size="sm" data-tour="contract-actions">
-                Actions
-                <span className="ml-1 text-text-soft">▾</span>
-              </Button>
-            </summary>
-            <div className="absolute right-0 mt-2 w-52 rounded-scholar border border-border bg-surface shadow-scholar overflow-hidden z-30">
-              <div className="px-3 py-2 text-xs font-semibold text-text-soft border-b border-border bg-surface-alt">
-                Actions
-              </div>
-              <div className="p-2 space-y-1">
-                {contract && (
-                  <button
-                    onClick={() => exportCalendar()}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold text-text hover:bg-surface-alt transition-colors"
-                  >
-                    <Download className="w-4 h-4 text-text-soft" />
-                    Export Calendar
-                  </button>
-                )}
-                {contract && (
-                  <button
-                    onClick={() => generateAndSaveReport()}
-                    disabled={isGeneratingReport}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold transition-colors',
-                      isGeneratingReport
-                        ? 'text-text-soft bg-surface-alt cursor-not-allowed'
-                        : 'text-text hover:bg-surface-alt'
-                    )}
-                  >
-                    <FileText className="w-4 h-4 text-text-soft" />
-                    {isGeneratingReport ? 'Generating report…' : 'Generate Report'}
-                  </button>
-                )}
-                <button
-                  onClick={() => router.push(`/workspaces/${workspaceId}/documents/${documentId}`)}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-scholar-sm text-sm font-semibold text-text hover:bg-surface-alt transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4 text-text-soft" />
-                  Back to PDF
-                </button>
-              </div>
-            </div>
-          </details>
+          <ScholarActionMenu
+            icon={<Zap className="w-4 h-4" />}
+            label="Actions"
+            isLoading={isGeneratingReport}
+            dataTour="contract-actions"
+            items={[
+              { type: 'section', label: 'Report' },
+              {
+                label: isGeneratingReport ? 'Generating report…' : 'Generate Report',
+                icon: <FileText className="w-4 h-4" />,
+                onClick: () => generateAndSaveReport(),
+                disabled: isGeneratingReport || !contract,
+              },
+              { type: 'divider' },
+              { type: 'section', label: 'Dates' },
+              {
+                label: 'Export Calendar',
+                icon: <Calendar className="w-4 h-4" />,
+                onClick: () => exportCalendar(),
+                disabled: !contract,
+              },
+              { type: 'divider' },
+              {
+                label: 'Back to PDF',
+                icon: <ArrowLeft className="w-4 h-4" />,
+                onClick: () => router.push(`/workspaces/${workspaceId}/documents/${documentId}`),
+              },
+            ]}
+          />
         </div>
       </header>
 
@@ -868,47 +867,43 @@ export default function ContractAnalysisPage() {
             <Spinner size="lg" />
           </div>
         ) : !contract ? (
-          <div className="space-y-4">
+          <div className="space-y-4 max-w-xl mx-auto">
             <EmptyState
               title={t('empty.notAnalyzedTitle')}
               description={t('empty.notAnalyzedDescription')}
+              variant="card"
             />
 
-            <Card className="max-w-xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between gap-3">
-                  <span>{t('playbook.optional')}</span>
+            <ScholarNotebookCard
+              headerContent={
+                <div className="flex items-center justify-between gap-3 w-full">
+                  <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
+                    {t('playbook.optional')}
+                  </span>
                   <Link
                     href={`/workspaces/${workspaceId}/playbooks`}
-                    className="text-sm font-semibold text-accent hover:underline"
+                    className="text-xs font-semibold text-accent hover:underline"
                   >
                     {t('playbook.manage')}
                   </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="space-y-1 text-sm">
-                    <div className="text-text-soft font-semibold">{t('playbook.label')}</div>
-                    <select
-                      className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text"
-                      value={selectedPlaybookId}
-                      onChange={(e) => {
-                        const id = e.target.value;
-                        setSelectedPlaybookId(id);
-                        const pb = playbooks.find((p) => p.id === id);
-                        setSelectedPlaybookVersionId(pb?.current_version?.id || '');
-                      }}
-                    >
-                      <option value="">{t('playbook.defaultRenewalPack')}</option>
-                      {playbooks.map((pb) => (
-                        <option key={pb.id} value={pb.id}>
-                          {pb.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
+              }
+            >
+              <div className="p-4 space-y-4">
+                <ScholarSelect
+                  label={t('playbook.label')}
+                  options={[
+                    { value: '', label: t('playbook.defaultRenewalPack') },
+                    ...playbooks.map((pb) => ({ value: pb.id, label: pb.name })),
+                  ]}
+                  value={selectedPlaybookId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedPlaybookId(id);
+                    const pb = playbooks.find((p) => p.id === id);
+                    setSelectedPlaybookVersionId(pb?.current_version?.id || '');
+                  }}
+                />
 
                 <div className="flex justify-end">
                   <Button
@@ -922,8 +917,8 @@ export default function ContractAnalysisPage() {
                     {isAnalyzing ? 'Analyzing…' : 'Contract Analysis'}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </ScholarNotebookCard>
           </div>
         ) : (
           <div className="space-y-4">
@@ -999,29 +994,18 @@ export default function ContractAnalysisPage() {
             )}
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2" data-tour="contract-tabs">
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={cn(
-                    'inline-flex items-center gap-2 px-3 py-2 rounded-scholar border text-sm font-semibold transition-colors',
-                    tab === t.id ? 'border-accent text-accent bg-accent/5' : 'border-border text-text hover:bg-surface-alt'
-                  )}
-                >
-                  <t.icon className="w-4 h-4" />
-                  <span>{t.label}</span>
-                  {t.total !== null && t.total > 0 && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-white text-xs font-bold">
-                      {t.total}
-                      {t.attentionCount > 0 && (
-                        <span className="text-amber-300">({t.attentionCount})</span>
-                      )}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            <ScholarTabs
+              tabs={tabs.map((t) => ({
+                id: t.id,
+                label: t.label,
+                icon: <t.icon className="w-4 h-4" />,
+                count: t.total,
+                attentionCount: t.attentionCount,
+              }))}
+              activeTab={tab}
+              onTabChange={(id) => setTab(id)}
+              dataTour="contract-tabs"
+            />
 
             {tab === 'overview' && (
               <Card>
@@ -1768,68 +1752,28 @@ export default function ContractAnalysisPage() {
 
         {/* Analyzing state (visible even before contract exists) */}
         {isAnalyzing && (
-          <div className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Scale className="w-5 h-5 text-purple-500" />
-                  {t('progress.title')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
-                  <div
-                    className="h-full bg-accent transition-all duration-500"
-                    style={{ width: `${Math.min(100, ((progressStep + 1) / 6) * 100)}%` }}
-                  />
-                </div>
-                <div className="text-sm text-text-soft">
-                  {[
-                    'Queuing analysis…',
-                    'Analyzing pages (batch 1)…',
-                    'Analyzing pages (batch 2)…',
-                    'Extracting clauses & obligations…',
-                    'Assessing risks & deadlines…',
-                    'Finalizing analysis…',
-                  ][progressStep]}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {[
-                    'Identify parties & key dates',
-                    'Extract clauses',
-                    'Extract obligations & deadlines',
-                    'Assess risks',
-                  ].map((label, idx) => {
-                    const complete = progressStep >= idx + 2;
-                    const active = !complete && progressStep === idx + 1;
-                    return (
-                      <div
-                        key={label}
-                        className={cn(
-                          'flex items-center gap-2 px-3 py-2 rounded-scholar border',
-                          complete
-                            ? 'border-success/30 bg-success/5 text-text'
-                            : active
-                              ? 'border-accent/30 bg-accent/5 text-text'
-                              : 'border-border text-text-soft'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'inline-flex w-2.5 h-2.5 rounded-full',
-                            complete ? 'bg-success' : active ? 'bg-accent' : 'bg-border'
-                          )}
-                        />
-                        <span className="text-sm font-medium">{label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="text-xs text-text-soft">
-                  Analysis typically takes 30–60 seconds depending on document size.
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mt-4 max-w-xl mx-auto">
+            <ScholarProgressCard
+              title={t('progress.title')}
+              titleIcon={<Scale className="w-5 h-5 text-purple-500" />}
+              currentStep={progressStep}
+              variant="grid"
+              statusMessage={[
+                'Queuing analysis…',
+                'Analyzing pages (batch 1)…',
+                'Analyzing pages (batch 2)…',
+                'Extracting clauses & obligations…',
+                'Assessing risks & deadlines…',
+                'Finalizing analysis…',
+              ][progressStep]}
+              steps={[
+                { label: 'Identify parties & key dates', description: 'Extracting key contract metadata' },
+                { label: 'Extract clauses', description: 'Finding and categorizing clauses' },
+                { label: 'Extract obligations & deadlines', description: 'Identifying action items' },
+                { label: 'Assess risks', description: 'Analyzing potential risk factors' },
+              ]}
+              footer="Analysis typically takes 30–60 seconds depending on document size."
+            />
           </div>
         )}
       </div>

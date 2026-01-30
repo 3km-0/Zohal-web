@@ -28,33 +28,9 @@ export function AIConfidenceBadge({ confidence }: AIConfidenceBadgeProps) {
   );
 }
 
-// Verification Attention banner component
+// Verification Attention banner component (now inlined in AnalysisRecordCard)
 // This indicates the AI extraction needs human verification (low confidence or conflict)
 // NOT to be confused with content risk level (high-risk clause vs low-confidence extraction)
-export interface VerifyBannerProps {
-  label?: string;
-}
-
-export function VerifyBanner({ label }: VerifyBannerProps) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500 text-white text-xs font-bold mb-3">
-      <AlertTriangle className="w-4 h-4" />
-      <span>Verify This</span>
-      {label && <span className="ml-auto text-xs font-medium">{label}</span>}
-    </div>
-  );
-}
-
-// Subtle spot check suggestion banner (for medium confidence items)
-export function SpotCheckBanner() {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface-alt text-text-soft text-xs font-medium mb-3 border border-border">
-      <FileSearch className="w-3.5 h-3.5" />
-      <span>Spot Check Suggested</span>
-      <span className="ml-auto">Medium Confidence</span>
-    </div>
-  );
-}
 
 // Tool action types
 export type ToolActionType = 'calendar' | 'edit' | 'task';
@@ -107,76 +83,94 @@ export function AnalysisRecordCard({
   const ToolIcon = toolAction ? toolActionConfig[toolAction.type].icon : null;
 
   return (
-    <div className="rounded-scholar border border-border bg-surface p-4 space-y-3">
+    <div className="rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden">
       {/* Verification Attention banner (for low confidence / needs_review items) */}
-      {needsAttention && <VerifyBanner label={attentionLabel} />}
+      {needsAttention && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white text-xs font-bold">
+          <AlertTriangle className="w-4 h-4" />
+          <span>Verify This</span>
+          {attentionLabel && <span className="ml-auto text-xs font-medium">{attentionLabel}</span>}
+        </div>
+      )}
       
       {/* Spot check suggestion banner (for medium confidence items) */}
-      {!needsAttention && spotCheckSuggested && <SpotCheckBanner />}
-      
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className={cn('flex-shrink-0 mt-0.5', iconColor)}>{icon}</div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold text-text truncate">{title}</h4>
-            {confidence && <AIConfidenceBadge confidence={confidence} />}
-          </div>
-          {subtitle && <p className="text-xs text-text-soft mt-0.5 truncate">{subtitle}</p>}
+      {!needsAttention && spotCheckSuggested && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-surface-alt border-b border-border text-text-soft text-xs font-medium">
+          <FileSearch className="w-3.5 h-3.5" />
+          <span>Spot Check Suggested</span>
+          <span className="ml-auto">Medium Confidence</span>
         </div>
-      </div>
+      )}
+      
+      {/* Content */}
+      <div className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className={cn('flex-shrink-0 w-8 h-8 rounded-full bg-surface-alt border border-border flex items-center justify-center', iconColor)}>
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-text truncate">{title}</h4>
+              {confidence && <AIConfidenceBadge confidence={confidence} />}
+            </div>
+            {subtitle && <p className="text-xs text-text-soft mt-0.5">{subtitle}</p>}
+          </div>
+        </div>
 
-      {/* Custom content */}
-      {children && <div className="text-sm text-text">{children}</div>}
+        {/* Custom content */}
+        {children && <div className="text-sm text-text">{children}</div>}
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
+        {/* Divider */}
+        <div className="h-px bg-border -mx-4 my-3" />
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Reject */}
-        <button
-          onClick={onReject}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-scholar-sm text-xs font-medium text-error bg-error/10 hover:bg-error/20 transition-colors"
-        >
-          <X className="w-3.5 h-3.5" />
-          Reject
-        </button>
+        {/* Actions */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Source - Primary action */}
+          {sourceHref && (
+            <Link
+              href={sourceHref}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent/90 transition-colors shadow-sm"
+            >
+              <FileSearch className="w-3.5 h-3.5" />
+              {sourcePage ? `Source p.${sourcePage}` : 'View Source'}
+            </Link>
+          )}
 
-        {/* Source */}
-        {sourceHref && (
-          <Link
-            href={sourceHref}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-scholar-sm text-xs font-medium text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
-          >
-            <FileSearch className="w-3.5 h-3.5" />
-            {sourcePage ? `Source p.${sourcePage}` : 'View Source'}
-          </Link>
-        )}
+          {/* Tool action */}
+          {toolAction && onToolAction && ToolIcon && (
+            <button
+              onClick={onToolAction}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
+            >
+              <ToolIcon className="w-3.5 h-3.5" />
+              {toolAction.label}
+            </button>
+          )}
 
-        <div className="flex-1" />
+          <div className="flex-1" />
 
-        {/* Tool action */}
-        {toolAction && onToolAction && ToolIcon && (
+          {/* Reject */}
           <button
-            onClick={onToolAction}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-scholar-sm text-xs font-medium text-white bg-accent hover:bg-accent/90 transition-colors"
+            onClick={onReject}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium text-error bg-error/5 hover:bg-error/15 border border-error/20 transition-colors"
           >
-            <ToolIcon className="w-3.5 h-3.5" />
-            {toolAction.label}
+            <X className="w-3.5 h-3.5" />
+            Reject
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-// Section header for grouping records
+// Section header for grouping records - iOS style collapsible header
 export interface AnalysisSectionHeaderProps {
   icon: ReactNode;
   iconColor?: string;
   title: string;
   count: number;
+  attentionCount?: number;
   isExpanded: boolean;
   onToggle: () => void;
 }
@@ -186,22 +180,34 @@ export function AnalysisSectionHeader({
   iconColor = 'text-accent',
   title,
   count,
+  attentionCount = 0,
   isExpanded,
   onToggle,
 }: AnalysisSectionHeaderProps) {
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center gap-2 py-2 text-left hover:bg-surface-alt/50 rounded-scholar-sm transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-surface-alt border border-border rounded-scholar transition-colors hover:bg-surface"
     >
-      <span className={iconColor}>{icon}</span>
+      <div className={cn('w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center', iconColor)}>
+        {icon}
+      </div>
       <span className="text-sm font-semibold text-text">{title}</span>
-      <span className="text-xs text-text-soft">({count})</span>
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full text-xs font-bold bg-text-soft/20 text-text">
+          {count}
+        </span>
+        {attentionCount > 0 && (
+          <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600">
+            {attentionCount}
+          </span>
+        )}
+      </div>
       <span className="flex-1" />
       {isExpanded ? (
-        <ChevronUp className="w-4 h-4 text-text-soft" />
+        <ChevronUp className="w-5 h-5 text-text-soft" />
       ) : (
-        <ChevronDown className="w-4 h-4 text-text-soft" />
+        <ChevronDown className="w-5 h-5 text-text-soft" />
       )}
     </button>
   );
