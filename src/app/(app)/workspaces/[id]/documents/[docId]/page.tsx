@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, PanelRight, Scale, Sparkles, X, PlayCircle, CircleHelp } from 'lucide-react';
+import { ArrowLeft, PanelRight, Scale, Sparkles, X, CircleHelp } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Spinner, Badge, Card, CardContent } from '@/components/ui';
@@ -13,7 +13,6 @@ import { createClient } from '@/lib/supabase/client';
 import type { Document, Workspace } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { notFound } from '@/lib/errors';
-import { RunAnalysisModal } from '@/components/analysis';
 
 export default function DocumentViewerPage() {
   const params = useParams();
@@ -29,11 +28,9 @@ export default function DocumentViewerPage() {
   const [loading, setLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
-  const [showRunAnalysis, setShowRunAnalysis] = useState(false);
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [retrying, setRetrying] = useState(false);
-  const runAnalysisEnabled = process.env.NEXT_PUBLIC_RUN_ANALYSIS_ENTRYPOINT_ENABLED !== 'false';
   
   const tapToProof = useMemo(() => {
     const pageStr = searchParams.get('page');
@@ -249,12 +246,6 @@ export default function DocumentViewerPage() {
             <CircleHelp className="w-4 h-4" />
             Tour
           </Button>
-          {runAnalysisEnabled ? (
-            <Button variant="secondary" size="sm" onClick={() => setShowRunAnalysis(true)}>
-              <PlayCircle className="w-4 h-4" />
-              Run Analysis
-            </Button>
-          ) : null}
           {document.document_type === 'contract' && (
             <Button
               variant="secondary"
@@ -281,15 +272,6 @@ export default function DocumentViewerPage() {
           </Button>
         </div>
       </header>
-
-      <RunAnalysisModal
-        open={showRunAnalysis}
-        onClose={() => setShowRunAnalysis(false)}
-        workspaceId={workspaceId}
-        documentId={documentId}
-        documentType={document.document_type || null}
-        onOpenAITools={() => setShowAIPanel(true)}
-      />
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">

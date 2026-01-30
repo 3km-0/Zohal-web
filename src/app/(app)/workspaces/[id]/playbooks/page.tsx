@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, Save, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import {
   Badge,
@@ -420,30 +420,6 @@ export default function WorkspacePlaybooksPage() {
     }
   }
 
-  async function saveDraft() {
-    if (!selected) return;
-    setSaving(true);
-    try {
-      const specToSave = syncLegacyFromModulesV2(spec);
-      const { data, error } = await supabase.functions.invoke('playbooks-create-version', {
-        body: {
-          playbook_id: selected.id,
-          spec_json: specToSave,
-          changelog: 'Draft update',
-          make_current: true,
-        },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || 'Failed to save version');
-      showSuccess('Saved draft version');
-      await loadPlaybooks();
-    } catch (e) {
-      showError(e, 'playbooks');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function publish() {
     if (!selected) return;
     setPublishing(true);
@@ -563,10 +539,6 @@ export default function WorkspacePlaybooksPage() {
                 {selected?.status ? statusBadge(selected.status) : null}
               </div>
               <div className="flex items-center gap-2">
-                <Button onClick={saveDraft} disabled={!selected || saving}>
-                  <Save className="w-4 h-4" />
-                  {t('builder.saveDraft')}
-                </Button>
                 <Button onClick={publish} disabled={!selected || publishing} variant="primary">
                   <UploadCloud className="w-4 h-4" />
                   {t('builder.publish')}
