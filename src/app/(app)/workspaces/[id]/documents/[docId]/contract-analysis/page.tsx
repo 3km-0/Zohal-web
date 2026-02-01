@@ -1058,44 +1058,68 @@ export default function ContractAnalysisPage() {
                         {t('playbook.manage')}
                       </Link>
                     </div>
-                    {playbooks.length === 0 ? (
-                      <div className="p-4 rounded-scholar border border-border bg-surface-alt text-center">
-                        <p className="text-sm text-text-soft mb-2">No templates found in this workspace.</p>
-                        <p className="text-xs text-text-soft mb-3">You can still run analysis with the default settings.</p>
-                        <Link
-                          href={`/workspaces/${workspaceId}/playbooks`}
-                          className="text-sm font-semibold text-accent hover:underline"
+                    <div className="space-y-2">
+                      {/* Default (Renewal Pack) option - always available */}
+                      <button
+                        onClick={() => {
+                          setSelectedPlaybookId('');
+                          setSelectedPlaybookVersionId('');
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                          !selectedPlaybookId
+                            ? "border-accent bg-accent/5"
+                            : "border-border bg-surface-alt hover:border-accent/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <BookOpen className={cn("w-4 h-4", !selectedPlaybookId ? "text-accent" : "text-text-soft")} />
+                          <div>
+                            <span className="font-semibold text-text">Default (Renewal Pack)</span>
+                            <p className="text-xs text-text-soft">Standard contract analysis template</p>
+                          </div>
+                        </div>
+                        {!selectedPlaybookId && (
+                          <CheckCircle className="w-4 h-4 text-accent" />
+                        )}
+                      </button>
+
+                      {/* User-created templates */}
+                      {playbooks.map((pb) => (
+                        <button
+                          key={pb.id}
+                          onClick={() => {
+                            setSelectedPlaybookId(pb.id);
+                            setSelectedPlaybookVersionId(pb.current_version?.id || '');
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                            selectedPlaybookId === pb.id
+                              ? "border-accent bg-accent/5"
+                              : "border-border bg-surface-alt hover:border-accent/50"
+                          )}
                         >
-                          Create a template
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {playbooks.map((pb) => (
-                          <button
-                            key={pb.id}
-                            onClick={() => {
-                              setSelectedPlaybookId(pb.id);
-                              setSelectedPlaybookVersionId(pb.current_version?.id || '');
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                              selectedPlaybookId === pb.id
-                                ? "border-accent bg-accent/5"
-                                : "border-border bg-surface-alt hover:border-accent/50"
-                            )}
+                          <div className="flex items-center gap-3">
+                            <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
+                            <span className="font-semibold text-text">{pb.name}</span>
+                          </div>
+                          {selectedPlaybookId === pb.id && (
+                            <CheckCircle className="w-4 h-4 text-accent" />
+                          )}
+                        </button>
+                      ))}
+
+                      {playbooks.length === 0 && (
+                        <div className="pt-2 border-t border-border mt-2">
+                          <Link
+                            href={`/workspaces/${workspaceId}/playbooks`}
+                            className="text-xs font-semibold text-accent hover:underline"
                           >
-                            <div className="flex items-center gap-3">
-                              <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
-                              <span className="font-semibold text-text">{pb.name}</span>
-                            </div>
-                            {selectedPlaybookId === pb.id && (
-                              <CheckCircle className="w-4 h-4 text-accent" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                            + Create custom template
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1161,12 +1185,12 @@ export default function ContractAnalysisPage() {
                 {/* Run Button */}
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div className="flex items-center gap-2 text-sm text-text-soft">
-                    {selectedPlaybookId && (
-                      <Badge size="sm">
-                        <BookOpen className="w-3 h-3 mr-1" />
-                        {playbooks.find(p => p.id === selectedPlaybookId)?.name || 'Template'}
-                      </Badge>
-                    )}
+                    <Badge size="sm">
+                      <BookOpen className="w-3 h-3 mr-1" />
+                      {selectedPlaybookId 
+                        ? (playbooks.find(p => p.id === selectedPlaybookId)?.name || 'Template')
+                        : 'Default (Renewal Pack)'}
+                    </Badge>
                     {selectedBundleId && (
                       <Badge size="sm">
                         <Package className="w-3 h-3 mr-1" />
