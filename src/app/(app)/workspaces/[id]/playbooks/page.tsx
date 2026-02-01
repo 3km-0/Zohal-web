@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe, Settings, Layers, Variable, CheckCircle, Pencil } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe, Settings, Layers, Variable, CheckCircle, Pencil, Lock, Copy } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import {
   Badge,
@@ -118,6 +118,8 @@ type PlaybookRow = {
   id: string;
   name: string;
   status: 'draft' | 'published' | 'deprecated';
+  is_system_preset?: boolean;
+  workspace_id?: string | null;
   current_version_id?: string | null;
   current_version?: {
     id: string;
@@ -346,6 +348,8 @@ export default function WorkspacePlaybooksPage() {
   }, [spec.modules_v2]);
 
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
+  const isSystemPreset = selected?.is_system_preset === true;
+  const [duplicating, setDuplicating] = useState(false);
 
   async function loadPlaybooks() {
     setLoading(true);
@@ -424,7 +428,7 @@ export default function WorkspacePlaybooksPage() {
   }
 
   async function publish() {
-    if (!selected) return;
+    if (!selected || isSystemPreset) return;
     setPublishing(true);
     try {
       const { data, error } = await supabase.functions.invoke('playbooks-publish', {
@@ -438,6 +442,42 @@ export default function WorkspacePlaybooksPage() {
       showError(e, 'playbooks');
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function duplicateTemplate() {
+    if (!selected) return;
+    setDuplicating(true);
+    try {
+      const sourceSpec = selected.current_version?.spec_json || spec;
+      const duplicatedSpec = {
+        ...sourceSpec,
+        meta: { ...sourceSpec.meta, name: `${selected.name} (Copy)` },
+      };
+      const { data, error } = await supabase.functions.invoke('playbooks-create', {
+        body: {
+          workspace_id: workspaceId,
+          name: `${selected.name} (Copy)`,
+          kind: 'contract',
+          initial_spec_json: duplicatedSpec,
+          changelog: `Duplicated from "${selected.name}"`,
+        },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || 'Failed to duplicate');
+      showSuccess('Template duplicated! You can now edit your copy.');
+      setNewName('');
+      await loadPlaybooks();
+      // Select the new template
+      if (data.playbook?.id) {
+        setSelectedId(data.playbook.id);
+        const newSpec = normalizeSpec(duplicatedSpec, `${selected.name} (Copy)`);
+        setSpec(newSpec);
+      }
+    } catch (e) {
+      showError(e, 'playbooks');
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -520,14 +560,27 @@ export default function WorkspacePlaybooksPage() {
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className={cn(
-                          'font-semibold',
-                          pb.id === selectedId ? 'text-accent' : 'text-text'
-                        )}>{pb.name}</div>
-                        {statusBadge(pb.status)}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {pb.is_system_preset && (
+                            <Lock className="w-3.5 h-3.5 text-text-soft flex-shrink-0" />
+                          )}
+                          <span className={cn(
+                            'font-semibold truncate',
+                            pb.id === selectedId ? 'text-accent' : 'text-text'
+                          )}>{pb.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {pb.is_system_preset ? (
+                            <span className="px-2 py-0.5 rounded-scholar text-xs font-medium bg-surface-alt text-text-soft">
+                              System
+                            </span>
+                          ) : (
+                            statusBadge(pb.status)
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-text-soft mt-1">
-                        v{pb.current_version?.version_number ?? '—'}
+                      <div className="text-xs text-text-soft mt-1 pl-5">
+                        {pb.is_system_preset ? 'Read-only • Duplicate to customize' : `v${pb.current_version?.version_number ?? '—'}`}
                       </div>
                       {pb.id === selectedId && (
                         <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
@@ -553,9 +606,24 @@ export default function WorkspacePlaybooksPage() {
               <div className="rounded-scholar border border-border bg-surface overflow-hidden">
                 {/* Sticky header with template name */}
                 <div className="sticky top-0 z-10 bg-surface border-b border-border">
+                  {/* System preset banner */}
+                  {isSystemPreset && (
+                    <div className="px-4 py-2 bg-surface-alt/50 border-b border-border flex items-center gap-2 text-sm text-text-soft">
+                      <Lock className="w-4 h-4" />
+                      <span>This is a Zohal system template. Duplicate it to create your own editable version.</span>
+                    </div>
+                  )}
                   <div className="p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {editingName ? (
+                      {isSystemPreset ? (
+                        /* System preset: read-only name */
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Lock className="w-4 h-4 text-text-soft flex-shrink-0" />
+                          <h2 className="text-lg font-semibold text-text truncate">
+                            {spec.meta.name || selected.name}
+                          </h2>
+                        </div>
+                      ) : editingName ? (
                         <input
                           type="text"
                           value={tempName}
@@ -593,12 +661,19 @@ export default function WorkspacePlaybooksPage() {
                           <Pencil className="w-4 h-4 text-text-soft opacity-0 group-hover:opacity-100 transition-opacity" />
                         </button>
                       )}
-                      {statusBadge(selected.status)}
+                      {!isSystemPreset && statusBadge(selected.status)}
                     </div>
-                    <Button onClick={publish} disabled={publishing} variant="primary" size="sm">
-                      <UploadCloud className="w-4 h-4" />
-                      {t('builder.publish')}
-                    </Button>
+                    {isSystemPreset ? (
+                      <Button onClick={duplicateTemplate} disabled={duplicating} variant="primary" size="sm">
+                        <Copy className="w-4 h-4" />
+                        Duplicate to Edit
+                      </Button>
+                    ) : (
+                      <Button onClick={publish} disabled={publishing} variant="primary" size="sm">
+                        <UploadCloud className="w-4 h-4" />
+                        {t('builder.publish')}
+                      </Button>
+                    )}
                   </div>
 
                   {/* Section navigation tabs */}
@@ -645,6 +720,7 @@ export default function WorkspacePlaybooksPage() {
                           label={t('strictMode')}
                           caption="More conservative extraction"
                           checked={(spec.options?.strictness || 'default') === 'strict'}
+                          disabled={isSystemPreset}
                           onCheckedChange={(checked) =>
                             setSpec((p) => ({
                               ...p,
@@ -657,6 +733,7 @@ export default function WorkspacePlaybooksPage() {
                           label={t('enableVerifier')}
                           caption="AI confidence verification"
                           checked={spec.options?.enable_verifier === true}
+                          disabled={isSystemPreset}
                           onCheckedChange={(checked) =>
                             setSpec((p) => ({ ...p, options: { ...(p.options || {}), enable_verifier: checked } }))
                           }
@@ -666,6 +743,7 @@ export default function WorkspacePlaybooksPage() {
                           label={t('arabicOutput')}
                           caption="Arabic language output"
                           checked={(spec.options?.language || 'en') === 'ar'}
+                          disabled={isSystemPreset}
                           onCheckedChange={(checked) =>
                             setSpec((p) => ({ ...p, options: { ...(p.options || {}), language: checked ? 'ar' : 'en' } }))
                           }
@@ -680,28 +758,32 @@ export default function WorkspacePlaybooksPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-text-soft">
-                          Define extraction modules. Each module extracts specific data from documents.
+                          {isSystemPreset 
+                            ? 'View the extraction modules defined in this system template.'
+                            : 'Define extraction modules. Each module extracts specific data from documents.'}
                         </p>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            setSpec((p) => {
-                              const id = `module_${crypto.randomUUID().replace(/-/g, '')}`;
-                              const mod = {
-                                id,
-                                title: 'New Module',
-                                prompt: defaultModulePrompt(id),
-                                json_schema: { type: 'object', properties: {}, required: [] } as Record<string, unknown>,
-                                enabled: true,
-                                show_in_report: true,
-                              };
-                              return syncLegacyFromModulesV2({ ...p, modules_v2: [...(p.modules_v2 || []), mod] });
-                            })
-                          }
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Module
-                        </Button>
+                        {!isSystemPreset && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setSpec((p) => {
+                                const id = `module_${crypto.randomUUID().replace(/-/g, '')}`;
+                                const mod = {
+                                  id,
+                                  title: 'New Module',
+                                  prompt: defaultModulePrompt(id),
+                                  json_schema: { type: 'object', properties: {}, required: [] } as Record<string, unknown>,
+                                  enabled: true,
+                                  show_in_report: true,
+                                };
+                                return syncLegacyFromModulesV2({ ...p, modules_v2: [...(p.modules_v2 || []), mod] });
+                              })
+                            }
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Module
+                          </Button>
+                        )}
                       </div>
 
                       {(spec.modules_v2 || []).length === 0 ? (
@@ -809,20 +891,22 @@ export default function WorkspacePlaybooksPage() {
                                 )}
                               </div>
 
-                              <div className="flex justify-end pt-2 border-t border-border">
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() =>
-                                    setSpec((p) => {
-                                      const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
-                                      return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                    })
-                                  }
-                                >
-                                  Remove
-                                </Button>
-                              </div>
+                              {!isSystemPreset && (
+                                <div className="flex justify-end pt-2 border-t border-border">
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSpec((p) => {
+                                        const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
+                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                      })
+                                    }
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -835,20 +919,24 @@ export default function WorkspacePlaybooksPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-text-soft">
-                          Define variables to extract from documents.
+                          {isSystemPreset 
+                            ? 'View the variables defined in this system template.'
+                            : 'Define variables to extract from documents.'}
                         </p>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            setSpec((p) => ({
-                              ...p,
-                              variables: [...p.variables, { key: `var_${p.variables.length + 1}`, type: 'text', required: false }],
-                            }))
-                          }
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Variable
-                        </Button>
+                        {!isSystemPreset && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setSpec((p) => ({
+                                ...p,
+                                variables: [...p.variables, { key: `var_${p.variables.length + 1}`, type: 'text', required: false }],
+                              }))
+                            }
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Variable
+                          </Button>
+                        )}
                       </div>
 
                       {spec.variables.length === 0 ? (
@@ -952,17 +1040,19 @@ export default function WorkspacePlaybooksPage() {
                                 />
                               </div>
 
-                              <div className="flex justify-end pt-2 border-t border-border">
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() =>
-                                    setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }))
-                                  }
-                                >
-                                  Remove
-                                </Button>
-                              </div>
+                              {!isSystemPreset && (
+                                <div className="flex justify-end pt-2 border-t border-border">
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }))
+                                    }
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -975,28 +1065,32 @@ export default function WorkspacePlaybooksPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-text-soft">
-                          Define validation checks for extracted variables.
+                          {isSystemPreset 
+                            ? 'View the validation checks defined in this system template.'
+                            : 'Define validation checks for extracted variables.'}
                         </p>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            setSpec((p) => ({
-                              ...p,
-                              checks: [
-                                ...(p.checks || []),
-                                {
-                                  id: `check-${crypto.randomUUID().slice(0, 8)}`,
-                                  type: 'required',
-                                  variable_key: p.variables[0]?.key || '',
-                                  severity: 'warning',
-                                },
-                              ],
-                            }))
-                          }
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Check
-                        </Button>
+                        {!isSystemPreset && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setSpec((p) => ({
+                                ...p,
+                                checks: [
+                                  ...(p.checks || []),
+                                  {
+                                    id: `check-${crypto.randomUUID().slice(0, 8)}`,
+                                    type: 'required',
+                                    variable_key: p.variables[0]?.key || '',
+                                    severity: 'warning',
+                                  },
+                                ],
+                              }))
+                            }
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Check
+                          </Button>
+                        )}
                       </div>
 
                       {(spec.checks || []).length === 0 ? (
@@ -1126,17 +1220,19 @@ export default function WorkspacePlaybooksPage() {
                                 />
                               )}
 
-                              <div className="flex justify-end pt-2 border-t border-border">
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() =>
-                                    setSpec((p) => ({ ...p, checks: (p.checks || []).filter((_, i) => i !== idx) }))
-                                  }
-                                >
-                                  Remove
-                                </Button>
-                              </div>
+                              {!isSystemPreset && (
+                                <div className="flex justify-end pt-2 border-t border-border">
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSpec((p) => ({ ...p, checks: (p.checks || []).filter((_, i) => i !== idx) }))
+                                    }
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
