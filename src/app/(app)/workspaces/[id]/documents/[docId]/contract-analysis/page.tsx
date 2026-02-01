@@ -67,6 +67,11 @@ export default function ContractAnalysisPage() {
   const [obligations, setObligations] = useState<LegalObligation[]>([]);
   const [risks, setRisks] = useState<LegalRiskFlag[]>([]);
   const [snapshot, setSnapshot] = useState<EvidenceGradeSnapshot | null>(null);
+  const [verificationObjectId, setVerificationObjectId] = useState<string | null>(null);
+  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+  const [verificationObjectState, setVerificationObjectState] = useState<string | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isExportingAuditPack, setIsExportingAuditPack] = useState(false);
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
   const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata'> | null>(null);
   const [bundleDocuments, setBundleDocuments] = useState<Array<{ id: string; title: string; role?: string }>>([]);
@@ -247,11 +252,17 @@ export default function ContractAnalysisPage() {
         setObligations([]);
         setRisks([]);
         setSnapshot(null);
+        setVerificationObjectId(null);
+        setCurrentVersionId(null);
+        setVerificationObjectState(null);
         return;
       }
 
       setContract(contractData);
       setSnapshot(null);
+      setVerificationObjectId(contractData.verification_object_id || null);
+      setCurrentVersionId(null);
+      setVerificationObjectState(null);
       
       // If we found a contract, analysis is complete - reset analyzing state
       // This handles the case where user left and came back after completion
@@ -275,10 +286,12 @@ export default function ContractAnalysisPage() {
       if (contractData.verification_object_id) {
         const { data: vo, error: voErr } = await supabase
           .from('verification_objects')
-          .select('current_version_id')
+          .select('current_version_id, state, finalized_at')
           .eq('id', contractData.verification_object_id)
           .maybeSingle();
         if (!voErr && vo?.current_version_id) {
+          setCurrentVersionId(String(vo.current_version_id));
+          setVerificationObjectState(String(vo.state || 'provisional'));
           const { data: vov, error: vovErr } = await supabase
             .from('verification_object_versions')
             .select('snapshot_json')
@@ -288,6 +301,9 @@ export default function ContractAnalysisPage() {
             const parsed = parseSnapshot(vov.snapshot_json, documentId);
             setSnapshot(parsed);
           }
+        } else {
+          setCurrentVersionId(null);
+          setVerificationObjectState(vo?.state ? String(vo.state) : null);
         }
       }
     } catch (e) {
@@ -753,6 +769,68 @@ export default function ContractAnalysisPage() {
     }
   }
 
+  async function finalizeVerificationObject() {
+    if (!verificationObjectId) return;
+    setError(null);
+    setIsFinalizing(true);
+    try {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userRes.user.id;
+
+      const { data, error: fnErr } = await supabase.functions.invoke('finalize-verification-object', {
+        body: {
+          verification_object_id: String(verificationObjectId).toLowerCase(),
+          user_id: String(userId).toLowerCase(),
+        },
+      });
+      if (fnErr) throw fnErr;
+      if (data?.error) throw new Error(String(data.error));
+      if (data?.success !== true) throw new Error('Finalization failed');
+
+      setReportSavedMessage('Verification finalized.');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Finalization failed');
+    } finally {
+      setIsFinalizing(false);
+    }
+  }
+
+  async function downloadAuditPack() {
+    if (!verificationObjectId && !currentVersionId) return;
+    setError(null);
+    setIsExportingAuditPack(true);
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('export-audit-pack', {
+        body: {
+          version_id: currentVersionId || undefined,
+          verification_object_id: currentVersionId ? undefined : verificationObjectId || undefined,
+          include_actions: true,
+          include_runs: true,
+          mirror_to_enterprise_exports: false,
+        },
+      });
+      if (fnErr) throw fnErr;
+      if (!data?.ok || !data?.audit_pack) throw new Error('Audit Pack export failed');
+
+      const blob = new Blob([JSON.stringify(data.audit_pack, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const v = snapshot?.schema_version ? `_${snapshot.schema_version}` : '';
+      a.download = `audit_pack_v1_${documentId}${v}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Audit Pack export failed');
+    } finally {
+      setIsExportingAuditPack(false);
+    }
+  }
+
   async function addTaskFromObligation(o: LegalObligation) {
     try {
       setCreatingTaskFor(o.id);
@@ -863,7 +941,7 @@ export default function ContractAnalysisPage() {
           <ScholarActionMenu
             icon={<Zap className="w-4 h-4" />}
             label="Actions"
-            isLoading={isGeneratingReport}
+            isLoading={isGeneratingReport || isFinalizing || isExportingAuditPack}
             dataTour="contract-actions"
             items={[
               { type: 'section', label: 'Report' },
@@ -880,6 +958,22 @@ export default function ContractAnalysisPage() {
                 icon: <Calendar className="w-4 h-4" />,
                 onClick: () => exportCalendar(),
                 disabled: !contract,
+              },
+              { type: 'divider' },
+              { type: 'section', label: 'Audit' },
+              {
+                label: verificationObjectState === 'finalized'
+                  ? 'Finalized'
+                  : (isFinalizing ? 'Finalizing…' : 'Finalize (Provisional → Finalized)'),
+                icon: <CheckCircle className="w-4 h-4" />,
+                onClick: () => finalizeVerificationObject(),
+                disabled: !verificationObjectId || !contract || verificationObjectState === 'finalized' || isFinalizing,
+              },
+              {
+                label: isExportingAuditPack ? 'Exporting Audit Pack…' : 'Download Audit Pack (JSON)',
+                icon: <Download className="w-4 h-4" />,
+                onClick: () => downloadAuditPack(),
+                disabled: (!verificationObjectId && !currentVersionId) || !contract || isExportingAuditPack,
               },
               { type: 'divider' },
               {
