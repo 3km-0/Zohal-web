@@ -29,6 +29,8 @@ import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFl
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
 import { parseSnapshot } from '@/types/evidence-grade';
 import { cn } from '@/lib/utils';
+import { mapHttpError } from '@/lib/errors';
+import { useToast } from '@/components/ui/Toast';
 
 type Tab = string;
 
@@ -56,6 +58,7 @@ export default function ContractAnalysisPage() {
   const supabase = useMemo(() => createClient(), []);
   const t = useTranslations('contractAnalysis');
   const locale = useLocale();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -576,7 +579,11 @@ export default function ContractAnalysisPage() {
 
       // Handle 4xx/5xx errors (except 202)
       if (!res.ok && res.status !== 202) {
-        throw new Error(json?.error || json?.message || t('errors.contractAnalysisFailed'));
+        const uiErr = mapHttpError(res.status, json, 'analyze-contract');
+        toast.show(uiErr);
+        setError(uiErr.message);
+        setIsAnalyzing(false);
+        return;
       }
 
       // 202 = Queued for batch processing. Poll for completion.

@@ -40,6 +40,10 @@ interface BackendErrorResponse {
   request_id?: string;
   // Legacy error format
   error?: string;
+  // Optional legacy metadata (ignored by default mapping)
+  current_tier?: string;
+  required_tier?: string;
+  feature?: string;
 }
 
 type UiLocale = 'en' | 'ar';
@@ -105,6 +109,27 @@ export function mapHttpError(
     requestId = backendResponse.request_id;
     errorCode = backendResponse.error_code as ErrorCode | undefined;
     serverMessage = backendResponse.message ?? backendResponse.error;
+  }
+
+  // Handle legacy errors returned by some functions (no error_code envelope).
+  // This keeps the UI from showing generic "Access denied" for upgrade/limit gates.
+  const legacyError = backendResponse?.error;
+  if (legacyError === 'feature_not_available') {
+    return {
+      title: tr('Upgrade Required', 'الترقية مطلوبة'),
+      message:
+        serverMessage ??
+        tr(
+          'This feature requires a paid subscription. Upgrade to continue.',
+          'هذه الميزة تتطلب اشتراكًا مدفوعًا. قم بالترقية للمتابعة.'
+        ),
+      category: 'limit',
+      action: 'upgrade',
+      requestId,
+    };
+  }
+  if (legacyError === 'limit_exceeded') {
+    return limitExceeded(requestId);
   }
 
   // Map by error code first (more specific)
