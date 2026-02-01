@@ -349,6 +349,7 @@ export default function WorkspacePlaybooksPage() {
 
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
   const isSystemPreset = selected?.is_system_preset === true;
+  const isReadOnly = isSystemPreset;
   const [duplicating, setDuplicating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -372,10 +373,11 @@ export default function WorkspacePlaybooksPage() {
       setLastSaved(new Date());
       // Also update the playbook name if changed
       if (specToSave.meta.name !== selected.name) {
+        // Best-effort: version is already saved. Avoid treating name update failures as save failures.
         await supabase.from('playbooks').update({ name: specToSave.meta.name }).eq('id', selected.id);
       }
     } catch (e) {
-      console.error('Auto-save failed:', e);
+      showError(e, 'playbooks');
     } finally {
       setIsSaving(false);
     }
@@ -418,12 +420,14 @@ export default function WorkspacePlaybooksPage() {
           const initial = normalizeSpec(first.current_version?.spec_json, first.name);
           setSpec(initial);
         }
+        return rows;
       }
     } catch (e) {
       showError(e, 'playbooks');
     } finally {
       setLoading(false);
     }
+    return [] as PlaybookRow[];
   }
 
   useEffect(() => {
@@ -518,12 +522,30 @@ export default function WorkspacePlaybooksPage() {
       if (!data?.ok) throw new Error(data?.message || 'Failed to duplicate');
       showSuccess('Template duplicated! You can now edit your copy.');
       setNewName('');
-      await loadPlaybooks();
-      // Select the new template
-      if (data.playbook?.id) {
-        setSelectedId(data.playbook.id);
-        const newSpec = normalizeSpec(duplicatedSpec, `${selected.name} (Copy)`);
-        setSpec(newSpec);
+      const createdId = String(data.playbook?.id || '').trim();
+      const rows = await loadPlaybooks();
+
+      // Ensure the new template is selectable immediately (even if list is eventually-consistent).
+      if (createdId) {
+        const row = rows.find((p) => p.id === createdId) || null;
+        if (!row) {
+          setPlaybooks((prev) => [
+            {
+              id: createdId,
+              name: `${selected.name} (Copy)`,
+              status: 'draft',
+              is_system_preset: false,
+              workspace_id: workspaceId,
+              current_version_id: null,
+              current_version: { id: '', version_number: 1, spec_json: duplicatedSpec, published_at: null },
+            },
+            ...prev,
+          ]);
+        }
+
+        setSelectedId(createdId);
+        const specSource = row?.current_version?.spec_json || duplicatedSpec;
+        setSpec(normalizeSpec(specSource, row?.name || `${selected.name} (Copy)`));
       }
     } catch (e) {
       showError(e, 'playbooks');
@@ -586,6 +608,7 @@ export default function WorkspacePlaybooksPage() {
                     placeholder={t('list.newNamePlaceholder')}
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
+                    disabled={saving}
                     className="text-sm"
                   />
                   <Button onClick={createPlaybook} disabled={saving || !newName.trim()} size="sm">
@@ -854,6 +877,7 @@ export default function WorkspacePlaybooksPage() {
                                 <div className="flex-1 space-y-1">
                                   <Input
                                     value={m.title}
+                                    disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
                                         const mods = (p.modules_v2 || []).slice();
@@ -869,6 +893,7 @@ export default function WorkspacePlaybooksPage() {
                                 <ScholarToggle
                                   label="Enabled"
                                   checked={m.enabled !== false}
+                                  disabled={isReadOnly}
                                   onCheckedChange={(checked) =>
                                     setSpec((p) => {
                                       const mods = (p.modules_v2 || []).slice();
@@ -884,6 +909,7 @@ export default function WorkspacePlaybooksPage() {
                                 <textarea
                                   className="w-full min-h-[80px] px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
                                   value={m.prompt}
+                                  disabled={isReadOnly}
                                   onChange={(e) =>
                                     setSpec((p) => {
                                       const mods = (p.modules_v2 || []).slice();
@@ -921,6 +947,7 @@ export default function WorkspacePlaybooksPage() {
                                     <textarea
                                       className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
                                       value={customSchemaTextById[m.id] ?? JSON.stringify(m.json_schema || {}, null, 2)}
+                                      disabled={isReadOnly}
                                       onChange={(e) => {
                                         const text = e.target.value;
                                         setCustomSchemaTextById((prev) => ({ ...prev, [m.id]: text }));
@@ -1008,6 +1035,7 @@ export default function WorkspacePlaybooksPage() {
                                   <label className="text-xs font-semibold text-text-soft">Key</label>
                                   <Input
                                     value={v.key}
+                                    disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
                                         const vars = p.variables.slice();
@@ -1022,6 +1050,7 @@ export default function WorkspacePlaybooksPage() {
                                   <label className="text-xs font-semibold text-text-soft">Type</label>
                                   <Input
                                     value={v.type}
+                                    disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
                                         const vars = p.variables.slice();
@@ -1037,6 +1066,7 @@ export default function WorkspacePlaybooksPage() {
                                     label="Required"
                                     caption="Flag if missing"
                                     checked={v.required === true}
+                                    disabled={isReadOnly}
                                     onCheckedChange={(checked) =>
                                       setSpec((p) => {
                                         const vars = p.variables.slice();
@@ -1052,6 +1082,7 @@ export default function WorkspacePlaybooksPage() {
                                 <Input
                                   placeholder="min (number)"
                                   value={v.constraints?.min ?? ''}
+                                  disabled={isReadOnly}
                                   onChange={(e) => {
                                     const val = e.target.value.trim();
                                     setSpec((p) => {
@@ -1066,6 +1097,7 @@ export default function WorkspacePlaybooksPage() {
                                 <Input
                                   placeholder="max (number)"
                                   value={v.constraints?.max ?? ''}
+                                  disabled={isReadOnly}
                                   onChange={(e) => {
                                     const val = e.target.value.trim();
                                     setSpec((p) => {
@@ -1080,6 +1112,7 @@ export default function WorkspacePlaybooksPage() {
                                 <Input
                                   placeholder="allowed values (comma-separated)"
                                   value={(v.constraints?.allowed_values || []).join(', ')}
+                                  disabled={isReadOnly}
                                   onChange={(e) => {
                                     const parts = e.target.value
                                       .split(',')
@@ -1168,6 +1201,7 @@ export default function WorkspacePlaybooksPage() {
                                     { value: 'custom', label: 'Custom' },
                                   ]}
                                   value={c.type}
+                                  disabled={isReadOnly}
                                   onChange={(e) =>
                                     setSpec((p) => {
                                       const checks = (p.checks || []).slice();
@@ -1200,6 +1234,7 @@ export default function WorkspacePlaybooksPage() {
                                     ...spec.variables.map((v) => ({ value: v.key, label: v.key })),
                                   ]}
                                   value={c.variable_key}
+                                  disabled={isReadOnly}
                                   onChange={(e) =>
                                     setSpec((p) => {
                                       const checks = (p.checks || []).slice();
@@ -1215,6 +1250,7 @@ export default function WorkspacePlaybooksPage() {
                                     { value: 'blocker', label: 'Blocker' },
                                   ]}
                                   value={c.severity}
+                                  disabled={isReadOnly}
                                   onChange={(e) =>
                                     setSpec((p) => {
                                       const checks = (p.checks || []).slice();
@@ -1234,6 +1270,7 @@ export default function WorkspacePlaybooksPage() {
                                   <Input
                                     placeholder="min"
                                     value={c.min ?? ''}
+                                    disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
                                         const checks = (p.checks || []).slice();
@@ -1246,6 +1283,7 @@ export default function WorkspacePlaybooksPage() {
                                   <Input
                                     placeholder="max"
                                     value={c.max ?? ''}
+                                    disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
                                         const checks = (p.checks || []).slice();
@@ -1262,6 +1300,7 @@ export default function WorkspacePlaybooksPage() {
                                 <Input
                                   placeholder="allowed values (comma-separated)"
                                   value={(c.allowed_values || []).join(', ')}
+                                  disabled={isReadOnly}
                                   onChange={(e) =>
                                     setSpec((p) => {
                                       const checks = (p.checks || []).slice();
