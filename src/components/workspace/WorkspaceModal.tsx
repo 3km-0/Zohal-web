@@ -77,11 +77,17 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
 
         if (error) throw error;
       } else {
+        // Get current user for owner_id
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
         const { error } = await supabase.from('workspaces').insert({
           name: name.trim(),
           description: description.trim() || null,
           workspace_type: workspaceType,
           icon: iconEmoji.trim() || null,
+          owner_id: user.id,
+          status: 'active',
         });
 
         if (error) throw error;
