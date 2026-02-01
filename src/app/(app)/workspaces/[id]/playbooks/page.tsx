@@ -597,114 +597,6 @@ export default function WorkspacePlaybooksPage() {
                   </div>
                 </ScholarNotebookCard>
 
-                  <div className="space-y-2">
-                    <p className="text-sm text-text-soft mb-3">
-                      Control when this template can be used. This constraint is enforced at run time.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {(['either', 'single', 'bundle'] as const).map((s) => (
-                        <label key={s} className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={(spec.scope || 'either') === s}
-                            onChange={() => setSpec((p) => ({ ...p, scope: s }))}
-                          />
-                          {s === 'either' ? 'Any scope' : s === 'single' ? 'Single document' : 'Bundle only'}
-                        </label>
-                      ))}
-                    </div>
-                    <div className="text-xs text-text-soft">
-                      Use “Bundle only” for templates that require multiple documents (e.g., MSA + amendments).
-                    </div>
-                  </div>
-
-                  {(spec.scope || 'either') !== 'single' ? (
-                    <div className="space-y-3">
-                      <div className="font-semibold text-text">Bundle Roles</div>
-                      <div className="text-xs text-text-soft">
-                        Define required/optional roles for bundle members. When set, “Run Analysis” will enforce required roles.
-                      </div>
-
-                      {(() => {
-                        const roles = (spec.bundle_schema?.roles || []) as BundleRoleRow[];
-                        return (
-                          <div className="space-y-2">
-                            {roles.length === 0 ? (
-                              <div className="text-sm text-text-soft">No roles defined.</div>
-                            ) : (
-                              roles.map((r, idx) => (
-                                <div
-                                  key={`${r.role}-${idx}`}
-                                  className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-scholar border border-border bg-surface-alt p-3"
-                                >
-                                  <Input
-                                    value={r.role}
-                                    onChange={(e) => {
-                                      const next = roles.slice();
-                                      next[idx] = { ...r, role: e.target.value };
-                                      setSpec((p) => ({
-                                        ...p,
-                                        bundle_schema: { ...(p.bundle_schema || {}), roles: next.filter((x) => !!x.role.trim()) },
-                                      }));
-                                    }}
-                                    placeholder="role (e.g., master, amendment)"
-                                  />
-                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                                    <input
-                                      type="checkbox"
-                                      checked={r.required}
-                                      onChange={(e) => {
-                                        const next = roles.slice();
-                                        next[idx] = { ...r, required: e.target.checked };
-                                        setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
-                                      }}
-                                    />
-                                    required
-                                  </label>
-                                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-text">
-                                    <input
-                                      type="checkbox"
-                                      checked={r.multiple}
-                                      onChange={(e) => {
-                                        const next = roles.slice();
-                                        next[idx] = { ...r, multiple: e.target.checked };
-                                        setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
-                                      }}
-                                    />
-                                    multiple
-                                  </label>
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() => {
-                                      const next = roles.filter((_, i) => i !== idx);
-                                      setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
-                                    }}
-                                  >
-                                    {tCommon('remove')}
-                                  </Button>
-                                </div>
-                              ))
-                            )}
-
-                            <div>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => {
-                                  const next = roles.concat([{ role: '', required: false, multiple: false }]);
-                                  setSpec((p) => ({ ...p, bundle_schema: { ...(p.bundle_schema || {}), roles: next } }));
-                                }}
-                              >
-                                + Add role
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  ) : null}
 
                 {/* Modules */}
                 <ScholarNotebookCard
@@ -766,17 +658,6 @@ export default function WorkspacePlaybooksPage() {
                                       setSpec((p) => {
                                         const mods = (p.modules_v2 || []).slice();
                                         mods[idx] = { ...mods[idx], enabled: checked };
-                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                      })
-                                    }
-                                  />
-                                  <ScholarToggle
-                                    label={t('customModules.fields.showInReport')}
-                                    checked={m.show_in_report === true}
-                                    onCheckedChange={(checked) =>
-                                      setSpec((p) => {
-                                        const mods = (p.modules_v2 || []).slice();
-                                        mods[idx] = { ...mods[idx], show_in_report: checked };
                                         return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
                                       })
                                     }
@@ -864,7 +745,7 @@ export default function WorkspacePlaybooksPage() {
                                     })
                                   }
                                 >
-                                  {tCommon('remove')}
+                                  Remove
                                 </Button>
                               </div>
                           </div>

@@ -32,7 +32,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-transparent border border-border text-text hover:border-highlight hover:text-highlight',
       ghost: 'text-text-soft hover:text-text hover:bg-surface-alt border border-transparent',
       danger:
-        'bg-error text-background hover:-translate-y-0.5 active:translate-y-0',
+        'bg-error/10 text-error border border-error/30 hover:bg-error/20 hover:-translate-y-0.5 active:translate-y-0',
     };
 
     const sizes = {
