@@ -774,7 +774,7 @@ export default function ContractAnalysisPage() {
       });
       if (createErr) throw createErr;
 
-      setReportSavedMessage('Report saved to Workspace → Reports.');
+      setReportSavedMessage(t('reports.savedToWorkspace'));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.generateReportFailed'));
     } finally {
@@ -801,7 +801,7 @@ export default function ContractAnalysisPage() {
       if (data?.error) throw new Error(String(data.error));
       if (data?.success !== true) throw new Error('Finalization failed');
 
-      setReportSavedMessage('Verification finalized.');
+      setReportSavedMessage(t('reports.verificationFinalized'));
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Finalization failed');
@@ -1073,8 +1073,8 @@ export default function ContractAnalysisPage() {
                       {/* All templates from database - no hardcoded options */}
                       {playbooks.length === 0 ? (
                         <div className="p-4 rounded-scholar border border-border bg-surface-alt text-center">
-                          <p className="text-sm text-text-soft mb-2">Loading templates...</p>
-                          <p className="text-xs text-text-soft">Templates will be created automatically.</p>
+                          <p className="text-sm text-text-soft mb-2">{t('playbook.loadingTemplates')}</p>
+                          <p className="text-xs text-text-soft">{t('playbook.templatesAutoCreated')}</p>
                         </div>
                       ) : (
                         <>
@@ -1082,7 +1082,7 @@ export default function ContractAnalysisPage() {
                           {playbooks.filter(pb => pb.is_system_preset).length > 0 && (
                             <div className="space-y-2">
                               <div className="text-xs font-semibold text-text-soft uppercase tracking-wider px-1">
-                                Zohal Templates
+                                {t('playbook.zohalTemplates')}
                               </div>
                               {playbooks.filter(pb => pb.is_system_preset).map((pb) => (
                                 <button
@@ -1114,7 +1114,7 @@ export default function ContractAnalysisPage() {
                           {playbooks.filter(pb => !pb.is_system_preset).length > 0 && (
                             <div className="space-y-2 mt-4">
                               <div className="text-xs font-semibold text-text-soft uppercase tracking-wider px-1">
-                                Your Templates
+                                {t('playbook.yourTemplates')}
                               </div>
                               {playbooks.filter(pb => !pb.is_system_preset).map((pb) => (
                                 <button

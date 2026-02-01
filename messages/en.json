@@ -436,13 +436,24 @@
     "list": {
       "title": "Published & Draft",
       "newNamePlaceholder": "New template name",
-      "empty": "No templates yet."
+      "empty": "No templates yet.",
+      "zohalTemplates": "Zohal Templates",
+      "yourTemplates": "Your Templates",
+      "loadingTemplates": "Loading templates...",
+      "templatesAutoCreated": "Templates will be created automatically."
     },
     "builder": {
       "title": "Builder",
       "saveDraft": "Save draft",
       "publish": "Publish",
-      "selectToEdit": "Select a template to edit."
+      "selectToEdit": "Select a template to edit.",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "duplicateToEdit": "Duplicate to Edit",
+      "systemTemplateBanner": "This is a Zohal system template. Duplicate it to create your own editable version.",
+      "viewModulesSystem": "View the extraction modules defined in this system template.",
+      "viewVariablesSystem": "View the variables defined in this system template.",
+      "viewChecksSystem": "View the validation checks defined in this system template."
     },
     "settingsFixed": "Settings (fixed)",
     "strictMode": "Strict mode",
@@ -619,7 +630,15 @@
       "optional": "Template (optional)",
       "manage": "Manage",
       "label": "Template",
-      "defaultRenewalPack": "Default (Renewal Pack)"
+      "defaultRenewalPack": "Default (Renewal Pack)",
+      "zohalTemplates": "Zohal Templates",
+      "yourTemplates": "Your Templates",
+      "loadingTemplates": "Loading templates...",
+      "templatesAutoCreated": "Templates will be created automatically."
+    },
+    "reports": {
+      "savedToWorkspace": "Report saved to Workspace → Reports.",
+      "verificationFinalized": "Verification finalized."
     },
     "tabs": {
       "overview": "Overview",

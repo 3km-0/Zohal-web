@@ -435,13 +435,24 @@
     "list": {
       "title": "منشور ومسودة",
       "newNamePlaceholder": "اسم القالب الجديد",
-      "empty": "لا توجد قوالب بعد."
+      "empty": "لا توجد قوالب بعد.",
+      "zohalTemplates": "قوالب زحل",
+      "yourTemplates": "قوالبك",
+      "loadingTemplates": "جاري تحميل القوالب...",
+      "templatesAutoCreated": "سيتم إنشاء القوالب تلقائياً."
     },
     "builder": {
       "title": "المنشئ",
       "saveDraft": "حفظ مسودة",
       "publish": "نشر",
-      "selectToEdit": "اختر قالباً لتعديله."
+      "selectToEdit": "اختر قالباً لتعديله.",
+      "saving": "جاري الحفظ...",
+      "saved": "تم الحفظ",
+      "duplicateToEdit": "نسخ للتعديل",
+      "systemTemplateBanner": "هذا قالب نظام زحل. انسخه لإنشاء نسختك القابلة للتعديل.",
+      "viewModulesSystem": "عرض وحدات الاستخراج المحددة في قالب النظام هذا.",
+      "viewVariablesSystem": "عرض المتغيرات المحددة في قالب النظام هذا.",
+      "viewChecksSystem": "عرض فحوصات التحقق المحددة في قالب النظام هذا."
     },
     "settingsFixed": "الإعدادات (ثابتة)",
     "strictMode": "الوضع الصارم",
@@ -618,7 +629,15 @@
       "optional": "القالب (اختياري)",
       "manage": "إدارة",
       "label": "القالب",
-      "defaultRenewalPack": "الافتراضي (حزمة التجديد)"
+      "defaultRenewalPack": "الافتراضي (حزمة التجديد)",
+      "zohalTemplates": "قوالب زحل",
+      "yourTemplates": "قوالبك",
+      "loadingTemplates": "جاري تحميل القوالب...",
+      "templatesAutoCreated": "سيتم إنشاء القوالب تلقائياً."
+    },
+    "reports": {
+      "savedToWorkspace": "تم حفظ التقرير في مساحة العمل ← التقارير.",
+      "verificationFinalized": "تم اعتماد التحقق."
     },
     "tabs": {
       "overview": "نظرة عامة",

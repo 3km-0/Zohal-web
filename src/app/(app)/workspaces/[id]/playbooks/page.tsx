@@ -709,7 +709,7 @@ export default function WorkspacePlaybooksPage() {
                   {isSystemPreset && (
                     <div className="px-4 py-2 bg-surface-alt/50 border-b border-border flex items-center gap-2 text-sm text-text-soft">
                       <Lock className="w-4 h-4" />
-                      <span>This is a Zohal system template. Duplicate it to create your own editable version.</span>
+                      <span>{t('builder.systemTemplateBanner')}</span>
                     </div>
                   )}
                   <div className="p-4 flex items-center justify-between gap-3">
@@ -763,14 +763,14 @@ export default function WorkspacePlaybooksPage() {
                       {!isSystemPreset && statusBadge(selected.status)}
                       {!isSystemPreset && (
                         <span className="text-xs text-text-soft">
-                          {isSaving ? 'Saving...' : lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : ''}
+                          {isSaving ? t('builder.saving') : lastSaved ? `${t('builder.saved')} ${lastSaved.toLocaleTimeString()}` : ''}
                         </span>
                       )}
                     </div>
                     {isSystemPreset ? (
                       <Button onClick={duplicateTemplate} disabled={duplicating} variant="primary" size="sm">
                         <Copy className="w-4 h-4" />
-                        Duplicate to Edit
+                        {t('builder.duplicateToEdit')}
                       </Button>
                     ) : (
                       <Button onClick={publish} disabled={publishing || isSaving} variant="primary" size="sm">
