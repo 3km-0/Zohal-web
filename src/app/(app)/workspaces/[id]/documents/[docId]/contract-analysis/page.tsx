@@ -1059,32 +1059,34 @@ export default function ContractAnalysisPage() {
                       </Link>
                     </div>
                     <div className="space-y-2">
-                      {/* Default (Renewal Pack) option - always available */}
-                      <button
-                        onClick={() => {
-                          setSelectedPlaybookId('');
-                          setSelectedPlaybookVersionId('');
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                          !selectedPlaybookId
-                            ? "border-accent bg-accent/5"
-                            : "border-border bg-surface-alt hover:border-accent/50"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <BookOpen className={cn("w-4 h-4", !selectedPlaybookId ? "text-accent" : "text-text-soft")} />
-                          <div>
-                            <span className="font-semibold text-text">Default (Renewal Pack)</span>
-                            <p className="text-xs text-text-soft">Standard contract analysis template</p>
+                      {/* Show Default option only if no "Default (Renewal Pack)" playbook exists */}
+                      {!playbooks.some(p => p.name === 'Default (Renewal Pack)') && (
+                        <button
+                          onClick={() => {
+                            setSelectedPlaybookId('');
+                            setSelectedPlaybookVersionId('');
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                            !selectedPlaybookId
+                              ? "border-accent bg-accent/5"
+                              : "border-border bg-surface-alt hover:border-accent/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <BookOpen className={cn("w-4 h-4", !selectedPlaybookId ? "text-accent" : "text-text-soft")} />
+                            <div>
+                              <span className="font-semibold text-text">Default (Renewal Pack)</span>
+                              <p className="text-xs text-text-soft">Standard contract analysis template</p>
+                            </div>
                           </div>
-                        </div>
-                        {!selectedPlaybookId && (
-                          <CheckCircle className="w-4 h-4 text-accent" />
-                        )}
-                      </button>
+                          {!selectedPlaybookId && (
+                            <CheckCircle className="w-4 h-4 text-accent" />
+                          )}
+                        </button>
+                      )}
 
-                      {/* User-created templates */}
+                      {/* Templates from database */}
                       {playbooks.map((pb) => (
                         <button
                           key={pb.id}
@@ -1109,7 +1111,7 @@ export default function ContractAnalysisPage() {
                         </button>
                       ))}
 
-                      {playbooks.length === 0 && (
+                        {playbooks.length === 0 && (
                         <div className="pt-2 border-t border-border mt-2">
                           <Link
                             href={`/workspaces/${workspaceId}/playbooks`}
