@@ -371,6 +371,31 @@ export default function WorkspacePlaybooksPage() {
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.message || 'Failed to save');
       setLastSaved(new Date());
+
+      // Keep local list in sync so switching templates doesn't "lose" edits.
+      const v = data?.version as { id?: string; version_number?: number; published_at?: string | null } | undefined;
+      if (v?.id && typeof v.version_number === 'number') {
+        const versionId = v.id;
+        const versionNumber = v.version_number;
+        const publishedAt = v.published_at ?? null;
+        setPlaybooks((prev) =>
+          prev.map((pb) =>
+            pb.id === selected.id
+              ? {
+                  ...pb,
+                  current_version_id: versionId,
+                  current_version: {
+                    id: versionId,
+                    version_number: versionNumber,
+                    spec_json: specToSave,
+                    published_at: publishedAt ?? pb.current_version?.published_at ?? null,
+                  },
+                }
+              : pb
+          )
+        );
+      }
+
       // Also update the playbook name if changed
       if (specToSave.meta.name !== selected.name) {
         // Best-effort: version is already saved. Avoid treating name update failures as save failures.
