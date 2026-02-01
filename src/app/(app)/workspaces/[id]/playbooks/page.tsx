@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -350,6 +350,57 @@ export default function WorkspacePlaybooksPage() {
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
   const isSystemPreset = selected?.is_system_preset === true;
   const [duplicating, setDuplicating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save draft version (debounced auto-save)
+  const saveDraft = useCallback(async (specToSave: PlaybookSpecV1) => {
+    if (!selected || isSystemPreset) return;
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('playbooks-create-version', {
+        body: {
+          playbook_id: selected.id,
+          spec_json: specToSave,
+          changelog: 'Auto-save',
+          make_current: true,
+        },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || 'Failed to save');
+      setLastSaved(new Date());
+      // Also update the playbook name if changed
+      if (specToSave.meta.name !== selected.name) {
+        await supabase.from('playbooks').update({ name: specToSave.meta.name }).eq('id', selected.id);
+      }
+    } catch (e) {
+      console.error('Auto-save failed:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selected, isSystemPreset, supabase]);
+
+  // Debounced auto-save when spec changes (only for non-system templates)
+  useEffect(() => {
+    if (!selected || isSystemPreset) return;
+    
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set new timeout for debounced save (2 seconds after last change)
+    saveTimeoutRef.current = setTimeout(() => {
+      saveDraft(spec);
+    }, 2000);
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [spec, selected, isSystemPreset, saveDraft]);
 
   async function loadPlaybooks() {
     setLoading(true);
@@ -662,6 +713,11 @@ export default function WorkspacePlaybooksPage() {
                         </button>
                       )}
                       {!isSystemPreset && statusBadge(selected.status)}
+                      {!isSystemPreset && (
+                        <span className="text-xs text-text-soft">
+                          {isSaving ? 'Saving...' : lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : ''}
+                        </span>
+                      )}
                     </div>
                     {isSystemPreset ? (
                       <Button onClick={duplicateTemplate} disabled={duplicating} variant="primary" size="sm">
@@ -669,7 +725,7 @@ export default function WorkspacePlaybooksPage() {
                         Duplicate to Edit
                       </Button>
                     ) : (
-                      <Button onClick={publish} disabled={publishing} variant="primary" size="sm">
+                      <Button onClick={publish} disabled={publishing || isSaving} variant="primary" size="sm">
                         <UploadCloud className="w-4 h-4" />
                         {t('builder.publish')}
                       </Button>

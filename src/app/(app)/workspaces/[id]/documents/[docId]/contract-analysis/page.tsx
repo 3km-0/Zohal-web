@@ -35,6 +35,8 @@ type Tab = string;
 type PlaybookRecord = {
   id: string;
   name: string;
+  is_system_preset?: boolean;
+  workspace_id?: string | null;
   current_version_id?: string | null;
   current_version?: { id: string; version_number: number; spec_json?: any } | null;
 };
@@ -1075,29 +1077,71 @@ export default function ContractAnalysisPage() {
                           <p className="text-xs text-text-soft">Templates will be created automatically.</p>
                         </div>
                       ) : (
-                        playbooks.map((pb) => (
-                          <button
-                            key={pb.id}
-                            onClick={() => {
-                              setSelectedPlaybookId(pb.id);
-                              setSelectedPlaybookVersionId(pb.current_version?.id || '');
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                              selectedPlaybookId === pb.id
-                                ? "border-accent bg-accent/5"
-                                : "border-border bg-surface-alt hover:border-accent/50"
-                            )}
-                          >
-                            <div className="flex items-center gap-3">
-                              <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
-                              <span className="font-semibold text-text">{pb.name}</span>
+                        <>
+                          {/* System Templates */}
+                          {playbooks.filter(pb => pb.is_system_preset).length > 0 && (
+                            <div className="space-y-2">
+                              <div className="text-xs font-semibold text-text-soft uppercase tracking-wider px-1">
+                                Zohal Templates
+                              </div>
+                              {playbooks.filter(pb => pb.is_system_preset).map((pb) => (
+                                <button
+                                  key={pb.id}
+                                  onClick={() => {
+                                    setSelectedPlaybookId(pb.id);
+                                    setSelectedPlaybookVersionId(pb.current_version?.id || '');
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                                    selectedPlaybookId === pb.id
+                                      ? "border-accent bg-accent/5"
+                                      : "border-border bg-surface-alt hover:border-accent/50"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
+                                    <span className="font-semibold text-text">{pb.name}</span>
+                                  </div>
+                                  {selectedPlaybookId === pb.id && (
+                                    <CheckCircle className="w-4 h-4 text-accent" />
+                                  )}
+                                </button>
+                              ))}
                             </div>
-                            {selectedPlaybookId === pb.id && (
-                              <CheckCircle className="w-4 h-4 text-accent" />
-                            )}
-                          </button>
-                        ))
+                          )}
+
+                          {/* User Templates */}
+                          {playbooks.filter(pb => !pb.is_system_preset).length > 0 && (
+                            <div className="space-y-2 mt-4">
+                              <div className="text-xs font-semibold text-text-soft uppercase tracking-wider px-1">
+                                Your Templates
+                              </div>
+                              {playbooks.filter(pb => !pb.is_system_preset).map((pb) => (
+                                <button
+                                  key={pb.id}
+                                  onClick={() => {
+                                    setSelectedPlaybookId(pb.id);
+                                    setSelectedPlaybookVersionId(pb.current_version?.id || '');
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                                    selectedPlaybookId === pb.id
+                                      ? "border-accent bg-accent/5"
+                                      : "border-border bg-surface-alt hover:border-accent/50"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
+                                    <span className="font-semibold text-text">{pb.name}</span>
+                                  </div>
+                                  {selectedPlaybookId === pb.id && (
+                                    <CheckCircle className="w-4 h-4 text-accent" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

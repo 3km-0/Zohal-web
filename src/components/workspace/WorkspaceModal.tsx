@@ -81,7 +81,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
           name: name.trim(),
           description: description.trim() || null,
           workspace_type: workspaceType,
-          icon_emoji: iconEmoji.trim() || null,
+          icon: iconEmoji.trim() || null,
         });
 
         if (error) throw error;
