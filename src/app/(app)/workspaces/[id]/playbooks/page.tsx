@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import {
   Badge,
@@ -564,6 +564,7 @@ export default function WorkspacePlaybooksPage() {
                   <div className="p-4 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <ScholarToggle
+                        icon={<Shield className="w-4 h-4" />}
                         label={t('strictMode')}
                         caption="More conservative extraction"
                         checked={(spec.options?.strictness || 'default') === 'strict'}
@@ -575,6 +576,7 @@ export default function WorkspacePlaybooksPage() {
                         }
                       />
                       <ScholarToggle
+                        icon={<ShieldCheck className="w-4 h-4" />}
                         label={t('enableVerifier')}
                         caption="AI confidence verification"
                         checked={spec.options?.enable_verifier === true}
@@ -583,6 +585,7 @@ export default function WorkspacePlaybooksPage() {
                         }
                       />
                       <ScholarToggle
+                        icon={<Globe className="w-4 h-4" />}
                         label={t('arabicOutput')}
                         caption="Arabic language output"
                         checked={(spec.options?.language || 'en') === 'ar'}
@@ -595,7 +598,9 @@ export default function WorkspacePlaybooksPage() {
                 </ScholarNotebookCard>
 
                   <div className="space-y-2">
-                    <div className="font-semibold text-text">Scope</div>
+                    <p className="text-sm text-text-soft mb-3">
+                      Control when this template can be used. This constraint is enforced at run time.
+                    </p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {(['either', 'single', 'bundle'] as const).map((s) => (
                         <label key={s} className="inline-flex items-center gap-2 text-sm font-semibold text-text">
@@ -605,7 +610,7 @@ export default function WorkspacePlaybooksPage() {
                             checked={(spec.scope || 'either') === s}
                             onChange={() => setSpec((p) => ({ ...p, scope: s }))}
                           />
-                          {s === 'either' ? 'Either (single or bundle)' : s === 'single' ? 'Single only' : 'Bundle only'}
+                          {s === 'either' ? 'Any scope' : s === 'single' ? 'Single document' : 'Bundle only'}
                         </label>
                       ))}
                     </div>
@@ -616,7 +621,7 @@ export default function WorkspacePlaybooksPage() {
 
                   {(spec.scope || 'either') !== 'single' ? (
                     <div className="space-y-3">
-                      <div className="font-semibold text-text">Bundle schema (optional)</div>
+                      <div className="font-semibold text-text">Bundle Roles</div>
                       <div className="text-xs text-text-soft">
                         Define required/optional roles for bundle members. When set, “Run Analysis” will enforce required roles.
                       </div>
@@ -701,96 +706,7 @@ export default function WorkspacePlaybooksPage() {
                     </div>
                   ) : null}
 
-                {/* Output Modules */}
-                <ScholarNotebookCard header={t('outputsModules')}>
-                  <div className="p-4">
-                    {(() => {
-                      const order = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
-                      const labels: Record<(typeof order)[number], string> = {
-                        variables: t('modules.variables'),
-                        clauses: t('modules.clauses'),
-                        obligations: t('modules.obligations'),
-                        risks: t('modules.risks'),
-                        deadlines: t('modules.deadlines'),
-                      };
-                      const enabled = new Set(spec.modules || order);
-                      const enabledOrdered = order.filter((k) => enabled.has(k));
-                      const remaining = order.filter((k) => !enabled.has(k));
-
-                      function apply(next: Set<string>) {
-                        if (!next.has('variables')) next.delete('deadlines');
-                        if (next.has('deadlines')) next.add('variables');
-                        const outOrder = ['overview', ...order];
-                        const outputs = outOrder.filter((k) => k === 'overview' || next.has(k));
-                        setSpec((p) => {
-                          const current = Array.isArray(p.modules_v2) ? p.modules_v2 : [];
-                          const updated = current.map((m) => {
-                            if (order.includes(m.id as any)) {
-                              return { ...m, enabled: next.has(m.id) };
-                            }
-                            return m;
-                          });
-                          return syncLegacyFromModulesV2({ ...p, modules: Array.from(next), outputs, modules_v2: updated });
-                        });
-                      }
-
-                      return (
-                        <div className="space-y-3">
-                          <div className="space-y-2">
-                            {enabledOrdered.map((k) => (
-                              <div
-                                key={k}
-                                className="flex items-center justify-between gap-3 rounded-scholar border border-border bg-surface-alt px-3 py-2"
-                              >
-                                <div className="text-sm font-semibold text-text">{labels[k]}</div>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() => {
-                                    const next = new Set(enabled);
-                                    next.delete(k);
-                                    apply(next);
-                                  }}
-                                >
-                                  {tCommon('remove')}
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-
-                          {remaining.length > 0 ? (
-                            <ScholarSelect
-                              placeholder="Add module"
-                              options={remaining.map((k) => ({ value: k, label: labels[k] }))}
-                              value=""
-                              onChange={(e) => {
-                                const value = e.target.value as (typeof order)[number];
-                                if (!value) return;
-                                const next = new Set(enabled);
-                                next.add(value);
-                                apply(next);
-                              }}
-                            />
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                    <p className="text-sm text-text-soft mt-3">
-                      {t('modulesHelp')}
-                    </p>
-                  </div>
-                </ScholarNotebookCard>
-
-                {/* Report Sections Note */}
-                <ScholarNotebookCard header={t('reportSections')}>
-                  <div className="p-4">
-                    <p className="text-sm text-text-soft">
-                      Report sections are derived from enabled modules.
-                    </p>
-                  </div>
-                </ScholarNotebookCard>
-
-                {/* Custom Modules */}
+                {/* Modules */}
                 <ScholarNotebookCard
                   headerContent={
                     <div className="flex items-center justify-between gap-3 w-full">

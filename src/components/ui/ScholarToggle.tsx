@@ -1,21 +1,22 @@
 'use client';
 
-import { forwardRef, type InputHTMLAttributes } from 'react';
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * ScholarToggle - iOS-style toggle switch with label and caption
+ * ScholarToggle - iOS-style toggle switch with label, caption, and optional icon
  */
 
 export interface ScholarToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string;
   caption?: string;
+  icon?: ReactNode;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
 }
 
 export const ScholarToggle = forwardRef<HTMLInputElement, ScholarToggleProps>(
-  ({ label, caption, checked, onCheckedChange, className, onChange, ...props }, ref) => {
+  ({ label, caption, icon, checked, onCheckedChange, className, onChange, ...props }, ref) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       onCheckedChange?.(e.target.checked);
       onChange?.(e);
@@ -48,9 +49,12 @@ export const ScholarToggle = forwardRef<HTMLInputElement, ScholarToggleProps>(
           />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold text-text group-hover:text-accent transition-colors">
-            {label}
-          </span>
+          <div className="flex items-center gap-2">
+            {icon && <span className="text-accent-alt">{icon}</span>}
+            <span className="text-sm font-semibold text-text group-hover:text-accent transition-colors">
+              {label}
+            </span>
+          </div>
           {caption && (
             <span className="text-xs text-text-soft">{caption}</span>
           )}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -23,6 +23,7 @@ import {
   type ScholarTab,
 } from '@/components/ui';
 import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence } from '@/components/analysis';
+import { BundleManagerModal } from '@/components/document/BundleManagerModal';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
@@ -86,6 +87,7 @@ export default function ContractAnalysisPage() {
   // Bundle selection for run (MVP): optional; default is single-doc.
   const [bundlePacks, setBundlePacks] = useState<BundlePack[]>([]);
   const [selectedBundleId, setSelectedBundleId] = useState<string>('');
+  const [showBundleModal, setShowBundleModal] = useState(false);
   const autoRunTriggered = useRef(false);
 
   // Rejection tracking (unified action model)
@@ -1005,75 +1007,173 @@ export default function ContractAnalysisPage() {
               variant="card"
             />
 
-            {/* Bundle Selection */}
-            <ScholarNotebookCard
-              headerContent={
-                <div className="flex items-center justify-between gap-3 w-full">
-                  <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
-                    CONTRACT PACKET
-                  </span>
-                  <Link
-                    href={`/workspaces/${workspaceId}/packs/bundles`}
-                    className="text-xs font-semibold text-accent hover:underline"
-                  >
-                    Manage Bundles
-                  </Link>
-                </div>
-              }
-            >
-              <div className="p-4 space-y-3">
-                <p className="text-sm text-text-soft">
-                  Optionally select a contract packet to analyze multiple related documents together (e.g., MSA + amendments).
-                </p>
-                <ScholarSelect
-                  label="Bundle"
-                  icon={<Package className="w-4 h-4" />}
-                  options={[
-                    { value: '', label: 'Single document (this file only)' },
-                    ...bundlePacks.map((b) => ({
-                      value: b.id,
-                      label: `${b.name || 'Unnamed Bundle'} (${b.member_count} docs)`,
-                    })),
-                  ]}
-                  value={selectedBundleId}
-                  onChange={(e) => setSelectedBundleId(e.target.value)}
-                />
-              </div>
-            </ScholarNotebookCard>
-
-            {/* Playbook Selection */}
-            <ScholarNotebookCard
-              headerContent={
-                <div className="flex items-center justify-between gap-3 w-full">
-                  <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
-                    {t('playbook.optional')}
-                  </span>
-                  <Link
-                    href={`/workspaces/${workspaceId}/playbooks`}
-                    className="text-xs font-semibold text-accent hover:underline"
-                  >
-                    {t('playbook.manage')}
-                  </Link>
-                </div>
-              }
-            >
+            {/* Analysis Configuration - Tabbed Interface */}
+            <ScholarNotebookCard>
               <div className="p-4 space-y-4">
-                <ScholarSelect
-                  label={t('playbook.label')}
-                  options={[
-                    { value: '', label: t('playbook.defaultRenewalPack') },
-                    ...playbooks.map((pb) => ({ value: pb.id, label: pb.name })),
-                  ]}
-                  value={selectedPlaybookId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    setSelectedPlaybookId(id);
-                    const pb = playbooks.find((p) => p.id === id);
-                    setSelectedPlaybookVersionId(pb?.current_version?.id || '');
-                  }}
-                />
+                {/* Mini tabs for Template/Bundle selection */}
+                <div className="flex border-b border-border">
+                  <button
+                    onClick={() => setTab('template-select')}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors -mb-px",
+                      tab === 'template-select' || tab === 'overview'
+                        ? "border-accent text-accent"
+                        : "border-transparent text-text-soft hover:text-text"
+                    )}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Template
+                    {selectedPlaybookId && (
+                      <Badge size="sm" variant="success">Selected</Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setTab('bundle-select')}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors -mb-px",
+                      tab === 'bundle-select'
+                        ? "border-accent text-accent"
+                        : "border-transparent text-text-soft hover:text-text"
+                    )}
+                  >
+                    <Layers className="w-4 h-4" />
+                    Bundle
+                    {selectedBundleId && (
+                      <Badge size="sm" variant="success">Selected</Badge>
+                    )}
+                  </button>
+                </div>
 
-                <div className="flex justify-end">
+                {/* Template Selection Content */}
+                {(tab === 'template-select' || tab === 'overview') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-text-soft">
+                        Choose an analysis template to use.
+                      </p>
+                      <Link
+                        href={`/workspaces/${workspaceId}/playbooks`}
+                        className="text-xs font-semibold text-accent hover:underline"
+                      >
+                        {t('playbook.manage')}
+                      </Link>
+                    </div>
+                    {playbooks.length === 0 ? (
+                      <div className="p-4 rounded-scholar border border-border bg-surface-alt text-center">
+                        <p className="text-sm text-text-soft mb-2">No templates found in this workspace.</p>
+                        <p className="text-xs text-text-soft mb-3">You can still run analysis with the default settings.</p>
+                        <Link
+                          href={`/workspaces/${workspaceId}/playbooks`}
+                          className="text-sm font-semibold text-accent hover:underline"
+                        >
+                          Create a template
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {playbooks.map((pb) => (
+                          <button
+                            key={pb.id}
+                            onClick={() => {
+                              setSelectedPlaybookId(pb.id);
+                              setSelectedPlaybookVersionId(pb.current_version?.id || '');
+                            }}
+                            className={cn(
+                              "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                              selectedPlaybookId === pb.id
+                                ? "border-accent bg-accent/5"
+                                : "border-border bg-surface-alt hover:border-accent/50"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
+                              <span className="font-semibold text-text">{pb.name}</span>
+                            </div>
+                            {selectedPlaybookId === pb.id && (
+                              <CheckCircle className="w-4 h-4 text-accent" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Bundle Selection Content */}
+                {tab === 'bundle-select' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-text-soft">
+                        Optionally analyze multiple documents together.
+                      </p>
+                      <button
+                        onClick={() => setShowBundleModal(true)}
+                        className="text-xs font-semibold text-accent hover:underline"
+                      >
+                        Manage Bundles
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => setSelectedBundleId('')}
+                        className={cn(
+                          "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                          !selectedBundleId
+                            ? "border-accent bg-accent/5"
+                            : "border-border bg-surface-alt hover:border-accent/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className={cn("w-4 h-4", !selectedBundleId ? "text-accent" : "text-text-soft")} />
+                          <span className="font-semibold text-text">Single document (this file only)</span>
+                        </div>
+                        {!selectedBundleId && (
+                          <CheckCircle className="w-4 h-4 text-accent" />
+                        )}
+                      </button>
+                      {bundlePacks.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => setSelectedBundleId(b.id)}
+                          className={cn(
+                            "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                            selectedBundleId === b.id
+                              ? "border-accent bg-accent/5"
+                              : "border-border bg-surface-alt hover:border-accent/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Package className={cn("w-4 h-4", selectedBundleId === b.id ? "text-accent" : "text-text-soft")} />
+                            <div>
+                              <span className="font-semibold text-text">{b.name || 'Unnamed Bundle'}</span>
+                              <span className="text-xs text-text-soft ml-2">({b.member_count} docs)</span>
+                            </div>
+                          </div>
+                          {selectedBundleId === b.id && (
+                            <CheckCircle className="w-4 h-4 text-accent" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Run Button */}
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex items-center gap-2 text-sm text-text-soft">
+                    {selectedPlaybookId && (
+                      <Badge size="sm">
+                        <BookOpen className="w-3 h-3 mr-1" />
+                        {playbooks.find(p => p.id === selectedPlaybookId)?.name || 'Template'}
+                      </Badge>
+                    )}
+                    {selectedBundleId && (
+                      <Badge size="sm">
+                        <Package className="w-3 h-3 mr-1" />
+                        {bundlePacks.find(b => b.id === selectedBundleId)?.name || 'Bundle'}
+                      </Badge>
+                    )}
+                  </div>
                   <Button
                     onClick={() => {
                       if (!isAnalyzing) analyzeOnce();
@@ -1082,7 +1182,7 @@ export default function ContractAnalysisPage() {
                     disabled={isAnalyzing}
                     data-tour="contract-analyze"
                   >
-                    {isAnalyzing ? 'Analyzing…' : 'Contract Analysis'}
+                    {isAnalyzing ? 'Analyzing…' : 'Run Analysis'}
                   </Button>
                 </div>
               </div>
@@ -1945,8 +2045,21 @@ export default function ContractAnalysisPage() {
           </div>
         )}
       </div>
+
+      {/* Bundle Manager Modal */}
+      {showBundleModal && (
+        <BundleManagerModal
+          workspaceId={workspaceId}
+          documentId={documentId}
+          selectedBundleId={selectedBundleId}
+          onSelectBundle={(bundleId) => {
+            setSelectedBundleId(bundleId);
+            // Reload bundles to get updated counts
+            loadBundlePacks();
+          }}
+          onClose={() => setShowBundleModal(false)}
+        />
+      )}
     </div>
   );
 }
-
-
