@@ -747,10 +747,11 @@ function DocumentCard({
       </Link>
 
       {/* Menu Button */}
-      <div className="absolute top-3 right-3">
+      <div className={cn("absolute top-3 right-3", showMenu && "z-[100]")}>
         <button
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setShowMenu(!showMenu);
           }}
           className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-surface-alt transition-all"
@@ -761,10 +762,10 @@ function DocumentCard({
         {showMenu && (
           <>
             <div
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-[99]"
               onClick={() => setShowMenu(false)}
             />
-            <div className="absolute right-0 mt-1 w-48 bg-surface border border-border rounded-scholar shadow-scholar-lg z-50 overflow-hidden animate-fade-in">
+            <div className="absolute right-0 mt-1 w-48 bg-surface border border-border rounded-scholar shadow-scholar-lg z-[100] overflow-hidden animate-fade-in">
               <Link
                 href={`/workspaces/${workspaceId}/documents/${doc.id}`}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"

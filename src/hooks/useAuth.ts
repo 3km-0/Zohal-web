@@ -57,13 +57,24 @@ export function useAuth() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setState({
         user: session?.user ?? null,
         session,
         loading: false,
         error: null,
       });
+
+      // Handle session expiration - redirect to login
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
+        // User was signed out (possibly due to token expiration)
+        const isProtectedRoute = window.location.pathname.startsWith('/workspaces') || 
+                                  window.location.pathname.startsWith('/settings');
+        if (isProtectedRoute) {
+          console.log('[Auth] Session expired, redirecting to login');
+          router.push('/login?expired=true');
+        }
+      }
     });
 
     return () => {
