@@ -67,6 +67,8 @@ export default function ContractAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [progressStep, setProgressStep] = useState(0);
+  const progressRef = useRef<HTMLDivElement | null>(null);
+  const [progressDetail, setProgressDetail] = useState<{ stage: string; completed: number; total: number } | null>(null);
 
   const [contract, setContract] = useState<LegalContract | null>(null);
   const [clauses, setClauses] = useState<LegalClause[]>([]);
@@ -262,7 +264,7 @@ export default function ContractAnalysisPage() {
         setVerificationObjectId(null);
         setCurrentVersionId(null);
         setVerificationObjectState(null);
-        return;
+        return { hasContract: false as const };
       }
 
       setContract(contractData);
@@ -313,11 +315,13 @@ export default function ContractAnalysisPage() {
           setVerificationObjectState(vo?.state ? String(vo.state) : null);
         }
       }
+      return { hasContract: true as const };
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.loadFailed'));
     } finally {
       setLoading(false);
     }
+    return { hasContract: false as const };
   }
 
   async function loadPlaybooks() {
@@ -504,6 +508,7 @@ export default function ContractAnalysisPage() {
     setIsAnalyzing(true);
     setError(null);
     setProgressStep(0);
+    setProgressDetail({ stage: 'starting', completed: 0, total: 0 });
 
     try {
       const {
@@ -619,6 +624,12 @@ export default function ContractAnalysisPage() {
             const totalBatches = output?.total_batches || 6;
             const completedBatches = output?.completed_batches || 0;
             const stage = output?.stage || 'queued';
+
+            setProgressDetail({
+              stage: String(stage),
+              completed: Number.isFinite(completedBatches) ? Number(completedBatches) : 0,
+              total: Number.isFinite(totalBatches) ? Number(totalBatches) : 0,
+            });
             
             // Map progress to steps (0-5)
             // Stage progression: queued -> running batches -> reducing -> done
@@ -636,7 +647,16 @@ export default function ContractAnalysisPage() {
             if (action.status === 'completed') {
               clearInterval(pollInterval);
               console.log('[Contract] Analysis complete');
-              await load();
+              // Results can take a moment to become queryable (eventual consistency).
+              // Retry a few times so the UI updates without requiring tab switching.
+              const maxRefreshAttempts = 10;
+              let attempt = 0;
+              while (attempt < maxRefreshAttempts) {
+                attempt++;
+                const r = await load();
+                if (r?.hasContract) break;
+                await new Promise((r) => setTimeout(r, 800));
+              }
               setIsAnalyzing(false);
               return;
             }
@@ -678,6 +698,17 @@ export default function ContractAnalysisPage() {
       setIsAnalyzing(false);
     }
   }
+
+  // When analysis starts, auto-scroll the progress card into view so users
+  // don't think nothing is happening (especially on shorter viewports).
+  useEffect(() => {
+    if (!isAnalyzing) return;
+    // Wait a tick for the progress UI to render.
+    const id = window.setTimeout(() => {
+      progressRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [isAnalyzing]);
 
   // If navigated with autorun params, hydrate local state and kick off analysis once.
   useEffect(() => {
@@ -754,11 +785,19 @@ export default function ContractAnalysisPage() {
     setReportSavedMessage(null);
     setIsGeneratingReport(true);
     try {
+      // Align report language with selected playbook settings (or UI locale).
+      const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
+      const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
+      const reportLanguage =
+        (specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null) ||
+        (locale === 'ar' ? 'ar' : 'en');
+
       // 1) Generate HTML via the existing exporter (same as iOS).
       const { data: reportData, error: reportErr } = await supabase.functions.invoke('export-contract-report', {
         body: {
           document_id: documentId,
           template: 'decision_pack',
+          language: reportLanguage,
           // The exporter accepts an optional title, but this page doesn't load full document metadata.
         },
       });
@@ -2075,20 +2114,29 @@ export default function ContractAnalysisPage() {
 
         {/* Analyzing state (visible even before contract exists) */}
         {isAnalyzing && (
-          <div className="mt-4 max-w-xl mx-auto">
+          <div ref={progressRef} className="mt-4 max-w-xl mx-auto">
             <ScholarProgressCard
               title={t('progress.title')}
               titleIcon={<Scale className="w-5 h-5 text-purple-500" />}
               currentStep={progressStep}
               variant="grid"
-              statusMessage={[
-                'Queuing analysis…',
-                'Analyzing pages (batch 1)…',
-                'Analyzing pages (batch 2)…',
-                'Extracting clauses & obligations…',
-                'Assessing risks & deadlines…',
-                'Finalizing analysis…',
-              ][progressStep]}
+              statusMessage={(() => {
+                const stage = progressDetail?.stage || '';
+                const total = progressDetail?.total || 0;
+                const completed = progressDetail?.completed || 0;
+                if (stage === 'queued' || stage === 'starting') return 'Queuing analysis…';
+                if (stage === 'reducing' || stage === 'finalizing') return 'Finalizing analysis…';
+                if (total > 0) return `Analyzing pages (${Math.min(completed, total)}/${total})…`;
+                // Fallback to step-based messages
+                return [
+                  'Queuing analysis…',
+                  'Analyzing pages…',
+                  'Extracting clauses & obligations…',
+                  'Assessing risks & deadlines…',
+                  'Assessing risks & deadlines…',
+                  'Finalizing analysis…',
+                ][progressStep];
+              })()}
               steps={[
                 { label: 'Identify parties & key dates', description: 'Extracting key contract metadata' },
                 { label: 'Extract clauses', description: 'Finding and categorizing clauses' },
