@@ -772,13 +772,13 @@
             "body": "Every key field becomes a Verification Object: claim, citations, visual grounding, confidence, version history."
           },
           {
-            "title": "Run Playbooks + Ship",
+            "title": "Run Templates + Ship",
             "body": "Checks, discrepancies, exception queues, approvals — then export a forwardable Decision Pack."
           }
         ],
         "ctas": [
           { "type": "link", "label": "See a sample Decision Pack", "href": "#decision-pack" },
-          { "type": "secondary", "label": "How Playbooks work", "href": "#playbooks" }
+          { "type": "secondary", "label": "How Templates work", "href": "#playbooks" }
         ]
       },
       "stats": {
@@ -883,14 +883,14 @@
           },
           {
             "id": "playbooks",
-            "title": "Playbooks",
+            "title": "Templates",
             "subtitle": "Custom workflows without free-form prompting.",
             "bullets": [
               "Variables (schema) + checks + outputs",
               "Versioned specs + run manifests",
               "Generator + Verifier loop with escalation"
             ],
-            "cta": { "label": "Explore Playbooks", "href": "#playbooks" }
+            "cta": { "label": "Explore Templates", "href": "#playbooks" }
           }
         ]
       },
@@ -1008,9 +1008,9 @@
         "items": [
           {
             "id": "schema-first",
-            "tag": "Playbooks",
+            "tag": "Templates",
             "title": "Schema-first workflows: variables, checks, outputs",
-            "excerpt": "How to design playbooks that stay predictable under uncertainty — and scale across teams.",
+            "excerpt": "How to design templates that stay predictable under uncertainty — and scale across teams.",
             "date": "2026-01-20",
             "readTime": "3 min",
             "href": "#insights"
@@ -1089,7 +1089,7 @@
             "links": [
               { "label": "Overview", "href": "#product" },
               { "label": "Verification Objects", "href": "#product" },
-              { "label": "Playbooks", "href": "#playbooks" },
+              { "label": "Templates", "href": "#playbooks" },
               { "label": "Decision Packs", "href": "#decision-pack" }
             ]
           },
