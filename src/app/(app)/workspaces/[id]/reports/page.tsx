@@ -6,8 +6,10 @@ import { useTranslations } from 'next-intl';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { FileText, Eye, Trash2, ExternalLink } from 'lucide-react';
+import { mapHttpError } from '@/lib/errors';
 
 type GeneratedReport = {
   id: string;
@@ -29,6 +31,7 @@ export default function WorkspaceReportsPage() {
   const workspaceId = params.id as string;
   const supabase = useMemo(() => createClient(), []);
   const t = useTranslations('reportsPage');
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<GeneratedReport[]>([]);
@@ -42,17 +45,22 @@ export default function WorkspaceReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('list-reports', {
+      const { data, error, response } = await supabase.functions.invoke('list-reports', {
         body: { workspace_id: workspaceId },
       });
-      if (error) throw error;
+      if (error) {
+        const json = response ? await response.json().catch(() => null) : null;
+        const uiErr = mapHttpError(response?.status ?? 500, json, 'list-reports');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
       setReports((data?.reports || []) as GeneratedReport[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [supabase, workspaceId]);
+  }, [supabase, workspaceId, toast]);
 
   useEffect(() => {
     load();
@@ -110,16 +118,21 @@ export default function WorkspaceReportsPage() {
     async (report: GeneratedReport) => {
       if (!confirm(t('confirmDelete', { title: report.title }))) return;
       try {
-        const { error } = await supabase.functions.invoke('delete-report', {
+        const { error, response } = await supabase.functions.invoke('delete-report', {
           body: { report_id: report.id },
         });
-        if (error) throw error;
+        if (error) {
+          const json = response ? await response.json().catch(() => null) : null;
+          const uiErr = mapHttpError(response?.status ?? 500, json, 'delete-report');
+          toast.show(uiErr);
+          throw new Error(uiErr.message);
+        }
         setReports((prev) => prev.filter((r) => r.id !== report.id));
       } catch (e) {
         setError(e instanceof Error ? e.message : t('errors.deleteFailed'));
       }
     },
-    [supabase]
+    [supabase, toast]
   );
 
   return (

@@ -25,6 +25,8 @@ import {
   type OneDriveFolder,
 } from '@/lib/onedrive';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/Toast';
+import { mapHttpError } from '@/lib/errors';
 
 interface OneDrivePickerProps {
   workspaceId: string;
@@ -40,6 +42,7 @@ export function OneDrivePicker({
   onImported,
 }: OneDrivePickerProps) {
   const supabase = createClient();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [authenticating, setAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +136,7 @@ export function OneDrivePicker({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error: importError } = await supabase.functions.invoke('onedrive-import', {
+      const { data, error: importError, response } = await supabase.functions.invoke('onedrive-import', {
         body: {
           item_id: selectedFile.id,
           file_name: selectedFile.name,
@@ -145,7 +148,13 @@ export function OneDrivePicker({
         },
       });
 
-      if (importError) throw importError;
+      if (importError) {
+        const json = response ? await response.json().catch(() => null) : null;
+        const status = response?.status ?? (importError as any)?.status ?? 500;
+        const uiErr = mapHttpError(status, json, 'onedrive-import');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
       if (!data?.success) throw new Error(data?.error || 'Import failed');
 
       onImported(data.document_id);

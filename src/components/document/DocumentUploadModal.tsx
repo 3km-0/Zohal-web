@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { X, Upload, FileText, AlertCircle, Cloud } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { Button, Card, Spinner } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatFileSize } from '@/lib/utils';
 import { GoogleDrivePicker } from './GoogleDrivePicker';
@@ -13,6 +14,7 @@ import { ZohalLibraryPicker } from './ZohalLibraryPicker';
 import { PrivacySettingsPanel } from './PrivacySettingsPanel';
 import { isGoogleDriveConfigured } from '@/lib/google-drive';
 import { isOneDriveConfigured } from '@/lib/onedrive';
+import { mapHttpError } from '@/lib/errors';
 import {
   SensitiveDataSanitizer,
   extractTextFromPdf,
@@ -81,6 +83,7 @@ export function DocumentUploadModal({
   const supabase = createClient();
   const t = useTranslations('documentUpload');
   const tCommon = useTranslations('common');
+  const toast = useToast();
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -214,7 +217,7 @@ export function DocumentUploadModal({
       text: p.sanitizedText,
     }));
 
-    const { error: chunkError } = await supabase.functions.invoke('chunk-document', {
+    const { error: chunkError, response: chunkResponse } = await supabase.functions.invoke('chunk-document', {
       body: {
         document_id: documentId,
         workspace_id: workspaceId,
@@ -224,7 +227,9 @@ export function DocumentUploadModal({
     });
 
     if (chunkError) {
-      console.error('[Ephemeral] Chunk creation error:', chunkError);
+      const json = chunkResponse ? await chunkResponse.json().catch(() => null) : null;
+      const uiErr = mapHttpError(chunkResponse?.status ?? 500, json, 'chunk-document');
+      toast.show(uiErr);
     }
 
     // 5. Create embeddings
@@ -263,7 +268,7 @@ export function DocumentUploadModal({
 
     const documentId = crypto.randomUUID();
 
-    const { data: uploadUrlData, error: urlError } = await supabase.functions.invoke(
+    const { data: uploadUrlData, error: urlError, response: urlResponse } = await supabase.functions.invoke(
       'document-upload-url',
       {
         body: {
@@ -274,7 +279,12 @@ export function DocumentUploadModal({
       }
     );
 
-    if (urlError) throw urlError;
+    if (urlError) {
+      const json = urlResponse ? await urlResponse.json().catch(() => null) : null;
+      const uiErr = mapHttpError(urlResponse?.status ?? 500, json, 'document-upload-url');
+      toast.show(uiErr);
+      throw new Error(uiErr.message);
+    }
     if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
 
     const { upload_url: uploadUrl, storage_path: storagePath } = uploadUrlData;
@@ -306,12 +316,18 @@ export function DocumentUploadModal({
     if (insertError) throw insertError;
 
     try {
-      const { data: textData } = await supabase.functions.invoke('extract-pdf-text-layer', {
+      const { data: textData, error: textErr, response: textResponse } = await supabase.functions.invoke('extract-pdf-text-layer', {
         body: { document_id: documentId },
       });
+      if (textErr) {
+        const json = textResponse ? await textResponse.json().catch(() => null) : null;
+        const uiErr = mapHttpError(textResponse?.status ?? 500, json, 'extract-pdf-text-layer');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
 
       if (textData?.pages && textData.pages.length > 0) {
-        await supabase.functions.invoke('chunk-document', {
+        const { error: chunkErr, response: chunkResp } = await supabase.functions.invoke('chunk-document', {
           body: {
             document_id: documentId,
             workspace_id: workspaceId,
@@ -319,6 +335,12 @@ export function DocumentUploadModal({
             pages: textData.pages,
           },
         });
+        if (chunkErr) {
+          const json = chunkResp ? await chunkResp.json().catch(() => null) : null;
+          const uiErr = mapHttpError(chunkResp?.status ?? 500, json, 'chunk-document');
+          toast.show(uiErr);
+          throw new Error(uiErr.message);
+        }
 
         supabase.functions
           .invoke('embed-and-store', {

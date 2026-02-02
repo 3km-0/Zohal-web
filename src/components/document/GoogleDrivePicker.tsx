@@ -14,6 +14,7 @@ import {
   Search,
 } from 'lucide-react';
 import { Button, Card, Spinner } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
 import {
   authenticateWithGoogle,
@@ -28,6 +29,7 @@ import {
   type GoogleDriveFolder,
 } from '@/lib/google-drive';
 import { createClient } from '@/lib/supabase/client';
+import { mapHttpError } from '@/lib/errors';
 
 interface GoogleDrivePickerProps {
   workspaceId: string;
@@ -43,6 +45,7 @@ export function GoogleDrivePicker({
   onImported,
 }: GoogleDrivePickerProps) {
   const supabase = createClient();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [authenticating, setAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +155,7 @@ export function GoogleDrivePicker({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error: importError } = await supabase.functions.invoke('gdrive-import', {
+      const { data, error: importError, response } = await supabase.functions.invoke('gdrive-import', {
         body: {
           file_id: selectedFile.id,
           file_name: selectedFile.name,
@@ -164,7 +167,13 @@ export function GoogleDrivePicker({
         },
       });
 
-      if (importError) throw importError;
+      if (importError) {
+        const json = response ? await response.json().catch(() => null) : null;
+        const status = response?.status ?? (importError as any)?.status ?? 500;
+        const uiErr = mapHttpError(status, json, 'gdrive-import');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
       if (!data?.success) throw new Error(data?.error || 'Import failed');
 
       onImported(data.document_id);

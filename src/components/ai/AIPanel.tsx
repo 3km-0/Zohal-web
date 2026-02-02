@@ -14,8 +14,10 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Button, Spinner, Badge } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { mapHttpError } from '@/lib/errors';
 import type { DocumentType } from '@/types/database';
 
 interface AIPanelProps {
@@ -55,6 +57,7 @@ export function AIPanel({
 }: AIPanelProps) {
   const supabase = createClient();
   const router = useRouter();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -169,12 +172,15 @@ export function AIPanel({
           }
         );
 
+        const json = await response.json().catch(() => null);
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to get explanation');
+          const uiErr = mapHttpError(response.status, json, 'explain');
+          toast.show(uiErr);
+          setError(uiErr.message);
+          return;
         }
 
-        const data = await response.json();
+        const data = (json || {}) as any;
         setResult(data.explanation || data.response_html || data.response_text);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -182,7 +188,7 @@ export function AIPanel({
         setLoading(false);
       }
     },
-    [supabase, documentId, currentPage]
+    [supabase, documentId, currentPage, toast]
   );
 
   const handleChat = useCallback(
@@ -231,12 +237,15 @@ export function AIPanel({
           }
         );
 
+        const json = await response.json().catch(() => null);
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to get response');
+          const uiErr = mapHttpError(response.status, json, 'ask-workspace');
+          toast.show(uiErr);
+          setError(uiErr.message);
+          return;
         }
 
-        const data = await response.json();
+        const data = (json || {}) as any;
 
         // Update conversation ID if new
         if (data.conversation_id && !currentConversationId) {
@@ -255,7 +264,7 @@ export function AIPanel({
         setLoading(false);
       }
     },
-    [supabase, workspaceId, documentId, currentConversationId]
+    [supabase, workspaceId, documentId, currentConversationId, toast]
   );
 
   const pinMessage = useCallback(

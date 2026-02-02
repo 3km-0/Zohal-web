@@ -6,13 +6,16 @@ import { Search as SearchIcon, FileText, Sparkles, X, ArrowRight } from 'lucide-
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Input, Button, Card, Spinner, Badge, EmptyState } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, debounce, truncate } from '@/lib/utils';
+import { mapHttpError } from '@/lib/errors';
 import type { SearchResult, AskWorkspaceResult, Workspace } from '@/types/database';
 
 export default function SearchPage() {
   const t = useTranslations('search');
   const supabase = createClient();
+  const toast = useToast();
 
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -86,10 +89,14 @@ export default function SearchPage() {
             }
           );
 
-          if (!response.ok) throw new Error('Search failed');
+          const json = await response.json().catch(() => null);
+          if (!response.ok) {
+            const uiErr = mapHttpError(response.status, json, 'ask-workspace');
+            toast.show(uiErr);
+            throw new Error(uiErr.message);
+          }
 
-          const data = await response.json();
-          setAnswer(data);
+          setAnswer(json as AskWorkspaceResult);
           setResults([]); // Clear semantic results when showing answer
         } else {
           // Use semantic search for keyword searches
@@ -110,10 +117,15 @@ export default function SearchPage() {
             }
           );
 
-          if (!response.ok) throw new Error('Search failed');
+          const json = await response.json().catch(() => null);
+          if (!response.ok) {
+            const uiErr = mapHttpError(response.status, json, 'semantic-search');
+            toast.show(uiErr);
+            throw new Error(uiErr.message);
+          }
 
-          const data = await response.json();
-          setResults(data.results || []);
+          const data = (json || {}) as any;
+          setResults((data.results || []) as SearchResult[]);
           setAnswer(null);
         }
       } catch (err) {
@@ -122,7 +134,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     },
-    [supabase, selectedWorkspace, isQuestion]
+    [supabase, selectedWorkspace, isQuestion, toast]
   );
 
   // Debounced search

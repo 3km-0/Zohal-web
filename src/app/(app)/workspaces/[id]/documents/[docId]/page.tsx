@@ -12,7 +12,7 @@ import { AIPanel } from '@/components/ai/AIPanel';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, Workspace } from '@/types/database';
 import { cn } from '@/lib/utils';
-import { notFound } from '@/lib/errors';
+import { mapHttpError, notFound } from '@/lib/errors';
 
 export default function DocumentViewerPage() {
   const params = useParams();
@@ -164,9 +164,15 @@ export default function DocumentViewerPage() {
   const retryIndexing = useCallback(async () => {
     setRetrying(true);
     try {
-      await supabase.functions.invoke('enqueue-document-ingestion', {
+      const { error, response } = await supabase.functions.invoke('enqueue-document-ingestion', {
         body: { document_id: documentId },
       });
+      if (error) {
+        const json = response ? await response.json().catch(() => null) : null;
+        const uiErr = mapHttpError(response?.status ?? 500, json, 'enqueue-document-ingestion');
+        show(uiErr);
+        return;
+      }
       showSuccess('Queued for indexing', 'We’ll retry processing in the background.');
       // Re-fetch doc to update status quickly
       const { data: docData } = await supabase.from('documents').select('*').eq('id', documentId).single();
@@ -176,7 +182,7 @@ export default function DocumentViewerPage() {
     } finally {
       setRetrying(false);
     }
-  }, [supabase, documentId, showSuccess, showError]);
+  }, [supabase, documentId, show, showSuccess, showError]);
 
   if (loading) {
     return (
