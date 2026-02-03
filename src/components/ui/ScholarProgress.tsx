@@ -32,6 +32,11 @@ export interface ScholarProgressProps {
   variant?: 'bar' | 'grid';
   /** Status message to show below progress */
   statusMessage?: string;
+  /**
+   * Optional explicit progress percent (0-100).
+   * When provided, it overrides the step-based calculation.
+   */
+  progressPercent?: number;
 }
 
 export function ScholarProgress({
@@ -40,9 +45,14 @@ export function ScholarProgress({
   className,
   variant = 'bar',
   statusMessage,
+  progressPercent,
 }: ScholarProgressProps) {
   const totalSteps = steps.length;
-  const progressPercent = Math.min(100, ((currentStep + 1) / totalSteps) * 100);
+  const computedPercent =
+    totalSteps > 0 ? Math.min(100, ((currentStep + 1) / totalSteps) * 100) : 0;
+  const resolvedPercent = Number.isFinite(progressPercent as number)
+    ? Math.max(0, Math.min(100, Number(progressPercent)))
+    : computedPercent;
 
   if (variant === 'bar') {
     return (
@@ -51,7 +61,7 @@ export function ScholarProgress({
         <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
           <div
             className="h-full bg-accent transition-all duration-500 ease-out"
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${resolvedPercent}%` }}
           />
         </div>
 
@@ -70,7 +80,7 @@ export function ScholarProgress({
       <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
         <div
           className="h-full bg-accent transition-all duration-500 ease-out"
-          style={{ width: `${progressPercent}%` }}
+          style={{ width: `${resolvedPercent}%` }}
         />
       </div>
 

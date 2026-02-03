@@ -66,7 +66,6 @@ export default function ContractAnalysisPage() {
   const [reportSavedMessage, setReportSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
-  const [progressStep, setProgressStep] = useState(0);
   const progressRef = useRef<HTMLDivElement | null>(null);
   const [progressDetail, setProgressDetail] = useState<{ stage: string; completed: number; total: number } | null>(null);
 
@@ -507,7 +506,6 @@ export default function ContractAnalysisPage() {
   async function analyzeOnce() {
     setIsAnalyzing(true);
     setError(null);
-    setProgressStep(0);
     setProgressDetail({ stage: 'starting', completed: 0, total: 0 });
 
     try {
@@ -521,12 +519,11 @@ export default function ContractAnalysisPage() {
       const userId = userData.user.id;
 
       // Resolve playbook options (language/strictness/verifier) deterministically:
-      // playbook spec options > UI locale > defaults.
+      // UI locale (Arabic toggle) should override playbook defaults.
       const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
       const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
-      const languagePref =
-        (specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null) ||
-        (locale === 'ar' ? 'ar' : 'en');
+      const specLang = specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null;
+      const languagePref = (locale === 'ar' ? 'ar' : null) || specLang || 'en';
       const strictnessPref = specOptions?.strictness === 'strict' ? 'strict' : undefined;
       const enableVerifierPref = specOptions?.enable_verifier === true ? true : undefined;
       const playbook_options =
@@ -594,10 +591,9 @@ export default function ContractAnalysisPage() {
       // 202 = Queued for batch processing. Poll for completion.
       if (res.status === 202 && json?.accepted && json?.action_id) {
         const actionId = json.action_id;
-        console.log('[Contract] Analysis queued, polling action:', actionId);
         
         // Poll the action for progress
-        const maxPolls = 120; // Max ~4 minutes (2s intervals)
+        const maxPolls = 900; // Max ~30 minutes (2s intervals) - queue-based runs can be longer
         let pollCount = 0;
         
         const pollInterval = setInterval(async () => {
@@ -616,13 +612,12 @@ export default function ContractAnalysisPage() {
             }
             
             if (!action) {
-              console.warn('[Contract] Action not found');
               return;
             }
             
             const output = action.output_json as any;
             const totalBatches = output?.total_batches || 6;
-            const completedBatches = output?.completed_batches || 0;
+            const completedBatches = output?.completed_batches ?? output?.batch_index ?? 0;
             const stage = output?.stage || 'queued';
 
             setProgressDetail({
@@ -630,23 +625,14 @@ export default function ContractAnalysisPage() {
               completed: Number.isFinite(completedBatches) ? Number(completedBatches) : 0,
               total: Number.isFinite(totalBatches) ? Number(totalBatches) : 0,
             });
-            
-            // Map progress to steps (0-5)
-            // Stage progression: queued -> running batches -> reducing -> done
-            if (stage === 'queued') {
-              setProgressStep(0); // Preparing
-            } else if (stage === 'reducing' || stage === 'finalizing') {
-              setProgressStep(5); // Finalizing
-            } else {
-              // Map completed batches to steps 1-4
-              const batchProgress = Math.min(4, Math.floor((completedBatches / totalBatches) * 4) + 1);
-              setProgressStep(batchProgress);
-            }
-            
+
+            const actionStatus = String((action as any).status || '').toLowerCase();
+            const isSuccess = actionStatus === 'succeeded' || actionStatus === 'completed' || actionStatus === 'success';
+            const isFailed = actionStatus === 'failed' || actionStatus === 'error';
+
             // Check for completion
-            if (action.status === 'completed') {
+            if (isSuccess) {
               clearInterval(pollInterval);
-              console.log('[Contract] Analysis complete');
               // Results can take a moment to become queryable (eventual consistency).
               // Retry a few times so the UI updates without requiring tab switching.
               const maxRefreshAttempts = 10;
@@ -661,7 +647,7 @@ export default function ContractAnalysisPage() {
               return;
             }
             
-            if (action.status === 'failed') {
+            if (isFailed) {
               clearInterval(pollInterval);
               const errorMsg = output?.error || t('errors.contractAnalysisFailed');
               setError(errorMsg);
@@ -672,7 +658,7 @@ export default function ContractAnalysisPage() {
             // Timeout check
             if (pollCount >= maxPolls) {
               clearInterval(pollInterval);
-              setError('Analysis is taking longer than expected. Please check back later.');
+              setError(t('errors.analysisTakingLonger'));
               setIsAnalyzing(false);
             }
           } catch (pollErr) {
@@ -785,12 +771,11 @@ export default function ContractAnalysisPage() {
     setReportSavedMessage(null);
     setIsGeneratingReport(true);
     try {
-      // Align report language with selected playbook settings (or UI locale).
+      // Align report language with UI locale (Arabic toggle) and fall back to playbook defaults.
       const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
       const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
-      const reportLanguage =
-        (specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null) ||
-        (locale === 'ar' ? 'ar' : 'en');
+      const specLang = specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null;
+      const reportLanguage = (locale === 'ar' ? 'ar' : null) || specLang || 'en';
 
       // 1) Generate HTML via the existing exporter (same as iOS).
       const { data: reportData, error: reportErr } = await supabase.functions.invoke('export-contract-report', {
@@ -2118,32 +2103,64 @@ export default function ContractAnalysisPage() {
             <ScholarProgressCard
               title={t('progress.title')}
               titleIcon={<Scale className="w-5 h-5 text-purple-500" />}
-              currentStep={progressStep}
-              variant="grid"
+              currentStep={0}
+              steps={[{ label: '…' }]}
+              variant="bar"
+              progressPercent={(() => {
+                const stage = String(progressDetail?.stage || 'starting').toLowerCase();
+                const total = Number(progressDetail?.total || 0);
+                const completed = Number(progressDetail?.completed || 0);
+                const frac = total > 0 ? Math.max(0, Math.min(1, completed / total)) : 0;
+
+                // Map stage + batch progress into a truthful 0-100 progress:
+                // - 0..90%: chunk/batch analysis (MAP)
+                // - 90..100%: reduce/finalize (+ optional verifier pass)
+                if (stage.includes('queue') || stage === 'starting' || stage === 'queued') return 3;
+                if (stage.includes('reduce')) return 95;
+                if (stage.includes('final')) return 99;
+                if (stage.includes('verify')) return 92;
+                // Default: batch progress (0..90)
+                return Math.round(frac * 90);
+              })()}
               statusMessage={(() => {
                 const stage = progressDetail?.stage || '';
                 const total = progressDetail?.total || 0;
                 const completed = progressDetail?.completed || 0;
-                if (stage === 'queued' || stage === 'starting') return 'Queuing analysis…';
-                if (stage === 'reducing' || stage === 'finalizing') return 'Finalizing analysis…';
-                if (total > 0) return `Analyzing pages (${Math.min(completed, total)}/${total})…`;
-                // Fallback to step-based messages
-                return [
-                  'Queuing analysis…',
-                  'Analyzing pages…',
-                  'Extracting clauses & obligations…',
-                  'Assessing risks & deadlines…',
-                  'Assessing risks & deadlines…',
-                  'Finalizing analysis…',
-                ][progressStep];
+                const percent = (() => {
+                  const st = String(stage || 'starting').toLowerCase();
+                  const t0 = Number(total || 0);
+                  const c0 = Number(completed || 0);
+                  const frac = t0 > 0 ? Math.max(0, Math.min(1, c0 / t0)) : 0;
+                  if (st.includes('queue') || st === 'starting' || st === 'queued') return 3;
+                  if (st.includes('reduce')) return 95;
+                  if (st.includes('final')) return 99;
+                  if (st.includes('verify')) return 92;
+                  return Math.round(frac * 90);
+                })();
+
+                const st = String(stage).toLowerCase();
+                if (st.includes('queue') || st === 'starting' || st === 'queued') {
+                  return t('progress.status.queued', { percent });
+                }
+                if (st.includes('verify')) {
+                  return t('progress.status.verifying', { percent });
+                }
+                if (st.includes('reduce')) {
+                  return t('progress.status.reducing', { percent });
+                }
+                if (st.includes('final')) {
+                  return t('progress.status.finalizing', { percent });
+                }
+                if (total > 0) {
+                  return t('progress.status.analyzingChunks', {
+                    completed: Math.min(completed, total),
+                    total,
+                    percent,
+                  });
+                }
+                return t('progress.status.analyzing', { percent });
               })()}
-              steps={[
-                { label: 'Identify parties & key dates', description: 'Extracting key contract metadata' },
-                { label: 'Extract clauses', description: 'Finding and categorizing clauses' },
-                { label: 'Extract obligations & deadlines', description: 'Identifying action items' },
-                { label: 'Assess risks', description: 'Analyzing potential risk factors' },
-              ]}
-              footer="Analysis typically takes 30–60 seconds depending on document size."
+              footer={t('progress.footer')}
             />
           </div>
         )}

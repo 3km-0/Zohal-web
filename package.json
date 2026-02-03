@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "gen:types": "supabase gen types typescript --project-id vqsyxrgvyxcbejhhgomf > src/types/supabase.ts"
   },
   "dependencies": {

@@ -673,7 +673,16 @@
       "sanitizedSubtitle": "Some fields are masked before cloud processing. Do not guess redacted content."
     },
     "progress": {
-      "title": "Contract Analysis in progress"
+      "title": "Contract analysis in progress",
+      "footer": "Analysis time depends on document size.",
+      "status": {
+        "queued": "Queuing analysis… {percent}%",
+        "analyzing": "Analyzing… {percent}%",
+        "analyzingChunks": "Analyzing chunks ({completed}/{total})… {percent}%",
+        "reducing": "Combining results… {percent}%",
+        "verifying": "Verifying evidence… {percent}%",
+        "finalizing": "Finalizing… {percent}%"
+      }
     },
     "prompts": {
       "referencePackName": "Reference pack name (e.g., Company Policy Pack)",
@@ -687,6 +696,7 @@
       "generateKnowledgePackFailed": "Failed to generate knowledge pack",
       "complianceCheckFailed": "Compliance check failed",
       "contractAnalysisFailed": "Contract analysis failed",
+      "analysisTakingLonger": "Analysis is taking longer than expected. Please check back later.",
       "exportCalendarFailed": "Failed to export calendar",
       "generateReportFailed": "Failed to generate report",
       "createTaskFailed": "Failed to create task"

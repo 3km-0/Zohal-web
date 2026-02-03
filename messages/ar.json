@@ -672,7 +672,16 @@
       "sanitizedSubtitle": "يتم إخفاء بعض الحقول قبل المعالجة السحابية. لا تقم بتخمين المحتوى المحجوب."
     },
     "progress": {
-      "title": "تحليل العقد قيد التنفيذ"
+      "title": "تحليل العقد قيد التنفيذ",
+      "footer": "مدة التحليل تختلف حسب حجم المستند.",
+      "status": {
+        "queued": "جارٍ تجهيز التحليل… {percent}٪",
+        "analyzing": "جارٍ التحليل… {percent}٪",
+        "analyzingChunks": "جارٍ تحليل المقاطع ({completed}/{total})… {percent}٪",
+        "reducing": "جارٍ دمج النتائج… {percent}٪",
+        "verifying": "جارٍ التحقق من الأدلة… {percent}٪",
+        "finalizing": "جارٍ إنهاء التحليل… {percent}٪"
+      }
     },
     "prompts": {
       "referencePackName": "اسم الحزمة المرجعية (مثال: حزمة سياسات الشركة)",
@@ -686,6 +695,7 @@
       "generateKnowledgePackFailed": "فشل إنشاء حزمة المعرفة",
       "complianceCheckFailed": "فشل فحص الامتثال",
       "contractAnalysisFailed": "فشل تحليل العقد",
+      "analysisTakingLonger": "يستغرق التحليل وقتاً أطول من المتوقع. يرجى التحقق لاحقاً.",
       "exportCalendarFailed": "فشل تصدير التقويم",
       "generateReportFailed": "فشل إنشاء التقرير",
       "createTaskFailed": "فشل إنشاء المهمة"
