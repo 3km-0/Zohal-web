@@ -459,6 +459,8 @@
     "strictMode": "Strict mode",
     "enableVerifier": "Enable verifier",
     "arabicOutput": "Arabic output",
+    "settingsMovedTitle": "Run settings moved",
+    "settingsMovedBody": "Language, strictness, and verifier behavior are now treated as run settings. Configure them when you run analysis (no need to duplicate templates).",
     "outputsModules": "Outputs (modules)",
     "modules": {
       "variables": "Variables",
@@ -626,6 +628,17 @@
     }
   },
   "contractAnalysis": {
+    "runSettings": {
+      "title": "Run settings",
+      "caption": "These settings apply to this run only and don't require duplicating templates.",
+      "language": "Output language",
+      "strictness": "Strictness",
+      "auto": "Auto",
+      "english": "English",
+      "arabic": "Arabic",
+      "default": "Default",
+      "strict": "Strict"
+    },
     "playbook": {
       "optional": "Template (optional)",
       "manage": "Manage",

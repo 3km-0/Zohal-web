@@ -60,6 +60,37 @@ export default function ContractAnalysisPage() {
   const locale = useLocale();
   const toast = useToast();
 
+  // Run settings (per-run execution; does NOT require duplicating templates)
+  const [runLanguage, setRunLanguage] = useState<'auto' | 'en' | 'ar'>('auto');
+  const [runStrictness, setRunStrictness] = useState<'auto' | 'default' | 'strict'>('auto');
+
+  // Persist run settings locally (best-effort; per-browser preference).
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('zohal.contractAnalysis.runSettings');
+      if (!raw) return;
+      const json = JSON.parse(raw);
+      const lang = json?.language;
+      const strict = json?.strictness;
+      if (lang === 'auto' || lang === 'en' || lang === 'ar') setRunLanguage(lang);
+      if (strict === 'auto' || strict === 'default' || strict === 'strict') setRunStrictness(strict);
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        'zohal.contractAnalysis.runSettings',
+        JSON.stringify({ language: runLanguage, strictness: runStrictness })
+      );
+    } catch {
+      // ignore
+    }
+  }, [runLanguage, runStrictness]);
+
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -518,19 +549,22 @@ export default function ContractAnalysisPage() {
       if (userErr) throw userErr;
       const userId = userData.user.id;
 
-      // Resolve playbook options (language/strictness/verifier) deterministically:
-      // UI locale (Arabic toggle) should override playbook defaults.
+      // Resolve playbook options (language/strictness) deterministically:
+      // Run settings override playbook defaults; playbook defaults override UI locale.
       const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
       const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
       const specLang = specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null;
-      const languagePref = (locale === 'ar' ? 'ar' : null) || specLang || 'en';
-      const strictnessPref = specOptions?.strictness === 'strict' ? 'strict' : undefined;
-      const enableVerifierPref = specOptions?.enable_verifier === true ? true : undefined;
+      const languagePref =
+        (runLanguage === 'ar' ? 'ar' : runLanguage === 'en' ? 'en' : null) ||
+        specLang ||
+        (locale === 'ar' ? 'ar' : 'en');
+      const strictnessPref =
+        (runStrictness === 'strict' ? 'strict' : runStrictness === 'default' ? 'default' : null) ||
+        (specOptions?.strictness === 'strict' ? 'strict' : null);
       const playbook_options =
-        selectedPlaybookId || languagePref === 'ar' || strictnessPref || enableVerifierPref
+        selectedPlaybookId || languagePref === 'ar' || strictnessPref
           ? {
-              strictness: strictnessPref,
-              enable_verifier: enableVerifierPref,
+              strictness: strictnessPref || undefined,
               language: languagePref,
             }
           : undefined;
@@ -771,11 +805,14 @@ export default function ContractAnalysisPage() {
     setReportSavedMessage(null);
     setIsGeneratingReport(true);
     try {
-      // Align report language with UI locale (Arabic toggle) and fall back to playbook defaults.
+      // Align report language with run settings; fall back to playbook defaults; then UI locale.
       const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
       const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
       const specLang = specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null;
-      const reportLanguage = (locale === 'ar' ? 'ar' : null) || specLang || 'en';
+      const reportLanguage =
+        (runLanguage === 'ar' ? 'ar' : runLanguage === 'en' ? 'en' : null) ||
+        specLang ||
+        (locale === 'ar' ? 'ar' : 'en');
 
       // 1) Generate HTML via the existing exporter (same as iOS).
       const { data: reportData, error: reportErr } = await supabase.functions.invoke('export-contract-report', {
@@ -1263,6 +1300,42 @@ export default function ContractAnalysisPage() {
                   >
                     {isAnalyzing ? 'Analyzing…' : 'Run Analysis'}
                   </Button>
+                </div>
+
+                {/* Run Settings (per-run; does not require duplicating templates) */}
+                <div className="pt-3 border-t border-border space-y-2">
+                  <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">
+                    {t('runSettings.title')}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-text-soft mb-1">{t('runSettings.language')}</div>
+                      <ScholarSelect
+                        value={runLanguage}
+                        onChange={(v) => setRunLanguage(v as any)}
+                        options={[
+                          { value: 'auto', label: t('runSettings.auto') },
+                          { value: 'en', label: t('runSettings.english') },
+                          { value: 'ar', label: t('runSettings.arabic') },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-text-soft mb-1">{t('runSettings.strictness')}</div>
+                      <ScholarSelect
+                        value={runStrictness}
+                        onChange={(v) => setRunStrictness(v as any)}
+                        options={[
+                          { value: 'auto', label: t('runSettings.auto') },
+                          { value: 'default', label: t('runSettings.default') },
+                          { value: 'strict', label: t('runSettings.strict') },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-xs text-text-soft">
+                    {t('runSettings.caption')}
+                  </div>
                 </div>
               </div>
             </ScholarNotebookCard>

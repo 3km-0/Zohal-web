@@ -818,40 +818,9 @@ export default function WorkspacePlaybooksPage() {
                   {/* Settings section */}
                   {activeSection === 'settings' && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <ScholarToggle
-                          icon={<Shield className="w-4 h-4" />}
-                          label={t('strictMode')}
-                          caption="More conservative extraction"
-                          checked={(spec.options?.strictness || 'default') === 'strict'}
-                          disabled={isSystemPreset}
-                          onCheckedChange={(checked) =>
-                            setSpec((p) => ({
-                              ...p,
-                              options: { ...(p.options || {}), strictness: checked ? 'strict' : 'default' },
-                            }))
-                          }
-                        />
-                        <ScholarToggle
-                          icon={<ShieldCheck className="w-4 h-4" />}
-                          label={t('enableVerifier')}
-                          caption="AI confidence verification"
-                          checked={spec.options?.enable_verifier === true}
-                          disabled={isSystemPreset}
-                          onCheckedChange={(checked) =>
-                            setSpec((p) => ({ ...p, options: { ...(p.options || {}), enable_verifier: checked } }))
-                          }
-                        />
-                        <ScholarToggle
-                          icon={<Globe className="w-4 h-4" />}
-                          label={t('arabicOutput')}
-                          caption="Arabic language output"
-                          checked={(spec.options?.language || 'en') === 'ar'}
-                          disabled={isSystemPreset}
-                          onCheckedChange={(checked) =>
-                            setSpec((p) => ({ ...p, options: { ...(p.options || {}), language: checked ? 'ar' : 'en' } }))
-                          }
-                        />
+                      <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft space-y-2">
+                        <div className="font-semibold text-text">{t('settingsMovedTitle')}</div>
+                        <div>{t('settingsMovedBody')}</div>
                       </div>
                     </div>
                   )}
