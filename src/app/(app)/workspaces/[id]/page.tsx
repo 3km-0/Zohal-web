@@ -707,7 +707,7 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
         loadingTask = pdfjs.getDocument(data.download_url as string);
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 0.25 });
+        const viewport = page.getViewport({ scale: 0.4 });
 
         const canvas = window.document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -721,7 +721,7 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
           viewport,
         }).promise;
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         documentThumbnailCache.set(doc.id, dataUrl);
         if (!cancelled) setThumbnail(dataUrl);
         pdf.destroy();
