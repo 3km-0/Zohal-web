@@ -38,8 +38,10 @@ interface FileWithPreview {
 }
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const ALLOWED_TYPES = [
   'application/pdf',
+  DOCX_MIME,
   'image/jpeg',
   'image/png',
   'image/heic',
@@ -49,6 +51,14 @@ const ALLOWED_TYPES = [
 const isImageType = (type: string) => type.startsWith('image/');
 const isSupportedRasterImage = (file: File) =>
   file.type === 'image/jpeg' || file.type === 'image/png';
+const isDocxFile = (file: File) =>
+  file.type === DOCX_MIME || file.name.toLowerCase().endsWith('.docx');
+
+const getFileExtension = (name: string) => {
+  const parts = name.split('.');
+  if (parts.length < 2) return '';
+  return parts[parts.length - 1].toLowerCase();
+};
 
 async function buildPdfFromImages(imageFiles: File[], outputBaseName: string): Promise<File> {
   const pdf = await PDFDocument.create();
@@ -118,7 +128,7 @@ export function DocumentUploadModal({
     const validFiles: FileWithPreview[] = [];
 
     Array.from(newFiles).forEach((file) => {
-      if (!ALLOWED_TYPES.includes(file.type)) {
+      if (!ALLOWED_TYPES.includes(file.type) && !isDocxFile(file)) {
         return;
       }
 
@@ -256,7 +266,12 @@ export function DocumentUploadModal({
   };
 
   // Standard cloud upload
-  const uploadStandardDocument = async (pdfFile: File, originalName: string, idsToMark: string[]): Promise<string> => {
+  const uploadStandardDocument = async (
+    pdfFile: File,
+    originalName: string,
+    idsToMark: string[],
+    sourceMetadata?: Record<string, unknown>
+  ): Promise<string> => {
     setFiles((prev) =>
       prev.map((f) =>
         idsToMark.includes(f.id) ? { ...f, status: 'uploading' as const } : f
@@ -311,6 +326,7 @@ export function DocumentUploadModal({
       file_size_bytes: pdfFile.size,
       document_type: 'other',
       processing_status: 'pending',
+      source_metadata: sourceMetadata,
     });
 
     if (insertError) throw insertError;
@@ -368,12 +384,105 @@ export function DocumentUploadModal({
     return documentId;
   };
 
+  const uploadDocxDocument = async (docxFile: File, idsToMark: string[]): Promise<string> => {
+    setFiles((prev) =>
+      prev.map((f) =>
+        idsToMark.includes(f.id) ? { ...f, status: 'uploading' as const } : f
+      )
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const documentId = crypto.randomUUID();
+    const extension = getFileExtension(docxFile.name) || 'docx';
+    const contentType = docxFile.type || DOCX_MIME;
+
+    const { data: uploadUrlData, error: urlError, response: urlResponse } = await supabase.functions.invoke(
+      'document-source-upload-url',
+      {
+        body: {
+          document_id: documentId,
+          workspace_id: workspaceId,
+          content_type: contentType,
+          file_size: docxFile.size,
+          source_extension: extension,
+        },
+      }
+    );
+
+    if (urlError) {
+      const json = urlResponse ? await urlResponse.json().catch(() => null) : null;
+      const uiErr = mapHttpError(urlResponse?.status ?? 500, json, 'document-source-upload-url');
+      toast.show(uiErr);
+      throw new Error(uiErr.message);
+    }
+    if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
+
+    const {
+      upload_url: uploadUrl,
+      source_storage_path: sourceStoragePath,
+      pdf_storage_path: pdfStoragePath,
+    } = uploadUrlData;
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: docxFile,
+      headers: { 'Content-Type': contentType },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Upload failed: ${uploadResponse.status}`);
+    }
+
+    const { error: insertError } = await supabase.from('documents').insert({
+      id: documentId,
+      workspace_id: workspaceId,
+      folder_id: folderId || null,
+      user_id: user.id,
+      title: docxFile.name.replace(/\.[^.]+$/i, ''),
+      original_filename: docxFile.name,
+      storage_path: pdfStoragePath,
+      storage_bucket: 'gcs',
+      file_size_bytes: docxFile.size,
+      document_type: 'other',
+      processing_status: 'processing',
+      source_metadata: {
+        original_mime: contentType,
+        original_extension: extension,
+        source_storage_path: sourceStoragePath,
+        source_storage_bucket: 'documents',
+        conversion_method: 'cloudconvert_docx_to_pdf_v1',
+        conversion_status: 'processing',
+      },
+    });
+
+    if (insertError) throw insertError;
+
+    try {
+      await supabase.functions.invoke('convert-to-pdf', {
+        body: { document_id: documentId, source_storage_path: sourceStoragePath },
+      });
+    } catch (err) {
+      console.warn('[Upload] convert-to-pdf failed (non-fatal):', err);
+    }
+
+    setFiles((prev) =>
+      prev.map((f) =>
+        idsToMark.includes(f.id) ? { ...f, status: 'success' as const } : f
+      )
+    );
+
+    return documentId;
+  };
+
   const uploadFiles = async () => {
     setUploading(true);
 
     const pendingFiles = files.filter((f) => f.status === 'pending');
     const pendingImageItems = pendingFiles.filter((f) => isImageType(f.file.type));
     const pendingPdfItems = pendingFiles.filter((f) => f.file.type === 'application/pdf');
+    const pendingDocxItems = pendingFiles.filter((f) => isDocxFile(f.file));
 
     let firstUploadedDocId: string | undefined;
 
@@ -381,6 +490,10 @@ export function DocumentUploadModal({
     if (pendingImageItems.length > 0) {
       const ids = pendingImageItems.map((x) => x.id);
       try {
+        const imageTypes = new Set(pendingImageItems.map((x) => x.file.type).filter(Boolean));
+        const originalMime = imageTypes.size === 1 ? Array.from(imageTypes)[0] : 'image/*';
+        const originalExtension =
+          imageTypes.size === 1 ? getFileExtension(pendingImageItems[0].file.name) : 'image';
         const pdfFile = await buildPdfFromImages(
           pendingImageItems.map((x) => x.file),
           pendingImageItems.length === 1
@@ -390,7 +503,12 @@ export function DocumentUploadModal({
 
         const docId = isPrivateMode
           ? await uploadEphemeralDocument(pdfFile, ids)
-          : await uploadStandardDocument(pdfFile, pdfFile.name, ids);
+          : await uploadStandardDocument(pdfFile, pdfFile.name, ids, {
+              original_mime: originalMime,
+              original_extension: originalExtension || 'image',
+              conversion_method: 'image_to_pdf_pdf-lib_v1',
+              conversion_status: 'completed',
+            });
 
         if (!firstUploadedDocId) firstUploadedDocId = docId;
       } catch (error) {
@@ -404,12 +522,46 @@ export function DocumentUploadModal({
       }
     }
 
+    // Handle DOCX (standard mode only)
+    if (pendingDocxItems.length > 0) {
+      const ids = pendingDocxItems.map((x) => x.id);
+      if (isPrivateMode) {
+        setFiles((prev) =>
+          prev.map((f) =>
+            ids.includes(f.id)
+              ? { ...f, status: 'error' as const, error: t('docxPrivateUnsupported') }
+              : f
+          )
+        );
+      } else {
+        for (const fileItem of pendingDocxItems) {
+          try {
+            const docId = await uploadDocxDocument(fileItem.file, [fileItem.id]);
+            if (!firstUploadedDocId) firstUploadedDocId = docId;
+          } catch (error) {
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === fileItem.id
+                  ? { ...f, status: 'error' as const, error: error instanceof Error ? error.message : t('uploadFailed') }
+                  : f
+              )
+            );
+          }
+        }
+      }
+    }
+
     // Handle PDFs
     for (const fileItem of pendingPdfItems) {
       try {
         const docId = isPrivateMode
           ? await uploadEphemeralDocument(fileItem.file, [fileItem.id])
-          : await uploadStandardDocument(fileItem.file, fileItem.file.name, [fileItem.id]);
+          : await uploadStandardDocument(fileItem.file, fileItem.file.name, [fileItem.id], {
+              original_mime: fileItem.file.type || 'application/pdf',
+              original_extension: getFileExtension(fileItem.file.name) || 'pdf',
+              conversion_method: 'none',
+              conversion_status: 'completed',
+            });
 
         if (!firstUploadedDocId) firstUploadedDocId = docId;
       } catch (error) {
@@ -511,7 +663,7 @@ export function DocumentUploadModal({
             <label>
               <input
                 type="file"
-                accept=".pdf,image/*"
+                accept=".pdf,.docx,image/*"
                 multiple
                 onChange={(e) => e.target.files && addFiles(e.target.files)}
                 className="hidden"

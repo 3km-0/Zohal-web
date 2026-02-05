@@ -285,7 +285,8 @@
     "uploadFailed": "Upload failed",
     "privateNotSupported": "Private (local-only) is not supported on web yet.",
     "analyzePrivately": "Analyze Privately",
-    "privateLeaveWarning": "You have a private session document. Leaving will lose the PDF."
+    "privateLeaveWarning": "You have a private session document. Leaving will lose the PDF.",
+    "docxPrivateUnsupported": "DOCX files aren't supported in Privacy Mode."
   },
   "workspaceModal": {
     "editWorkspace": "Edit Workspace",
@@ -428,8 +429,7 @@
     "logOut": "Log Out",
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your workspaces, documents, and notes will be permanently deleted.",
     "yesDeleteAccount": "Yes, Delete My Account"
-  }
-  ,
+  },
   "playbooks": {
     "title": "Templates",
     "subtitle": "Define variables + checks for contract analysis. Publish versions to make them selectable.",
@@ -728,35 +728,71 @@
       },
       "nav": {
         "links": [
-          { "label": "Product", "href": "#product" },
-          { "label": "How it works", "href": "#how" },
-          { "label": "Pricing", "href": "#pricing" },
-          { "label": "Insights", "href": "#insights" },
-          { "label": "Security", "href": "#security" }
+          {
+            "label": "Product",
+            "href": "#product"
+          },
+          {
+            "label": "How it works",
+            "href": "#how"
+          },
+          {
+            "label": "Pricing",
+            "href": "#pricing"
+          },
+          {
+            "label": "Insights",
+            "href": "#insights"
+          },
+          {
+            "label": "Security",
+            "href": "#security"
+          }
         ],
         "actions": {
-          "languageToggle": { "left": "EN", "right": "AR" },
+          "languageToggle": {
+            "left": "EN",
+            "right": "AR"
+          },
           "a11y": {
             "switchToArabic": "Switch to Arabic",
             "switchToEnglish": "Switch to English",
             "openMenu": "Open menu",
             "closeMenu": "Close menu"
           },
-          "login": { "label": "Login", "href": "/auth/login" },
-          "primaryCta": { "label": "Start free", "href": "/auth/signup" }
+          "login": {
+            "label": "Login",
+            "href": "/auth/login"
+          },
+          "primaryCta": {
+            "label": "Start free",
+            "href": "/auth/signup"
+          }
         }
       },
       "hero": {
         "headline": "The AI studio for regulated documents.",
         "subhead": "Drop contracts, invoices, portal exports, scans, and attachments — Arabic or English — and produce verified variables and decision packs with evidence you can forward.",
         "ctas": [
-          { "type": "primary", "label": "Start free", "href": "/auth/signup" },
-          { "type": "secondary", "label": "Watch 60s demo", "action": "open_demo_modal" }
+          {
+            "type": "primary",
+            "label": "Start free",
+            "href": "/auth/signup"
+          },
+          {
+            "type": "secondary",
+            "label": "Watch 60s demo",
+            "action": "open_demo_modal"
+          }
         ],
         "proofLine": "Citations + visual grounding • Provisional → Finalized • Exception-first workflow",
         "mock": {
           "title": "Decision Pack Preview",
-          "panels": ["Document Viewer", "Verified Variables", "Exports"]
+          "panels": [
+            "Document Viewer",
+            "Verified Variables",
+            "Exports"
+          ]
         }
       },
       "credibilityStrip": {
@@ -778,8 +814,16 @@
         ],
         "sideCard": {
           "title": "Before → After",
-          "before": ["Manual extraction", "Scattered notes", "Risky forwarding"],
-          "after": ["Verified variables", "Exceptions queue", "Decision pack"]
+          "before": [
+            "Manual extraction",
+            "Scattered notes",
+            "Risky forwarding"
+          ],
+          "after": [
+            "Verified variables",
+            "Exceptions queue",
+            "Decision pack"
+          ]
         }
       },
       "howItWorks": {
@@ -800,16 +844,36 @@
           }
         ],
         "ctas": [
-          { "type": "link", "label": "See a sample Decision Pack", "href": "#decision-pack" },
-          { "type": "secondary", "label": "How Templates work", "href": "#playbooks" }
+          {
+            "type": "link",
+            "label": "See a sample Decision Pack",
+            "href": "#decision-pack"
+          },
+          {
+            "type": "secondary",
+            "label": "How Templates work",
+            "href": "#playbooks"
+          }
         ]
       },
       "stats": {
         "items": [
-          { "value": "20–80", "label": "Verified variables per pack" },
-          { "value": "< 10 min", "label": "Time to first draft pack" },
-          { "value": "Contracts • invoices • exports • scans", "label": "Supported doc types" },
-          { "value": "Arabic + English", "label": "Languages" }
+          {
+            "value": "20–80",
+            "label": "Verified variables per pack"
+          },
+          {
+            "value": "< 10 min",
+            "label": "Time to first draft pack"
+          },
+          {
+            "value": "Contracts • invoices • exports • scans",
+            "label": "Supported doc types"
+          },
+          {
+            "value": "Arabic + English",
+            "label": "Languages"
+          }
         ],
         "footnote": "Performance varies by document quality and workflow checks."
       },
@@ -880,7 +944,10 @@
               "Obligations tracker + renewals calendar",
               "Risk flags backed by citations"
             ],
-            "cta": { "label": "Explore Contracts", "href": "#product" }
+            "cta": {
+              "label": "Explore Contracts",
+              "href": "#product"
+            }
           },
           {
             "id": "ap",
@@ -891,7 +958,10 @@
               "Confidence + mismatches route to exceptions",
               "Export-ready outputs"
             ],
-            "cta": { "label": "Explore AP", "href": "#product" }
+            "cta": {
+              "label": "Explore AP",
+              "href": "#product"
+            }
           },
           {
             "id": "governance",
@@ -902,7 +972,10 @@
               "Audit exports tied to verified variables",
               "Retention windows (phased)"
             ],
-            "cta": { "label": "Explore Governance", "href": "#security" }
+            "cta": {
+              "label": "Explore Governance",
+              "href": "#security"
+            }
           },
           {
             "id": "playbooks",
@@ -913,7 +986,10 @@
               "Versioned specs + run manifests",
               "Generator + Verifier loop with escalation"
             ],
-            "cta": { "label": "Explore Templates", "href": "#playbooks" }
+            "cta": {
+              "label": "Explore Templates",
+              "href": "#playbooks"
+            }
           }
         ]
       },
@@ -926,7 +1002,12 @@
           "Evidence map: each key variable links to highlight + snippet",
           "Finalized snapshot for sharing"
         ],
-        "exportButtons": ["Export PDF", "Export CSV", "Export JSON", "Finalize Snapshot"]
+        "exportButtons": [
+          "Export PDF",
+          "Export CSV",
+          "Export JSON",
+          "Finalize Snapshot"
+        ]
       },
       "security": {
         "id": "security",
@@ -950,7 +1031,10 @@
       "pricing": {
         "id": "pricing",
         "title": "Pricing that matches how teams adopt.",
-        "toggleLabels": ["Professional", "Firm / Enterprise"],
+        "toggleLabels": [
+          "Professional",
+          "Firm / Enterprise"
+        ],
         "professional": [
           {
             "id": "pro",
@@ -963,7 +1047,10 @@
               "Personal activity log",
               "Volume cap"
             ],
-            "cta": { "label": "Start Professional", "href": "/auth/signup?plan=pro" }
+            "cta": {
+              "label": "Start Professional",
+              "href": "/auth/signup?plan=pro"
+            }
           },
           {
             "id": "pro_plus",
@@ -975,7 +1062,10 @@
               "Higher volume cap",
               "Priority async support"
             ],
-            "cta": { "label": "Start Plus", "href": "/auth/signup?plan=pro_plus" }
+            "cta": {
+              "label": "Start Plus",
+              "href": "/auth/signup?plan=pro_plus"
+            }
           }
         ],
         "enterprise": [
@@ -990,7 +1080,10 @@
               "Audit Pack v1: run manifest + hashes + approvals log",
               "Shared in-region cloud"
             ],
-            "cta": { "label": "Talk to sales", "href": "/support" }
+            "cta": {
+              "label": "Talk to sales",
+              "href": "/support"
+            }
           },
           {
             "id": "firm",
@@ -1003,7 +1096,10 @@
               "Audit Pack v1 + basic retention window",
               "Shared in-region cloud (dedicated boundary available when required)"
             ],
-            "cta": { "label": "Talk to sales", "href": "/support" }
+            "cta": {
+              "label": "Talk to sales",
+              "href": "/support"
+            }
           },
           {
             "id": "plus",
@@ -1016,7 +1112,10 @@
               "Higher throughput + stronger SLA",
               "Dedicated tenant boundary included by default (in-region)"
             ],
-            "cta": { "label": "Talk to sales", "href": "/support" }
+            "cta": {
+              "label": "Talk to sales",
+              "href": "/support"
+            }
           }
         ],
         "usageMeter": {
@@ -1057,7 +1156,10 @@
             "href": "#insights"
           }
         ],
-        "cta": { "label": "Discover more", "href": "/support" }
+        "cta": {
+          "label": "Discover more",
+          "href": "/support"
+        }
       },
       "faq": {
         "title": "Frequently asked questions",
@@ -1092,8 +1194,16 @@
         "contactRow": {
           "note": "If your questions weren’t addressed, reach out — we’ll respond within 1 business day.",
           "ctas": [
-            { "type": "secondary", "label": "Contact us", "href": "/support" },
-            { "type": "primary", "label": "Start free", "href": "/auth/signup" }
+            {
+              "type": "secondary",
+              "label": "Contact us",
+              "href": "/support"
+            },
+            {
+              "type": "primary",
+              "label": "Start free",
+              "href": "/auth/signup"
+            }
           ]
         }
       },
@@ -1101,8 +1211,16 @@
         "title": "Turn document chaos into verified work.",
         "subhead": "Generate decision packs you can forward — with evidence.",
         "ctas": [
-          { "type": "primary", "label": "Start free", "href": "/auth/signup" },
-          { "type": "secondary", "label": "Book a demo", "href": "/support" }
+          {
+            "type": "primary",
+            "label": "Start free",
+            "href": "/auth/signup"
+          },
+          {
+            "type": "secondary",
+            "label": "Book a demo",
+            "href": "/support"
+          }
         ]
       },
       "footer": {
@@ -1110,32 +1228,65 @@
           {
             "title": "Product",
             "links": [
-              { "label": "Overview", "href": "#product" },
-              { "label": "Verification Objects", "href": "#product" },
-              { "label": "Templates", "href": "#playbooks" },
-              { "label": "Decision Packs", "href": "#decision-pack" }
+              {
+                "label": "Overview",
+                "href": "#product"
+              },
+              {
+                "label": "Verification Objects",
+                "href": "#product"
+              },
+              {
+                "label": "Templates",
+                "href": "#playbooks"
+              },
+              {
+                "label": "Decision Packs",
+                "href": "#decision-pack"
+              }
             ]
           },
           {
             "title": "Solutions",
             "links": [
-              { "label": "Contracts", "href": "#product" },
-              { "label": "AP / Invoices", "href": "#product" },
-              { "label": "Compliance & Governance", "href": "#security" }
+              {
+                "label": "Contracts",
+                "href": "#product"
+              },
+              {
+                "label": "AP / Invoices",
+                "href": "#product"
+              },
+              {
+                "label": "Compliance & Governance",
+                "href": "#security"
+              }
             ]
           },
           {
             "title": "Company",
             "links": [
-              { "label": "Contact", "href": "/support" },
-              { "label": "Support", "href": "/support" }
+              {
+                "label": "Contact",
+                "href": "/support"
+              },
+              {
+                "label": "Support",
+                "href": "/support"
+              }
             ]
           },
           {
             "title": "Legal",
             "links": [
-              { "label": "Privacy", "href": "/privacy" },
-              { "label": "Terms", "href": "/terms" }
+              {
+                "label": "Privacy",
+                "href": "/privacy"
+              },
+              {
+                "label": "Terms",
+                "href": "/terms"
+              }
             ]
           }
         ],
@@ -1179,7 +1330,12 @@
         },
         "decisionPackPreview": {
           "deliverablesLabel": "Deliverables",
-          "deliverables": ["Citation-backed memo", "Tracker (CSV/JSON)", "Evidence map", "Finalized snapshot"],
+          "deliverables": [
+            "Citation-backed memo",
+            "Tracker (CSV/JSON)",
+            "Evidence map",
+            "Finalized snapshot"
+          ],
           "deliverablesBody": "Structured output designed to survive scrutiny."
         },
         "security": {
