@@ -432,7 +432,7 @@
   },
   "playbooks": {
     "title": "Templates",
-    "subtitle": "Define variables + checks for contract analysis. Publish versions to make them selectable.",
+    "subtitle": "Define extraction modules and variables for contract analysis. Publish versions to make them selectable.",
     "list": {
       "title": "Published & Draft",
       "newNamePlaceholder": "New template name",
@@ -452,15 +452,8 @@
       "duplicateToEdit": "Duplicate to Edit",
       "systemTemplateBanner": "This is a Zohal system template. Duplicate it to create your own editable version.",
       "viewModulesSystem": "View the extraction modules defined in this system template.",
-      "viewVariablesSystem": "View the variables defined in this system template.",
-      "viewChecksSystem": "View the validation checks defined in this system template."
+      "viewVariablesSystem": "View the variables defined in this system template."
     },
-    "settingsFixed": "Settings (fixed)",
-    "strictMode": "Strict mode",
-    "enableVerifier": "Enable verifier",
-    "arabicOutput": "Arabic output",
-    "settingsMovedTitle": "Run settings moved",
-    "settingsMovedBody": "Language, strictness, and verifier behavior are now treated as run settings. Configure them when you run analysis (no need to duplicate templates).",
     "outputsModules": "Outputs (modules)",
     "modules": {
       "variables": "Variables",

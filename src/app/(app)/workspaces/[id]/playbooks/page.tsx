@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe, Settings, Layers, Variable, CheckCircle, Pencil, Lock, Copy } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe, Layers, Variable, Pencil, Lock, Copy } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import {
   Badge,
@@ -328,7 +328,7 @@ export default function WorkspacePlaybooksPage() {
   const [customSchemaTextById, setCustomSchemaTextById] = useState<Record<string, string>>({});
   const [customSchemaErrorById, setCustomSchemaErrorById] = useState<Record<string, string>>({});
   const [expandedSchemaIds, setExpandedSchemaIds] = useState<Set<string>>(new Set());
-  const [activeSection, setActiveSection] = useState<'settings' | 'modules' | 'variables' | 'checks'>('settings');
+  const [activeSection, setActiveSection] = useState<'modules' | 'variables'>('modules');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
 
@@ -783,10 +783,8 @@ export default function WorkspacePlaybooksPage() {
                   {/* Section navigation tabs */}
                   <div className="flex border-t border-border bg-surface-alt/30">
                     {[
-                      { id: 'settings' as const, label: 'Settings', icon: Settings },
                       { id: 'modules' as const, label: 'Modules', icon: Layers, count: (spec.modules_v2 || []).length },
                       { id: 'variables' as const, label: 'Variables', icon: Variable, count: spec.variables.length },
-                      { id: 'checks' as const, label: 'Checks', icon: CheckCircle, count: (spec.checks || []).length },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -815,17 +813,6 @@ export default function WorkspacePlaybooksPage() {
 
                 {/* Section content */}
                 <div className="p-4 space-y-4">
-                  {/* Settings section */}
-                  {activeSection === 'settings' && (
-                    <div className="space-y-4">
-                      <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft space-y-2">
-                        <div className="font-semibold text-text">{t('settingsMovedTitle')}</div>
-                        <div>{t('settingsMovedBody')}</div>
-                      </div>
-                    </div>
-                  )}
-
-
                   {/* Modules section */}
                   {activeSection === 'modules' && (
                     <div className="space-y-4">
@@ -1143,191 +1130,6 @@ export default function WorkspacePlaybooksPage() {
                     </div>
                   )}
 
-                  {/* Checks section */}
-                  {activeSection === 'checks' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-text-soft">
-                          {isSystemPreset 
-                            ? 'View the validation checks defined in this system template.'
-                            : 'Define validation checks for extracted variables.'}
-                        </p>
-                        {!isSystemPreset && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              setSpec((p) => ({
-                                ...p,
-                                checks: [
-                                  ...(p.checks || []),
-                                  {
-                                    id: `check-${crypto.randomUUID().slice(0, 8)}`,
-                                    type: 'required',
-                                    variable_key: p.variables[0]?.key || '',
-                                    severity: 'warning',
-                                  },
-                                ],
-                              }))
-                            }
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add Check
-                          </Button>
-                        )}
-                      </div>
-
-                      {(spec.checks || []).length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
-                          No checks yet. Click "Add Check" to create one.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {(spec.checks || []).map((c: any, idx: number) => (
-                            <div key={c.id || idx} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                                <ScholarSelect
-                                  label="Type"
-                                  options={[
-                                    { value: 'required', label: 'Required' },
-                                    { value: 'range', label: 'Range' },
-                                    { value: 'allowed', label: 'Allowed' },
-                                    { value: 'term_present', label: 'Term Present' },
-                                    { value: 'custom', label: 'Custom' },
-                                  ]}
-                                  value={c.type}
-                                  disabled={isReadOnly}
-                                  onChange={(e) =>
-                                    setSpec((p) => {
-                                      const checks = (p.checks || []).slice();
-                                      const type = e.target.value as 'required' | 'range' | 'enum';
-                                      const base = {
-                                        id: String(checks[idx]?.id || crypto.randomUUID()),
-                                        variable_key: String(checks[idx]?.variable_key || ''),
-                                        severity: (checks[idx]?.severity === 'blocker' ? 'blocker' : 'warning') as 'warning' | 'blocker',
-                                      };
-                                      checks[idx] =
-                                        type === 'required'
-                                          ? { ...base, type: 'required' as const }
-                                          : type === 'range'
-                                            ? { ...base, type: 'range' as const, min: (checks[idx] as any)?.min, max: (checks[idx] as any)?.max }
-                                            : {
-                                                ...base,
-                                                type: 'enum' as const,
-                                                allowed_values: Array.isArray((checks[idx] as any)?.allowed_values)
-                                                  ? (checks[idx] as any).allowed_values
-                                                  : [],
-                                              };
-                                      return { ...p, checks };
-                                    })
-                                  }
-                                />
-                                <ScholarSelect
-                                  label="Variable"
-                                  options={[
-                                    { value: '', label: 'Select variable' },
-                                    ...spec.variables.map((v) => ({ value: v.key, label: v.key })),
-                                  ]}
-                                  value={c.variable_key}
-                                  disabled={isReadOnly}
-                                  onChange={(e) =>
-                                    setSpec((p) => {
-                                      const checks = (p.checks || []).slice();
-                                      checks[idx] = { ...checks[idx], variable_key: e.target.value };
-                                      return { ...p, checks };
-                                    })
-                                  }
-                                />
-                                <ScholarSelect
-                                  label="Severity"
-                                  options={[
-                                    { value: 'warning', label: 'Warning' },
-                                    { value: 'blocker', label: 'Blocker' },
-                                  ]}
-                                  value={c.severity}
-                                  disabled={isReadOnly}
-                                  onChange={(e) =>
-                                    setSpec((p) => {
-                                      const checks = (p.checks || []).slice();
-                                      const severity = (e.target.value === 'blocker' ? 'blocker' : 'warning') as 'warning' | 'blocker';
-                                      checks[idx] = { ...checks[idx], severity };
-                                      return { ...p, checks };
-                                    })
-                                  }
-                                />
-                                <div className="flex items-end">
-                                  <Badge size="sm">id: {String(c.id).slice(0, 8)}</Badge>
-                                </div>
-                              </div>
-
-                              {c.type === 'range' && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <Input
-                                    placeholder="min"
-                                    value={c.min ?? ''}
-                                    disabled={isReadOnly}
-                                    onChange={(e) =>
-                                      setSpec((p) => {
-                                        const checks = (p.checks || []).slice();
-                                        const val = e.target.value.trim();
-                                        checks[idx] = { ...(checks[idx] as any), min: val === '' ? undefined : Number(val) } as any;
-                                        return { ...p, checks };
-                                      })
-                                    }
-                                  />
-                                  <Input
-                                    placeholder="max"
-                                    value={c.max ?? ''}
-                                    disabled={isReadOnly}
-                                    onChange={(e) =>
-                                      setSpec((p) => {
-                                        const checks = (p.checks || []).slice();
-                                        const val = e.target.value.trim();
-                                        checks[idx] = { ...(checks[idx] as any), max: val === '' ? undefined : Number(val) } as any;
-                                        return { ...p, checks };
-                                      })
-                                    }
-                                  />
-                                </div>
-                              )}
-
-                              {c.type === 'enum' && (
-                                <Input
-                                  placeholder="allowed values (comma-separated)"
-                                  value={(c.allowed_values || []).join(', ')}
-                                  disabled={isReadOnly}
-                                  onChange={(e) =>
-                                    setSpec((p) => {
-                                      const checks = (p.checks || []).slice();
-                                      const parts = e.target.value
-                                        .split(',')
-                                        .map((s) => s.trim())
-                                        .filter(Boolean);
-                                      checks[idx] = { ...(checks[idx] as any), allowed_values: parts } as any;
-                                      return { ...p, checks };
-                                    })
-                                  }
-                                />
-                              )}
-
-                              {!isSystemPreset && (
-                                <div className="flex justify-end pt-2 border-t border-border">
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() =>
-                                      setSpec((p) => ({ ...p, checks: (p.checks || []).filter((_, i) => i !== idx) }))
-                                    }
-                                  >
-                                    Remove
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -1338,4 +1140,3 @@ export default function WorkspacePlaybooksPage() {
     </div>
   );
 }
-
