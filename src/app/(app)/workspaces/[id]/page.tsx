@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -18,33 +18,22 @@ import {
   Share2,
   CircleHelp,
 } from 'lucide-react';
+import * as pdfjs from 'pdfjs-dist';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
-import type { Workspace, Document, DocumentType, ProcessingStatus, WorkspaceFolder, FolderWithStats } from '@/types/database';
+import type { Workspace, Document, ProcessingStatus, WorkspaceFolder, FolderWithStats } from '@/types/database';
 import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
 import { FolderIcon, CreateFolderModal } from '@/components/folder';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 
-// Document type icons
-const documentIcons: Record<DocumentType, string> = {
-  textbook: '📖',
-  lecture_notes: '📝',
-  problem_set: '📊',
-  paper: '📄',
-  personal_notes: '✏️',
-  contract: '📜',
-  financial_report: '💰',
-  meeting_notes: '🗓️',
-  invoice: '🧾',
-  legal_filing: '⚖️',
-  research: '🔬',
-  other: '📁',
-};
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const documentThumbnailCache = new Map<string, string>();
 
 // Processing status colors
 const statusColors: Record<ProcessingStatus, string> = {
@@ -660,6 +649,117 @@ interface DocumentCardProps {
   currentFolderId: string | null;
 }
 
+function DocumentThumbnail({ document: doc }: { document: Document }) {
+  const supabase = useMemo(() => createClient(), []);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [thumbnail, setThumbnail] = useState<string | null>(
+    () => documentThumbnailCache.get(doc.id) || null
+  );
+  const [loading, setLoading] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let loadingTask: pdfjs.PDFDocumentLoadingTask | null = null;
+
+    async function loadThumbnail() {
+      if (!isVisible) return;
+      if (doc.privacy_mode || !doc.storage_path || doc.storage_path === 'local') {
+        setThumbnail(null);
+        return;
+      }
+
+      const cached = documentThumbnailCache.get(doc.id);
+      if (cached) {
+        setThumbnail(cached);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('document-download-url', {
+          body: { document_id: doc.id },
+        });
+
+        if (error || !data?.download_url) {
+          throw error || new Error('Missing download url');
+        }
+
+        loadingTask = pdfjs.getDocument(data.download_url as string);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 0.25 });
+
+        const canvas = window.document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Canvas unavailable');
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise;
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        documentThumbnailCache.set(doc.id, dataUrl);
+        if (!cancelled) setThumbnail(dataUrl);
+        pdf.destroy();
+      } catch (err) {
+        if (!cancelled) setThumbnail(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadThumbnail();
+
+    return () => {
+      cancelled = true;
+      loadingTask?.destroy();
+    };
+  }, [doc.id, doc.storage_path, doc.privacy_mode, isVisible, supabase]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full aspect-[4/3] rounded-scholar-lg overflow-hidden bg-surface-alt border border-border"
+    >
+      {thumbnail ? (
+        <img
+          src={thumbnail}
+          alt={doc.title}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-text-soft">
+          {loading ? <Spinner size="sm" /> : <FileText className="w-6 h-6" />}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DocumentCard({
   document: doc,
   workspaceId,
@@ -705,44 +805,39 @@ function DocumentCard({
     >
       <Link
         href={`/workspaces/${workspaceId}/documents/${doc.id}`}
-        className="block p-5"
+        className="block"
         data-tour="workspace-document-card"
       >
-        <div className="flex items-start gap-4">
-          {/* Icon */}
-          <div className="w-12 h-12 bg-surface-alt border border-border rounded-scholar-lg flex items-center justify-center text-2xl flex-shrink-0">
-            {documentIcons[doc.document_type || 'other']}
-          </div>
+        <DocumentThumbnail document={doc} />
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-text truncate">{doc.title}</h3>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {doc.document_type && (
-                <Badge size="sm">{t(doc.document_type)}</Badge>
+        <div className="p-4 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {doc.document_type && (
+              <Badge size="sm">{t(doc.document_type)}</Badge>
+            )}
+            <Badge
+              size="sm"
+              variant={doc.processing_status === 'completed' ? 'success' : 'default'}
+              className={cn(statusColors[doc.processing_status])}
+            >
+              {isProcessing && (
+                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse mr-1" />
               )}
-              <Badge
-                size="sm"
-                variant={doc.processing_status === 'completed' ? 'success' : 'default'}
-                className={cn(statusColors[doc.processing_status])}
-              >
-                {isProcessing && (
-                  <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse mr-1" />
-                )}
-                {doc.processing_status}
-              </Badge>
-            </div>
+              {doc.processing_status}
+            </Badge>
           </div>
-        </div>
 
-        <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-          <p className="text-xs text-text-soft">
-            {doc.page_count ? `${doc.page_count} pages • ` : ''}
-            {doc.file_size_bytes ? formatFileSize(doc.file_size_bytes) : ''}
-          </p>
-          <p className="text-xs text-text-soft">
-            {formatRelativeTime(doc.updated_at)}
-          </p>
+          <h3 className="font-semibold text-text line-clamp-2">{doc.title}</h3>
+
+          <div className="pt-2 border-t border-border flex items-center justify-between">
+            <p className="text-xs text-text-soft">
+              {doc.page_count ? `${doc.page_count} pages • ` : ''}
+              {doc.file_size_bytes ? formatFileSize(doc.file_size_bytes) : ''}
+            </p>
+            <p className="text-xs text-text-soft">
+              {formatRelativeTime(doc.updated_at)}
+            </p>
+          </div>
         </div>
       </Link>
 

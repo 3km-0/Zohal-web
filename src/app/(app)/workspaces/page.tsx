@@ -4,37 +4,63 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, FolderOpen, MoreVertical, Archive, Trash2, Edit2 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
+import { Button, EmptyState, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, WorkspaceType } from '@/types/database';
-import { cn, formatRelativeTime } from '@/lib/utils';
-import { resolveIcon } from '@/lib/icon-mapping';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
 
-// Workspace type icons (fallback emojis)
-const workspaceIcons: Record<WorkspaceType, string> = {
-  project: '📁',
-  case: '⚖️',
-  course: '📚',
-  personal: '👤',
-  archive: '🗄️',
-  research: '🔬',
-  client: '🏢',
-  other: '📂',
+// Workspace type colors (folder palette)
+const workspacePalette: Record<WorkspaceType, { main: string; light: string }> = {
+  project: { main: '#2563eb', light: '#3b82f6' },
+  case: { main: '#7c3aed', light: '#8b5cf6' },
+  course: { main: '#16a34a', light: '#22c55e' },
+  personal: { main: '#d97706', light: '#f59e0b' },
+  archive: { main: '#64748b', light: '#94a3b8' },
+  research: { main: '#0891b2', light: '#22d3ee' },
+  client: { main: '#e11d48', light: '#fb7185' },
+  other: { main: '#475569', light: '#94a3b8' },
 };
 
-// Workspace type colors
-const workspaceColors: Record<WorkspaceType, string> = {
-  project: 'bg-blue-500/10 border-blue-500/20',
-  case: 'bg-purple-500/10 border-purple-500/20',
-  course: 'bg-green-500/10 border-green-500/20',
-  personal: 'bg-amber-500/10 border-amber-500/20',
-  archive: 'bg-gray-500/10 border-gray-500/20',
-  research: 'bg-cyan-500/10 border-cyan-500/20',
-  client: 'bg-rose-500/10 border-rose-500/20',
-  other: 'bg-slate-500/10 border-slate-500/20',
-};
+function getWorkspacePalette(workspace: Workspace) {
+  if (workspace.color) {
+    return { main: workspace.color, light: workspace.color };
+  }
+  return workspacePalette[workspace.workspace_type] || workspacePalette.other;
+}
+
+function StyledFolder({ color, lightColor, className }: { color: string; lightColor: string; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 64 52"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M4 8C4 5.79086 5.79086 4 8 4H24L28 10H56C58.2091 10 60 11.7909 60 14V44C60 46.2091 58.2091 48 56 48H8C5.79086 48 4 46.2091 4 44V8Z"
+        fill={color}
+        fillOpacity="0.9"
+      />
+      <path
+        d="M4 16C4 13.7909 5.79086 12 8 12H56C58.2091 12 60 13.7909 60 16V44C60 46.2091 58.2091 48 56 48H8C5.79086 48 4 46.2091 4 44V16Z"
+        fill={lightColor}
+        fillOpacity="0.95"
+      />
+      <path
+        d="M8 12H56C58.2091 12 60 13.7909 60 16V18H4V16C4 13.7909 5.79086 12 8 12Z"
+        fill="white"
+        fillOpacity="0.15"
+      />
+      <path
+        d="M24 4H8C5.79086 4 4 5.79086 4 8V10H26L24 4Z"
+        fill={color}
+        fillOpacity="0.7"
+      />
+    </svg>
+  );
+}
 
 export default function WorkspacesPage() {
   const t = useTranslations('workspaces');
@@ -143,9 +169,9 @@ export default function WorkspacesPage() {
             }}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {workspaces.map((workspace) => (
-              <WorkspaceCard
+              <WorkspaceIcon
                 key={workspace.id}
                 workspace={workspace}
                 onEdit={() => setEditingWorkspace(workspace)}
@@ -176,19 +202,6 @@ export default function WorkspacesPage() {
   );
 }
 
-// Component to render workspace icon - handles SF Symbol to emoji/icon conversion
-function WorkspaceIcon({ icon, fallback }: { icon: string | null | undefined; fallback: string }) {
-  const resolved = resolveIcon(icon, false);
-  
-  if (resolved.type === 'emoji') {
-    return <span>{resolved.emoji}</span>;
-  }
-  
-  // If we have a Lucide icon, render it
-  const IconComponent = resolved.icon;
-  return <IconComponent className="w-6 h-6" />;
-}
-
 interface WorkspaceCardProps {
   workspace: Workspace;
   onEdit: () => void;
@@ -196,55 +209,41 @@ interface WorkspaceCardProps {
   onDelete: () => void;
 }
 
-function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCardProps) {
+function WorkspaceIcon({ workspace, onEdit, onArchive, onDelete }: WorkspaceCardProps) {
   const t = useTranslations('workspaces.types');
   const tCard = useTranslations('workspaceCard');
   const tCommon = useTranslations('common');
   const [showMenu, setShowMenu] = useState(false);
+  const palette = getWorkspacePalette(workspace);
 
   return (
-    <Card
-      className="relative group hover:-translate-y-0.5 hover:shadow-scholar transition-all duration-200"
-      padding="none"
-    >
-      <Link href={`/workspaces/${workspace.id}`} className="block p-5">
-        <div className="flex items-start gap-4">
-          {/* Icon */}
-          <div
-            className={cn(
-              'w-12 h-12 rounded-scholar-lg border flex items-center justify-center text-2xl flex-shrink-0',
-              workspaceColors[workspace.workspace_type]
-            )}
-          >
-            <WorkspaceIcon
-              icon={workspace.icon}
-              fallback={workspaceIcons[workspace.workspace_type]}
-            />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-text truncate">{workspace.name}</h3>
-            <Badge size="sm" className="mt-1">
-              {t(workspace.workspace_type)}
-            </Badge>
-            {workspace.description && (
-              <p className="text-sm text-text-soft mt-2 line-clamp-2">
-                {workspace.description}
-              </p>
-            )}
-          </div>
+    <div className="relative group flex justify-center">
+      <Link
+        href={`/workspaces/${workspace.id}`}
+        className={cn(
+          'flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200',
+          'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
+          'w-[120px] focus:outline-none focus:ring-2 focus:ring-accent/50'
+        )}
+      >
+        <div className="relative drop-shadow-sm">
+          <StyledFolder
+            color={palette.main}
+            lightColor={palette.light}
+            className="w-16 h-14 transition-transform group-hover:scale-105"
+          />
         </div>
 
-        <div className="mt-4 pt-3 border-t border-border">
-          <p className="text-xs text-text-soft">
-            {tCard('updated')} {formatRelativeTime(workspace.updated_at)}
-          </p>
-        </div>
+        <span className="text-xs font-medium text-text text-center line-clamp-2 leading-tight max-w-full px-1">
+          {workspace.name}
+        </span>
+        <span className="text-[10px] text-text-soft">
+          {t(workspace.workspace_type)}
+        </span>
       </Link>
 
       {/* Menu Button */}
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-1 right-1">
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -300,7 +299,6 @@ function WorkspaceCard({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
           </>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
-
