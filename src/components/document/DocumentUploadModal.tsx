@@ -122,7 +122,7 @@ export function DocumentUploadModal({
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isPrivateMode, files.length]);
+  }, [isPrivateMode, files.length, t]);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const validFiles: FileWithPreview[] = [];

@@ -111,7 +111,7 @@ export default function WorkspaceReportsPage() {
         setError(e instanceof Error ? e.message : t('errors.openFailed'));
       }
     },
-    [supabase]
+    [supabase, t]
   );
 
   const deleteReport = useCallback(
@@ -132,7 +132,7 @@ export default function WorkspaceReportsPage() {
         setError(e instanceof Error ? e.message : t('errors.deleteFailed'));
       }
     },
-    [supabase, toast]
+    [supabase, toast, t]
   );
 
   return (

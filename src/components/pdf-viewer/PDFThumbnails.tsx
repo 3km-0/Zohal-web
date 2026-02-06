@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { cn } from '@/lib/utils';
 
@@ -62,9 +63,12 @@ export function PDFThumbnails({ pdf, currentPage, onPageSelect }: PDFThumbnailsP
             )}
           >
             {thumbnails.has(pageNum) ? (
-              <img
-                src={thumbnails.get(pageNum)}
+              <Image
+                src={thumbnails.get(pageNum)!}
                 alt={`Page ${pageNum}`}
+                width={160}
+                height={213}
+                unoptimized
                 className="w-full rounded-sm bg-white shadow-sm"
               />
             ) : (

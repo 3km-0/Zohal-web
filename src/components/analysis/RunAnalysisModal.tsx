@@ -198,7 +198,7 @@ export function RunAnalysisModal(props: {
     return () => {
       cancelled = true;
     };
-  }, [open, supabase, isContract, effectiveScope, selectedBundleId, documentId, bundleSchemaRoles]);
+  }, [open, supabase, isContract, effectiveScope, selectedBundleId, documentId, bundleSchemaRoles, t]);
 
   const createBundle = useCallback(async () => {
     setCreatingBundle(true);

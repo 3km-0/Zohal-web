@@ -80,7 +80,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [supabase.auth, router]);
 
   // Sign in with email and password
   const signIn = useCallback(

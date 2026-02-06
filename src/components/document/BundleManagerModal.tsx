@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Package, Plus, CheckCircle, FileText, Trash2 } from 'lucide-react';
 import { Button, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -43,6 +43,41 @@ export function BundleManagerModal({
   const [newName, setNewName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const loadMembers = useCallback(async (bundleId: string) => {
+    try {
+      const { data: memberData, error: memErr } = await supabase
+        .from('pack_members')
+        .select('id, document_id, role')
+        .eq('pack_id', bundleId)
+        .order('sort_order', { ascending: true });
+
+      if (memErr) throw memErr;
+
+      // Get document titles
+      const docIds = (memberData || []).map((m: any) => m.document_id);
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('id, title')
+        .in('id', docIds);
+
+      const docsById: Record<string, string> = {};
+      for (const d of docs || []) {
+        docsById[d.id] = d.title;
+      }
+
+      setMembers(
+        (memberData || []).map((m: any) => ({
+          id: m.id,
+          document_id: m.document_id,
+          role: m.role || '',
+          title: docsById[m.document_id] || 'Unknown',
+        }))
+      );
+    } catch (e) {
+      console.error('Failed to load members:', e);
+    }
+  }, [supabase]);
+
   // Load bundles
   useEffect(() => {
     async function load() {
@@ -83,42 +118,7 @@ export function BundleManagerModal({
       }
     }
     load();
-  }, [workspaceId, selectedBundleId, supabase]);
-
-  async function loadMembers(bundleId: string) {
-    try {
-      const { data: memberData, error: memErr } = await supabase
-        .from('pack_members')
-        .select('id, document_id, role')
-        .eq('pack_id', bundleId)
-        .order('sort_order', { ascending: true });
-
-      if (memErr) throw memErr;
-
-      // Get document titles
-      const docIds = (memberData || []).map((m: any) => m.document_id);
-      const { data: docs } = await supabase
-        .from('documents')
-        .select('id, title')
-        .in('id', docIds);
-
-      const docsById: Record<string, string> = {};
-      for (const d of docs || []) {
-        docsById[d.id] = d.title;
-      }
-
-      setMembers(
-        (memberData || []).map((m: any) => ({
-          id: m.id,
-          document_id: m.document_id,
-          role: m.role || '',
-          title: docsById[m.document_id] || 'Unknown',
-        }))
-      );
-    } catch (e) {
-      console.error('Failed to load members:', e);
-    }
-  }
+  }, [workspaceId, selectedBundleId, supabase, loadMembers]);
 
   async function createBundle() {
     setSaving(true);
