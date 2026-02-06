@@ -222,7 +222,7 @@ export default function SubscriptionCallbackPage() {
               <h2 className="text-xl font-semibold text-text mb-2">Payment Processing</h2>
               <p className="text-text-soft mb-6">
                 Your payment is being processed. This may take a few minutes. 
-                You'll receive an email once it's complete.
+                You&apos;ll receive an email once it&apos;s complete.
               </p>
               <div className="space-y-3">
                 <Button onClick={() => router.push('/workspaces')} className="w-full">

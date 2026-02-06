@@ -129,6 +129,7 @@ export default function SearchPage() {
   );
 
   // Debounced search
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearch = useCallback(
     debounce((q: string) => performSearch(q), 300),
     [performSearch]
