@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, debounce, truncate } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
+import { getWorkspaceFilterChips, isQuestionQuery } from '@/lib/workspace-logic';
 import type { SearchResult, AskWorkspaceResult, Workspace } from '@/types/database';
 
 export default function SearchPage() {
@@ -41,16 +42,6 @@ export default function SearchPage() {
     fetchWorkspaces();
   }, [supabase]);
 
-  // Detect if query is a question
-  const isQuestion = useCallback((text: string) => {
-    const questionPatterns = [
-      /^(what|who|where|when|why|how|which|can|could|would|should|is|are|do|does|did|will|was|were)/i,
-      /\?$/,
-      /^(explain|describe|tell me|show me)/i,
-    ];
-    return questionPatterns.some((pattern) => pattern.test(text.trim()));
-  }, []);
-
   const performSearch = useCallback(
     async (searchQuery: string) => {
       if (!searchQuery.trim()) {
@@ -72,7 +63,7 @@ export default function SearchPage() {
         if (!userId) throw new Error('Missing user');
 
         // If it's a question, use ask-workspace for RAG
-        if (isQuestion(searchQuery)) {
+        if (isQuestionQuery(searchQuery)) {
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-workspace`,
             {
@@ -134,7 +125,7 @@ export default function SearchPage() {
         setLoading(false);
       }
     },
-    [supabase, selectedWorkspace, isQuestion, toast]
+    [supabase, selectedWorkspace, toast]
   );
 
   // Debounced search
@@ -201,7 +192,7 @@ export default function SearchPage() {
               >
                 All Workspaces
               </button>
-              {workspaces.slice(0, 5).map((ws) => (
+              {getWorkspaceFilterChips(workspaces).map((ws) => (
                 <button
                   key={ws.id}
                   type="button"
@@ -354,4 +345,3 @@ function SearchResultCard({ result }: { result: SearchResult }) {
     </Card>
   );
 }
-

@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, Document, ProcessingStatus, WorkspaceFolder, FolderWithStats } from '@/types/database';
 import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
+import { shouldShowDocumentInCurrentFolder } from '@/lib/workspace-logic';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
 import { FolderIcon, CreateFolderModal } from '@/components/folder';
@@ -233,14 +234,7 @@ export default function WorkspaceDetailPage() {
         (payload) => {
           const updated = payload.new as unknown as Document;
 
-          const inCurrentFolder = currentFolderId
-            ? updated.folder_id === currentFolderId
-            : !updated.folder_id;
-
-          const shouldShow =
-            updated.deleted_at == null &&
-            updated.storage_path !== 'local' &&
-            inCurrentFolder;
+          const shouldShow = shouldShowDocumentInCurrentFolder(updated, currentFolderId);
 
           setDocuments((prev) => {
             const idx = prev.findIndex((d) => d.id === updated.id);

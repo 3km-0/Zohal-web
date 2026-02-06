@@ -1,0 +1,71 @@
+name: zohal-web CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web Typecheck + Ratchet + Tests + Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Resolve base SHA
+        id: base
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enforce no-silent-failure policy on added lines
+        run: |
+          chmod +x .github/scripts/no-silent-failure-added-lines.sh
+          .github/scripts/no-silent-failure-added-lines.sh "${{ steps.base.outputs.sha }}"
+
+      - name: Strict lint on changed files
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only "${{ steps.base.outputs.sha }}"...HEAD | grep -E '^src/.*\.(ts|tsx|js|jsx)$' || true)
+          if [ "${#changed[@]}" -eq 0 ]; then
+            echo "No changed web source files."
+            exit 0
+          fi
+          echo "Linting changed files only:"
+          printf '%s\n' "${changed[@]}"
+          npx eslint "${changed[@]}"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit Tests
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build -- --no-lint
+
+      - name: Baseline lint report (non-blocking)
+        continue-on-error: true
+        run: npm run lint
