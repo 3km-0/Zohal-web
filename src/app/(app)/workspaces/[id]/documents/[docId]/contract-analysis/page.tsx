@@ -49,6 +49,26 @@ type BundlePack = {
   member_count?: number;
 };
 
+type RejectedSets = {
+  variables: Set<string>;
+  clauses: Set<string>;
+  obligations: Set<string>;
+  risks: Set<string>;
+  modules: Set<string>;
+  records: Set<string>;
+  verdicts: Set<string>;
+  exceptions: Set<string>;
+};
+
+function toRejectedSet(value: unknown): Set<string> {
+  if (!Array.isArray(value)) return new Set<string>();
+  return new Set(
+    value
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+  );
+}
+
 export default function ContractAnalysisPage() {
   const params = useParams();
   const router = useRouter();
@@ -129,13 +149,6 @@ export default function ContractAnalysisPage() {
   const [showBundleModal, setShowBundleModal] = useState(false);
   const autoRunTriggered = useRef(false);
 
-  // Rejection tracking (unified action model)
-  const [rejectedVariableIds, setRejectedVariableIds] = useState<Set<string>>(new Set());
-  const [rejectedClauseIds, setRejectedClauseIds] = useState<Set<string>>(new Set());
-  const [rejectedObligationIds, setRejectedObligationIds] = useState<Set<string>>(new Set());
-  const [rejectedRiskIds, setRejectedRiskIds] = useState<Set<string>>(new Set());
-  const [rejectedCustomModuleIds, setRejectedCustomModuleIds] = useState<Set<string>>(new Set());
-
   // Expanded sections for collapsible groups
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
@@ -192,6 +205,23 @@ export default function ContractAnalysisPage() {
     return Array.isArray(arr) ? (arr as Array<Record<string, any>>) : [];
   }, [snapshot]);
 
+  const rejectedSets = useMemo<RejectedSets>(() => {
+    const pack = (snapshot?.pack as any) || {};
+    const reviewRejected = pack?.review?.rejected && typeof pack.review.rejected === 'object' ? pack.review.rejected : null;
+    const legacyRejected = pack?.rejected && typeof pack.rejected === 'object' ? pack.rejected : null;
+    const src = reviewRejected || legacyRejected || {};
+    return {
+      variables: toRejectedSet(src.variables),
+      clauses: toRejectedSet(src.clauses),
+      obligations: toRejectedSet(src.obligations),
+      risks: toRejectedSet(src.risks),
+      modules: toRejectedSet(src.modules),
+      records: toRejectedSet(src.records),
+      verdicts: toRejectedSet(src.verdicts),
+      exceptions: toRejectedSet(src.exceptions),
+    };
+  }, [snapshot]);
+
   const enabledModules = useMemo<Set<string>>(() => {
     const defaults = new Set<string>(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
     const pb = (snapshot?.pack as any)?.playbook as any;
@@ -213,11 +243,13 @@ export default function ContractAnalysisPage() {
   const attention = useMemo(() => {
     // Obligations needing verification: low confidence OR needs_review state
     const obligationsNeedVerification = obligations.filter(
-      (o) => o.confidence_state === 'needs_review' || o.confidence === 'low'
+      (o) => !rejectedSets.obligations.has(o.id) && (o.confidence_state === 'needs_review' || o.confidence === 'low')
     ).length;
 
     // Deadlines needing verification
-    const deadlinesNeedVerification = deadlines.filter((o) => o.confidence_state === 'needs_review' || o.confidence === 'low').length;
+    const deadlinesNeedVerification = deadlines.filter(
+      (o) => !rejectedSets.obligations.has(o.id) && (o.confidence_state === 'needs_review' || o.confidence === 'low')
+    ).length;
 
     return {
       // Clauses don't have verification_state in projection - risk level is content-based
@@ -229,53 +261,65 @@ export default function ContractAnalysisPage() {
       // Risks don't have ai_confidence in projection - severity is content-based
       risks: 0,
     };
-  }, [obligations, deadlines]);
+  }, [obligations, deadlines, rejectedSets]);
 
   const tabs = useMemo(() => {
     const out: Array<{ id: string; label: string; icon: any; total: number | null; attentionCount: number }> = [
       { id: 'overview', label: t('tabs.overview'), icon: FileText, total: null, attentionCount: 0 },
     ];
     if (enabledModules.has('variables')) {
+      const visibleVariables = (snapshot?.variables || []).filter((v) => !rejectedSets.variables.has(v.id));
       out.push({
         id: 'variables',
         label: t('tabs.variables'),
         icon: FileText,
-        total: snapshot?.variables.length ?? 0,
-        attentionCount: snapshot?.variables.filter((v) => v.verification_state === 'needs_review').length ?? 0,
+        total: visibleVariables.length,
+        attentionCount: visibleVariables.filter((v) => v.verification_state === 'needs_review').length,
       });
     }
     if (enabledModules.has('clauses')) {
-      out.push({ id: 'clauses', label: t('tabs.clauses'), icon: FileText, total: clauses.length, attentionCount: attention.clauses });
+      const totalClauses = (snapshot?.clauses?.length
+        ? snapshot.clauses.filter((c: any) => !rejectedSets.clauses.has(String(c?.id || '').trim())).length
+        : clauses.filter((c) => !rejectedSets.clauses.has(c.id)).length);
+      out.push({ id: 'clauses', label: t('tabs.clauses'), icon: FileText, total: totalClauses, attentionCount: attention.clauses });
     }
     if (enabledModules.has('obligations')) {
+      const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
       out.push({
         id: 'obligations',
         label: t('tabs.obligations'),
         icon: FileText,
-        total: obligations.length,
+        total: visibleObligations.length,
         attentionCount: attention.obligations,
       });
     }
     if (enabledModules.has('deadlines')) {
-      out.push({ id: 'deadlines', label: t('tabs.deadlines'), icon: Calendar, total: deadlines.length, attentionCount: attention.deadlines });
+      const visibleDeadlines = deadlines.filter((o) => !rejectedSets.obligations.has(o.id));
+      out.push({ id: 'deadlines', label: t('tabs.deadlines'), icon: Calendar, total: visibleDeadlines.length, attentionCount: attention.deadlines });
     }
     if (enabledModules.has('risks')) {
-      out.push({ id: 'risks', label: t('tabs.risks'), icon: ShieldAlert, total: risks.length, attentionCount: attention.risks });
+      const totalRisks = (snapshot?.risks?.length
+        ? snapshot.risks.filter((r: any) => !rejectedSets.risks.has(String(r?.id || '').trim())).length
+        : risks.filter((r) => !rejectedSets.risks.has(r.id)).length);
+      out.push({ id: 'risks', label: t('tabs.risks'), icon: ShieldAlert, total: totalRisks, attentionCount: attention.risks });
     }
     const v3Enabled = !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled;
     if (v3Enabled || v3Records.length > 0) {
-      out.push({ id: 'records', label: t('tabs.records'), icon: Package, total: v3Records.length, attentionCount: 0 });
+      const visibleRecords = v3Records.filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`)));
+      out.push({ id: 'records', label: t('tabs.records'), icon: Package, total: visibleRecords.length, attentionCount: 0 });
     }
     if (v3Enabled || v3Verdicts.length > 0) {
-      const attentionCount = v3Verdicts.filter((v) => String(v?.status || '') !== 'pass').length;
-      out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: CheckCircle, total: v3Verdicts.length, attentionCount });
+      const visibleVerdicts = v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)));
+      const attentionCount = visibleVerdicts.filter((v) => String(v?.status || '') !== 'pass').length;
+      out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: CheckCircle, total: visibleVerdicts.length, attentionCount });
     }
     if (v3Enabled || v3Exceptions.length > 0) {
-      out.push({ id: 'exceptions', label: t('tabs.exceptions'), icon: AlertTriangle, total: v3Exceptions.length, attentionCount: v3Exceptions.length });
+      const visibleExceptions = v3Exceptions.filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`)));
+      out.push({ id: 'exceptions', label: t('tabs.exceptions'), icon: AlertTriangle, total: visibleExceptions.length, attentionCount: visibleExceptions.length });
     }
     out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText, total: null, attentionCount: 0 })));
     return out;
-  }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules, v3Records, v3Verdicts, v3Exceptions, t]);
+  }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules, v3Records, v3Verdicts, v3Exceptions, rejectedSets, t]);
 
   useEffect(() => {
     // If the current tab becomes unavailable due to template module gating, fall back to overview.
@@ -1022,6 +1066,28 @@ export default function ContractAnalysisPage() {
     } finally {
       setIsPatchingSnapshot(false);
     }
+  }
+
+  async function rejectItem(
+    category: 'variable' | 'clause' | 'obligation' | 'risk' | 'module' | 'record' | 'verdict' | 'exception',
+    targetId: string
+  ) {
+    if (!targetId || isPatchingSnapshot) return;
+    await applySnapshotPatches(
+      [{ op: 'reject_item', target_id: targetId, value: { category } }],
+      `${t('v3.changeNotePrefix')}: reject ${category}`
+    );
+  }
+
+  async function restoreItem(
+    category: 'variable' | 'clause' | 'obligation' | 'risk' | 'module' | 'record' | 'verdict' | 'exception',
+    targetId: string
+  ) {
+    if (!targetId || isPatchingSnapshot) return;
+    await applySnapshotPatches(
+      [{ op: 'unreject_item', target_id: targetId, value: { category } }],
+      `${t('v3.changeNotePrefix')}: restore ${category}`
+    );
   }
 
   async function addFindingRecord() {
@@ -1776,11 +1842,11 @@ export default function ContractAnalysisPage() {
                     title={t('empty.noVariablesSnapshotTitle')}
                     description={t('empty.noVariablesSnapshotDescription')}
                   />
-                ) : snapshot.variables.filter((v) => !rejectedVariableIds.has(v.id)).length === 0 ? (
+                ) : snapshot.variables.filter((v) => !rejectedSets.variables.has(v.id)).length === 0 ? (
                   <EmptyState title={t('empty.noVariablesTitle')} description={t('empty.noVariablesDescription')} />
                 ) : (
                   snapshot.variables
-                    .filter((v) => !rejectedVariableIds.has(v.id))
+                    .filter((v) => !rejectedSets.variables.has(v.id))
                     .map((v) => (
                       <AnalysisRecordCard
                         key={v.id}
@@ -1791,7 +1857,7 @@ export default function ContractAnalysisPage() {
                         sourceHref={proofHref(v.evidence)}
                         sourcePage={v.evidence?.page_number ?? undefined}
                         toolAction={{ type: 'edit', label: 'Edit' }}
-                        onReject={() => setRejectedVariableIds((prev) => new Set([...prev, v.id]))}
+                        onReject={() => rejectItem('variable', v.id)}
                         onToolAction={() => {
                           // TODO: Open edit modal
                         }}
@@ -1842,7 +1908,7 @@ export default function ContractAnalysisPage() {
                           : null,
                       }));
 
-                  const visibleClauses = allClauses.filter((c) => !rejectedClauseIds.has(c.id));
+                  const visibleClauses = allClauses.filter((c) => !rejectedSets.clauses.has(c.id));
 
                   if (visibleClauses.length === 0) {
                     return <EmptyState title={t('empty.noClausesTitle')} description={t('empty.noClausesDescription')} />;
@@ -1888,7 +1954,7 @@ export default function ContractAnalysisPage() {
                               subtitle={c.clauseNumber ? `Clause ${c.clauseNumber}` : undefined}
                               sourceHref={c.href}
                               sourcePage={c.pageNumber ?? undefined}
-                              onReject={() => setRejectedClauseIds((prev) => new Set([...prev, c.id]))}
+                              onReject={() => rejectItem('clause', c.id)}
                             >
                               <p className="text-sm text-text whitespace-pre-wrap line-clamp-4">{c.text}</p>
                             </AnalysisRecordCard>
@@ -1902,7 +1968,7 @@ export default function ContractAnalysisPage() {
             {tab === 'obligations' && (
               <div className="space-y-3">
                 {(() => {
-                  const visibleObligations = obligations.filter((o) => !rejectedObligationIds.has(o.id));
+                  const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
                   
                   if (visibleObligations.length === 0) {
                     return <EmptyState title={t('empty.noObligationsTitle')} description={t('empty.noObligationsDescription')} />;
@@ -2004,7 +2070,7 @@ export default function ContractAnalysisPage() {
                             }
                             sourcePage={o.page_number ?? undefined}
                             toolAction={o.due_at ? { type: 'calendar', label: 'Add to Calendar' } : { type: 'task', label: 'Add Task' }}
-                            onReject={() => setRejectedObligationIds((prev) => new Set([...prev, o.id]))}
+                            onReject={() => rejectItem('obligation', o.id)}
                             onToolAction={
                               o.task_id
                                 ? undefined // Already has task
@@ -2082,7 +2148,7 @@ export default function ContractAnalysisPage() {
                     }
                   }
                   
-                  for (const o of deadlines) {
+                  for (const o of deadlines.filter((x) => !rejectedSets.obligations.has(x.id))) {
                     items.push({
                       key: `ob_${o.id}`,
                       title: o.obligation_type,
@@ -2152,7 +2218,7 @@ export default function ContractAnalysisPage() {
                           : null,
                       }));
 
-                  const visibleRisks = allRisks.filter((r) => !rejectedRiskIds.has(r.id));
+                  const visibleRisks = allRisks.filter((r) => !rejectedSets.risks.has(r.id));
 
                   if (visibleRisks.length === 0) {
                     return <EmptyState title={t('empty.noRisksTitle')} description={t('empty.noRisksDescription')} />;
@@ -2206,7 +2272,7 @@ export default function ContractAnalysisPage() {
                                 confidence={config.confidence}
                                 sourceHref={r.href}
                                 sourcePage={r.pageNumber ?? undefined}
-                                onReject={() => setRejectedRiskIds((prev) => new Set([...prev, r.id]))}
+                                onReject={() => rejectItem('risk', r.id)}
                               >
                                 {r.explanation && (
                                   <p className="text-sm text-text-soft whitespace-pre-wrap line-clamp-3">{r.explanation}</p>
@@ -2228,13 +2294,25 @@ export default function ContractAnalysisPage() {
                     {isPatchingSnapshot ? t('v3.saving') : t('v3.addFinding')}
                   </Button>
                 </div>
-                {v3Records.length === 0 ? (
+                {v3Records.filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`))).length === 0 ? (
                   <EmptyState title={t('v3.noRecordsTitle')} description={t('v3.noRecordsDescription')} />
                 ) : (
-                  v3Records.map((r, idx) => {
+                  v3Records
+                    .filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`)))
+                    .map((r, idx) => {
                     const id = String(r?.id || `record_${idx}`);
                     const status = String(r?.status || 'proposed');
                     const severity = String(r?.severity || '').toLowerCase();
+                    const evidenceLinks = Array.isArray((r as any)?.evidence)
+                      ? ((r as any).evidence as any[])
+                          .slice(0, 8)
+                          .map((e) => ({
+                            page: typeof e?.page_number === 'number' ? e.page_number : null,
+                            quote: typeof e?.source_quote === 'string' ? e.source_quote : typeof e?.snippet === 'string' ? e.snippet : '',
+                            docId: typeof e?.document_id === 'string' ? e.document_id : documentId,
+                          }))
+                          .filter((e) => !!e.page && !!e.quote)
+                      : [];
                     return (
                       <Card key={id}>
                         <CardHeader>
@@ -2274,6 +2352,23 @@ export default function ContractAnalysisPage() {
                               {t('v3.resolve')}
                             </Button>
                           </div>
+                          {evidenceLinks.length > 0 ? (
+                            <ul className="space-y-2">
+                              {evidenceLinks.map((e, eidx) => (
+                                <li key={`${id}_ev_${eidx}`}>
+                                  <Link
+                                    href={`/workspaces/${workspaceId}/documents/${e.docId}?page=${e.page}&quote=${encodeURIComponent(
+                                      e.quote.slice(0, 160)
+                                    )}`}
+                                    className="text-sm font-semibold text-accent hover:underline"
+                                  >
+                                    Page {e.page}
+                                  </Link>
+                                  <div className="text-sm text-text-soft">“{e.quote}”</div>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </CardContent>
                       </Card>
                     );
@@ -2284,13 +2379,26 @@ export default function ContractAnalysisPage() {
 
             {tab === 'verdicts' && (
               <div className="space-y-3">
-                {v3Verdicts.length === 0 ? (
+                {v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`))).length === 0 ? (
                   <EmptyState title={t('v3.noVerdictsTitle')} description={t('v3.noVerdictsDescription')} />
                 ) : (
-                  v3Verdicts.map((v, idx) => {
+                  v3Verdicts
+                    .filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)))
+                    .map((v, idx) => {
+                    const verdictId = String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`);
                     const status = String(v?.status || 'uncertain').toLowerCase();
+                    const evidenceLinks = Array.isArray((v as any)?.evidence)
+                      ? ((v as any).evidence as any[])
+                          .slice(0, 8)
+                          .map((e) => ({
+                            page: typeof e?.page_number === 'number' ? e.page_number : null,
+                            quote: typeof e?.source_quote === 'string' ? e.source_quote : typeof e?.snippet === 'string' ? e.snippet : '',
+                            docId: typeof e?.document_id === 'string' ? e.document_id : documentId,
+                          }))
+                          .filter((e) => !!e.page && !!e.quote)
+                      : [];
                     return (
-                      <Card key={String(v?.id || idx)}>
+                      <Card key={verdictId}>
                         <CardHeader>
                           <CardTitle className="flex items-center justify-between gap-2">
                             <span>{String(v?.rule_id || t('v3.unnamedRule'))}</span>
@@ -2303,6 +2411,33 @@ export default function ContractAnalysisPage() {
                         <CardContent className="space-y-1">
                           {v?.explanation ? <p className="text-sm text-text">{String(v.explanation)}</p> : null}
                           <p className="text-xs text-text-soft">{t('v3.confidence')}: {String(v?.confidence || 'low')}</p>
+                          <div className="pt-1">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={isPatchingSnapshot}
+                              onClick={() => rejectItem('verdict', verdictId)}
+                            >
+                              {t('v3.reject')}
+                            </Button>
+                          </div>
+                          {evidenceLinks.length > 0 ? (
+                            <ul className="space-y-2">
+                              {evidenceLinks.map((e, eidx) => (
+                                <li key={`${verdictId}_ev_${eidx}`}>
+                                  <Link
+                                    href={`/workspaces/${workspaceId}/documents/${e.docId}?page=${e.page}&quote=${encodeURIComponent(
+                                      e.quote.slice(0, 160)
+                                    )}`}
+                                    className="text-sm font-semibold text-accent hover:underline"
+                                  >
+                                    Page {e.page}
+                                  </Link>
+                                  <div className="text-sm text-text-soft">“{e.quote}”</div>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </CardContent>
                       </Card>
                     );
@@ -2313,11 +2448,15 @@ export default function ContractAnalysisPage() {
 
             {tab === 'exceptions' && (
               <div className="space-y-3">
-                {v3Exceptions.length === 0 ? (
+                {v3Exceptions.filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`))).length === 0 ? (
                   <EmptyState title={t('v3.noExceptionsTitle')} description={t('v3.noExceptionsDescription')} />
                 ) : (
-                  v3Exceptions.map((ex, idx) => (
-                    <Card key={String(ex?.id || idx)}>
+                  v3Exceptions
+                    .filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`)))
+                    .map((ex, idx) => {
+                    const exId = String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`);
+                    return (
+                    <Card key={exId}>
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between gap-2">
                           <span>{String(ex?.kind || ex?.type || t('v3.exception'))}</span>
@@ -2327,11 +2466,19 @@ export default function ContractAnalysisPage() {
                           </div>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="space-y-2">
                         <p className="text-sm text-text">{String(ex?.message || t('v3.noMessage'))}</p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={isPatchingSnapshot}
+                          onClick={() => rejectItem('exception', exId)}
+                        >
+                          {t('v3.reject')}
+                        </Button>
                       </CardContent>
                     </Card>
-                  ))
+                  )})
                 )}
               </div>
             )}
@@ -2342,8 +2489,19 @@ export default function ContractAnalysisPage() {
                   const id = tab.slice('custom:'.length);
                   
                   // Check if rejected (unified action model)
-                  if (rejectedCustomModuleIds.has(id)) {
-                    return <EmptyState title="Module Rejected" description="This custom module was marked as rejected." />;
+                  if (rejectedSets.modules.has(id)) {
+                    return (
+                      <EmptyState
+                        title="Module Rejected"
+                        description="This custom module was marked as rejected."
+                        action={{
+                          label: isPatchingSnapshot ? t('v3.saving') : t('v3.resolve'),
+                          onClick: () => {
+                            if (!isPatchingSnapshot) restoreItem('module', id);
+                          },
+                        }}
+                      />
+                    );
                   }
                   
                   const m = customModules.find((x) => x.id === id);
@@ -2368,6 +2526,16 @@ export default function ContractAnalysisPage() {
                       <CardContent className="space-y-3">
                         {m.error ? <div className="text-sm text-error">{m.error}</div> : null}
                         {m.ai_confidence ? <div className="text-sm text-text-soft">Confidence: {m.ai_confidence}</div> : null}
+                        <div>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={isPatchingSnapshot}
+                            onClick={() => rejectItem('module', id)}
+                          >
+                            {t('v3.reject')}
+                          </Button>
+                        </div>
 
                         <div className="rounded-scholar border border-border bg-surface-alt p-3 font-mono text-xs whitespace-pre-wrap">
                           {m.result == null ? 'null' : typeof m.result === 'string' ? m.result : JSON.stringify(m.result, null, 2)}
