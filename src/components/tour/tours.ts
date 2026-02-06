@@ -93,9 +93,9 @@ export function getTourSteps(tourId: TourId): TourStep[] {
         {
           element: '[data-tour="viewer-contract-analysis"]',
           popover: {
-            title: 'Run Contract Analysis (Tap-to-Proof)',
+            title: 'Run Document Analysis (Tap-to-Proof)',
             description:
-              'For contracts, Contract Analysis extracts variables, obligations, and risks with evidence links you can jump back to in the PDF.',
+              'Document Analysis extracts variables, obligations, and risks with evidence links you can jump back to in the PDF.',
             side: 'bottom',
             align: 'end',
           },

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Settings } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -93,6 +93,7 @@ export default function ContractAnalysisPage() {
 
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportSavedMessage, setReportSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -709,6 +710,7 @@ export default function ContractAnalysisPage() {
                 await new Promise((r) => setTimeout(r, 800));
               }
               setIsAnalyzing(false);
+              setShowSettings(false);
               return;
             }
             
@@ -744,6 +746,7 @@ export default function ContractAnalysisPage() {
       // Synchronous success (legacy path or immediate completion)
       await load();
       setIsAnalyzing(false);
+      setShowSettings(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.contractAnalysisFailed'));
       setIsAnalyzing(false);
@@ -953,7 +956,7 @@ export default function ContractAnalysisPage() {
       const titleBase = o.summary || o.action || o.obligation_type || 'Contract obligation';
       const title = `${o.obligation_type}: ${titleBase}`.slice(0, 120);
       const descriptionParts = [
-        'Source: Contract Analysis',
+        'Source: Document Analysis',
         `Document: ${documentId}`,
         o.page_number != null ? `Page: ${o.page_number}` : null,
         '',
@@ -1075,13 +1078,15 @@ export default function ContractAnalysisPage() {
           <Link
             href={`/workspaces/${workspaceId}/documents/${documentId}`}
             className="p-2 rounded-lg hover:bg-surface-alt transition-colors"
+            title="Close and return to PDF"
           >
-            <ArrowLeft className="w-5 h-5 text-text-soft" />
+            <X className="w-5 h-5 text-text-soft" />
           </Link>
           <div className="flex items-center gap-2">
             <Scale className="w-5 h-5 text-purple-500" />
-            <h1 className="font-semibold text-text">Contract Analysis</h1>
-            <Badge size="sm">saved</Badge>
+            <h1 className="font-semibold text-text">Document Analysis</h1>
+            {contract && !showSettings && <Badge size="sm">saved</Badge>}
+            {contract && showSettings && <Badge size="sm" variant="warning">re-configuring</Badge>}
             {documentRow?.privacy_mode && (
               <Badge size="sm">
                 Privacy Mode
@@ -1113,6 +1118,12 @@ export default function ContractAnalysisPage() {
             isLoading={isGeneratingReport || isFinalizing || isExportingAuditPack}
             dataTour="contract-actions"
             items={[
+              ...(contract ? [{
+                label: 'Re-analyze',
+                icon: <RefreshCw className="w-4 h-4" />,
+                onClick: () => { setShowSettings(true); setTab('template-select'); },
+              },
+              { type: 'divider' as const }] : []),
               { type: 'section', label: 'Report' },
               {
                 label: isGeneratingReport ? 'Generating report…' : 'Generate Report',
@@ -1146,8 +1157,8 @@ export default function ContractAnalysisPage() {
               },
               { type: 'divider' },
               {
-                label: 'Back to PDF',
-                icon: <ArrowLeft className="w-4 h-4" />,
+                label: 'Close & Return to PDF',
+                icon: <X className="w-4 h-4" />,
                 onClick: () => router.push(`/workspaces/${workspaceId}/documents/${documentId}`),
               },
             ]}
@@ -1166,13 +1177,30 @@ export default function ContractAnalysisPage() {
           <div className="flex items-center justify-center py-16">
             <Spinner size="lg" />
           </div>
-        ) : !contract ? (
+        ) : !contract || showSettings ? (
           <div className="space-y-4 max-w-xl mx-auto">
-            <EmptyState
-              title={t('empty.notAnalyzedTitle')}
-              description={t('empty.notAnalyzedDescription')}
-              variant="card"
-            />
+            {/* Show a back-to-results button when re-configuring an existing analysis */}
+            {contract && showSettings && (
+              <div className="flex items-center justify-between p-3 bg-surface-alt border border-border rounded-scholar">
+                <p className="text-sm text-text-soft">
+                  An analysis already exists. Configure and run again to replace it.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSettings(false)}
+                >
+                  View Results
+                </Button>
+              </div>
+            )}
+            {!contract && (
+              <EmptyState
+                title={t('empty.notAnalyzedTitle')}
+                description={t('empty.notAnalyzedDescription')}
+                variant="card"
+              />
+            )}
 
             {/* Analysis Configuration - Tabbed Interface */}
             <ScholarNotebookCard>

@@ -264,7 +264,7 @@ export default function DocumentViewerPage() {
               }
             >
               <Scale className="w-4 h-4" />
-              Contract Analysis
+              Document Analysis
             </Button>
           )}
           <Button
@@ -317,7 +317,7 @@ export default function DocumentViewerPage() {
                               }
                             >
                               <Scale className="w-4 h-4" />
-                              View contract analysis
+                              View document analysis
                             </Button>
                           )}
                         </div>
