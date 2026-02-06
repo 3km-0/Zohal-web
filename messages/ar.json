@@ -452,7 +452,46 @@
       "duplicateToEdit": "نسخ للتعديل",
       "systemTemplateBanner": "هذا قالب نظام زحل. انسخه لإنشاء نسختك القابلة للتعديل.",
       "viewModulesSystem": "عرض وحدات الاستخراج المحددة في قالب النظام هذا.",
-      "viewVariablesSystem": "عرض المتغيرات المحددة في قالب النظام هذا."
+      "viewVariablesSystem": "عرض المتغيرات المحددة في قالب النظام هذا.",
+      "sections": {
+        "modules": "الوحدات",
+        "variables": "المتغيرات",
+        "records": "السجلات",
+        "rules": "القواعد",
+        "scopeRoles": "النطاق والأدوار"
+      },
+      "records": {
+        "description": "عرّف أنواع سجلات قابلة لإعادة الاستخدام للنتائج العامة والسجلات التي يضيفها المستخدم.",
+        "add": "إضافة نوع سجل",
+        "empty": "لا توجد أنواع سجلات بعد. أضف نوعًا لتمكين النتائج المخصصة.",
+        "defaultTitle": "نوع سجل جديد",
+        "titleField": "العنوان",
+        "showInReport": "إظهاره في التقرير",
+        "invalidJson": "تنسيق JSON Schema غير صالح."
+      },
+      "rules": {
+        "description": "عرّف قواعد حتمية أو دلالية لإنتاج الأحكام وقائمة الاستثناءات.",
+        "add": "إضافة قاعدة",
+        "empty": "لا توجد قواعد بعد. أضف قاعدة لتفعيل أحكام القواعد.",
+        "jsonLabel": "JSON للقاعدة",
+        "invalidJson": "JSON القاعدة غير صالح. تأكد من وجود id و type."
+      },
+      "scope": {
+        "description": "حدد ما إذا كان القالب يعمل على مستند واحد أو حزمة أو كلاهما، وعرّف أدوار الحزمة المطلوبة.",
+        "scopeLabel": "النطاق",
+        "single": "مستند واحد",
+        "bundle": "حزمة فقط",
+        "either": "كلاهما",
+        "rolesTitle": "أدوار الحزمة",
+        "addRole": "إضافة دور",
+        "emptyRoles": "لا توجد أدوار للحزمة.",
+        "required": "مطلوب",
+        "multiple": "يسمح بالتعدد",
+        "allowedTypes": "أنواع المستندات المسموح بها",
+        "allowedTypesPlaceholder": "contract, policy, guideline",
+        "singleSourceScopePlaceholder": "source_scope (any_doc أو role:name)",
+        "multiSourceScopesPlaceholder": "source_scopes (مفصولة بفواصل)"
+      }
     },
     "outputsModules": "المخرجات (الوحدات)",
     "modules": {
@@ -652,7 +691,10 @@
       "clauses": "البنود",
       "obligations": "الالتزامات",
       "deadlines": "المواعيد النهائية",
-      "risks": "المخاطر"
+      "risks": "المخاطر",
+      "records": "السجلات",
+      "verdicts": "الأحكام",
+      "exceptions": "الاستثناءات"
     },
     "empty": {
       "notAnalyzedTitle": "لم يتم التحليل بعد",
@@ -695,6 +737,28 @@
       "referencePackKind": "التصنيف (policy | regulation | standard | other)",
       "knowledgePackKind": "تصنيف حزمة المعرفة (policy | regulation)"
     },
+    "v3": {
+      "recordsSubtitle": "سجلات مضافة من المستخدم أو النظام مع حالة تدقيق واضحة.",
+      "addFinding": "إضافة ملاحظة",
+      "saving": "جارٍ الحفظ…",
+      "addFindingPromptTitle": "عنوان السجل",
+      "addFindingPromptSummary": "ملخص اختياري",
+      "addFindingChangeNote": "أضاف المستخدم سجلاً",
+      "changeNotePrefix": "تحديث حالة السجل",
+      "noRecordsTitle": "لا توجد سجلات",
+      "noRecordsDescription": "لم يتم حفظ سجلات V3 لهذا التشغيل.",
+      "confirm": "تأكيد",
+      "reject": "رفض",
+      "resolve": "إغلاق",
+      "noVerdictsTitle": "لا توجد أحكام",
+      "noVerdictsDescription": "لم يتم إنتاج أحكام قواعد V3 لهذا التشغيل.",
+      "noExceptionsTitle": "لا توجد استثناءات",
+      "noExceptionsDescription": "لم يتم إنتاج استثناءات V3 لهذا التشغيل.",
+      "unnamedRule": "قاعدة بدون اسم",
+      "confidence": "الثقة",
+      "exception": "استثناء",
+      "noMessage": "لا توجد رسالة"
+    },
     "errors": {
       "notAuthenticated": "غير مسجل الدخول",
       "loadFailed": "فشل تحميل تحليل العقد",
@@ -705,7 +769,9 @@
       "analysisTakingLonger": "يستغرق التحليل وقتاً أطول من المتوقع. يرجى التحقق لاحقاً.",
       "exportCalendarFailed": "فشل تصدير التقويم",
       "generateReportFailed": "فشل إنشاء التقرير",
-      "createTaskFailed": "فشل إنشاء المهمة"
+      "createTaskFailed": "فشل إنشاء المهمة",
+      "snapshotVersionMissing": "تعذر العثور على كائن التحقق أو الإصدار. أعد تشغيل التحليل أولاً.",
+      "snapshotPatchFailed": "فشل تطبيق تحديث اللقطة."
     }
   },
   "marketingHome": {

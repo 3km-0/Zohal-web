@@ -14,7 +14,7 @@
 // Schema Version & Template
 // =============================================================================
 
-export type SnapshotSchemaVersion = '1.0' | '2.0'
+export type SnapshotSchemaVersion = string
 
 /**
  * Template ID (lane).
@@ -191,18 +191,33 @@ export interface EvidenceGradeSnapshot {
     template_version?: string
     modules_activated?: string[]
     modules?: Record<string, unknown>
+    capabilities?: {
+      analysis_v3?: {
+        enabled?: boolean
+        web_enabled?: boolean
+        ios_enabled?: boolean
+      }
+      [k: string]: unknown
+    }
     // Multi-document bundles (additive)
     bundle?: {
       bundle_id?: string
+      pack_id?: string
       document_ids?: string[]
       document_hashes?: Record<string, string>
       precedence_policy?: string
+      member_roles?: Array<{ document_id: string; role: string; sort_order?: number }>
     }
     discrepancies?: Array<Record<string, unknown>>
     // Pinned context sets (manifest only; v1)
     context?: Record<string, unknown>
     // Playbooks (additive)
     playbook?: Record<string, unknown>
+    // Analysis V3 additive sections
+    records?: Array<Record<string, unknown>>
+    rules?: Array<Record<string, unknown>>
+    verdicts?: Array<Record<string, unknown>>
+    exceptions_v3?: Array<Record<string, unknown>>
     exceptions_summary?: { blocker: number; warning: number }
     exceptions?: Array<Record<string, unknown>>
   }
@@ -417,7 +432,7 @@ export function parseSnapshot(raw: unknown, documentId: string): EvidenceGradeSn
   const obj = raw as Record<string, unknown>
   const schemaVersion = obj.schema_version as string | undefined
   
-  if (schemaVersion === '2.0') {
+  if (typeof schemaVersion === 'string' && schemaVersion.split('.')[0] === '2') {
     // Already v2 format
     return raw as EvidenceGradeSnapshot
   }

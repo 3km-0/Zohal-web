@@ -452,7 +452,46 @@
       "duplicateToEdit": "Duplicate to Edit",
       "systemTemplateBanner": "This is a Zohal system template. Duplicate it to create your own editable version.",
       "viewModulesSystem": "View the extraction modules defined in this system template.",
-      "viewVariablesSystem": "View the variables defined in this system template."
+      "viewVariablesSystem": "View the variables defined in this system template.",
+      "sections": {
+        "modules": "Modules",
+        "variables": "Variables",
+        "records": "Records",
+        "rules": "Rules",
+        "scopeRoles": "Scope & Roles"
+      },
+      "records": {
+        "description": "Define reusable record types for generic findings and user-authored entries.",
+        "add": "Add Record Type",
+        "empty": "No record types yet. Add one to enable custom findings.",
+        "defaultTitle": "New Record Type",
+        "titleField": "Title",
+        "showInReport": "Show in report",
+        "invalidJson": "Invalid JSON schema."
+      },
+      "rules": {
+        "description": "Define deterministic or semantic rules that produce verdicts and exceptions.",
+        "add": "Add Rule",
+        "empty": "No rules yet. Add one to enable rule verdicts.",
+        "jsonLabel": "Rule JSON",
+        "invalidJson": "Invalid rule JSON. Ensure id/type are present."
+      },
+      "scope": {
+        "description": "Control whether this template runs on a single document, bundles, or both, and define required bundle roles.",
+        "scopeLabel": "Scope",
+        "single": "Single document",
+        "bundle": "Bundle only",
+        "either": "Either",
+        "rolesTitle": "Bundle roles",
+        "addRole": "Add Role",
+        "emptyRoles": "No bundle roles defined.",
+        "required": "Required",
+        "multiple": "Allow multiple",
+        "allowedTypes": "Allowed document types",
+        "allowedTypesPlaceholder": "contract, policy, guideline",
+        "singleSourceScopePlaceholder": "source_scope (any_doc or role:name)",
+        "multiSourceScopesPlaceholder": "source_scopes (comma-separated)"
+      }
     },
     "outputsModules": "Outputs (modules)",
     "modules": {
@@ -652,7 +691,10 @@
       "clauses": "Clauses",
       "obligations": "Obligations",
       "deadlines": "Deadlines",
-      "risks": "Risks"
+      "risks": "Risks",
+      "records": "Records",
+      "verdicts": "Verdicts",
+      "exceptions": "Exceptions"
     },
     "empty": {
       "notAnalyzedTitle": "Not analyzed yet",
@@ -695,6 +737,28 @@
       "referencePackKind": "Kind (policy | regulation | standard | other)",
       "knowledgePackKind": "Knowledge pack kind (policy | regulation)"
     },
+    "v3": {
+      "recordsSubtitle": "User-authored and AI-authored records with auditable status.",
+      "addFinding": "Add finding",
+      "saving": "Saving…",
+      "addFindingPromptTitle": "Record title",
+      "addFindingPromptSummary": "Optional summary",
+      "addFindingChangeNote": "User added record",
+      "changeNotePrefix": "Record status update",
+      "noRecordsTitle": "No records",
+      "noRecordsDescription": "No V3 records were saved for this run.",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "resolve": "Resolve",
+      "noVerdictsTitle": "No verdicts",
+      "noVerdictsDescription": "No V3 rule verdicts were produced for this run.",
+      "noExceptionsTitle": "No exceptions",
+      "noExceptionsDescription": "No V3 exceptions were produced for this run.",
+      "unnamedRule": "Unnamed rule",
+      "confidence": "Confidence",
+      "exception": "Exception",
+      "noMessage": "No message"
+    },
     "errors": {
       "notAuthenticated": "Not authenticated",
       "loadFailed": "Failed to load contract analysis",
@@ -705,7 +769,9 @@
       "analysisTakingLonger": "Analysis is taking longer than expected. Please check back later.",
       "exportCalendarFailed": "Failed to export calendar",
       "generateReportFailed": "Failed to generate report",
-      "createTaskFailed": "Failed to create task"
+      "createTaskFailed": "Failed to create task",
+      "snapshotVersionMissing": "Missing verification object or version. Re-run analysis first.",
+      "snapshotPatchFailed": "Failed to apply snapshot update."
     }
   },
   "marketingHome": {

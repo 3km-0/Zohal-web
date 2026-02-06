@@ -115,6 +115,7 @@ export default function ContractAnalysisPage() {
   const [bundleDocuments, setBundleDocuments] = useState<Array<{ id: string; title: string; role?: string }>>([]);
   const [isRunningCompliance, setIsRunningCompliance] = useState(false);
   const [isGeneratingKnowledgePack, setIsGeneratingKnowledgePack] = useState(false);
+  const [isPatchingSnapshot, setIsPatchingSnapshot] = useState(false);
 
   // Playbook selection (MVP): optional; defaults preserve current behavior.
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
@@ -173,6 +174,21 @@ export default function ContractAnalysisPage() {
         };
       })
       .filter((m) => !!m.id && !!m.title && !core.has(m.id));
+  }, [snapshot]);
+
+  const v3Records = useMemo(() => {
+    const arr = (snapshot?.pack as any)?.records;
+    return Array.isArray(arr) ? (arr as Array<Record<string, any>>) : [];
+  }, [snapshot]);
+
+  const v3Verdicts = useMemo(() => {
+    const arr = (snapshot?.pack as any)?.verdicts;
+    return Array.isArray(arr) ? (arr as Array<Record<string, any>>) : [];
+  }, [snapshot]);
+
+  const v3Exceptions = useMemo(() => {
+    const arr = (snapshot?.pack as any)?.exceptions_v3;
+    return Array.isArray(arr) ? (arr as Array<Record<string, any>>) : [];
   }, [snapshot]);
 
   const enabledModules = useMemo<Set<string>>(() => {
@@ -245,9 +261,20 @@ export default function ContractAnalysisPage() {
     if (enabledModules.has('risks')) {
       out.push({ id: 'risks', label: t('tabs.risks'), icon: ShieldAlert, total: risks.length, attentionCount: attention.risks });
     }
+    const v3Enabled = !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled;
+    if (v3Enabled || v3Records.length > 0) {
+      out.push({ id: 'records', label: t('tabs.records'), icon: Package, total: v3Records.length, attentionCount: 0 });
+    }
+    if (v3Enabled || v3Verdicts.length > 0) {
+      const attentionCount = v3Verdicts.filter((v) => String(v?.status || '') !== 'pass').length;
+      out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: CheckCircle, total: v3Verdicts.length, attentionCount });
+    }
+    if (v3Enabled || v3Exceptions.length > 0) {
+      out.push({ id: 'exceptions', label: t('tabs.exceptions'), icon: AlertTriangle, total: v3Exceptions.length, attentionCount: v3Exceptions.length });
+    }
     out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText, total: null, attentionCount: 0 })));
     return out;
-  }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules]);
+  }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules, v3Records, v3Verdicts, v3Exceptions, t]);
 
   useEffect(() => {
     // If the current tab becomes unavailable due to template module gating, fall back to overview.
@@ -956,6 +983,63 @@ export default function ContractAnalysisPage() {
     } finally {
       setCreatingTaskFor(null);
     }
+  }
+
+  async function applySnapshotPatches(patches: Array<Record<string, unknown>>, changeNotes?: string) {
+    if (!verificationObjectId || !currentVersionId) {
+      setError(t('errors.snapshotVersionMissing'));
+      return false;
+    }
+    try {
+      setIsPatchingSnapshot(true);
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userRes.user.id;
+
+      const { data, error: fnErr } = await supabase.functions.invoke('update-verification-snapshot', {
+        body: {
+          verification_object_id: verificationObjectId,
+          base_version_id: currentVersionId,
+          user_id: userId,
+          patches,
+          ...(changeNotes ? { change_notes: changeNotes } : {}),
+        },
+      });
+      if (fnErr) throw fnErr;
+      if (!data?.success) throw new Error(data?.error || t('errors.snapshotPatchFailed'));
+      await load();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('errors.snapshotPatchFailed'));
+      return false;
+    } finally {
+      setIsPatchingSnapshot(false);
+    }
+  }
+
+  async function addFindingRecord() {
+    const title = window.prompt(t('v3.addFindingPromptTitle'));
+    if (!title || !title.trim()) return;
+    const summary = window.prompt(t('v3.addFindingPromptSummary')) || '';
+    await applySnapshotPatches(
+      [
+        {
+          op: 'add_record',
+          value: {
+            record_type: 'finding',
+            title: title.trim(),
+            summary: summary.trim() || undefined,
+            severity: 'medium',
+          },
+        },
+      ],
+      t('v3.addFindingChangeNote')
+    );
+  }
+
+  async function updateRecordStatus(recordId: string, status: 'confirmed' | 'rejected' | 'resolved') {
+    const op = status === 'confirmed' ? 'confirm_record' : status === 'rejected' ? 'reject_record' : 'resolve_record';
+    await applySnapshotPatches([{ op, target_id: recordId }], `${t('v3.changeNotePrefix')}: ${status}`);
   }
 
   useEffect(() => {
@@ -2101,6 +2185,122 @@ export default function ContractAnalysisPage() {
                       );
                     });
                 })()}
+              </div>
+            )}
+
+            {tab === 'records' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-text-soft">{t('v3.recordsSubtitle')}</p>
+                  <Button size="sm" onClick={addFindingRecord} disabled={isPatchingSnapshot}>
+                    {isPatchingSnapshot ? t('v3.saving') : t('v3.addFinding')}
+                  </Button>
+                </div>
+                {v3Records.length === 0 ? (
+                  <EmptyState title={t('v3.noRecordsTitle')} description={t('v3.noRecordsDescription')} />
+                ) : (
+                  v3Records.map((r, idx) => {
+                    const id = String(r?.id || `record_${idx}`);
+                    const status = String(r?.status || 'proposed');
+                    const severity = String(r?.severity || '').toLowerCase();
+                    return (
+                      <Card key={id}>
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between gap-2">
+                            <span>{String(r?.title || r?.summary || r?.record_type || 'Record')}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge size="sm">{status}</Badge>
+                              {severity ? <Badge size="sm">{severity}</Badge> : null}
+                            </div>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {r?.summary ? <p className="text-sm text-text">{String(r.summary)}</p> : null}
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={isPatchingSnapshot || status === 'confirmed'}
+                              onClick={() => updateRecordStatus(id, 'confirmed')}
+                            >
+                              {t('v3.confirm')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={isPatchingSnapshot || status === 'rejected'}
+                              onClick={() => updateRecordStatus(id, 'rejected')}
+                            >
+                              {t('v3.reject')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={isPatchingSnapshot || status === 'resolved'}
+                              onClick={() => updateRecordStatus(id, 'resolved')}
+                            >
+                              {t('v3.resolve')}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {tab === 'verdicts' && (
+              <div className="space-y-3">
+                {v3Verdicts.length === 0 ? (
+                  <EmptyState title={t('v3.noVerdictsTitle')} description={t('v3.noVerdictsDescription')} />
+                ) : (
+                  v3Verdicts.map((v, idx) => {
+                    const status = String(v?.status || 'uncertain').toLowerCase();
+                    return (
+                      <Card key={String(v?.id || idx)}>
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between gap-2">
+                            <span>{String(v?.rule_id || t('v3.unnamedRule'))}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge size="sm">{status}</Badge>
+                              <Badge size="sm">{String(v?.severity || 'warning')}</Badge>
+                            </div>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-1">
+                          {v?.explanation ? <p className="text-sm text-text">{String(v.explanation)}</p> : null}
+                          <p className="text-xs text-text-soft">{t('v3.confidence')}: {String(v?.confidence || 'low')}</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {tab === 'exceptions' && (
+              <div className="space-y-3">
+                {v3Exceptions.length === 0 ? (
+                  <EmptyState title={t('v3.noExceptionsTitle')} description={t('v3.noExceptionsDescription')} />
+                ) : (
+                  v3Exceptions.map((ex, idx) => (
+                    <Card key={String(ex?.id || idx)}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between gap-2">
+                          <span>{String(ex?.kind || ex?.type || t('v3.exception'))}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge size="sm">{String(ex?.status || 'open')}</Badge>
+                            <Badge size="sm">{String(ex?.severity || 'warning')}</Badge>
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-text">{String(ex?.message || t('v3.noMessage'))}</p>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             )}
 

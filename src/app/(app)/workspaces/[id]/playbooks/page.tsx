@@ -13,7 +13,6 @@ import {
   Spinner,
   ScholarNotebookCard,
   ScholarToggle,
-  ScholarSelect,
   EmptyState,
 } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -50,8 +49,19 @@ type PlaybookSpecV1 = {
     key: string;
     type: string;
     required?: boolean;
+    source_scope?: string;
+    source_scopes?: string[];
     constraints?: { min?: number; max?: number; allowed_values?: string[] };
   }>;
+  record_types?: Array<{
+    id: string;
+    title: string;
+    json_schema?: Record<string, unknown>;
+    show_in_report?: boolean;
+    source_scope?: string;
+    source_scopes?: string[];
+  }>;
+  rules?: Array<Record<string, unknown>>;
   checks?: Array<
     | { id: string; type: 'required'; variable_key: string; severity: 'blocker' | 'warning' }
     | {
@@ -233,6 +243,8 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
       key: String(v?.key || '').trim(),
       type: String(v?.type || '').trim(),
       required: v?.required === true,
+      source_scope: typeof v?.source_scope === 'string' ? String(v.source_scope).trim() : undefined,
+      source_scopes: Array.isArray(v?.source_scopes) ? v.source_scopes.map((x: any) => String(x).trim()).filter(Boolean) : undefined,
       constraints:
         v?.constraints && typeof v.constraints === 'object'
           ? {
@@ -245,6 +257,28 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
           : undefined,
     }))
     .filter((v: any) => !!v.key);
+
+  const record_types = Array.isArray(input?.record_types)
+    ? input.record_types
+        .map((r: any) => ({
+          id: String(r?.id || '').trim(),
+          title: String(r?.title || '').trim(),
+          json_schema: (r?.json_schema && typeof r.json_schema === 'object' && !Array.isArray(r.json_schema) ? r.json_schema : {}) as Record<
+            string,
+            unknown
+          >,
+          show_in_report: r?.show_in_report === true,
+          source_scope: typeof r?.source_scope === 'string' ? String(r.source_scope).trim() : undefined,
+          source_scopes: Array.isArray(r?.source_scopes) ? r.source_scopes.map((x: any) => String(x).trim()).filter(Boolean) : undefined,
+        }))
+        .filter((r: any) => !!r.id && !!r.title)
+    : undefined;
+
+  const rules = Array.isArray(input?.rules)
+    ? input.rules
+        .map((r: any) => (r && typeof r === 'object' ? r : null))
+        .filter(Boolean) as Array<Record<string, unknown>>
+    : undefined;
 
   const checks = Array.isArray(input?.checks) ? input.checks : [];
   const normalizedChecks = checks
@@ -285,6 +319,8 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
     outputs,
     modules_v2,
     variables: normalizedVars,
+    record_types,
+    rules,
     checks: normalizedChecks,
   });
 }
@@ -327,8 +363,12 @@ export default function WorkspacePlaybooksPage() {
 
   const [customSchemaTextById, setCustomSchemaTextById] = useState<Record<string, string>>({});
   const [customSchemaErrorById, setCustomSchemaErrorById] = useState<Record<string, string>>({});
+  const [recordSchemaTextById, setRecordSchemaTextById] = useState<Record<string, string>>({});
+  const [recordSchemaErrorById, setRecordSchemaErrorById] = useState<Record<string, string>>({});
+  const [ruleTextById, setRuleTextById] = useState<Record<string, string>>({});
+  const [ruleErrorById, setRuleErrorById] = useState<Record<string, string>>({});
   const [expandedSchemaIds, setExpandedSchemaIds] = useState<Set<string>>(new Set());
-  const [activeSection, setActiveSection] = useState<'modules' | 'variables'>('modules');
+  const [activeSection, setActiveSection] = useState<'modules' | 'variables' | 'records' | 'rules' | 'scope'>('modules');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
 
@@ -346,6 +386,33 @@ export default function WorkspacePlaybooksPage() {
       return next;
     });
   }, [spec.modules_v2]);
+
+  useEffect(() => {
+    const rows = spec.record_types || [];
+    if (rows.length === 0) return;
+    setRecordSchemaTextById((prev) => {
+      const next = { ...prev };
+      for (const r of rows) {
+        if (!r?.id) continue;
+        if (next[r.id] == null) next[r.id] = JSON.stringify(r.json_schema || {}, null, 2);
+      }
+      return next;
+    });
+  }, [spec.record_types]);
+
+  useEffect(() => {
+    const rows = Array.isArray(spec.rules) ? spec.rules : [];
+    if (rows.length === 0) return;
+    setRuleTextById((prev) => {
+      const next = { ...prev };
+      for (const row of rows) {
+        const id = String((row as any)?.id || '').trim();
+        if (!id) continue;
+        if (next[id] == null) next[id] = JSON.stringify(row || {}, null, 2);
+      }
+      return next;
+    });
+  }, [spec.rules]);
 
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
   const isSystemPreset = selected?.is_system_preset === true;
@@ -780,11 +847,14 @@ export default function WorkspacePlaybooksPage() {
                     )}
                   </div>
 
-                  {/* Section navigation tabs */}
-                  <div className="flex border-t border-border bg-surface-alt/30">
-                    {[
-                      { id: 'modules' as const, label: 'Modules', icon: Layers, count: (spec.modules_v2 || []).length },
-                      { id: 'variables' as const, label: 'Variables', icon: Variable, count: spec.variables.length },
+                {/* Section navigation tabs */}
+                <div className="flex border-t border-border bg-surface-alt/30">
+                  {[
+                      { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length },
+                      { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length },
+                      { id: 'records' as const, label: t('builder.sections.records'), icon: Shield, count: (spec.record_types || []).length },
+                      { id: 'rules' as const, label: t('builder.sections.rules'), icon: ShieldCheck, count: (spec.rules || []).length },
+                      { id: 'scope' as const, label: t('builder.sections.scopeRoles'), icon: Globe, count: 0 },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -1110,6 +1180,38 @@ export default function WorkspacePlaybooksPage() {
                                 />
                               </div>
 
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <Input
+                                  placeholder={t('builder.scope.singleSourceScopePlaceholder')}
+                                  value={v.source_scope || ''}
+                                  disabled={isReadOnly}
+                                  onChange={(e) => {
+                                    const val = e.target.value.trim();
+                                    setSpec((p) => {
+                                      const vars = p.variables.slice();
+                                      vars[idx] = { ...vars[idx], source_scope: val || undefined };
+                                      return { ...p, variables: vars };
+                                    });
+                                  }}
+                                />
+                                <Input
+                                  placeholder={t('builder.scope.multiSourceScopesPlaceholder')}
+                                  value={(v.source_scopes || []).join(', ')}
+                                  disabled={isReadOnly}
+                                  onChange={(e) => {
+                                    const scopes = e.target.value
+                                      .split(',')
+                                      .map((s) => s.trim())
+                                      .filter(Boolean);
+                                    setSpec((p) => {
+                                      const vars = p.variables.slice();
+                                      vars[idx] = { ...vars[idx], source_scopes: scopes.length ? scopes : undefined };
+                                      return { ...p, variables: vars };
+                                    });
+                                  }}
+                                />
+                              </div>
+
                               {!isSystemPreset && (
                                 <div className="flex justify-end pt-2 border-t border-border">
                                   <Button
@@ -1127,6 +1229,468 @@ export default function WorkspacePlaybooksPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Records section (Analysis V3 additive) */}
+                  {activeSection === 'records' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-text-soft">{t('builder.records.description')}</p>
+                        {!isSystemPreset && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setSpec((p) => ({
+                                ...p,
+                                record_types: [
+                                  ...(p.record_types || []),
+                                  {
+                                    id: `record_${(p.record_types || []).length + 1}`,
+                                    title: t('builder.records.defaultTitle'),
+                                    json_schema: { type: 'object', properties: {}, required: [] },
+                                    show_in_report: true,
+                                  },
+                                ],
+                              }))
+                            }
+                          >
+                            <Plus className="w-4 h-4" />
+                            {t('builder.records.add')}
+                          </Button>
+                        )}
+                      </div>
+
+                      {(spec.record_types || []).length === 0 ? (
+                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
+                          {t('builder.records.empty')}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {(spec.record_types || []).map((r, idx) => (
+                            <div key={`${r.id}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-text-soft">ID</label>
+                                  <Input
+                                    value={r.id}
+                                    disabled={isReadOnly}
+                                    onChange={(e) =>
+                                      setSpec((p) => {
+                                        const rows = (p.record_types || []).slice();
+                                        rows[idx] = { ...rows[idx], id: e.target.value };
+                                        return { ...p, record_types: rows };
+                                      })
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-text-soft">{t('builder.records.titleField')}</label>
+                                  <Input
+                                    value={r.title}
+                                    disabled={isReadOnly}
+                                    onChange={(e) =>
+                                      setSpec((p) => {
+                                        const rows = (p.record_types || []).slice();
+                                        rows[idx] = { ...rows[idx], title: e.target.value };
+                                        return { ...p, record_types: rows };
+                                      })
+                                    }
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <Input
+                                  placeholder={t('builder.scope.singleSourceScopePlaceholder')}
+                                  value={r.source_scope || ''}
+                                  disabled={isReadOnly}
+                                  onChange={(e) => {
+                                    const val = e.target.value.trim();
+                                    setSpec((p) => {
+                                      const rows = (p.record_types || []).slice();
+                                      rows[idx] = { ...rows[idx], source_scope: val || undefined };
+                                      return { ...p, record_types: rows };
+                                    });
+                                  }}
+                                />
+                                <Input
+                                  placeholder={t('builder.scope.multiSourceScopesPlaceholder')}
+                                  value={(r.source_scopes || []).join(', ')}
+                                  disabled={isReadOnly}
+                                  onChange={(e) => {
+                                    const scopes = e.target.value
+                                      .split(',')
+                                      .map((s) => s.trim())
+                                      .filter(Boolean);
+                                    setSpec((p) => {
+                                      const rows = (p.record_types || []).slice();
+                                      rows[idx] = { ...rows[idx], source_scopes: scopes.length ? scopes : undefined };
+                                      return { ...p, record_types: rows };
+                                    });
+                                  }}
+                                />
+                              </div>
+
+                              <ScholarToggle
+                                label={t('builder.records.showInReport')}
+                                checked={r.show_in_report !== false}
+                                disabled={isReadOnly}
+                                onCheckedChange={(checked) =>
+                                  setSpec((p) => {
+                                    const rows = (p.record_types || []).slice();
+                                    rows[idx] = { ...rows[idx], show_in_report: checked };
+                                    return { ...p, record_types: rows };
+                                  })
+                                }
+                              />
+
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-text-soft">JSON Schema</label>
+                                <textarea
+                                  className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                  value={recordSchemaTextById[r.id] ?? JSON.stringify(r.json_schema || {}, null, 2)}
+                                  disabled={isReadOnly}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setRecordSchemaTextById((prev) => ({ ...prev, [r.id]: text }));
+                                    try {
+                                      const parsed = JSON.parse(text);
+                                      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('schema_must_be_object');
+                                      setRecordSchemaErrorById((prev) => ({ ...prev, [r.id]: '' }));
+                                      setSpec((p) => {
+                                        const rows = (p.record_types || []).slice();
+                                        rows[idx] = { ...rows[idx], json_schema: parsed as Record<string, unknown> };
+                                        return { ...p, record_types: rows };
+                                      });
+                                    } catch {
+                                      setRecordSchemaErrorById((prev) => ({ ...prev, [r.id]: t('builder.records.invalidJson') }));
+                                    }
+                                  }}
+                                />
+                                {recordSchemaErrorById[r.id] && (
+                                  <div className="text-xs text-error">{recordSchemaErrorById[r.id]}</div>
+                                )}
+                              </div>
+
+                              {!isSystemPreset && (
+                                <div className="flex justify-end pt-2 border-t border-border">
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSpec((p) => ({
+                                        ...p,
+                                        record_types: (p.record_types || []).filter((_, i) => i !== idx),
+                                      }))
+                                    }
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Rules section (Analysis V3 additive) */}
+                  {activeSection === 'rules' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-text-soft">{t('builder.rules.description')}</p>
+                        {!isSystemPreset && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setSpec((p) => ({
+                                ...p,
+                                rules: [
+                                  ...(p.rules || []),
+                                  {
+                                    id: `rule_${(p.rules || []).length + 1}`,
+                                    type: 'required',
+                                    severity: 'warning',
+                                  },
+                                ],
+                              }))
+                            }
+                          >
+                            <Plus className="w-4 h-4" />
+                            {t('builder.rules.add')}
+                          </Button>
+                        )}
+                      </div>
+
+                      {(spec.rules || []).length === 0 ? (
+                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
+                          {t('builder.rules.empty')}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {(spec.rules || []).map((rule, idx) => {
+                            const r = (rule || {}) as Record<string, unknown>;
+                            const ruleId = String(r.id || `rule_${idx + 1}`);
+                            return (
+                              <div key={`${ruleId}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <Input
+                                    placeholder="rule id"
+                                    value={String(r.id || '')}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => {
+                                      const val = e.target.value.trim();
+                                      setSpec((p) => {
+                                        const rows = (p.rules || []).slice();
+                                        rows[idx] = { ...(rows[idx] as any), id: val };
+                                        return { ...p, rules: rows };
+                                      });
+                                    }}
+                                  />
+                                  <Input
+                                    placeholder="rule type"
+                                    value={String(r.type || '')}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => {
+                                      const val = e.target.value.trim();
+                                      setSpec((p) => {
+                                        const rows = (p.rules || []).slice();
+                                        rows[idx] = { ...(rows[idx] as any), type: val };
+                                        return { ...p, rules: rows };
+                                      });
+                                    }}
+                                  />
+                                  <Input
+                                    placeholder="severity (warning|blocker)"
+                                    value={String(r.severity || '')}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => {
+                                      const val = e.target.value.trim();
+                                      setSpec((p) => {
+                                        const rows = (p.rules || []).slice();
+                                        rows[idx] = { ...(rows[idx] as any), severity: val || undefined };
+                                        return { ...p, rules: rows };
+                                      });
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <Input
+                                    placeholder={t('builder.scope.singleSourceScopePlaceholder')}
+                                    value={String((r as any).source_scope || '')}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => {
+                                      const val = e.target.value.trim();
+                                      setSpec((p) => {
+                                        const rows = (p.rules || []).slice();
+                                        rows[idx] = { ...(rows[idx] as any), source_scope: val || undefined };
+                                        return { ...p, rules: rows };
+                                      });
+                                    }}
+                                  />
+                                  <Input
+                                    placeholder={t('builder.scope.multiSourceScopesPlaceholder')}
+                                    value={Array.isArray((r as any).source_scopes) ? ((r as any).source_scopes as any[]).join(', ') : ''}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => {
+                                      const scopes = e.target.value
+                                        .split(',')
+                                        .map((s) => s.trim())
+                                        .filter(Boolean);
+                                      setSpec((p) => {
+                                        const rows = (p.rules || []).slice();
+                                        rows[idx] = { ...(rows[idx] as any), source_scopes: scopes.length ? scopes : undefined };
+                                        return { ...p, rules: rows };
+                                      });
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-text-soft">{t('builder.rules.jsonLabel')}</label>
+                                  <textarea
+                                    className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                    value={ruleTextById[ruleId] ?? JSON.stringify(r, null, 2)}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => {
+                                      const text = e.target.value;
+                                      setRuleTextById((prev) => ({ ...prev, [ruleId]: text }));
+                                      try {
+                                        const parsed = JSON.parse(text);
+                                        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid_rule_json');
+                                        const pid = String((parsed as any).id || '').trim();
+                                        const ptype = String((parsed as any).type || '').trim();
+                                        if (!pid || !ptype) throw new Error('missing_id_or_type');
+                                        setRuleErrorById((prev) => ({ ...prev, [ruleId]: '' }));
+                                        setSpec((p) => {
+                                          const rows = (p.rules || []).slice();
+                                          rows[idx] = parsed as Record<string, unknown>;
+                                          return { ...p, rules: rows };
+                                        });
+                                      } catch {
+                                        setRuleErrorById((prev) => ({ ...prev, [ruleId]: t('builder.rules.invalidJson') }));
+                                      }
+                                    }}
+                                  />
+                                  {ruleErrorById[ruleId] && <div className="text-xs text-error">{ruleErrorById[ruleId]}</div>}
+                                </div>
+
+                                {!isSystemPreset && (
+                                  <div className="flex justify-end pt-2 border-t border-border">
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      onClick={() =>
+                                        setSpec((p) => ({
+                                          ...p,
+                                          rules: (p.rules || []).filter((_, i) => i !== idx),
+                                        }))
+                                      }
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Scope & roles section */}
+                  {activeSection === 'scope' && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-text-soft">{t('builder.scope.description')}</p>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-text-soft">{t('builder.scope.scopeLabel')}</label>
+                        <select
+                          className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
+                          disabled={isReadOnly}
+                          value={spec.scope || 'either'}
+                          onChange={(e) => setSpec((p) => ({ ...p, scope: e.target.value as PlaybookSpecV1['scope'] }))}
+                        >
+                          <option value="single">{t('builder.scope.single')}</option>
+                          <option value="bundle">{t('builder.scope.bundle')}</option>
+                          <option value="either">{t('builder.scope.either')}</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-text-soft">{t('builder.scope.rolesTitle')}</label>
+                          {!isSystemPreset && (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                setSpec((p) => {
+                                  const roles = (p.bundle_schema?.roles || []).slice();
+                                  roles.push({ role: `role_${roles.length + 1}`, required: true, multiple: false });
+                                  return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
+                                })
+                              }
+                            >
+                              <Plus className="w-4 h-4" />
+                              {t('builder.scope.addRole')}
+                            </Button>
+                          )}
+                        </div>
+
+                        {(spec.bundle_schema?.roles || []).length === 0 ? (
+                          <div className="text-sm text-text-soft py-6 text-center border border-dashed border-border rounded-scholar">
+                            {t('builder.scope.emptyRoles')}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {(spec.bundle_schema?.roles || []).map((role, idx) => (
+                              <div key={`${role.role}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                                <Input
+                                  value={role.role}
+                                  disabled={isReadOnly}
+                                  placeholder="vendor_contract"
+                                  onChange={(e) => {
+                                    const val = e.target.value.trim();
+                                    setSpec((p) => {
+                                      const roles = (p.bundle_schema?.roles || []).slice();
+                                      roles[idx] = { ...roles[idx], role: val };
+                                      return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
+                                    });
+                                  }}
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <ScholarToggle
+                                    label={t('builder.scope.required')}
+                                    checked={role.required === true}
+                                    disabled={isReadOnly}
+                                    onCheckedChange={(checked) =>
+                                      setSpec((p) => {
+                                        const roles = (p.bundle_schema?.roles || []).slice();
+                                        roles[idx] = { ...roles[idx], required: checked };
+                                        return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
+                                      })
+                                    }
+                                  />
+                                  <ScholarToggle
+                                    label={t('builder.scope.multiple')}
+                                    checked={role.multiple === true}
+                                    disabled={isReadOnly}
+                                    onCheckedChange={(checked) =>
+                                      setSpec((p) => {
+                                        const roles = (p.bundle_schema?.roles || []).slice();
+                                        roles[idx] = { ...roles[idx], multiple: checked };
+                                        return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
+                                      })
+                                    }
+                                  />
+                                </div>
+                                {!isSystemPreset && (
+                                  <div className="flex justify-end">
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      onClick={() =>
+                                        setSpec((p) => {
+                                          const roles = (p.bundle_schema?.roles || []).filter((_, i) => i !== idx);
+                                          return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
+                                        })
+                                      }
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-text-soft">{t('builder.scope.allowedTypes')}</label>
+                        <Input
+                          value={(spec.bundle_schema?.allowed_document_types || []).join(', ')}
+                          disabled={isReadOnly}
+                          placeholder={t('builder.scope.allowedTypesPlaceholder')}
+                          onChange={(e) => {
+                            const parts = e.target.value
+                              .split(',')
+                              .map((s) => s.trim())
+                              .filter(Boolean);
+                            setSpec((p) => ({
+                              ...p,
+                              bundle_schema: {
+                                ...(p.bundle_schema || {}),
+                                allowed_document_types: parts.length ? parts : undefined,
+                              },
+                            }));
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
 
