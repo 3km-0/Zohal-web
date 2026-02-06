@@ -1,8 +1,20 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { CheckCircle, Circle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/** Animated ellipsis that cycles through ".", "..", "..." */
+function AnimatedDots({ className }: { className?: string }) {
+  const [dots, setDots] = useState('');
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+  return <span className={className}>{dots}</span>;
+}
 
 /**
  * ScholarProgress - iOS-style step-by-step progress indicator
@@ -54,20 +66,31 @@ export function ScholarProgress({
     ? Math.max(0, Math.min(100, Number(progressPercent)))
     : computedPercent;
 
+  const isActive = resolvedPercent > 0 && resolvedPercent < 100;
+
   if (variant === 'bar') {
     return (
       <div className={cn('space-y-3', className)}>
         {/* Progress bar */}
         <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
           <div
-            className="h-full bg-accent transition-all duration-500 ease-out"
+            className={cn(
+              'h-full bg-accent transition-all duration-500 ease-out relative overflow-hidden',
+              isActive && 'after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/25 after:to-transparent after:animate-[shimmer_1.8s_ease-in-out_infinite]'
+            )}
             style={{ width: `${resolvedPercent}%` }}
           />
         </div>
 
         {/* Current step label */}
         {statusMessage && (
-          <div className="text-sm text-text-soft font-medium">{statusMessage}</div>
+          <div className="text-sm text-text-soft font-medium flex items-center gap-0.5">
+            {isActive && (
+              <Loader2 className="w-3.5 h-3.5 text-accent animate-spin mr-1.5 flex-shrink-0" />
+            )}
+            <span>{statusMessage}</span>
+            {isActive && <AnimatedDots />}
+          </div>
         )}
       </div>
     );
@@ -79,14 +102,23 @@ export function ScholarProgress({
       {/* Progress bar */}
       <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
         <div
-          className="h-full bg-accent transition-all duration-500 ease-out"
+          className={cn(
+            'h-full bg-accent transition-all duration-500 ease-out relative overflow-hidden',
+            isActive && 'after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/25 after:to-transparent after:animate-[shimmer_1.8s_ease-in-out_infinite]'
+          )}
           style={{ width: `${resolvedPercent}%` }}
         />
       </div>
 
       {/* Status message */}
       {statusMessage && (
-        <div className="text-sm text-text-soft font-medium">{statusMessage}</div>
+        <div className="text-sm text-text-soft font-medium flex items-center gap-0.5">
+          {isActive && (
+            <Loader2 className="w-3.5 h-3.5 text-accent animate-spin mr-1.5 flex-shrink-0" />
+          )}
+          <span>{statusMessage}</span>
+          {isActive && <AnimatedDots />}
+        </div>
       )}
 
       {/* Step grid */}
@@ -156,13 +188,20 @@ export function ScholarProgressCard({
   footer,
   ...progressProps
 }: ScholarProgressCardProps) {
+  const percent = progressProps.progressPercent ?? 0;
+  const isActive = percent > 0 && percent < 100;
+
   return (
-    <div className="rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden">
+    <div className={cn(
+      'rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden transition-shadow duration-500',
+      isActive && 'border-accent/30 shadow-[0_0_16px_rgba(var(--accent-rgb,99,102,241),0.12)]'
+    )}>
       {/* Header */}
       <div className="px-4 py-3 bg-surface-alt border-b border-border">
         <div className="flex items-center gap-2">
-          {titleIcon && <span className="text-accent">{titleIcon}</span>}
+          {titleIcon && <span className={cn('text-accent', isActive && 'animate-pulse')}>{titleIcon}</span>}
           <h3 className="text-sm font-semibold text-text">{title}</h3>
+          {isActive && <Loader2 className="w-4 h-4 text-accent animate-spin ml-auto" />}
         </div>
       </div>
 
