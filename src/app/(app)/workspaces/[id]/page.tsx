@@ -19,6 +19,7 @@ import {
   CircleHelp,
 } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
+import Image from 'next/image';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
@@ -744,9 +745,12 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
       className="relative w-full aspect-[4/3] rounded-scholar-lg overflow-hidden bg-surface-alt border border-border"
     >
       {thumbnail ? (
-        <img
+        <Image
           src={thumbnail}
           alt={doc.title}
+          width={400}
+          height={300}
+          unoptimized
           className="w-full h-full object-cover"
         />
       ) : (

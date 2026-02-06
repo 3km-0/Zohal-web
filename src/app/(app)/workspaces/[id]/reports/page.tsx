@@ -60,7 +60,7 @@ export default function WorkspaceReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, workspaceId, toast]);
+  }, [supabase, workspaceId, toast, t]);
 
   useEffect(() => {
     load();

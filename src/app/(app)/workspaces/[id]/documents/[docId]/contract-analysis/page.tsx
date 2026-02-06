@@ -439,8 +439,12 @@ export default function ContractAnalysisPage() {
   }
 
   // Multi-document bundle packs: load source document titles/roles for UI chips.
+  const bundlePackId = (snapshot?.pack as any)?.bundle?.pack_id ?? snapshot?.pack?.bundle?.bundle_id ?? null;
+  const bundleBundleId = snapshot?.pack?.bundle?.bundle_id ?? null;
+  const bundleDocIdsKey = snapshot?.pack?.bundle?.document_ids?.join('|') ?? null;
+  const bundle = snapshot?.pack?.bundle;
+
   useEffect(() => {
-    const bundle = snapshot?.pack?.bundle;
     const docIds = bundle?.document_ids;
     if (!bundle || !Array.isArray(docIds) || docIds.length === 0) {
       setBundleDocuments([]);
@@ -458,12 +462,12 @@ export default function ContractAnalysisPage() {
         if (docsErr) throw docsErr;
 
         let rolesById: Record<string, string> = {};
-        const bundlePackId = String((bundle as any).pack_id || (bundle as any).bundle_id || '').toLowerCase();
-        if (bundlePackId) {
+        const resolvedPackId = String(bundlePackId || '').toLowerCase();
+        if (resolvedPackId) {
           const { data: members, error: memErr } = await supabase
             .from('pack_members')
             .select('document_id, role, sort_order')
-            .eq('pack_id', bundlePackId)
+            .eq('pack_id', resolvedPackId)
             .order('sort_order', { ascending: true });
           if (!memErr && Array.isArray(members)) {
             for (const m of members as any[]) {
@@ -490,7 +494,7 @@ export default function ContractAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [(snapshot?.pack as any)?.bundle?.pack_id, snapshot?.pack?.bundle?.bundle_id, snapshot?.pack?.bundle?.document_ids?.join('|')]);
+  }, [bundlePackId, bundleBundleId, bundleDocIdsKey, bundle, supabase]);
 
   async function createPinnedContextSetFromThisDocument() {
     const name = window.prompt(t('prompts.referencePackName'));

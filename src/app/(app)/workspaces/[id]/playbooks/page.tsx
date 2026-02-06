@@ -473,7 +473,7 @@ export default function WorkspacePlaybooksPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [selected, isSystemPreset, supabase]);
+  }, [selected, isSystemPreset, supabase, showError]);
 
   // Debounced auto-save when spec changes (only for non-system templates)
   useEffect(() => {
@@ -918,7 +918,7 @@ export default function WorkspacePlaybooksPage() {
 
                       {(spec.modules_v2 || []).length === 0 ? (
                         <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
-                          No modules yet. Click "Add Module" to create one.
+                          No modules yet. Click &ldquo;Add Module&rdquo; to create one.
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1075,7 +1075,7 @@ export default function WorkspacePlaybooksPage() {
 
                       {spec.variables.length === 0 ? (
                         <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
-                          No variables yet. Click "Add Variable" to create one.
+                          No variables yet. Click &ldquo;Add Variable&rdquo; to create one.
                         </div>
                       ) : (
                         <div className="space-y-3">
