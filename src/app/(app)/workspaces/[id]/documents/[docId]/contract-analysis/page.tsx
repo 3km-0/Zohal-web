@@ -1400,7 +1400,7 @@ export default function ContractAnalysisPage() {
                       <div className="text-xs text-text-soft mb-1">{t('runSettings.language')}</div>
                       <ScholarSelect
                         value={runLanguage}
-                        onChange={(v) => setRunLanguage(v as any)}
+                        onChange={(e) => setRunLanguage(e.target.value as 'auto' | 'en' | 'ar')}
                         options={[
                           { value: 'auto', label: t('runSettings.auto') },
                           { value: 'en', label: t('runSettings.english') },
@@ -1412,7 +1412,7 @@ export default function ContractAnalysisPage() {
                       <div className="text-xs text-text-soft mb-1">{t('runSettings.strictness')}</div>
                       <ScholarSelect
                         value={runStrictness}
-                        onChange={(v) => setRunStrictness(v as any)}
+                        onChange={(e) => setRunStrictness(e.target.value as 'auto' | 'default' | 'strict')}
                         options={[
                           { value: 'auto', label: t('runSettings.auto') },
                           { value: 'default', label: t('runSettings.default') },
