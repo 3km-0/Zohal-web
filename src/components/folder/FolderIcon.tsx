@@ -103,7 +103,7 @@ export function FolderIcon({
         className={cn(
           'flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200',
           'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
-          'w-[130px] focus:outline-none focus:ring-2 focus:ring-accent/50',
+          'w-[160px] focus:outline-none focus:ring-2 focus:ring-accent/50',
           isDragOver && 'bg-accent/10 ring-2 ring-accent scale-105 shadow-lg',
           isDragging && 'opacity-50'
         )}
@@ -113,7 +113,7 @@ export function FolderIcon({
           <StyledFolder
             color={palette.main}
             lightColor={palette.light}
-            className="w-20 h-[72px] transition-transform group-hover:scale-105"
+            className="w-28 h-24 transition-transform group-hover:scale-105"
           />
           
           {/* Item count badge */}
@@ -128,7 +128,7 @@ export function FolderIcon({
         </div>
 
         {/* Folder name */}
-        <span className="text-xs font-medium text-text text-center line-clamp-2 leading-tight max-w-full px-1">
+        <span className="text-sm font-semibold text-text text-center line-clamp-2 leading-snug max-w-full px-1">
           {folder.name}
         </span>
       </button>

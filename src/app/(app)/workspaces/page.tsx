@@ -224,21 +224,21 @@ function WorkspaceIcon({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
         className={cn(
           'flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200',
           'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
-          'w-[140px] focus:outline-none focus:ring-2 focus:ring-accent/50'
+          'w-[160px] focus:outline-none focus:ring-2 focus:ring-accent/50'
         )}
       >
         <div className="relative drop-shadow-sm">
           <StyledFolder
             color={palette.main}
             lightColor={palette.light}
-            className="w-20 h-[72px] transition-transform group-hover:scale-105"
+            className="w-28 h-24 transition-transform group-hover:scale-105"
           />
         </div>
 
-        <span className="text-xs font-medium text-text text-center line-clamp-2 leading-tight max-w-full px-1">
+        <span className="text-sm font-semibold text-text text-center line-clamp-2 leading-snug max-w-full px-1">
           {workspace.name}
         </span>
-        <span className="text-[10px] text-text-soft">
+        <span className="text-xs text-text-soft">
           {t(workspace.workspace_type)}
         </span>
       </Link>
