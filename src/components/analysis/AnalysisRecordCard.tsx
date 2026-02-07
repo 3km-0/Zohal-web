@@ -62,6 +62,10 @@ export interface AnalysisRecordCardProps {
   onReject: () => void;
   onToolAction?: () => void;
   children?: ReactNode;
+  /** Optional severity color class for left border accent (e.g. 'border-l-error') */
+  severityBorderColor?: string;
+  /** Optional inline evidence snippet preview */
+  evidenceSnippet?: string | null;
 }
 
 export function AnalysisRecordCard({
@@ -79,11 +83,16 @@ export function AnalysisRecordCard({
   onReject,
   onToolAction,
   children,
+  severityBorderColor,
+  evidenceSnippet,
 }: AnalysisRecordCardProps) {
   const ToolIcon = toolAction ? toolActionConfig[toolAction.type].icon : null;
 
   return (
-    <div className="rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden">
+    <div className={cn(
+      'rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden',
+      severityBorderColor && `border-l-[3px] ${severityBorderColor}`,
+    )}>
       {/* Verification Attention banner (for low confidence / needs_review items) */}
       {needsAttention && (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white text-xs font-bold">
@@ -120,6 +129,13 @@ export function AnalysisRecordCard({
 
         {/* Custom content */}
         {children && <div className="text-sm text-text">{children}</div>}
+
+        {/* Inline evidence snippet preview */}
+        {evidenceSnippet && (
+          <blockquote className="text-xs text-text-soft italic border-l-2 border-accent/30 pl-3 py-1 line-clamp-2 bg-surface-alt/50 rounded-r-sm">
+            {evidenceSnippet}
+          </blockquote>
+        )}
 
         {/* Divider */}
         <div className="h-px bg-border -mx-4 my-3" />

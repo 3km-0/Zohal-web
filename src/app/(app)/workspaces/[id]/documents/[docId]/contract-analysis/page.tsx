@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Settings } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Settings, Table2, ScrollText, ClipboardCheck, Puzzle } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -22,7 +22,7 @@ import {
   ScholarSelect,
   type ScholarTab,
 } from '@/components/ui';
-import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence } from '@/components/analysis';
+import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence, AtAGlanceSummary, OverviewTab, GenericModuleTab, type GenericModuleItem, DeadlinesTab, type DeadlineItem } from '@/components/analysis';
 import { BundleManagerModal } from '@/components/document/BundleManagerModal';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
@@ -272,7 +272,7 @@ export default function ContractAnalysisPage() {
       out.push({
         id: 'variables',
         label: t('tabs.variables'),
-        icon: FileText,
+        icon: Table2,
         total: visibleVariables.length,
         attentionCount: visibleVariables.filter((v) => v.verification_state === 'needs_review').length,
       });
@@ -281,14 +281,14 @@ export default function ContractAnalysisPage() {
       const totalClauses = (snapshot?.clauses?.length
         ? snapshot.clauses.filter((c: any) => !rejectedSets.clauses.has(String(c?.id || '').trim())).length
         : clauses.filter((c) => !rejectedSets.clauses.has(c.id)).length);
-      out.push({ id: 'clauses', label: t('tabs.clauses'), icon: FileText, total: totalClauses, attentionCount: attention.clauses });
+      out.push({ id: 'clauses', label: t('tabs.clauses'), icon: ScrollText, total: totalClauses, attentionCount: attention.clauses });
     }
     if (enabledModules.has('obligations')) {
       const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
       out.push({
         id: 'obligations',
         label: t('tabs.obligations'),
-        icon: FileText,
+        icon: ClipboardCheck,
         total: visibleObligations.length,
         attentionCount: attention.obligations,
       });
@@ -306,18 +306,18 @@ export default function ContractAnalysisPage() {
     const v3Enabled = !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled;
     if (v3Enabled || v3Records.length > 0) {
       const visibleRecords = v3Records.filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`)));
-      out.push({ id: 'records', label: t('tabs.records'), icon: Package, total: visibleRecords.length, attentionCount: 0 });
+      out.push({ id: 'records', label: t('tabs.records'), icon: Layers, total: visibleRecords.length, attentionCount: 0 });
     }
     if (v3Enabled || v3Verdicts.length > 0) {
       const visibleVerdicts = v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)));
       const attentionCount = visibleVerdicts.filter((v) => String(v?.status || '') !== 'pass').length;
-      out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: CheckCircle, total: visibleVerdicts.length, attentionCount });
+      out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: Scale, total: visibleVerdicts.length, attentionCount });
     }
     if (v3Enabled || v3Exceptions.length > 0) {
       const visibleExceptions = v3Exceptions.filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`)));
       out.push({ id: 'exceptions', label: t('tabs.exceptions'), icon: AlertTriangle, total: visibleExceptions.length, attentionCount: visibleExceptions.length });
     }
-    out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: FileText, total: null, attentionCount: 0 })));
+    out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: Puzzle, total: null, attentionCount: 0 })));
     return out;
   }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules, v3Records, v3Verdicts, v3Exceptions, rejectedSets, t]);
 
@@ -1530,32 +1530,68 @@ export default function ContractAnalysisPage() {
               </div>
             )}
 
+            {/* Needs-Review Alert Banner */}
             {snapshot?.pack?.exceptions_summary &&
               (snapshot.pack.exceptions_summary.blocker > 0 || snapshot.pack.exceptions_summary.warning > 0) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-error" />
-                      {t('needsReview.title')}
-                      <Badge size="sm">
-                        blockers:{snapshot.pack.exceptions_summary.blocker} warnings:{snapshot.pack.exceptions_summary.warning}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-sm text-text-soft">
-                      {t('needsReview.subtitle')}
-                    </p>
+                <div className={cn(
+                  'flex items-start gap-3 p-4 rounded-scholar border',
+                  snapshot.pack.exceptions_summary.blocker > 0
+                    ? 'bg-error/5 border-error/20'
+                    : 'bg-highlight/5 border-highlight/20',
+                )}>
+                  <ShieldAlert className={cn(
+                    'w-5 h-5 flex-shrink-0 mt-0.5',
+                    snapshot.pack.exceptions_summary.blocker > 0 ? 'text-error' : 'text-highlight',
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-text">{t('needsReview.title')}</span>
+                      {snapshot.pack.exceptions_summary.blocker > 0 && (
+                        <Badge size="sm" variant="error">{snapshot.pack.exceptions_summary.blocker} blockers</Badge>
+                      )}
+                      {snapshot.pack.exceptions_summary.warning > 0 && (
+                        <Badge size="sm" variant="warning">{snapshot.pack.exceptions_summary.warning} warnings</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-soft mt-1">{t('needsReview.subtitle')}</p>
                     {Array.isArray(snapshot.pack.exceptions) && snapshot.pack.exceptions.length > 0 && (
-                      <ul className="text-sm text-text list-disc pl-5 space-y-1">
-                        {snapshot.pack.exceptions.slice(0, 10).map((e: any, idx: number) => (
+                      <ul className="text-xs text-text mt-2 space-y-0.5 list-disc pl-4">
+                        {snapshot.pack.exceptions.slice(0, 5).map((e: any, idx: number) => (
                           <li key={e?.id || idx}>{e?.message || e?.type || 'Exception'}</li>
                         ))}
                       </ul>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                  <button
+                    onClick={() => setTab('exceptions')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex-shrink-0',
+                      snapshot.pack.exceptions_summary.blocker > 0
+                        ? 'text-error bg-error/10 hover:bg-error/20 border border-error/20'
+                        : 'text-highlight bg-highlight/10 hover:bg-highlight/20 border border-highlight/20',
+                    )}
+                  >
+                    Jump to Exceptions
+                  </button>
+                </div>
               )}
+
+            {/* At-a-Glance Summary Bar */}
+            <AtAGlanceSummary
+              risks={(snapshot?.risks || []).map(r => ({ severity: r.severity }))}
+              confidences={[
+                ...(snapshot?.variables || []).map(v => ({ confidence: v.ai_confidence })),
+                ...obligations.map(o => ({ confidence: o.confidence || 'medium' })),
+              ]}
+              noticeDeadline={(() => {
+                if (!contract.end_date || contract.notice_period_days == null) return null;
+                const end = new Date(contract.end_date);
+                if (Number.isNaN(end.getTime())) return null;
+                const d = new Date(end.getTime());
+                d.setDate(d.getDate() - contract.notice_period_days);
+                return d.toISOString();
+              })()}
+            />
 
             {documentRow?.privacy_mode && (
               <Card>
@@ -1610,680 +1646,272 @@ export default function ContractAnalysisPage() {
             />
 
             {tab === 'overview' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="text-sm text-text">
-                    <span className="text-text-soft">Counterparty: </span>
-                    {contract.counterparty_name || '—'}
-                  </div>
-                  <div className="text-sm text-text">
-                    <span className="text-text-soft">Effective: </span>
-                    {contract.effective_date || '—'}
-                  </div>
-                  <div className="text-sm text-text">
-                    <span className="text-text-soft">End: </span>
-                    {contract.end_date || '—'}
-                  </div>
-                  <div className="text-sm text-text">
-                    <span className="text-text-soft">Notice: </span>
-                    {contract.notice_period_days != null ? `${contract.notice_period_days} days` : '—'}
-                  </div>
-
-                  {snapshot?.pack?.bundle?.document_ids?.length ? (
-                    <div className="pt-3 mt-3 border-t border-border space-y-2">
-                      <div className="text-sm font-semibold text-text">Sources used</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(bundleDocuments.length ? bundleDocuments : snapshot.pack.bundle.document_ids).map((d: any) => {
-                          const id = String(d?.id || d);
-                          const title = String(d?.title || id);
-                          const role = d?.role ? String(d.role) : '';
-                          return (
-                            <Link
-                              key={id}
-                              href={`/workspaces/${workspaceId}/documents/${id}`}
-                              className="inline-flex"
-                              title={role ? `${title} (${role})` : title}
-                            >
-                              <Badge variant="default" className="max-w-[260px] truncate">
-                                {role ? `${title} · ${role}` : title}
-                              </Badge>
-                            </Link>
-                          );
-                        })}
-                      </div>
-
-                      {Array.isArray(snapshot.pack.discrepancies) && snapshot.pack.discrepancies.length > 0 ? (
-                        <div className="space-y-2">
-                          <div className="text-sm font-semibold text-text">Conflicts</div>
-                          {snapshot.pack.discrepancies
-                            .slice(0, 20)
-                            .map((d: any) => {
-                              const kind = String(d?.kind || '');
-                              if (kind === 'variable_conflict') {
-                                return (
-                                  <div key={String(d.id || `${d.variable_name}`)} className="rounded-scholar border border-border bg-surface-alt p-3">
-                                    <div className="text-sm font-semibold text-text">{String(d.variable_name || 'Variable')}</div>
-                                    <div className="mt-2 space-y-1">
-                                      {Array.isArray(d.values)
-                                        ? d.values.slice(0, 6).map((v: any, idx: number) => {
-                                            const ev = v?.evidence;
-                                            const href = proofHref(ev);
-                                            const label = `${String(v?.value ?? '—')} ${v?.ai_confidence ? `(${String(v.ai_confidence)})` : ''}`.trim();
-                                            return (
-                                              <div key={`${idx}-${String(v?.document_id || '')}`} className="text-xs text-text">
-                                                <span className="text-text-soft">{String(v?.document_id || '').slice(0, 8)}: </span>
-                                                {href ? (
-                                                  <Link href={href} className="font-semibold text-accent hover:underline">
-                                                    {label}
-                                                  </Link>
-                                                ) : (
-                                                  <span>{label}</span>
-                                                )}
-                                              </div>
-                                            );
-                                          })
-                                        : null}
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              if (kind === 'policy_conflict' || kind === 'regulatory_conflict') {
-                                const contractHref = proofHref(d?.contract?.evidence);
-                                const ruleHref = proofHref(d?.rule?.evidence);
-                                return (
-                                  <div key={String(d.id || `${kind}-${d?.rule?.rule_id}`)} className="rounded-scholar border border-border bg-surface-alt p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div className="text-sm font-semibold text-text">{String(d?.rule?.title || 'Compliance finding')}</div>
-                                      <Badge size="sm">{String(d?.severity || '').toLowerCase() || 'medium'}</Badge>
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                                      {contractHref ? (
-                                        <Link href={contractHref} className="font-semibold text-accent hover:underline">
-                                          View contract evidence
-                                        </Link>
-                                      ) : (
-                                        <span className="text-text-soft">Contract evidence unavailable</span>
-                                      )}
-                                      {ruleHref ? (
-                                        <Link href={ruleHref} className="font-semibold text-accent hover:underline">
-                                          View policy/regulation evidence
-                                        </Link>
-                                      ) : (
-                                        <span className="text-text-soft">Rule evidence unavailable</span>
-                                      )}
-                                    </div>
-                                    {d?.explanation ? (
-                                      <div className="mt-2 text-xs text-text-soft">{String(d.explanation).slice(0, 220)}</div>
-                                    ) : null}
-                                  </div>
-                                );
-                              }
-
-                              return null;
-                            })}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <div className="pt-3 mt-3 border-t border-border space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-text">Pinned context sets</div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="secondary" onClick={createPinnedContextSetFromThisDocument}>
-                          Pin this document
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={generateKnowledgePackForThisDocument} disabled={isGeneratingKnowledgePack}>
-                          {isGeneratingKnowledgePack ? 'Generating…' : 'Generate pack'}
-                        </Button>
-                        <Button size="sm" onClick={runComplianceChecks} disabled={isRunningCompliance}>
-                          {isRunningCompliance ? 'Checking…' : 'Run compliance'}
-                        </Button>
-                      </div>
-                    </div>
-                    {snapshot?.pack?.context ? (
-                      <div className="text-xs text-text-soft">
-                        {(() => {
-                          const ctx = snapshot.pack?.context as any;
-                          const sets = Array.isArray(ctx?.sets) ? (ctx.sets as any[]) : [];
-                          if (!sets.length) return 'Context sets are pinned, but no set metadata was recorded.';
-                          return `Included: ${sets.map((s) => `${s.name || s.id}${s.kind ? ` (${s.kind})` : ''}`).join(', ')}`;
-                        })()}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-text-soft">
-                        No context sets recorded on this run. Create one, then re-run analysis to attach it to the run manifest.
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="pt-3 mt-3 border-t border-border space-y-2">
-                    <div className="text-sm font-semibold text-text">Renewal Timeline</div>
-                    <div className="text-sm text-text">
-                      <span className="text-text-soft">Auto-renewal: </span>
-                      {contract.auto_renewal ? 'Yes' : 'No'}
-                    </div>
-                    {contract.end_date ? (
-                      <div className="text-sm text-text">
-                        <span className="text-text-soft">{contract.auto_renewal ? 'Renews on: ' : 'Term ends on: '}</span>
-                        {contract.end_date}
-                      </div>
-                    ) : null}
-                    {(() => {
-                      const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
-                      if (!notice) return null;
-                      return (
-                        <div className="text-sm text-text">
-                          <span className="text-text-soft">Notice deadline: </span>
-                          {notice.toLocaleDateString()}
-                        </div>
-                      );
-                    })()}
-                    {(() => {
-                      const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
-                      const href = proofHref(endEvidence);
-                      if (!href) return null;
-                      return (
-                        <Link href={href} className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline">
-                          View end-date evidence in PDF
-                        </Link>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="pt-3 mt-3 border-t border-border space-y-2">
-                    <div className="text-sm font-semibold text-text">Audit Trail</div>
-                    <div className="text-sm text-text">
-                      <span className="text-text-soft">Status: </span>
-                      Provisional (pending review)
-                    </div>
-                    {snapshot ? (
-                      <>
-                        <div className="text-sm text-text">
-                          <span className="text-text-soft">Schema: </span>
-                          {snapshot.schema_version}
-                        </div>
-                        <div className="text-sm text-text">
-                          <span className="text-text-soft">Template: </span>
-                          {snapshot.template}
-                        </div>
-                        {snapshot.pack?.modules_activated?.length ? (
-                          <div className="text-sm text-text">
-                            <span className="text-text-soft">Modules: </span>
-                            {snapshot.pack.modules_activated.join(', ')}
-                          </div>
-                        ) : null}
-                        <div className="text-sm text-text">
-                          <span className="text-text-soft">Analyzed: </span>
-                          {snapshot.analyzed_at}
-                        </div>
-                        <div className="text-sm text-text">
-                          <span className="text-text-soft">Chunks: </span>
-                          {snapshot.chunks_analyzed}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-sm text-text-soft">Snapshot unavailable (re-run analysis to generate it).</div>
-                    )}
-                    <div className="text-xs text-text-soft">System: Zohal Evidence-Grade Analysis Platform</div>
-                  </div>
-                </CardContent>
-              </Card>
+              <OverviewTab
+                contract={contract}
+                snapshot={snapshot}
+                workspaceId={workspaceId}
+                documentId={documentId}
+                bundleDocuments={bundleDocuments}
+                verificationObjectState={verificationObjectState}
+                onCreatePinnedContext={createPinnedContextSetFromThisDocument}
+                onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
+                onRunCompliance={runComplianceChecks}
+                isGeneratingKnowledgePack={isGeneratingKnowledgePack}
+                isRunningCompliance={isRunningCompliance}
+                proofHref={proofHref}
+              />
             )}
 
             {tab === 'variables' && (
-              <div className="space-y-3">
-                {!snapshot ? (
-                  <EmptyState
-                    title={t('empty.noVariablesSnapshotTitle')}
-                    description={t('empty.noVariablesSnapshotDescription')}
-                  />
-                ) : snapshot.variables.filter((v) => !rejectedSets.variables.has(v.id)).length === 0 ? (
-                  <EmptyState title={t('empty.noVariablesTitle')} description={t('empty.noVariablesDescription')} />
-                ) : (
-                  snapshot.variables
-                    .filter((v) => !rejectedSets.variables.has(v.id))
-                    .map((v) => (
-                      <AnalysisRecordCard
-                        key={v.id}
-                        icon={<FileText className="w-4 h-4" />}
-                        title={v.display_name}
-                        subtitle={v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`}
-                        confidence={v.ai_confidence as AIConfidence}
-                        sourceHref={proofHref(v.evidence)}
-                        sourcePage={v.evidence?.page_number ?? undefined}
-                        toolAction={{ type: 'edit', label: 'Edit' }}
-                        onReject={() => rejectItem('variable', v.id)}
-                        onToolAction={() => {
-                          // TODO: Open edit modal
-                        }}
-                      >
-                        {v.verifier?.status && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <span
-                              className={cn(
-                                'inline-flex w-2 h-2 rounded-full',
-                                v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-highlight'
-                              )}
-                            />
-                            <span className="text-text-soft">
-                              Verifier: {v.verifier.status.toUpperCase()}
-                              {v.verifier.reasons?.length ? ` (${v.verifier.reasons.join(', ')})` : ''}
-                            </span>
-                          </div>
-                        )}
-                      </AnalysisRecordCard>
-                    ))
-                )}
-              </div>
+              <GenericModuleTab
+                moduleId="variables"
+                moduleTitle={t('tabs.variables')}
+                emptyTitle={t('empty.noVariablesTitle')}
+                emptyDescription={!snapshot ? t('empty.noVariablesSnapshotDescription') : t('empty.noVariablesDescription')}
+                workspaceId={workspaceId}
+                documentId={documentId}
+                onReject={(id) => rejectItem('variable', id)}
+                isPatchingSnapshot={isPatchingSnapshot}
+                items={(snapshot?.variables || [])
+                  .filter((v) => !rejectedSets.variables.has(v.id))
+                  .map((v) => ({
+                    id: v.id,
+                    title: v.display_name,
+                    subtitle: v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`,
+                    confidence: v.ai_confidence as AIConfidence,
+                    evidence: v.evidence,
+                    sourceHref: proofHref(v.evidence),
+                    sourcePage: v.evidence?.page_number ?? undefined,
+                    icon: <Table2 className="w-4 h-4" />,
+                    toolAction: { type: 'edit' as const, label: 'Edit' },
+                    needsAttention: v.verification_state === 'needs_review',
+                    attentionLabel: v.verification_state === 'needs_review' ? 'Needs Review' : undefined,
+                    children: v.verifier?.status ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className={cn(
+                          'inline-flex w-2 h-2 rounded-full',
+                          v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-highlight'
+                        )} />
+                        <span className="text-text-soft">
+                          Verifier: {v.verifier.status.toUpperCase()}
+                          {v.verifier.reasons?.length ? ` (${v.verifier.reasons.join(', ')})` : ''}
+                        </span>
+                      </div>
+                    ) : undefined,
+                  }))}
+              />
             )}
 
             {tab === 'clauses' && (
-              <div className="space-y-3">
-                {(() => {
-                  // Use snapshot clauses if available, otherwise fall back to DB clauses
+              <GenericModuleTab
+                moduleId="clauses"
+                moduleTitle={t('tabs.clauses')}
+                emptyTitle={t('empty.noClausesTitle')}
+                emptyDescription={t('empty.noClausesDescription')}
+                workspaceId={workspaceId}
+                documentId={documentId}
+                groupBy="severity"
+                onReject={(id) => rejectItem('clause', id)}
+                isPatchingSnapshot={isPatchingSnapshot}
+                items={(() => {
                   const allClauses = snapshot?.clauses?.length
                     ? snapshot.clauses.map((c) => ({
                         id: c.id,
-                        title: c.clause_title || c.clause_type,
-                        text: c.text,
-                        riskLevel: c.risk_level,
-                        pageNumber: c.evidence?.page_number,
-                        clauseNumber: c.clause_number,
-                        href: proofHref(c.evidence),
+                        title: c.clause_title || c.clause_type || 'Clause',
+                        subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
+                        body: c.text,
+                        severity: c.risk_level,
+                        evidence: c.evidence,
+                        sourceHref: proofHref(c.evidence),
+                        sourcePage: c.evidence?.page_number ?? undefined,
+                        icon: <ScrollText className="w-4 h-4" />,
+                        iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
                       }))
                     : clauses.map((c) => ({
                         id: c.id,
-                        title: c.clause_title || c.clause_type,
-                        text: c.text,
-                        riskLevel: c.risk_level,
-                        pageNumber: c.page_number,
-                        clauseNumber: c.clause_number,
-                        href: c.page_number
+                        title: c.clause_title || c.clause_type || 'Clause',
+                        subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
+                        body: c.text,
+                        severity: c.risk_level,
+                        sourceHref: c.page_number
                           ? `/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent((c.text || '').slice(0, 120))}`
                           : null,
+                        sourcePage: c.page_number ?? undefined,
+                        icon: <ScrollText className="w-4 h-4" />,
+                        iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
                       }));
-
-                  const visibleClauses = allClauses.filter((c) => !rejectedSets.clauses.has(c.id));
-
-                  if (visibleClauses.length === 0) {
-                    return <EmptyState title={t('empty.noClausesTitle')} description={t('empty.noClausesDescription')} />;
-                  }
-
-                  // Group by risk level
-                  const byRisk = visibleClauses.reduce<Record<string, typeof visibleClauses>>((acc, c) => {
-                    const k = c.riskLevel || 'unknown';
-                    (acc[k] ||= []).push(c);
-                    return acc;
-                  }, {});
-
-                  const riskOrder = ['high', 'medium', 'low', 'unknown'];
-                  const riskIcons: Record<string, string> = { high: 'text-error', medium: 'text-highlight', low: 'text-success', unknown: 'text-text-soft' };
-
-                  return Object.entries(byRisk)
-                    .sort(([a], [b]) => riskOrder.indexOf(a) - riskOrder.indexOf(b))
-                    .map(([risk, items]) => (
-                      <div key={risk} className="space-y-2">
-                        <AnalysisSectionHeader
-                          icon={<AlertTriangle className="w-4 h-4" />}
-                          iconColor={riskIcons[risk] || 'text-text-soft'}
-                          title={risk.charAt(0).toUpperCase() + risk.slice(1) + ' Risk'}
-                          count={items.length}
-                          isExpanded={expandedSections.has(`clause-${risk}`) || expandedSections.size === 0}
-                          onToggle={() => {
-                            setExpandedSections((prev) => {
-                              const next = new Set(prev);
-                              const key = `clause-${risk}`;
-                              if (next.has(key)) next.delete(key);
-                              else next.add(key);
-                              return next;
-                            });
-                          }}
-                        />
-                        {(expandedSections.has(`clause-${risk}`) || expandedSections.size === 0) &&
-                          items.map((c) => (
-                            <AnalysisRecordCard
-                              key={c.id}
-                              icon={<FileText className="w-4 h-4" />}
-                              iconColor={riskIcons[risk] || 'text-text-soft'}
-                              title={c.title || 'Clause'}
-                              subtitle={c.clauseNumber ? `Clause ${c.clauseNumber}` : undefined}
-                              sourceHref={c.href}
-                              sourcePage={c.pageNumber ?? undefined}
-                              onReject={() => rejectItem('clause', c.id)}
-                            >
-                              <p className="text-sm text-text whitespace-pre-wrap line-clamp-4">{c.text}</p>
-                            </AnalysisRecordCard>
-                          ))}
-                      </div>
-                    ));
+                  return allClauses.filter((c) => !rejectedSets.clauses.has(c.id)) as GenericModuleItem[];
                 })()}
-              </div>
+              />
             )}
 
             {tab === 'obligations' && (
-              <div className="space-y-3">
-                {(() => {
-                  const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
-                  
-                  if (visibleObligations.length === 0) {
-                    return <EmptyState title={t('empty.noObligationsTitle')} description={t('empty.noObligationsDescription')} />;
-                  }
-
-                  const byType = visibleObligations.reduce<Record<string, LegalObligation[]>>((acc, o) => {
-                    const k = o.obligation_type || 'other';
-                    (acc[k] ||= []).push(o);
-                    return acc;
-                  }, {});
-
-                  const typeOrder = [
-                    'renewal', 'notice', 'payment', 'milestone', 'deliverable',
-                    'reporting', 'compliance', 'termination', 'confidentiality',
-                    'indemnification', 'insurance', 'audit', 'other',
-                  ];
-
-                  const groups = Object.entries(byType).sort(([a], [b]) => {
-                    const ia = typeOrder.indexOf(a);
-                    const ib = typeOrder.indexOf(b);
-                    if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-                    return a.localeCompare(b);
-                  });
-
-                  // Sort by attention needed first, then confidence, then due date
-                  const sorted = (items: LegalObligation[]) =>
-                    items.slice().sort((a, b) => {
-                      // 1. Needs review items first
-                      const aNeedsReview = a.confidence_state === 'needs_review';
-                      const bNeedsReview = b.confidence_state === 'needs_review';
-                      if (aNeedsReview !== bNeedsReview) return aNeedsReview ? -1 : 1;
-                      
-                      // 2. Then by confidence (low → medium → high)
-                      const confOrder = ['needs_review', 'extracted', 'confirmed'];
-                      const aConf = confOrder.indexOf(a.confidence_state || 'extracted');
-                      const bConf = confOrder.indexOf(b.confidence_state || 'extracted');
-                      if (aConf !== bConf) return aConf - bConf;
-                      
-                      // 3. Then by due date
+              <GenericModuleTab
+                moduleId="obligations"
+                moduleTitle={t('tabs.obligations')}
+                emptyTitle={t('empty.noObligationsTitle')}
+                emptyDescription={t('empty.noObligationsDescription')}
+                workspaceId={workspaceId}
+                documentId={documentId}
+                groupBy="metadata"
+                onReject={(id) => rejectItem('obligation', id)}
+                isPatchingSnapshot={isPatchingSnapshot}
+                items={(() => {
+                  const confidenceMap: Record<string, AIConfidence> = { confirmed: 'high', extracted: 'medium', needs_review: 'low' };
+                  return obligations
+                    .filter((o) => !rejectedSets.obligations.has(o.id))
+                    .sort((a, b) => {
+                      const aNR = a.confidence_state === 'needs_review' ? 0 : 1;
+                      const bNR = b.confidence_state === 'needs_review' ? 0 : 1;
+                      if (aNR !== bNR) return aNR - bNR;
                       const da = a.due_at || '';
                       const db = b.due_at || '';
                       if (da && db && da !== db) return da.localeCompare(db);
-                      if (da && !db) return -1;
-                      if (!da && db) return 1;
-                      
-                      // 4. Finally by page number
                       return (a.page_number ?? 999999) - (b.page_number ?? 999999);
-                    });
-
-                  const confidenceMap: Record<string, AIConfidence> = {
-                    confirmed: 'high',
-                    extracted: 'medium',
-                    needs_review: 'low',
-                  };
-
-                  return groups.map(([type, items]) => (
-                    <div key={type} className="space-y-2">
-                      <AnalysisSectionHeader
-                        icon={<CheckCircle className="w-4 h-4" />}
-                        iconColor="text-accent"
-                        title={type.charAt(0).toUpperCase() + type.slice(1)}
-                        count={items.length}
-                        isExpanded={expandedSections.has(`ob-${type}`) || expandedSections.size === 0}
-                        onToggle={() => {
-                          setExpandedSections((prev) => {
-                            const next = new Set(prev);
-                            const key = `ob-${type}`;
-                            if (next.has(key)) next.delete(key);
-                            else next.add(key);
-                            return next;
-                          });
-                        }}
-                      />
-                      {(expandedSections.has(`ob-${type}`) || expandedSections.size === 0) &&
-                        sorted(items).map((o) => {
-                          // Determine if this obligation needs verification
-                          const needsVerification = o.confidence_state === 'needs_review' || o.confidence === 'low';
-                          const suggestSpotCheck = o.confidence === 'medium' && o.confidence_state !== 'needs_review';
-                          const attentionLabel = o.confidence_state === 'needs_review' 
-                            ? 'Needs Review' 
-                            : o.confidence === 'low' 
-                              ? 'Low Confidence' 
-                              : undefined;
-                          
-                          return (
-                          <AnalysisRecordCard
-                            key={o.id}
-                            icon={<CheckCircle className="w-4 h-4" />}
-                            title={o.summary || o.action || o.obligation_type || 'Obligation'}
-                            subtitle={o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined}
-                            confidence={o.confidence || confidenceMap[o.confidence_state || ''] || 'medium'}
-                            needsAttention={needsVerification}
-                            attentionLabel={attentionLabel}
-                            spotCheckSuggested={suggestSpotCheck}
-                            sourceHref={
-                              o.page_number != null
-                                ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
-                                : null
-                            }
-                            sourcePage={o.page_number ?? undefined}
-                            toolAction={o.due_at ? { type: 'calendar', label: 'Add to Calendar' } : { type: 'task', label: 'Add Task' }}
-                            onReject={() => rejectItem('obligation', o.id)}
-                            onToolAction={
-                              o.task_id
-                                ? undefined // Already has task
-                                : o.due_at
-                                  ? () => exportCalendar()
-                                  : () => addTaskFromObligation(o)
-                            }
-                          >
-                            <div className="space-y-2">
-                              {o.action && (
-                                <p className="text-sm text-text">
-                                  <span className="text-text-soft">Action: </span>
-                                  {o.action}
-                                </p>
-                              )}
-                              {o.due_at && (
-                                <p className="text-xs text-text-soft">
-                                  Due: <span className="text-text font-medium">{o.due_at}</span>
-                                </p>
-                              )}
-                              {o.task_id && (
-                                <Badge size="sm" variant="success">Task added</Badge>
-                              )}
-                            </div>
-                          </AnalysisRecordCard>
-                        );
-                        })}
-                    </div>
-                  ));
+                    })
+                    .map((o) => ({
+                      id: o.id,
+                      title: o.summary || o.action || o.obligation_type || 'Obligation',
+                      subtitle: o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined,
+                      confidence: (o.confidence || confidenceMap[o.confidence_state || ''] || 'medium') as AIConfidence,
+                      needsAttention: o.confidence_state === 'needs_review' || o.confidence === 'low',
+                      attentionLabel: o.confidence_state === 'needs_review' ? 'Needs Review' : o.confidence === 'low' ? 'Low Confidence' : undefined,
+                      spotCheckSuggested: o.confidence === 'medium' && o.confidence_state !== 'needs_review',
+                      severity: o.obligation_type,
+                      sourceHref: o.page_number != null
+                        ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
+                        : null,
+                      sourcePage: o.page_number ?? undefined,
+                      icon: <ClipboardCheck className="w-4 h-4" />,
+                      toolAction: o.due_at ? { type: 'calendar' as const, label: 'Add to Calendar' } : { type: 'task' as const, label: 'Add Task' },
+                      onToolAction: o.task_id ? undefined : o.due_at ? () => exportCalendar() : () => addTaskFromObligation(o),
+                      children: (
+                        <div className="space-y-2">
+                          {o.action && (
+                            <p className="text-sm text-text">
+                              <span className="text-text-soft">Action: </span>{o.action}
+                            </p>
+                          )}
+                          {o.due_at && (
+                            <p className="text-xs text-text-soft">
+                              Due: <span className="text-text font-medium">{o.due_at}</span>
+                            </p>
+                          )}
+                          {o.task_id && <Badge size="sm" variant="success">Task added</Badge>}
+                        </div>
+                      ),
+                    })) as GenericModuleItem[];
                 })()}
-              </div>
+              />
             )}
 
             {tab === 'deadlines' && (
-              <div className="space-y-3">
-                {(() => {
-                  const items: Array<{
-                    key: string;
-                    title: string;
-                    dueLabel: string;
-                    description: string;
-                    href?: string | null;
-                  }> = [];
-                  
+              <DeadlinesTab
+                effectiveDate={contract.effective_date}
+                endDate={contract.end_date}
+                noticeDeadline={(() => {
+                  const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
+                  return notice?.toISOString() ?? null;
+                })()}
+                emptyTitle={t('empty.noDeadlinesTitle')}
+                emptyDescription={t('empty.noDeadlinesDescription')}
+                items={(() => {
+                  const items: DeadlineItem[] = [];
                   const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
-                  const noticeEvidence = endEvidence;
                   
                   if (contract.end_date) {
                     items.push({
                       key: 'contract_end',
                       title: 'Contract End Date',
+                      dueDate: contract.end_date,
                       dueLabel: contract.end_date,
                       description: 'Contract term ends',
                       href: proofHref(endEvidence),
+                      isContractDate: true,
                     });
                     if (contract.auto_renewal) {
                       items.push({
                         key: 'renewal',
                         title: 'Auto-Renewal Date',
+                        dueDate: contract.end_date,
                         dueLabel: contract.end_date,
                         description: 'Contract renews automatically unless notice is given',
                         href: proofHref(endEvidence),
+                        isContractDate: true,
                       });
                     }
-                    
                     const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
                     if (notice) {
                       items.push({
                         key: 'notice_deadline',
                         title: 'Notice Deadline',
+                        dueDate: notice.toISOString(),
                         dueLabel: notice.toLocaleDateString(),
                         description: `Last day to provide ${contract.notice_period_days ?? ''}-day notice`,
-                        href: proofHref(noticeEvidence),
+                        href: proofHref(endEvidence),
+                        isContractDate: true,
                       });
                     }
                   }
-                  
                   for (const o of deadlines.filter((x) => !rejectedSets.obligations.has(x.id))) {
                     items.push({
                       key: `ob_${o.id}`,
                       title: o.obligation_type,
+                      dueDate: o.due_at || null,
                       dueLabel: o.due_at || '—',
                       description: o.summary || o.action || '—',
-                      href:
-                        o.page_number != null
-                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent(
-                              (o.summary || o.action || '').slice(0, 140)
-                            )}`
-                          : null,
+                      href: o.page_number != null
+                        ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
+                        : null,
                     });
                   }
-                  
-                  if (items.length === 0) {
-                    return <EmptyState title={t('empty.noDeadlinesTitle')} description={t('empty.noDeadlinesDescription')} />;
-                  }
-                  
-                  return items.map((it) => (
-                    <Card key={it.key}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{it.title}</span>
-                          <Badge size="sm">{it.dueLabel}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {it.href ? (
-                          <div className="mb-2">
-                            <Link
-                              href={it.href}
-                              className="inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline"
-                            >
-                              View in PDF
-                            </Link>
-                          </div>
-                        ) : null}
-                        <div className="text-sm text-text">{it.description}</div>
-                      </CardContent>
-                    </Card>
-                  ));
+                  return items;
                 })()}
-              </div>
+              />
             )}
 
             {tab === 'risks' && (
-              <div className="space-y-3">
-                {(() => {
-                  // Use snapshot risks if available, otherwise fall back to DB risks
+              <GenericModuleTab
+                moduleId="risks"
+                moduleTitle={t('tabs.risks')}
+                emptyTitle={t('empty.noRisksTitle')}
+                emptyDescription={t('empty.noRisksDescription')}
+                workspaceId={workspaceId}
+                documentId={documentId}
+                groupBy="severity"
+                onReject={(id) => rejectItem('risk', id)}
+                isPatchingSnapshot={isPatchingSnapshot}
+                items={(() => {
+                  const severityConf: Record<string, AIConfidence> = { critical: 'high', high: 'high', medium: 'medium', low: 'low', unknown: 'medium' };
                   const allRisks = snapshot?.risks?.length
                     ? snapshot.risks.map((r) => ({
                         id: r.id,
-                        description: r.description,
-                        explanation: r.explanation,
+                        title: r.description || 'Risk',
+                        body: r.explanation,
                         severity: r.severity,
-                        pageNumber: r.evidence?.page_number,
-                        href: proofHref(r.evidence),
+                        confidence: severityConf[r.severity || 'unknown'] || ('medium' as AIConfidence),
+                        evidence: r.evidence,
+                        sourceHref: proofHref(r.evidence),
+                        sourcePage: r.evidence?.page_number ?? undefined,
+                        icon: <ShieldAlert className="w-4 h-4" />,
+                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
                       }))
                     : risks.map((r) => ({
                         id: r.id,
-                        description: r.description,
-                        explanation: r.explanation,
+                        title: r.description || 'Risk',
+                        body: r.explanation,
                         severity: r.severity,
-                        pageNumber: r.page_number,
-                        href: r.page_number
+                        confidence: severityConf[r.severity || 'unknown'] || ('medium' as AIConfidence),
+                        sourceHref: r.page_number
                           ? `/workspaces/${workspaceId}/documents/${documentId}?page=${r.page_number}&quote=${encodeURIComponent((r.description || '').slice(0, 140))}`
                           : null,
+                        sourcePage: r.page_number ?? undefined,
+                        icon: <ShieldAlert className="w-4 h-4" />,
+                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
                       }));
-
-                  const visibleRisks = allRisks.filter((r) => !rejectedSets.risks.has(r.id));
-
-                  if (visibleRisks.length === 0) {
-                    return <EmptyState title={t('empty.noRisksTitle')} description={t('empty.noRisksDescription')} />;
-                  }
-
-                  // Group by severity
-                  const bySeverity = visibleRisks.reduce<Record<string, typeof visibleRisks>>((acc, r) => {
-                    const k = r.severity || 'unknown';
-                    (acc[k] ||= []).push(r);
-                    return acc;
-                  }, {});
-
-                  const severityOrder = ['critical', 'high', 'medium', 'low', 'unknown'];
-                  const severityConfig: Record<string, { icon: string; confidence: AIConfidence }> = {
-                    critical: { icon: 'text-error', confidence: 'high' },
-                    high: { icon: 'text-error', confidence: 'high' },
-                    medium: { icon: 'text-highlight', confidence: 'medium' },
-                    low: { icon: 'text-success', confidence: 'low' },
-                    unknown: { icon: 'text-text-soft', confidence: 'medium' },
-                  };
-
-                  return Object.entries(bySeverity)
-                    .sort(([a], [b]) => severityOrder.indexOf(a) - severityOrder.indexOf(b))
-                    .map(([severity, items]) => {
-                      const config = severityConfig[severity] || severityConfig.unknown;
-                      return (
-                        <div key={severity} className="space-y-2">
-                          <AnalysisSectionHeader
-                            icon={<ShieldAlert className="w-4 h-4" />}
-                            iconColor={config.icon}
-                            title={severity.charAt(0).toUpperCase() + severity.slice(1) + ' Risk'}
-                            count={items.length}
-                            isExpanded={expandedSections.has(`risk-${severity}`) || expandedSections.size === 0}
-                            onToggle={() => {
-                              setExpandedSections((prev) => {
-                                const next = new Set(prev);
-                                const key = `risk-${severity}`;
-                                if (next.has(key)) next.delete(key);
-                                else next.add(key);
-                                return next;
-                              });
-                            }}
-                          />
-                          {(expandedSections.has(`risk-${severity}`) || expandedSections.size === 0) &&
-                            items.map((r) => (
-                              <AnalysisRecordCard
-                                key={r.id}
-                                icon={<ShieldAlert className="w-4 h-4" />}
-                                iconColor={config.icon}
-                                title={r.description || 'Risk'}
-                                confidence={config.confidence}
-                                sourceHref={r.href}
-                                sourcePage={r.pageNumber ?? undefined}
-                                onReject={() => rejectItem('risk', r.id)}
-                              >
-                                {r.explanation && (
-                                  <p className="text-sm text-text-soft whitespace-pre-wrap line-clamp-3">{r.explanation}</p>
-                                )}
-                              </AnalysisRecordCard>
-                            ))}
-                        </div>
-                      );
-                    });
+                  return allRisks.filter((r) => !rejectedSets.risks.has(r.id)) as GenericModuleItem[];
                 })()}
-              </div>
+              />
             )}
 
             {tab === 'records' && (
@@ -2483,90 +2111,61 @@ export default function ContractAnalysisPage() {
               </div>
             )}
 
-            {tab.startsWith('custom:') && (
-              <div className="space-y-3">
-                {(() => {
-                  const id = tab.slice('custom:'.length);
-                  
-                  // Check if rejected (unified action model)
-                  if (rejectedSets.modules.has(id)) {
-                    return (
-                      <EmptyState
-                        title="Module Rejected"
-                        description="This custom module was marked as rejected."
-                        action={{
-                          label: isPatchingSnapshot ? t('v3.saving') : t('v3.resolve'),
-                          onClick: () => {
-                            if (!isPatchingSnapshot) restoreItem('module', id);
-                          },
-                        }}
-                      />
-                    );
+            {tab.startsWith('custom:') && (() => {
+              const moduleId = tab.slice('custom:'.length);
+              const m = customModules.find((x) => x.id === moduleId);
+              
+              const customItems: GenericModuleItem[] = [];
+              if (m) {
+                if (Array.isArray(m.result)) {
+                  for (let i = 0; i < m.result.length; i++) {
+                    const item = m.result[i];
+                    const itemObj = typeof item === 'object' && item ? item : {};
+                    customItems.push({
+                      id: `${moduleId}_${i}`,
+                      title: String(itemObj.title || itemObj.name || `Item ${i + 1}`),
+                      subtitle: itemObj.subtitle || undefined,
+                      body: itemObj.description || itemObj.summary || (typeof item === 'string' ? item : undefined),
+                      severity: itemObj.severity || itemObj.risk_level,
+                      confidence: (itemObj.confidence || itemObj.ai_confidence || m.ai_confidence) as AIConfidence | undefined,
+                      icon: <Puzzle className="w-4 h-4" />,
+                    });
                   }
-                  
-                  const m = customModules.find((x) => x.id === id);
-                  if (!m) return <EmptyState title="Missing module" description="This custom module was not found in the snapshot." />;
+                } else {
+                  customItems.push({
+                    id: `${moduleId}_result`,
+                    title: m.title,
+                    subtitle: m.status || undefined,
+                    confidence: m.ai_confidence as AIConfidence | undefined,
+                    body: m.result == null ? 'null' : typeof m.result === 'string' ? m.result : JSON.stringify(m.result, null, 2),
+                    icon: <Puzzle className="w-4 h-4" />,
+                    evidence: m.evidence?.[0] ? {
+                      page_number: (m.evidence[0] as any)?.page_number,
+                      snippet: (m.evidence[0] as any)?.source_quote || (m.evidence[0] as any)?.snippet,
+                    } : undefined,
+                    sourceHref: m.evidence?.[0] && (m.evidence[0] as any)?.page_number
+                      ? `/workspaces/${workspaceId}/documents/${documentId}?page=${(m.evidence[0] as any).page_number}&quote=${encodeURIComponent(((m.evidence[0] as any)?.source_quote || '').slice(0, 160))}`
+                      : null,
+                  });
+                }
+              }
 
-                  const evidenceLinks = (m.evidence || [])
-                    .slice(0, 8)
-                    .map((e) => ({
-                      page: typeof (e as any)?.page_number === 'number' ? (e as any).page_number : null,
-                      quote: typeof (e as any)?.source_quote === 'string' ? (e as any).source_quote : '',
-                    }))
-                    .filter((e) => !!e.page && !!e.quote);
-
-                  return (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between gap-3">
-                          <span>{m.title}</span>
-                          <Badge size="sm">{m.status || 'unknown'}</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {m.error ? <div className="text-sm text-error">{m.error}</div> : null}
-                        {m.ai_confidence ? <div className="text-sm text-text-soft">Confidence: {m.ai_confidence}</div> : null}
-                        <div>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={isPatchingSnapshot}
-                            onClick={() => rejectItem('module', id)}
-                          >
-                            {t('v3.reject')}
-                          </Button>
-                        </div>
-
-                        <div className="rounded-scholar border border-border bg-surface-alt p-3 font-mono text-xs whitespace-pre-wrap">
-                          {m.result == null ? 'null' : typeof m.result === 'string' ? m.result : JSON.stringify(m.result, null, 2)}
-                        </div>
-
-                        {evidenceLinks.length > 0 ? (
-                          <div className="space-y-2">
-                            <div className="text-sm font-semibold text-text">Evidence</div>
-                            <ul className="space-y-2">
-                              {evidenceLinks.map((e, idx) => (
-                                <li key={idx}>
-                                  <Link
-                                    href={`/workspaces/${workspaceId}/documents/${documentId}?page=${e.page}&quote=${encodeURIComponent(
-                                      e.quote.slice(0, 160)
-                                    )}`}
-                                    className="text-sm font-semibold text-accent hover:underline"
-                                  >
-                                    Page {e.page}
-                                  </Link>
-                                  <div className="text-sm text-text-soft">“{e.quote}”</div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </CardContent>
-                    </Card>
-                  );
-                })()}
-              </div>
-            )}
+              return (
+                <GenericModuleTab
+                  moduleId={moduleId}
+                  moduleTitle={m?.title || moduleId}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  onReject={() => rejectItem('module', moduleId)}
+                  isModuleRejected={rejectedSets.modules.has(moduleId)}
+                  onRestoreModule={() => restoreItem('module', moduleId)}
+                  isPatchingSnapshot={isPatchingSnapshot}
+                  emptyTitle="Missing module"
+                  emptyDescription="This custom module was not found in the snapshot."
+                  items={customItems}
+                />
+              );
+            })()}
           </div>
         )}
 
