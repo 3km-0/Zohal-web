@@ -319,7 +319,7 @@ export default function ContractAnalysisPage() {
     }
     out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: Puzzle, total: null, attentionCount: 0 })));
     return out;
-  }, [enabledModules, snapshot, clauses.length, obligations.length, risks.length, deadlines.length, attention, customModules, v3Records, v3Verdicts, v3Exceptions, rejectedSets, t]);
+  }, [enabledModules, snapshot, clauses, obligations, risks, deadlines, attention, customModules, v3Records, v3Verdicts, v3Exceptions, rejectedSets, t]);
 
   useEffect(() => {
     // If the current tab becomes unavailable due to template module gating, fall back to overview.

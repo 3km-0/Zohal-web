@@ -76,6 +76,22 @@ export function GenericModuleTab({
     });
   };
 
+  // Group items if groupBy is specified (must be called before any early returns)
+  const groups = useMemo(() => {
+    if (!groupBy) return [{ key: '_all', label: '', items }];
+    const map = new Map<string, GenericModuleItem[]>();
+    for (const item of items) {
+      const groupValue = String((item as any)[groupBy] || item.metadata?.[groupBy] || 'other');
+      if (!map.has(groupValue)) map.set(groupValue, []);
+      map.get(groupValue)!.push(item);
+    }
+    return Array.from(map.entries()).map(([key, groupItems]) => ({
+      key,
+      label: key.charAt(0).toUpperCase() + key.slice(1),
+      items: groupItems,
+    }));
+  }, [items, groupBy]);
+
   // If the module itself is rejected, show empty state with restore option
   if (isModuleRejected) {
     return (
@@ -104,22 +120,6 @@ export function GenericModuleTab({
       />
     );
   }
-
-  // Group items if groupBy is specified
-  const groups = useMemo(() => {
-    if (!groupBy) return [{ key: '_all', label: '', items }];
-    const map = new Map<string, GenericModuleItem[]>();
-    for (const item of items) {
-      const groupValue = String((item as any)[groupBy] || item.metadata?.[groupBy] || 'other');
-      if (!map.has(groupValue)) map.set(groupValue, []);
-      map.get(groupValue)!.push(item);
-    }
-    return Array.from(map.entries()).map(([key, groupItems]) => ({
-      key,
-      label: key.charAt(0).toUpperCase() + key.slice(1),
-      items: groupItems,
-    }));
-  }, [items, groupBy]);
 
   return (
     <div className="space-y-3 transition-opacity duration-150">
