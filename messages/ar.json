@@ -328,6 +328,8 @@
     "monthlySubscription": "اشتراك شهري",
     "yearlySubscription": "اشتراك سنوي",
     "processingPayment": "جاري معالجة الدفع...",
+    "hostedCheckoutNote": "سيتم تحويلك إلى صفحة الدفع الآمنة لدى Moyasar لإكمال اشتراكك.",
+    "continueToCheckout": "المتابعة إلى الدفع الآمن",
     "features": {
       "documents10": "10 مستندات",
       "documents100": "100 مستند",

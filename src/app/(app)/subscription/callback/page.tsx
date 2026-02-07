@@ -7,11 +7,11 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { CHECKOUT_STATE_STORAGE_KEY, parseCheckoutState } from '@/lib/checkout-state';
 
 type PaymentStatus = 'loading' | 'success' | 'failed' | 'pending';
 
 interface PaymentDetails {
-  id: string;
   status: string;
   amount: number;
   currency: string;
@@ -29,8 +29,8 @@ export default function SubscriptionCallbackPage() {
   const [payment, setPayment] = useState<PaymentDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const verifyPaymentWithServer = useCallback(async (paymentId: string, invoiceId: string | null) => {
-    try {
+  const verifyPaymentWithServer = useCallback(
+    async (paymentRecordId: string, invoiceId: string, checkoutState: string) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
@@ -42,109 +42,65 @@ export default function SubscriptionCallbackPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            payment_id: paymentId,
+            payment_record_id: paymentRecordId,
             invoice_id: invoiceId,
+            checkout_state: checkoutState,
           }),
-        }
+        },
       );
 
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || 'Verification failed');
       }
 
       return data;
-    } catch (err) {
-      console.error('Payment verification error:', err);
-      throw err;
-    }
-  }, [supabase.auth]);
+    },
+    [supabase.auth],
+  );
 
   useEffect(() => {
     async function verifyPayment() {
-      // Get payment ID from URL params (Moyasar sends these)
-      const paymentId = searchParams.get('id') || searchParams.get('payment_id');
-      const invoiceId = searchParams.get('invoice_id');
-      const paymentStatus = searchParams.get('status');
-      const message = searchParams.get('message');
+      const stateFromQuery = searchParams.get('state');
+      const stateFromStorage = typeof window !== 'undefined' ? sessionStorage.getItem(CHECKOUT_STATE_STORAGE_KEY) : null;
+      const checkoutState = stateFromQuery || stateFromStorage;
+      const parsed = parseCheckoutState(checkoutState);
 
-      console.log('[Callback] Params:', { paymentId, invoiceId, paymentStatus, message });
-
-      if (!paymentId && !invoiceId) {
-        setError('No payment information found');
+      if (!checkoutState || !parsed) {
+        setError('Missing or expired checkout state. Please try again.');
         setStatus('failed');
         return;
       }
 
-      // If status indicates failure
-      if (paymentStatus === 'failed') {
-        setError(message || 'Payment was declined');
-        setStatus('failed');
-        return;
+      try {
+        const result = await verifyPaymentWithServer(
+          parsed.payment_record_id,
+          parsed.invoice_id,
+          checkoutState,
+        );
+
+        setPayment({
+          status: 'paid',
+          amount: result.amount || 0,
+          currency: result.currency || 'SAR',
+          tier: result.tier,
+          period: result.period,
+        });
+        sessionStorage.removeItem(CHECKOUT_STATE_STORAGE_KEY);
+        setStatus('success');
+      } catch (err) {
+        console.error('[Callback] Verification failed:', err);
+        setStatus('pending');
       }
-
-      // If status is paid or we have a payment ID, verify with our server
-      if (paymentStatus === 'paid' || paymentId) {
-        try {
-          // Call our verify-payment Edge Function
-          const result = await verifyPaymentWithServer(paymentId || '', invoiceId);
-          
-          console.log('[Callback] Verification result:', result);
-
-          setPayment({
-            id: paymentId || invoiceId || '',
-            status: 'paid',
-            amount: result.amount || 0,
-            currency: result.currency || 'SAR',
-            tier: result.tier,
-            period: result.period,
-          });
-          setStatus('success');
-          return;
-        } catch (err) {
-          console.error('[Callback] Verification failed:', err);
-          // Don't fail immediately - the payment might still be processing
-        }
-      }
-
-      // If verification failed but status was paid, try polling
-      if (paymentStatus === 'paid') {
-        let attempts = 0;
-        const maxAttempts = 5;
-
-        while (attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          
-          try {
-            const result = await verifyPaymentWithServer(paymentId || '', invoiceId);
-            setPayment({
-              id: paymentId || invoiceId || '',
-              status: 'paid',
-              amount: result.amount || 0,
-              currency: result.currency || 'SAR',
-              tier: result.tier,
-              period: result.period,
-            });
-            setStatus('success');
-            return;
-          } catch {
-            attempts++;
-          }
-        }
-      }
-
-      // If we still couldn't verify, show pending
-      setStatus('pending');
     }
 
     if (user) {
       verifyPayment();
     }
-  }, [searchParams, supabase, user, verifyPaymentWithServer]);
+  }, [searchParams, user, verifyPaymentWithServer]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -173,20 +129,6 @@ export default function SubscriptionCallbackPage() {
                   </>
                 )}
               </p>
-              {payment && (
-                <div className="p-4 bg-surface-alt rounded-scholar mb-6 text-left">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-text-soft">Plan</span>
-                    <span className="font-medium text-text capitalize">{payment.tier} ({payment.period})</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-text-soft">Amount</span>
-                    <span className="font-medium text-text">
-                      {(payment.amount / 100).toFixed(2)} {payment.currency}
-                    </span>
-                  </div>
-                </div>
-              )}
               <Button onClick={() => router.push('/workspaces')} className="w-full">
                 Go to Dashboard
                 <ArrowRight className="w-4 h-4 ml-1" />
@@ -221,8 +163,7 @@ export default function SubscriptionCallbackPage() {
               </div>
               <h2 className="text-xl font-semibold text-text mb-2">Payment Processing</h2>
               <p className="text-text-soft mb-6">
-                Your payment is being processed. This may take a few minutes. 
-                You&apos;ll receive an email once it&apos;s complete.
+                Your payment is being processed. This may take a few minutes.
               </p>
               <div className="space-y-3">
                 <Button onClick={() => router.push('/workspaces')} className="w-full">
@@ -239,4 +180,3 @@ export default function SubscriptionCallbackPage() {
     </div>
   );
 }
-

@@ -21,6 +21,8 @@ import { MoyasarPaymentForm } from '@/components/payment/MoyasarPaymentForm';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { getWebSubscriptionFlags } from '@/lib/feature-flags';
+import { CHECKOUT_STATE_STORAGE_KEY } from '@/lib/checkout-state';
 
 interface SubscriptionPlan {
   tier: string;
@@ -56,6 +58,7 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const subscriptionFlags = getWebSubscriptionFlags();
 
   // Enterprise contact form state
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
@@ -152,6 +155,43 @@ export default function SubscriptionPage() {
 
     // Show success or redirect
     router.push('/subscription/success');
+  };
+
+  const startHostedCheckout = async (plan: SubscriptionPlan) => {
+    if (!user) return;
+    setProcessingPayment(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/moyasar-create-subscription`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            tier: plan.tier,
+            period: billingPeriod,
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok || !data?.payment_url || !data?.checkout_state) {
+        throw new Error(data?.error || 'Unable to start checkout');
+      }
+
+      sessionStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, data.checkout_state);
+      window.location.href = data.payment_url as string;
+    } catch (error) {
+      console.error('Hosted checkout error:', error);
+      setProcessingPayment(false);
+    }
   };
 
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
@@ -488,20 +528,32 @@ export default function SubscriptionPage() {
                   <p className="mt-4 text-text-soft">{t('processingPayment')}</p>
                 </div>
               ) : (
-                <MoyasarPaymentForm
-                  amount={Math.round((getPrice(selectedPlan) || 0) * 100)}
-                  description={`Zohal ${selectedPlan.name} (${billingPeriod})`}
-                  tier={selectedPlan.tier}
-                  period={billingPeriod}
-                  callbackUrl={`${window.location.origin}/subscription/callback`}
-                  onPaymentComplete={handlePaymentComplete}
-                  onPaymentError={(error) => {
-                    console.error('Payment error:', error);
-                  }}
-                  onPaymentInitiating={() => {
-                    setProcessingPayment(true);
-                  }}
-                />
+                subscriptionFlags.v2Enabled ? (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-surface-alt rounded-scholar text-sm text-text-soft">
+                      {t('hostedCheckoutNote')}
+                    </div>
+                    <Button className="w-full" onClick={() => startHostedCheckout(selectedPlan)}>
+                      {t('continueToCheckout')}
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                ) : (
+                  <MoyasarPaymentForm
+                    amount={Math.round((getPrice(selectedPlan) || 0) * 100)}
+                    description={`Zohal ${selectedPlan.name} (${billingPeriod})`}
+                    tier={selectedPlan.tier}
+                    period={billingPeriod}
+                    callbackUrl={`${window.location.origin}/subscription/callback`}
+                    onPaymentComplete={handlePaymentComplete}
+                    onPaymentError={(error) => {
+                      console.error('Payment error:', error);
+                    }}
+                    onPaymentInitiating={() => {
+                      setProcessingPayment(true);
+                    }}
+                  />
+                )
               )}
             </div>
           </Card>
@@ -674,4 +726,3 @@ function FeatureItem({ children }: { children: React.ReactNode }) {
     </li>
   );
 }
-

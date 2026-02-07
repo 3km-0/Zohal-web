@@ -2,6 +2,10 @@ export interface AnalysisV3WebFlags {
   enabled: boolean;
 }
 
+export interface WebSubscriptionFlags {
+  v2Enabled: boolean;
+}
+
 function readBool(value: string | undefined, fallback: boolean): boolean {
   if (!value) return fallback;
   const v = value.trim().toLowerCase();
@@ -14,3 +18,8 @@ export function getAnalysisV3WebFlags(): AnalysisV3WebFlags {
   };
 }
 
+export function getWebSubscriptionFlags(): WebSubscriptionFlags {
+  return {
+    v2Enabled: readBool(process.env.NEXT_PUBLIC_WEB_SUBSCRIPTION_V2, false),
+  };
+}

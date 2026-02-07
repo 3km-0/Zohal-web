@@ -48,7 +48,7 @@ export default function PaymentMethodsPage() {
 
       const { data, error: fetchError } = await supabase
         .from('payment_methods')
-        .select('*')
+        .select('id, card_last_four, card_brand, card_holder_name, card_expiry_month, card_expiry_year, is_default, is_active, created_at')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('is_default', { ascending: false })
@@ -313,4 +313,3 @@ export default function PaymentMethodsPage() {
     </div>
   );
 }
-

@@ -328,6 +328,8 @@
     "monthlySubscription": "Monthly subscription",
     "yearlySubscription": "Yearly subscription",
     "processingPayment": "Processing your payment...",
+    "hostedCheckoutNote": "You will be redirected to Moyasar's secure hosted checkout to complete your subscription.",
+    "continueToCheckout": "Continue to Secure Checkout",
     "features": {
       "documents10": "10 documents",
       "documents100": "100 documents",
