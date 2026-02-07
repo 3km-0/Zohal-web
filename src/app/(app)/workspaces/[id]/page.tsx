@@ -851,9 +851,9 @@ function DocumentCard({
             e.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className="p-1.5 rounded-lg opacity-100 hover:bg-surface-alt transition-all"
+          className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-all shadow-sm"
         >
-          <MoreVertical className="w-5 h-5 text-text-soft" />
+          <MoreVertical className="w-5 h-5 text-white" />
         </button>
 
         {showMenu && (
