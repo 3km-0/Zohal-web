@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
@@ -14,7 +15,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Crown,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -63,9 +63,13 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="flex items-center justify-between p-4 border-b border-border">
         {!collapsed && (
           <Link href="/workspaces" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-accent/10 rounded-scholar-sm flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-accent" />
-            </div>
+            <Image
+              src="/icon.png"
+              alt="Zohal"
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-scholar-sm"
+            />
             <span className="text-xl font-bold text-accent">{tCommon('appName')}</span>
           </Link>
         )}

@@ -6,14 +6,9 @@ import { MoreVertical, Pencil, Trash2, FolderOpen, FileText, Calendar, Folder } 
 import { cn } from '@/lib/utils';
 import type { FolderWithStats, WorkspaceFolder } from '@/types/database';
 
-// Default folder colors with matching lighter shades
+// Unified blue folder color
 const folderColorPalette = [
-  { main: '#2d8878', light: '#3da997' }, // Teal
-  { main: '#6366f1', light: '#818cf8' }, // Indigo
-  { main: '#f59e0b', light: '#fbbf24' }, // Amber
-  { main: '#ef4444', light: '#f87171' }, // Red
-  { main: '#8b5cf6', light: '#a78bfa' }, // Purple
-  { main: '#10b981', light: '#34d399' }, // Emerald
+  { main: '#2563eb', light: '#3b82f6' }, // Blue
 ];
 
 // Get color palette for a folder
@@ -108,7 +103,7 @@ export function FolderIcon({
         className={cn(
           'flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200',
           'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
-          'w-[110px] focus:outline-none focus:ring-2 focus:ring-accent/50',
+          'w-[130px] focus:outline-none focus:ring-2 focus:ring-accent/50',
           isDragOver && 'bg-accent/10 ring-2 ring-accent scale-105 shadow-lg',
           isDragging && 'opacity-50'
         )}
@@ -118,7 +113,7 @@ export function FolderIcon({
           <StyledFolder
             color={palette.main}
             lightColor={palette.light}
-            className="w-16 h-14 transition-transform group-hover:scale-105"
+            className="w-20 h-[72px] transition-transform group-hover:scale-105"
           />
           
           {/* Item count badge */}

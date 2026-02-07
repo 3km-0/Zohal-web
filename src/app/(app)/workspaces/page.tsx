@@ -11,16 +11,17 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
 
-// Workspace type colors (folder palette)
+// Unified blue folder color for all workspace types
+const BLUE_FOLDER = { main: '#2563eb', light: '#3b82f6' };
 const workspacePalette: Record<WorkspaceType, { main: string; light: string }> = {
-  project: { main: '#2563eb', light: '#3b82f6' },
-  case: { main: '#7c3aed', light: '#8b5cf6' },
-  course: { main: '#16a34a', light: '#22c55e' },
-  personal: { main: '#d97706', light: '#f59e0b' },
-  archive: { main: '#64748b', light: '#94a3b8' },
-  research: { main: '#0891b2', light: '#22d3ee' },
-  client: { main: '#e11d48', light: '#fb7185' },
-  other: { main: '#475569', light: '#94a3b8' },
+  project: BLUE_FOLDER,
+  case: BLUE_FOLDER,
+  course: BLUE_FOLDER,
+  personal: BLUE_FOLDER,
+  archive: BLUE_FOLDER,
+  research: BLUE_FOLDER,
+  client: BLUE_FOLDER,
+  other: BLUE_FOLDER,
 };
 
 function getWorkspacePalette(workspace: Workspace) {
@@ -223,14 +224,14 @@ function WorkspaceIcon({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
         className={cn(
           'flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200',
           'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
-          'w-[120px] focus:outline-none focus:ring-2 focus:ring-accent/50'
+          'w-[140px] focus:outline-none focus:ring-2 focus:ring-accent/50'
         )}
       >
         <div className="relative drop-shadow-sm">
           <StyledFolder
             color={palette.main}
             lightColor={palette.light}
-            className="w-16 h-14 transition-transform group-hover:scale-105"
+            className="w-20 h-[72px] transition-transform group-hover:scale-105"
           />
         </div>
 
