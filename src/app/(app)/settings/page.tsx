@@ -98,9 +98,7 @@ export default function SettingsPage() {
   const connectIntegration = async (provider: 'google_drive' | 'onedrive') => {
     setConnectingProvider(provider);
     
-    // Use Supabase OAuth for the base provider, then the user can grant additional scopes
-    // For now, we'll redirect to our custom OAuth flow
-    // Note: This requires the user to have already signed in with the provider to use integrations
+    // Use Supabase OAuth and request only scopes the web flow actually uses.
     const oauthProvider = provider === 'google_drive' ? 'google' : 'azure';
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -108,7 +106,7 @@ export default function SettingsPage() {
       options: {
         redirectTo: `${window.location.origin}/auth/callback?integration=${provider}`,
         scopes: provider === 'google_drive' 
-          ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/calendar.events'
+          ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly'
           : 'Files.Read Files.Read.All Calendars.Read Calendars.ReadWrite offline_access User.Read',
       },
     });
@@ -569,4 +567,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
