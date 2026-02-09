@@ -210,34 +210,35 @@ export function BundleManagerModal({
       />
 
       {/* Modal */}
-      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-auto md:left-1/2 md:-translate-x-1/2 md:w-[500px] max-h-[80vh] bg-surface rounded-2xl shadow-xl z-50 animate-slide-up overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <Package className="w-5 h-5 text-accent" />
-            <h2 className="text-lg font-semibold text-text">Manage Bundle</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-surface-alt transition-colors"
-          >
-            <X className="w-5 h-5 text-text-soft" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-4 space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Spinner size="lg" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-[500px] max-h-[80vh] bg-surface rounded-2xl shadow-xl animate-slide-up overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <Package className="w-5 h-5 text-accent" />
+              <h2 className="text-lg font-semibold text-text">Manage Bundle</h2>
             </div>
-          ) : (
-            <>
-              {error && (
-                <div className="p-3 rounded-scholar border border-error/30 bg-error/5 text-error text-sm">
-                  {error}
-                </div>
-              )}
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-surface-alt transition-colors"
+            >
+              <X className="w-5 h-5 text-text-soft" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-4 space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Spinner size="lg" />
+              </div>
+            ) : (
+              <>
+                {error && (
+                  <div className="p-3 rounded-scholar border border-error/30 bg-error/5 text-error text-sm">
+                    {error}
+                  </div>
+                )}
 
               {/* Create new bundle */}
               <div className="space-y-2">
@@ -339,15 +340,16 @@ export function BundleManagerModal({
                   </div>
                 </div>
               )}
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-border">
-          <Button variant="secondary" onClick={onClose} className="w-full">
-            Done
-          </Button>
+          {/* Footer */}
+          <div className="p-4 border-t border-border">
+            <Button variant="secondary" onClick={onClose} className="w-full">
+              Done
+            </Button>
+          </div>
         </div>
       </div>
     </>

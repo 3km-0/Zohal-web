@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe, Layers, Variable, Pencil, Lock, Copy } from 'lucide-react';
@@ -327,8 +327,13 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
 
 export default function WorkspacePlaybooksPage() {
   const params = useParams();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
+  const requestedReturnTo = searchParams.get('returnTo');
+  const backHref =
+    requestedReturnTo && requestedReturnTo.startsWith('/')
+      ? requestedReturnTo
+      : `/workspaces/${workspaceId}`;
   const supabase = useMemo(() => createClient(), []);
   const { showError, showSuccess } = useToast();
   const t = useTranslations('playbooks');
@@ -677,7 +682,7 @@ export default function WorkspacePlaybooksPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href={`/workspaces/${workspaceId}`}
+              href={backHref}
               className="p-2 rounded-scholar hover:bg-surface-alt transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-text-soft" />

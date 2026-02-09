@@ -1313,7 +1313,9 @@ export default function ContractAnalysisPage() {
                         Choose an analysis template to use.
                       </p>
                       <Link
-                        href={`/workspaces/${workspaceId}/playbooks`}
+                        href={`/workspaces/${workspaceId}/playbooks?returnTo=${encodeURIComponent(
+                          `/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`
+                        )}`}
                         className="text-xs font-semibold text-accent hover:underline"
                       >
                         {t('playbook.manage')}
