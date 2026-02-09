@@ -180,6 +180,8 @@
   "search": {
     "title": "Search",
     "placeholder": "Search your documents...",
+    "initialTitle": "Ask anything about your documents",
+    "initialDescription": "Search by keywords or ask a question to get answers with citations.",
     "noResults": "No results found",
     "noResultsDescription": "Try adjusting your search terms or filters."
   },

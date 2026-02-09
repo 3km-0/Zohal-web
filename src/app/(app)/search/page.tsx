@@ -298,10 +298,10 @@ export default function SearchPage() {
             <div className="text-center py-12">
               <SearchIcon className="w-16 h-16 text-text-soft mx-auto mb-4 opacity-50" />
               <p className="text-text-soft text-lg">
-                Search across all your documents
+                {t('initialTitle')}
               </p>
               <p className="text-text-soft text-sm mt-2">
-                Ask questions to get AI-powered answers with citations
+                {t('initialDescription')}
               </p>
             </div>
           )}
