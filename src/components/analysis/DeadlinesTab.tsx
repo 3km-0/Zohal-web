@@ -25,6 +25,7 @@ export interface DeadlinesTabProps {
   noticeDeadline?: string | null;
   emptyTitle?: string;
   emptyDescription?: string;
+  onAddToCalendar?: (item: DeadlineItem) => void;
 }
 
 export function DeadlinesTab({
@@ -34,6 +35,7 @@ export function DeadlinesTab({
   noticeDeadline,
   emptyTitle = 'No Deadlines',
   emptyDescription = 'No deadlines found for this contract.',
+  onAddToCalendar,
 }: DeadlinesTabProps) {
   // Sort by due date (chronological)
   const sorted = useMemo(() => {
@@ -120,8 +122,12 @@ export function DeadlinesTab({
                         View in PDF
                       </Link>
                     )}
-                    {item.dueDate && (
-                      <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors">
+                    {item.dueDate && onAddToCalendar && (
+                      <button
+                        type="button"
+                        onClick={() => onAddToCalendar(item)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
+                      >
                         <Calendar className="w-3.5 h-3.5" />
                         Add to Calendar
                       </button>
