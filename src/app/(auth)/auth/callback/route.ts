@@ -48,6 +48,24 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // If opened as a popup (e.g. from inline calendar connect), notify the
+  // opener via postMessage and close the popup instead of redirecting.
+  const isPopup = requestUrl.searchParams.get('popup') === '1';
+  if (isPopup) {
+    return new NextResponse(
+      `<!DOCTYPE html><html><head><title>Connected</title></head><body>
+        <p style="font-family:system-ui;text-align:center;padding:2rem">
+          Connected! This window will close automatically&hellip;
+        </p>
+        <script>
+          try { window.opener.postMessage({ type: 'zohal:oauth-done' }, '*'); } catch(e) {}
+          window.close();
+        </script>
+      </body></html>`,
+      { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+    );
+  }
+
   // URL to redirect to after sign in process completes
   return NextResponse.redirect(`${origin}/settings`);
 }

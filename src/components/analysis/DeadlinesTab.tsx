@@ -49,20 +49,60 @@ export function DeadlinesTab({
     setConnecting(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?integration=google_drive&returnTo=${encodeURIComponent(window.location.pathname)}`,
+          redirectTo: `${window.location.origin}/auth/callback?integration=google_drive&popup=1`,
           scopes:
             'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/calendar.events',
           queryParams: { access_type: 'offline', prompt: 'consent' },
+          skipBrowserRedirect: true,
         },
       });
-      if (error) {
+      if (error || !data?.url) {
         console.error('[DeadlinesTab] Google OAuth error:', error);
         setConnecting(false);
+        return;
       }
-      // If no error, the browser is redirecting to Google — no need to reset state.
+
+      // Open OAuth in a centered popup so the user never leaves the page
+      const w = 500;
+      const h = 620;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      const popup = window.open(
+        data.url,
+        'zohal-google-auth',
+        `width=${w},height=${h},left=${left},top=${top},popup=yes`,
+      );
+
+      // Listen for the callback page to signal success via postMessage
+      const onMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'zohal:oauth-done') {
+          window.removeEventListener('message', onMessage);
+          clearInterval(checkClosed);
+          setNeedsGoogle(false);
+          setConnecting(false);
+          // Reset all "needs-google" items back to idle so user can click again
+          setCalendarState((prev) => {
+            const next = { ...prev };
+            for (const key of Object.keys(next)) {
+              if (next[key] === 'needs-google') next[key] = 'idle';
+            }
+            return next;
+          });
+        }
+      };
+      window.addEventListener('message', onMessage);
+
+      // Poll for popup closed (user may close without completing OAuth)
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', onMessage);
+          setConnecting(false);
+        }
+      }, 500);
     } catch (err) {
       console.error('[DeadlinesTab] connectGoogle error:', err);
       setConnecting(false);
