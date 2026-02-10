@@ -151,10 +151,16 @@ export async function POST(request: NextRequest) {
     }
 
     const json = (await googleRes.json().catch(() => null)) as { id?: string; htmlLink?: string } | null;
+
+    // Build a link that opens Google Calendar's day view at the event's date
+    // so the user lands on the correct month/day instead of the current week.
+    const calendarDayLink = `https://calendar.google.com/calendar/r/day/${yyyy}/${date.getMonth() + 1}/${date.getDate()}`;
+
     return NextResponse.json({
       ok: true,
       google_event_id: json?.id || null,
       html_link: json?.htmlLink || null,
+      calendar_day_link: calendarDayLink,
     });
   } catch (e) {
     return NextResponse.json(

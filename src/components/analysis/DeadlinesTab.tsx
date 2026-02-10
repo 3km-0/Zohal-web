@@ -132,8 +132,10 @@ export function DeadlinesTab({
         throw new Error(body.error || `HTTP ${res.status}`);
       }
       setCalendarState((prev) => ({ ...prev, [item.key]: 'done' }));
-      if (body.html_link) {
-        setCalendarLinks((prev) => ({ ...prev, [item.key]: body.html_link }));
+      // Prefer the day-view link so Google Calendar opens on the event's date
+      const link = body.calendar_day_link || body.html_link;
+      if (link) {
+        setCalendarLinks((prev) => ({ ...prev, [item.key]: link }));
       }
     } catch (err) {
       console.error('[DeadlinesTab] Google Calendar error:', err);
