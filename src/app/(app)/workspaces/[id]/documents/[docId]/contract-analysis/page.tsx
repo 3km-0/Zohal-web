@@ -1788,7 +1788,9 @@ export default function ContractAnalysisPage() {
                 })()}
                 emptyTitle={t('empty.noDeadlinesTitle')}
                 emptyDescription={t('empty.noDeadlinesDescription')}
-                onAddToCalendar={() => exportCalendar()}
+                getAddToCalendarHref={(item) =>
+                  `/export-deadline?document_id=${encodeURIComponent(documentId)}&key=${encodeURIComponent(item.key)}`
+                }
                 items={(() => {
                   const items: DeadlineItem[] = [];
                   const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;

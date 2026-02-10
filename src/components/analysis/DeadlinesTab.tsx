@@ -26,6 +26,7 @@ export interface DeadlinesTabProps {
   emptyTitle?: string;
   emptyDescription?: string;
   onAddToCalendar?: (item: DeadlineItem) => void;
+  getAddToCalendarHref?: (item: DeadlineItem) => string | null;
 }
 
 export function DeadlinesTab({
@@ -36,6 +37,7 @@ export function DeadlinesTab({
   emptyTitle = 'No Deadlines',
   emptyDescription = 'No deadlines found for this contract.',
   onAddToCalendar,
+  getAddToCalendarHref,
 }: DeadlinesTabProps) {
   // Sort by due date (chronological)
   const sorted = useMemo(() => {
@@ -122,16 +124,31 @@ export function DeadlinesTab({
                         View in PDF
                       </Link>
                     )}
-                    {item.dueDate && onAddToCalendar && (
-                      <button
-                        type="button"
-                        onClick={() => onAddToCalendar(item)}
-                        className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
-                      >
-                        <Calendar className="w-3.5 h-3.5" />
-                        Add to Calendar
-                      </button>
-                    )}
+                    {item.dueDate && (() => {
+                      const href = getAddToCalendarHref?.(item) || null;
+                      if (href) {
+                        return (
+                          <a
+                            href={href}
+                            className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            Add to Calendar
+                          </a>
+                        );
+                      }
+                      if (!onAddToCalendar) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => onAddToCalendar(item)}
+                          className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          Add to Calendar
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
