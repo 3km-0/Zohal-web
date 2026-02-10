@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, FileSearch } from 'lucide-react';
+import { Calendar, FileSearch, Check, Loader2 } from 'lucide-react';
 import { Badge, EmptyState } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { getDeadlineUrgency } from './SeverityIndicator';
@@ -20,25 +20,50 @@ export interface DeadlineItem {
 
 export interface DeadlinesTabProps {
   items: DeadlineItem[];
+  documentId: string;
   effectiveDate?: string | null;
   endDate?: string | null;
   noticeDeadline?: string | null;
   emptyTitle?: string;
   emptyDescription?: string;
-  onAddToCalendar?: (item: DeadlineItem) => void;
-  getAddToCalendarHref?: (item: DeadlineItem) => string | null;
 }
 
 export function DeadlinesTab({
   items,
+  documentId,
   effectiveDate,
   endDate,
   noticeDeadline,
   emptyTitle = 'No Deadlines',
   emptyDescription = 'No deadlines found for this contract.',
-  onAddToCalendar,
-  getAddToCalendarHref,
 }: DeadlinesTabProps) {
+  // Track per-item loading/success state for the calendar button
+  const [calendarState, setCalendarState] = useState<Record<string, 'idle' | 'loading' | 'done' | 'error'>>({});
+
+  async function addToGoogleCalendar(item: DeadlineItem) {
+    const current = calendarState[item.key];
+    if (current === 'loading' || current === 'done') return;
+
+    setCalendarState((prev) => ({ ...prev, [item.key]: 'loading' }));
+    try {
+      const res = await fetch('/google-calendar/add-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: documentId, key: item.key }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setCalendarState((prev) => ({ ...prev, [item.key]: 'done' }));
+    } catch (err) {
+      console.error('[DeadlinesTab] Google Calendar error:', err);
+      setCalendarState((prev) => ({ ...prev, [item.key]: 'error' }));
+      // Reset to idle after 3s so user can retry
+      setTimeout(() => setCalendarState((prev) => ({ ...prev, [item.key]: 'idle' })), 3000);
+    }
+  }
+
   // Sort by due date (chronological)
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -71,6 +96,7 @@ export function DeadlinesTab({
         <div className="space-y-3">
           {sorted.map((item, idx) => {
             const urgency = getDeadlineUrgency(item.dueDate);
+            const calState = calendarState[item.key] || 'idle';
 
             return (
               <div
@@ -114,7 +140,7 @@ export function DeadlinesTab({
                   </div>
 
                   {/* Actions */}
-                  <div className="relative z-20 flex items-center gap-2 mt-3 pointer-events-auto">
+                  <div className="flex items-center gap-2 mt-3">
                     {item.href && (
                       <Link
                         href={item.href}
@@ -124,44 +150,26 @@ export function DeadlinesTab({
                         View in PDF
                       </Link>
                     )}
-                    {item.dueDate && getAddToCalendarHref && (
-                      <Link
-                        href={getAddToCalendarHref(item) ?? '#'}
-                        prefetch={false}
-                        onClick={(e) => {
-                          // Prevent Next.js client-side navigation — we want a
-                          // file download, not a page transition.
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const href = getAddToCalendarHref(item);
-                          if (!href) return;
-                          // Trigger same-origin .ics download via hidden anchor.
-                          const anchor = document.createElement('a');
-                          anchor.href = href;
-                          anchor.download = '';
-                          document.body.appendChild(anchor);
-                          anchor.click();
-                          anchor.remove();
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
+                    {item.dueDate && (
+                      <button
+                        type="button"
+                        disabled={calState === 'loading' || calState === 'done'}
+                        onClick={() => addToGoogleCalendar(item)}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors',
+                          calState === 'done'
+                            ? 'text-success bg-success/10 border border-success/30'
+                            : calState === 'error'
+                              ? 'text-error bg-error/10 border border-error/30'
+                              : 'text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30',
+                        )}
                       >
-                        <Calendar className="w-3.5 h-3.5" />
-                        Add to Calendar
-                      </Link>
-                    )}
-                    {item.dueDate && !getAddToCalendarHref && onAddToCalendar && (
-                      <Link
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onAddToCalendar(item);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
-                      >
-                        <Calendar className="w-3.5 h-3.5" />
-                        Add to Calendar
-                      </Link>
+                        {calState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {calState === 'done' && <Check className="w-3.5 h-3.5" />}
+                        {calState === 'error' && <Calendar className="w-3.5 h-3.5" />}
+                        {calState === 'idle' && <Calendar className="w-3.5 h-3.5" />}
+                        {calState === 'done' ? 'Added!' : calState === 'error' ? 'Failed — retry?' : 'Add to Calendar'}
+                      </button>
                     )}
                   </div>
                 </div>

@@ -1780,6 +1780,7 @@ export default function ContractAnalysisPage() {
 
             {tab === 'deadlines' && (
               <DeadlinesTab
+                documentId={documentId}
                 effectiveDate={contract.effective_date}
                 endDate={contract.end_date}
                 noticeDeadline={(() => {
@@ -1788,9 +1789,6 @@ export default function ContractAnalysisPage() {
                 })()}
                 emptyTitle={t('empty.noDeadlinesTitle')}
                 emptyDescription={t('empty.noDeadlinesDescription')}
-                getAddToCalendarHref={(item) =>
-                  `/export-deadline?document_id=${encodeURIComponent(documentId)}&key=${encodeURIComponent(item.key)}`
-                }
                 items={(() => {
                   const items: DeadlineItem[] = [];
                   const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
