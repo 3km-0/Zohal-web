@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, FileSearch, Check, Loader2, Link2 } from 'lucide-react';
+import { Calendar, FileSearch, Check, Loader2, Link2, ExternalLink } from 'lucide-react';
 import { Badge, EmptyState } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -41,6 +41,7 @@ export function DeadlinesTab({
   emptyDescription = 'No deadlines found for this contract.',
 }: DeadlinesTabProps) {
   const [calendarState, setCalendarState] = useState<Record<string, CalItemState>>({});
+  const [calendarLinks, setCalendarLinks] = useState<Record<string, string>>({});
   // If any request returns 409/401/403, show the connect banner for all items
   const [needsGoogle, setNeedsGoogle] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -120,8 +121,8 @@ export function DeadlinesTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ document_id: documentId, key: item.key }),
       });
+      const body = await res.json().catch(() => ({ error: 'Unknown error' }));
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Unknown error' }));
         // Google not connected or token expired — show connect prompt
         if (res.status === 409 || res.status === 401 || res.status === 403) {
           setNeedsGoogle(true);
@@ -131,6 +132,9 @@ export function DeadlinesTab({
         throw new Error(body.error || `HTTP ${res.status}`);
       }
       setCalendarState((prev) => ({ ...prev, [item.key]: 'done' }));
+      if (body.html_link) {
+        setCalendarLinks((prev) => ({ ...prev, [item.key]: body.html_link }));
+      }
     } catch (err) {
       console.error('[DeadlinesTab] Google Calendar error:', err);
       setCalendarState((prev) => ({ ...prev, [item.key]: 'error' }));
@@ -255,10 +259,28 @@ export function DeadlinesTab({
                         View in PDF
                       </Link>
                     )}
-                    {item.dueDate && (
+                    {item.dueDate && calState === 'done' ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-success bg-success/10 border border-success/30">
+                          <Check className="w-3.5 h-3.5" />
+                          Added!
+                        </span>
+                        {calendarLinks[item.key] && (
+                          <a
+                            href={calendarLinks[item.key]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent bg-accent/10 hover:bg-accent/20 border border-accent/30 transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Open in Google Calendar
+                          </a>
+                        )}
+                      </>
+                    ) : item.dueDate ? (
                       <button
                         type="button"
-                        disabled={calState === 'loading' || calState === 'done'}
+                        disabled={calState === 'loading'}
                         onClick={() => {
                           if (needsGoogle) {
                             connectGoogle();
@@ -268,27 +290,22 @@ export function DeadlinesTab({
                         }}
                         className={cn(
                           'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors',
-                          calState === 'done'
-                            ? 'text-success bg-success/10 border border-success/30'
-                            : calState === 'needs-google'
-                              ? 'text-accent-alt bg-accent-alt/10 border border-accent-alt/30 hover:bg-accent-alt/20'
-                              : calState === 'error'
-                                ? 'text-error bg-error/10 border border-error/30'
-                                : 'text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30',
+                          calState === 'needs-google'
+                            ? 'text-accent-alt bg-accent-alt/10 border border-accent-alt/30 hover:bg-accent-alt/20'
+                            : calState === 'error'
+                              ? 'text-error bg-error/10 border border-error/30'
+                              : 'text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30',
                         )}
                       >
                         {calState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                        {calState === 'done' && <Check className="w-3.5 h-3.5" />}
                         {(calState === 'error' || calState === 'idle' || calState === 'needs-google') && <Calendar className="w-3.5 h-3.5" />}
-                        {calState === 'done'
-                          ? 'Added!'
-                          : calState === 'needs-google'
-                            ? 'Connect & Add'
-                            : calState === 'error'
-                              ? 'Failed — retry?'
-                              : 'Add to Calendar'}
+                        {calState === 'needs-google'
+                          ? 'Connect & Add'
+                          : calState === 'error'
+                            ? 'Failed — retry?'
+                            : 'Add to Calendar'}
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>

@@ -150,8 +150,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create Google Calendar event', details: text }, { status: 502 });
     }
 
-    const json = (await googleRes.json().catch(() => null)) as { id?: string } | null;
-    return NextResponse.json({ ok: true, google_event_id: json?.id || null });
+    const json = (await googleRes.json().catch(() => null)) as { id?: string; htmlLink?: string } | null;
+    return NextResponse.json({
+      ok: true,
+      google_event_id: json?.id || null,
+      html_link: json?.htmlLink || null,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Failed to add event' },
