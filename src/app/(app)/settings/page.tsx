@@ -123,8 +123,11 @@ export default function SettingsPage() {
       options: {
         redirectTo: `${window.location.origin}/auth/callback?integration=${provider}`,
         scopes: provider === 'google_drive' 
-          ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly'
+          ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/calendar.events'
           : 'Files.Read Files.Read.All Calendars.Read Calendars.ReadWrite offline_access User.Read',
+        queryParams: provider === 'google_drive'
+          ? { access_type: 'offline', prompt: 'consent' }
+          : undefined,
       },
     });
 

@@ -836,95 +836,21 @@ export default function ContractAnalysisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, loading, isAnalyzing, contract]);
 
-  function pad2(n: number): string {
-    return String(n).padStart(2, '0');
-  }
-
-  function formatIcsDateUtc(d: Date): string {
-    return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}${pad2(
-      d.getUTCMinutes()
-    )}${pad2(d.getUTCSeconds())}Z`;
-  }
-
-  function formatIcsDateValue(d: Date): string {
-    return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
-  }
-
-  function escapeIcsText(value: string): string {
-    // Minimal escaping per iCalendar text rules.
-    return value
-      .replace(/\\/g, '\\\\')
-      .replace(/\n/g, '\\n')
-      .replace(/;/g, '\\;')
-      .replace(/,/g, '\\,');
-  }
-
-  function downloadTextFile(filename: string, content: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // Revoke on next tick to ensure the download has started.
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  }
-
-  function exportDeadlineItemToCalendar(item: DeadlineItem) {
+  async function exportDeadlineItemToCalendar(item: DeadlineItem) {
     setError(null);
     try {
-      if (!item.dueDate) throw new Error('Missing due date');
+      const res = await fetch('/google-calendar/add-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: documentId, key: item.key }),
+      });
 
-      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate);
-      const start = isDateOnly ? new Date(`${item.dueDate}T00:00:00`) : new Date(item.dueDate);
-      if (Number.isNaN(start.getTime())) throw new Error('Invalid due date');
-
-      const uid = `zohal-${documentId}-${item.key}-${Math.random().toString(16).slice(2)}@zohal.ai`;
-      const now = new Date();
-
-      const summary = escapeIcsText(item.title || 'Deadline');
-      const description = escapeIcsText(item.description || 'Deadline');
-
-      let dtStartLine = '';
-      let dtEndLine = '';
-
-      if (isDateOnly) {
-        const end = new Date(start.getTime());
-        end.setDate(end.getDate() + 1); // all-day events are exclusive of DTEND
-        dtStartLine = `DTSTART;VALUE=DATE:${formatIcsDateValue(start)}`;
-        dtEndLine = `DTEND;VALUE=DATE:${formatIcsDateValue(end)}`;
-      } else {
-        const end = new Date(start.getTime() + 60 * 60 * 1000);
-        dtStartLine = `DTSTART:${formatIcsDateUtc(start)}`;
-        dtEndLine = `DTEND:${formatIcsDateUtc(end)}`;
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || 'Failed to add to Google Calendar');
       }
 
-      const ics = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//Zohal//Deadlines//EN',
-        'CALSCALE:GREGORIAN',
-        'METHOD:PUBLISH',
-        'BEGIN:VEVENT',
-        `UID:${uid}`,
-        `DTSTAMP:${formatIcsDateUtc(now)}`,
-        dtStartLine,
-        dtEndLine,
-        `SUMMARY:${summary}`,
-        `DESCRIPTION:${description}`,
-        'END:VEVENT',
-        'END:VCALENDAR',
-        '',
-      ].join('\r\n');
-
-      const safeTitle = (item.title || 'deadline')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/gi, '_')
-        .replace(/^_+|_+$/g, '')
-        .slice(0, 80);
-      downloadTextFile(`${safeTitle || 'deadline'}.ics`, ics, 'text/calendar; charset=utf-8');
+      toast.showSuccess('Added to Google Calendar', 'The deadline was added to your primary calendar.');
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.exportCalendarFailed'));
     }
@@ -1882,7 +1808,7 @@ export default function ContractAnalysisPage() {
                 })()}
                 emptyTitle={t('empty.noDeadlinesTitle')}
                 emptyDescription={t('empty.noDeadlinesDescription')}
-                onAddToCalendar={(item) => exportDeadlineItemToCalendar(item)}
+                onAddToCalendar={(item) => void exportDeadlineItemToCalendar(item)}
                 items={(() => {
                   const items: DeadlineItem[] = [];
                   const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
