@@ -23,6 +23,23 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/types/database';
 
+function readThemeFromStorage(): 'light' | 'dark' | null {
+  try {
+    const value = window.localStorage.getItem('theme');
+    return value === 'light' || value === 'dark' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeThemeToStorage(value: 'light' | 'dark'): void {
+  try {
+    window.localStorage.setItem('theme', value);
+  } catch {
+    // Ignore blocked storage environments.
+  }
+}
+
 export default function SettingsPage() {
   const t = useTranslations('settings');
   const tSettings = useTranslations('settingsPage');
@@ -134,16 +151,16 @@ export default function SettingsPage() {
 
   // Load theme from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const savedTheme = readThemeFromStorage();
     const resolvedTheme = savedTheme ?? 'dark';
     setTheme(resolvedTheme);
-    localStorage.setItem('theme', resolvedTheme);
+    writeThemeToStorage(resolvedTheme);
     document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, []);
 
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
     setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    writeThemeToStorage(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 

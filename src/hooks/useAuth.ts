@@ -72,7 +72,7 @@ export function useAuth() {
                                   window.location.pathname.startsWith('/settings');
         if (isProtectedRoute) {
           console.log('[Auth] Session expired, redirecting to login');
-          router.push('/login?expired=true');
+          router.push('/auth/login?expired=true');
         }
       }
     });
@@ -263,4 +263,3 @@ export function useAuth() {
     signOut,
   };
 }
-
