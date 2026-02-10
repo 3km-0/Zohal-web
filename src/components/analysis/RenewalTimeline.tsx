@@ -93,7 +93,10 @@ export function RenewalTimeline({ effectiveDate, noticeDeadline, endDate, classN
   if (points.length < 2) return null;
 
   return (
-    <div className={cn('relative', compact ? 'py-6' : 'py-10', className)}>
+    // This component renders several absolutely-positioned markers/labels that can
+    // extend beyond the track container. Make it non-interactive so it never
+    // intercepts pointer events for the content below (e.g., deadline action buttons).
+    <div className={cn('relative pointer-events-none', compact ? 'py-6' : 'py-10', className)}>
       {/* Track */}
       <div className="relative mx-8 h-1 bg-border rounded-full">
         {/* Filled portion (past) */}
