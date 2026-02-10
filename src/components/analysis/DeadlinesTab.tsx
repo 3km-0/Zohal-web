@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { Calendar, Clock, FileSearch } from 'lucide-react';
+import { Calendar, FileSearch } from 'lucide-react';
 import { Badge, EmptyState } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { getDeadlineUrgency } from './SeverityIndicator';
@@ -112,7 +112,7 @@ export function DeadlinesTab({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="relative z-20 flex items-center gap-2 mt-3 pointer-events-auto">
                     {item.href && (
                       <Link
                         href={item.href}
@@ -126,7 +126,7 @@ export function DeadlinesTab({
                       <button
                         type="button"
                         onClick={() => onAddToCalendar(item)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
+                        className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
                       >
                         <Calendar className="w-3.5 h-3.5" />
                         Add to Calendar

@@ -836,26 +836,6 @@ export default function ContractAnalysisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, loading, isAnalyzing, contract]);
 
-  async function exportDeadlineItemToCalendar(item: DeadlineItem) {
-    setError(null);
-    try {
-      const res = await fetch('/google-calendar/add-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_id: documentId, key: item.key }),
-      });
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        throw new Error(json?.error || 'Failed to add to Google Calendar');
-      }
-
-      toast.showSuccess('Added to Google Calendar', 'The deadline was added to your primary calendar.');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('errors.exportCalendarFailed'));
-    }
-  }
-
   function exportCalendar() {
     setError(null);
     try {
@@ -1808,7 +1788,7 @@ export default function ContractAnalysisPage() {
                 })()}
                 emptyTitle={t('empty.noDeadlinesTitle')}
                 emptyDescription={t('empty.noDeadlinesDescription')}
-                onAddToCalendar={(item) => void exportDeadlineItemToCalendar(item)}
+                onAddToCalendar={() => exportCalendar()}
                 items={(() => {
                   const items: DeadlineItem[] = [];
                   const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
