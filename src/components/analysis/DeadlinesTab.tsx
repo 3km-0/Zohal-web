@@ -124,43 +124,43 @@ export function DeadlinesTab({
                         View in PDF
                       </Link>
                     )}
-                    {item.dueDate && (() => {
-                      const href = getAddToCalendarHref?.(item) || null;
-                      if (href) {
-                        return (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onPointerDown={(e) => {
-                              // Debug signal: confirm this element is receiving pointer events.
-                              // (Helpful when overlays intercept clicks in complex timelines.)
-                              console.log('[DeadlinesTab] add_to_calendar_pointerdown', { key: item.key, href });
-                              e.stopPropagation();
-                            }}
-                            onClick={(e) => {
-                              console.log('[DeadlinesTab] add_to_calendar_click', { key: item.key, href });
-                              e.stopPropagation();
-                            }}
-                            className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
-                          >
-                            <Calendar className="w-3.5 h-3.5" />
-                            Add to Calendar
-                          </a>
-                        );
-                      }
-                      if (!onAddToCalendar) return null;
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => onAddToCalendar(item)}
-                          className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                          Add to Calendar
-                        </button>
-                      );
-                    })()}
+                    {item.dueDate && getAddToCalendarHref && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const href = getAddToCalendarHref(item);
+                          if (!href) return;
+                          console.log('[DeadlinesTab] add_to_calendar_click', { key: item.key, href });
+                          // Trigger download via a hidden anchor element.
+                          // Avoids target="_blank" popup-blocker issues and
+                          // framework routing interception on plain <a> tags.
+                          const anchor = document.createElement('a');
+                          anchor.href = href;
+                          anchor.download = '';
+                          document.body.appendChild(anchor);
+                          anchor.click();
+                          anchor.remove();
+                        }}
+                        className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        Add to Calendar
+                      </button>
+                    )}
+                    {item.dueDate && !getAddToCalendarHref && onAddToCalendar && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddToCalendar(item);
+                        }}
+                        className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        Add to Calendar
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
