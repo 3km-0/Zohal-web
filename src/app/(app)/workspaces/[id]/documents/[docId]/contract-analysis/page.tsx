@@ -836,43 +836,14 @@ export default function ContractAnalysisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, loading, isAnalyzing, contract]);
 
-  async function exportCalendar() {
+  function exportCalendar() {
     setError(null);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/export-calendar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          document_id: documentId,
-        }),
-      });
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        throw new Error(json?.error || 'No obligations with due dates found');
-      }
-
-      const blob = await res.blob();
-      const contentDisposition = res.headers.get('content-disposition') || '';
-      const match = contentDisposition.match(/filename="([^"]+)"/i);
-      const filename = match?.[1] || 'contract_obligations.ics';
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Trigger a same-origin download route synchronously to avoid browser blocking
+      // downloads that occur after async awaits.
+      const href = `/export-calendar?document_id=${encodeURIComponent(documentId)}`;
+      const opened = window.open(href, '_blank', 'noopener,noreferrer');
+      if (!opened) window.location.assign(href);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.exportCalendarFailed'));
     }
