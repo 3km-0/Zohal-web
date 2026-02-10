@@ -125,16 +125,17 @@ export function DeadlinesTab({
                       </Link>
                     )}
                     {item.dueDate && getAddToCalendarHref && (
-                      <button
-                        type="button"
+                      <Link
+                        href={getAddToCalendarHref(item) ?? '#'}
+                        prefetch={false}
                         onClick={(e) => {
+                          // Prevent Next.js client-side navigation — we want a
+                          // file download, not a page transition.
+                          e.preventDefault();
                           e.stopPropagation();
                           const href = getAddToCalendarHref(item);
                           if (!href) return;
-                          console.log('[DeadlinesTab] add_to_calendar_click', { key: item.key, href });
-                          // Trigger download via a hidden anchor element.
-                          // Avoids target="_blank" popup-blocker issues and
-                          // framework routing interception on plain <a> tags.
+                          // Trigger same-origin .ics download via hidden anchor.
                           const anchor = document.createElement('a');
                           anchor.href = href;
                           anchor.download = '';
@@ -142,24 +143,25 @@ export function DeadlinesTab({
                           anchor.click();
                           anchor.remove();
                         }}
-                        className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
                       >
                         <Calendar className="w-3.5 h-3.5" />
                         Add to Calendar
-                      </button>
+                      </Link>
                     )}
                     {item.dueDate && !getAddToCalendarHref && onAddToCalendar && (
-                      <button
-                        type="button"
+                      <Link
+                        href="#"
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           onAddToCalendar(item);
                         }}
-                        className="relative z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors pointer-events-auto cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-accent-alt bg-accent-alt/10 hover:bg-accent-alt/20 border border-accent-alt/30 transition-colors"
                       >
                         <Calendar className="w-3.5 h-3.5" />
                         Add to Calendar
-                      </button>
+                      </Link>
                     )}
                   </div>
                 </div>
