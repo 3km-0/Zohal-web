@@ -976,18 +976,35 @@ export default function WorkspacePlaybooksPage() {
                                   />
                                   <div className="text-xs text-text-soft">{m.id}</div>
                                 </div>
-                                <ScholarToggle
-                                  label="Enabled"
-                                  checked={m.enabled !== false}
-                                  disabled={isReadOnly}
-                                  onCheckedChange={(checked) =>
-                                    setSpec((p) => {
-                                      const mods = (p.modules_v2 || []).slice();
-                                      mods[idx] = { ...mods[idx], enabled: checked };
-                                      return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                    })
-                                  }
-                                />
+                                <div className="flex items-center gap-2">
+                                  <ScholarToggle
+                                    label="Enabled"
+                                    checked={m.enabled !== false}
+                                    disabled={isReadOnly}
+                                    onCheckedChange={(checked) =>
+                                      setSpec((p) => {
+                                        const mods = (p.modules_v2 || []).slice();
+                                        mods[idx] = { ...mods[idx], enabled: checked };
+                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                      })
+                                    }
+                                  />
+                                  {!isSystemPreset && (
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (!window.confirm(t('builder.confirmRemoveModule'))) return;
+                                        setSpec((p) => {
+                                          const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
+                                          return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
+                                        });
+                                      }}
+                                    >
+                                      Remove
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
 
                               <div className="space-y-1">
@@ -1060,22 +1077,6 @@ export default function WorkspacePlaybooksPage() {
                                 )}
                               </div>
 
-                              {!isSystemPreset && (
-                                <div className="flex justify-end pt-2 border-t border-border">
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() =>
-                                      setSpec((p) => {
-                                        const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
-                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                      })
-                                    }
-                                  >
-                                    Remove
-                                  </Button>
-                                </div>
-                              )}
                             </div>
                           ))}
                         </div>
@@ -1147,7 +1148,7 @@ export default function WorkspacePlaybooksPage() {
                                     placeholder="text|date|number|..."
                                   />
                                 </div>
-                                <div className="flex items-end">
+                                <div className="flex items-end justify-between gap-2">
                                   <ScholarToggle
                                     label="Required"
                                     caption="Flag if missing"
@@ -1161,6 +1162,18 @@ export default function WorkspacePlaybooksPage() {
                                       })
                                     }
                                   />
+                                  {!isSystemPreset && (
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (!window.confirm(t('builder.confirmRemoveVariable'))) return;
+                                        setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }));
+                                      }}
+                                    >
+                                      Remove
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
 
@@ -1247,19 +1260,6 @@ export default function WorkspacePlaybooksPage() {
                                 />
                               </div>
 
-                              {!isSystemPreset && (
-                                <div className="flex justify-end pt-2 border-t border-border">
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() =>
-                                      setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }))
-                                    }
-                                  >
-                                    Remove
-                                  </Button>
-                                </div>
-                              )}
                             </div>
                           ))}
                         </div>

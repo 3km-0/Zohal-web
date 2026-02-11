@@ -456,19 +456,21 @@
       "saving": "Saving...",
       "saved": "Saved",
       "duplicateToEdit": "Duplicate to Edit",
+      "confirmRemoveModule": "Remove this module from the template?",
+      "confirmRemoveVariable": "Remove this variable from the template?",
       "systemTemplateBanner": "This is a Zohal system template. Duplicate it to create your own editable version.",
       "viewModulesSystem": "View the extraction modules defined in this system template.",
       "viewVariablesSystem": "View the variables defined in this system template.",
       "sections": {
         "modules": "Modules",
         "variables": "Variables",
-        "configuration": "Configuration",
+        "configuration": "Advanced Settings",
         "records": "Records",
         "rules": "Rules",
         "scopeRoles": "Scope & Roles"
       },
       "configuration": {
-        "description": "Configuration controls policy, role scope, and structured records used by analysis and reports.",
+        "description": "Advanced settings control policy, role scope, and structured records used by analysis and reports.",
         "rulesHint": "Validation and policy checks",
         "scopeHint": "Run scope and bundle roles",
         "recordsHint": "Structured findings in reports"
