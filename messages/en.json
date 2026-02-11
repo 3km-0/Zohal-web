@@ -238,6 +238,8 @@
     }
   },
   "footer": {
+    "ndgpCertificate": "NDGP Certificate",
+    "dataLocality": "Data locality: in-region deployment defaults with enterprise isolation controls.",
     "copyright": "© {year} Zohal. All rights reserved."
   },
   "home": {
@@ -460,9 +462,16 @@
       "sections": {
         "modules": "Modules",
         "variables": "Variables",
+        "configuration": "Configuration",
         "records": "Records",
         "rules": "Rules",
         "scopeRoles": "Scope & Roles"
+      },
+      "configuration": {
+        "description": "Configuration controls policy, role scope, and structured records used by analysis and reports.",
+        "rulesHint": "Validation and policy checks",
+        "scopeHint": "Run scope and bundle roles",
+        "recordsHint": "Structured findings in reports"
       },
       "records": {
         "description": "Define reusable record types for generic findings and user-authored entries.",
@@ -1077,6 +1086,7 @@
         "title": "In-region by default. Tenant-isolated for enterprise.",
         "leftBullets": [
           "Residency-friendly deployment defaults",
+          "Data locality controls for KSA and in-region operations",
           "Strong tenant boundaries for enterprise",
           "Clean audit logs and per-tenant controls",
           "Predictable uncertainty: confidence + “not found” + exceptions"
@@ -1102,9 +1112,9 @@
           {
             "id": "pro",
             "name": "Zohal Professional",
-            "price": "$79/mo",
+            "price": "$39.99/mo",
             "bullets": [
-              "1 user",
+              "Built for individual and growing team workflows",
               "OCR + extraction + Q&A with citations",
               "Review memo export",
               "Personal activity log",
@@ -1137,7 +1147,7 @@
             "name": "Zohal Firm Starter",
             "price": "SAR 15k/year + VAT",
             "bullets": [
-              "Up to 5 users",
+              "Collaboration-ready workspace",
               "1 workspace (or up to 3 matters/projects)",
               "Core outputs: extraction + memo + obligations tracker + citations",
               "Audit Pack v1: run manifest + hashes + approvals log",
@@ -1153,7 +1163,7 @@
             "name": "Zohal Firm",
             "price": "SAR 30k/year + VAT",
             "bullets": [
-              "Up to 15 users",
+              "Multi-team collaboration across workspaces",
               "Up to 5 workspaces",
               "Queues + assignments + approvals",
               "Audit Pack v1 + basic retention window",
@@ -1169,7 +1179,7 @@
             "name": "Zohal Firm Plus",
             "price": "SAR 60k/year + VAT",
             "bullets": [
-              "Up to 40 users",
+              "Enterprise-wide collaboration and governance",
               "Up to 20 workspaces",
               "Advanced governance (granular RBAC, export controls)",
               "Higher throughput + stronger SLA",
@@ -1349,11 +1359,15 @@
               {
                 "label": "Terms",
                 "href": "/terms"
+              },
+              {
+                "label": "NDGP Certificate",
+                "href": "https://dgp.sdaia.gov.sa/wps/portal/pdp/services/certificate/3bb4185f-7506-f111-b127-005056ab563b/!ut/p/z1/jc9BDoIwEAXQs3CAZqatLbhEQyJojYaA2I1pF0USBWKIC09v41IiOLtJ3p_MBw0V6NY8m9oMTdeam9_PWl7SOJEbmiOj5Uqg5GovxJYzTDicvkBRLj04MpXFKccDB_1PHn9MjHP5bA74Buyh1qoG3ZvhSprWdVBxaxc0Eo6EnhNHKSWWspAgChTSWCG59b_pyesRG4Fx_Q-Y6Nffi-q1c3laB8EbHJvoQA!!/"
               }
             ]
           }
         ],
-        "legalNote": "Zohal provides workflow assistance and evidence-backed outputs. Teams remain responsible for review and approvals."
+        "legalNote": "Zohal provides workflow assistance and evidence-backed outputs. Data locality is supported with in-region deployment defaults. Teams remain responsible for review and approvals."
       },
       "ui": {
         "mentalModelLine": "Inputs → Verified Variables → Checks + Exceptions → Decision Pack → Forward",

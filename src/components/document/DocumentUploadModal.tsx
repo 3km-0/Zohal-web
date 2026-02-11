@@ -47,6 +47,8 @@ const ALLOWED_TYPES = [
   'image/heic',
   'image/heif',
 ];
+const SAVED_CUSTOM_SANITIZATION_FIELDS_KEY = 'zohal_saved_custom_sanitization_fields_v1';
+const MAX_SAVED_CUSTOM_SANITIZATION_FIELDS = 30;
 
 const isImageType = (type: string) => type.startsWith('image/');
 const isSupportedRasterImage = (file: File) =>
@@ -109,6 +111,40 @@ export function DocumentUploadModal({
 
   // Is private/ephemeral mode selected?
   const isPrivateMode = privacyChoice === 'private';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(SAVED_CUSTOM_SANITIZATION_FIELDS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const normalized = Array.from(
+        new Set(
+          parsed
+            .map((v) => String(v).trim())
+            .filter((v) => v.length >= 2)
+        )
+      ).slice(0, MAX_SAVED_CUSTOM_SANITIZATION_FIELDS);
+      if (normalized.length > 0) {
+        setPrivacyConfig((prev) => ({ ...prev, customStrings: normalized }));
+      }
+    } catch {
+      // ignore malformed localStorage data
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const normalized = Array.from(
+      new Set(
+        (privacyConfig.customStrings || [])
+          .map((v) => String(v).trim())
+          .filter((v) => v.length >= 2)
+      )
+    ).slice(0, MAX_SAVED_CUSTOM_SANITIZATION_FIELDS);
+    window.localStorage.setItem(SAVED_CUSTOM_SANITIZATION_FIELDS_KEY, JSON.stringify(normalized));
+  }, [privacyConfig.customStrings]);
 
   // Warn before leaving if ephemeral PDF is in memory
   useEffect(() => {

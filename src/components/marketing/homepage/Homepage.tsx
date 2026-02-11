@@ -1502,10 +1502,14 @@ export function Homepage() {
                   <div key={col.title}>
                     <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{col.title}</div>
                     <div className="mt-3 space-y-2">
-                      {col.links.map((l) => (
+                      {col.links.map((l) => {
+                        const isExternal = /^https?:\/\//i.test(l.href);
+                        return (
                         <Link
                           key={l.href + l.label}
                           href={l.href}
+                          target={isExternal ? '_blank' : undefined}
+                          rel={isExternal ? 'noreferrer noopener' : undefined}
                           className={cn(
                             'block text-sm text-text-soft hover:text-text transition-colors duration-200',
                             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
@@ -1513,7 +1517,8 @@ export function Homepage() {
                         >
                           {l.label}
                         </Link>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -1558,4 +1563,3 @@ export function Homepage() {
     </div>
   );
 }
-

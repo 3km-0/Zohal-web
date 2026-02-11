@@ -374,6 +374,8 @@ export default function WorkspacePlaybooksPage() {
   const [ruleErrorById, setRuleErrorById] = useState<Record<string, string>>({});
   const [expandedSchemaIds, setExpandedSchemaIds] = useState<Set<string>>(new Set());
   const [activeSection, setActiveSection] = useState<'modules' | 'variables' | 'records' | 'rules' | 'scope'>('modules');
+  const isConfigurationSection =
+    activeSection === 'rules' || activeSection === 'scope' || activeSection === 'records';
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
 
@@ -855,18 +857,16 @@ export default function WorkspacePlaybooksPage() {
                 {/* Section navigation tabs */}
                 <div className="flex border-t border-border bg-surface-alt/30">
                   {[
-                      { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length },
-                      { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length },
-                      { id: 'records' as const, label: t('builder.sections.records'), icon: Shield, count: (spec.record_types || []).length },
-                      { id: 'rules' as const, label: t('builder.sections.rules'), icon: ShieldCheck, count: (spec.rules || []).length },
-                      { id: 'scope' as const, label: t('builder.sections.scopeRoles'), icon: Globe, count: 0 },
+                      { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length, active: activeSection === 'modules' },
+                      { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length, active: activeSection === 'variables' },
+                      { id: 'configuration' as const, label: t('builder.sections.configuration'), icon: Shield, count: (spec.rules || []).length + (spec.record_types || []).length + ((spec.bundle_schema?.roles || []).length > 0 ? 1 : 0), active: isConfigurationSection },
                     ].map((tab) => (
                       <button
                         key={tab.id}
-                        onClick={() => setActiveSection(tab.id)}
+                        onClick={() => setActiveSection(tab.id === 'configuration' ? 'rules' : tab.id)}
                         className={cn(
                           'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-b-2',
-                          activeSection === tab.id
+                          tab.active
                             ? 'text-accent border-accent bg-accent/5'
                             : 'text-text-soft border-transparent hover:text-text hover:bg-surface-alt/50'
                         )}
@@ -876,7 +876,7 @@ export default function WorkspacePlaybooksPage() {
                         {tab.count !== undefined && tab.count > 0 && (
                           <span className={cn(
                             'text-xs px-1.5 py-0.5 rounded-full',
-                            activeSection === tab.id ? 'bg-accent/20 text-accent' : 'bg-surface-alt text-text-soft'
+                            tab.active ? 'bg-accent/20 text-accent' : 'bg-surface-alt text-text-soft'
                           )}>
                             {tab.count}
                           </span>
@@ -888,6 +888,36 @@ export default function WorkspacePlaybooksPage() {
 
                 {/* Section content */}
                 <div className="p-4 space-y-4">
+                  {isConfigurationSection && (
+                    <div className="rounded-scholar border border-border bg-surface-alt/40 p-3 space-y-3">
+                      <p className="text-xs text-text-soft">{t('builder.configuration.description')}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {[
+                          { id: 'rules' as const, icon: ShieldCheck, label: t('builder.sections.rules'), subtitle: t('builder.configuration.rulesHint') },
+                          { id: 'scope' as const, icon: Globe, label: t('builder.sections.scopeRoles'), subtitle: t('builder.configuration.scopeHint') },
+                          { id: 'records' as const, icon: Pencil, label: t('builder.sections.records'), subtitle: t('builder.configuration.recordsHint') },
+                        ].map((section) => (
+                          <button
+                            key={section.id}
+                            onClick={() => setActiveSection(section.id)}
+                            className={cn(
+                              'rounded-scholar border px-3 py-2 text-left transition-colors',
+                              activeSection === section.id
+                                ? 'border-accent bg-accent/10'
+                                : 'border-border hover:border-accent/40 hover:bg-surface'
+                            )}
+                          >
+                            <div className="flex items-center gap-2 text-sm font-medium text-text">
+                              <section.icon className="w-4 h-4" />
+                              <span>{section.label}</span>
+                            </div>
+                            <p className="mt-1 text-xs text-text-soft">{section.subtitle}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Modules section */}
                   {activeSection === 'modules' && (
                     <div className="space-y-4">

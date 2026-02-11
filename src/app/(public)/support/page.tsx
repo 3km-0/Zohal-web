@@ -1,11 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { IconBox, Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 export default function SupportPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const [category, setCategory] = useState<'general' | 'billing' | 'bug' | 'feature_request'>('general');
+  const [priority, setPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
+  const [subject, setSubject] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const submitSupportTicket = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError(null);
+    setTicketId(null);
+    if (!subject.trim() || !message.trim() || message.trim().length < 10) {
+      setSubmitError('Please add a subject and at least 10 characters in the message.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('support-ticket-create', {
+        body: {
+          category,
+          priority,
+          subject: subject.trim(),
+          message: message.trim(),
+          email: email.trim() || undefined,
+          source: 'web_support_tab',
+        },
+      });
+      if (error || !data?.ticket?.id) {
+        throw new Error(data?.message || 'Failed to create support ticket');
+      }
+      setTicketId(String(data.ticket.id));
+      setSubject('');
+      setMessage('');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit support ticket');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-6 pt-24 pb-12">
       {/* Header */}
@@ -21,6 +66,73 @@ export default function SupportPage() {
           reach out directly.
         </p>
       </header>
+
+      <section className="mb-12 rounded-scholar border border-border bg-surface p-6">
+        <div className="mb-4">
+          <h2 className="text-2xl font-semibold text-text">Open a Support Ticket</h2>
+          <p className="text-text-soft mt-1">
+            Submit your issue here. We store the ticket and send an email notification to support.
+          </p>
+        </div>
+        <form className="space-y-4" onSubmit={submitSupportTicket}>
+          <div className="grid gap-3 md:grid-cols-3">
+            <select
+              className="rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as typeof category)}
+            >
+              <option value="general">General</option>
+              <option value="billing">Billing</option>
+              <option value="bug">Bug</option>
+              <option value="feature_request">Feature Request</option>
+            </select>
+            <select
+              className="rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as typeof priority)}
+            >
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+            <input
+              type="email"
+              placeholder="Email (optional)"
+              className="rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <input
+            type="text"
+            placeholder="Subject"
+            className="w-full rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+          />
+          <textarea
+            placeholder="Describe your issue or request"
+            className="w-full min-h-[140px] rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-scholar bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Ticket'}
+            </button>
+            {ticketId && (
+              <span className="text-sm text-success">Ticket created: {ticketId}</span>
+            )}
+            {submitError && (
+              <span className="text-sm text-error">{submitError}</span>
+            )}
+          </div>
+        </form>
+      </section>
 
       {/* Contact Options */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
@@ -244,4 +356,3 @@ function Requirement({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
