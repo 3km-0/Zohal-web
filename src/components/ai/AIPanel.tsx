@@ -12,6 +12,7 @@ import {
   Clock,
   Star,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 import { Button, Spinner, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -132,7 +133,15 @@ export function AIPanel({
     }
   }, [supabase, documentId]);
 
+  // Initialize on mount - clear chat state and load auxiliary data
   useEffect(() => {
+    // Always start with empty chat on new session
+    setChatHistory([]);
+    setCurrentConversationId(null);
+    setResult(null);
+    setError(null);
+    
+    // Load supporting data
     loadPinnedNotes();
     loadConversationHistory();
   }, [loadPinnedNotes, loadConversationHistory]);
@@ -339,6 +348,7 @@ export function AIPanel({
     setCurrentConversationId(null);
     setResult(null);
     setError(null);
+    setActiveTab('chat'); // Switch to chat tab
   }, []);
 
   return (
@@ -349,12 +359,21 @@ export function AIPanel({
           <Sparkles className="w-5 h-5 text-accent" />
           <span className="font-semibold text-text">AI Assistant</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
-        >
-          <X className="w-5 h-5 text-text-soft" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={startNewConversation}
+            className="p-1.5 rounded-lg hover:bg-accent/10 transition-colors"
+            title="New conversation"
+          >
+            <Plus className="w-5 h-5 text-accent" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
+          >
+            <X className="w-5 h-5 text-text-soft" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs - Matching iOS: Chat, Notes, History */}
@@ -500,14 +519,6 @@ export function AIPanel({
 
             {/* Chat input - always visible */}
             <div className="p-4 border-t border-border">
-              {chatHistory.length > 0 && (
-                <button
-                  onClick={startNewConversation}
-                  className="w-full mb-3 py-2 text-sm text-text-soft hover:text-accent transition-colors"
-                >
-                  + Start new conversation
-                </button>
-              )}
               <div className="flex gap-2">
                 <input
                   type="text"
