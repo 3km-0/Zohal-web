@@ -31,7 +31,7 @@ interface AIPanelProps {
 }
 
 // Tab types matching iOS RightPanelView
-type Tab = 'chat' | 'notes' | 'history';
+type Tab = 'chat' | 'conversations' | 'notes';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -344,11 +344,13 @@ export function AIPanel({
   );
 
   const startNewConversation = useCallback(() => {
+    setActiveTab('chat');
     setChatHistory([]);
     setCurrentConversationId(null);
     setResult(null);
     setError(null);
-    setActiveTab('chat'); // Switch to chat tab
+    setLoading(false);
+    setChatInput('');
   }, []);
 
   return (
@@ -376,7 +378,7 @@ export function AIPanel({
         </div>
       </div>
 
-      {/* Tabs - Matching iOS: Chat, Notes, History */}
+      {/* Tabs - Matching iOS: Chat, Conversations, Notes */}
       <div className="flex border-b border-border">
         <button
           onClick={() => setActiveTab('chat')}
@@ -391,6 +393,18 @@ export function AIPanel({
           Chat
         </button>
         <button
+          onClick={() => setActiveTab('conversations')}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
+            activeTab === 'conversations'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-text-soft hover:text-text'
+          )}
+        >
+          <Clock className="w-4 h-4" />
+          Conversations
+        </button>
+        <button
           onClick={() => setActiveTab('notes')}
           className={cn(
             'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
@@ -401,18 +415,6 @@ export function AIPanel({
         >
           <Bookmark className="w-4 h-4" />
           Notes
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
-            activeTab === 'history'
-              ? 'text-accent border-b-2 border-accent'
-              : 'text-text-soft hover:text-text'
-          )}
-        >
-          <Clock className="w-4 h-4" />
-          History
         </button>
       </div>
 
@@ -578,12 +580,12 @@ export function AIPanel({
           </div>
         )}
 
-        {activeTab === 'history' && (
+        {activeTab === 'conversations' && (
           <div className="p-4 space-y-4">
             {conversationHistory.length === 0 ? (
               <div className="text-center py-8">
                 <Clock className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                <p className="text-text-soft">No conversation history</p>
+                <p className="text-text-soft">No conversations yet</p>
                 <p className="text-sm text-text-soft mt-1">
                   Your past conversations will appear here
                 </p>
