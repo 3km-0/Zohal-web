@@ -494,7 +494,7 @@ export default function WorkspaceDetailPage() {
             </button>
             {folderPath.map((folder, index) => (
               <div key={folder.id} className="flex items-center gap-1">
-                <ChevronRight className="w-4 h-4 text-text-soft" />
+                <ChevronRight className="w-4 h-4 text-text-soft rtl-flip" />
                 <button
                   onClick={() => navigateToPathFolder(folder.id)}
                   className={cn(

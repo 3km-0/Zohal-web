@@ -756,7 +756,7 @@ export default function WorkspacePlaybooksPage() {
                         {pb.is_system_preset ? 'Read-only • Duplicate to customize' : `v${pb.current_version?.version_number ?? '—'}`}
                       </div>
                       {pb.id === selectedId && (
-                        <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
+                        <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent rtl-flip" />
                       )}
                     </button>
                   ))}
@@ -1040,7 +1040,7 @@ export default function WorkspacePlaybooksPage() {
                                   {expandedSchemaIds.has(m.id) ? (
                                     <ChevronDown className="w-4 h-4" />
                                   ) : (
-                                    <ChevronRight className="w-4 h-4" />
+                                    <ChevronRight className="w-4 h-4 rtl-flip" />
                                   )}
                                   <span className="font-semibold">JSON Schema</span>
                                 </button>

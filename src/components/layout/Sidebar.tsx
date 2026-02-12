@@ -82,9 +82,9 @@ export function Sidebar({ className }: SidebarProps) {
           aria-label={collapsed ? tSidebar('expandSidebar') : tSidebar('collapseSidebar')}
         >
           {collapsed ? (
-            <ChevronRight className="w-5 h-5 text-text-soft" />
+            <ChevronRight className="w-5 h-5 text-text-soft rtl-flip" />
           ) : (
-            <ChevronLeft className="w-5 h-5 text-text-soft" />
+            <ChevronLeft className="w-5 h-5 text-text-soft rtl-flip" />
           )}
         </button>
       </div>

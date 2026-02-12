@@ -1156,7 +1156,7 @@ export default function ContractAnalysisPage() {
             dataTour="contract-actions"
             items={[
               ...(contract ? [{
-                label: 'Re-analyze',
+                label: t('actions.reanalyze'),
                 icon: <RefreshCw className="w-4 h-4" />,
                 onClick: () => { setShowSettings(true); setTab('template-select'); },
               },

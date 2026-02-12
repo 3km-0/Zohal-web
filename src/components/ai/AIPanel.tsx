@@ -497,7 +497,7 @@ export function AIPanel({
                         onClick={goToContractAnalysis}
                         title="Go to document analysis"
                       >
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-4 h-4 rtl-flip" />
                         Analysis
                       </Button>
                     </div>
@@ -683,7 +683,7 @@ export function AIPanel({
                       <p className="text-sm text-text font-medium truncate flex-1">
                         {conv.preview}
                       </p>
-                      <ChevronRight className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0 rtl-flip" />
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-text-soft">

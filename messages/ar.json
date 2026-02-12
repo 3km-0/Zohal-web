@@ -291,11 +291,11 @@
     "whatsappStatusDisconnected": "غير متصلة",
     "whatsappStatusAuthError": "يرجى تسجيل الدخول مرة أخرى لتحميل حالة واتساب.",
     "whatsappStatusLoadError": "تعذّر تحميل حالة واتساب. حاول مرة أخرى.",
-    "whatsappStep1": "الخطوة 1: أرسل نص التوجيه هذا في رسالة واتساب",
-    "whatsappStep1Desc": "اترك هذا النص في نفس الرسالة/الوصف ليتم توجيه الاستيراد إلى مساحة العمل الحالية.",
-    "whatsappStep2": "الخطوة 2: أرفق ملفًا أو صورة ثم أرسل",
-    "whatsappStep2Desc": "سيتم استيراد الوسائط المدعومة وإضافتها تلقائيًا إلى قائمة المعالجة في هذه المساحة.",
-    "whatsappCopyRouting": "نسخ نص التوجيه",
+    "whatsappStep1": "الخطوة 1: انسخ هذا الكود والصقه في رقم واتساب زحل",
+    "whatsappStep1Desc": "ثم أرفق الملف في نفس رسالة واتساب.",
+    "whatsappStep2": "الخطوة 2: أرفق الملف ثم أرسل",
+    "whatsappStep2Desc": "إذا كان الملصق في نفس الرسالة، سيبدأ الاستيراد تلقائيًا.",
+    "whatsappCopyRouting": "نسخ الملصق",
     "whatsappRefreshStatus": "تحديث الحالة",
     "whatsappOpenChat": "فتح محادثة واتساب",
     "maxSize": "PDF أو صور JPG/PNG، بحد أقصى 100 ميجابايت لكل ملف",
@@ -716,6 +716,9 @@
     "reports": {
       "savedToWorkspace": "تم حفظ التقرير في مساحة العمل ← التقارير.",
       "verificationFinalized": "تم اعتماد التحقق."
+    },
+    "actions": {
+      "reanalyze": "إعادة التحليل"
     },
     "tabs": {
       "overview": "نظرة عامة",

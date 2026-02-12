@@ -344,7 +344,7 @@ export default function WorkspaceBundlesPage() {
                       {selectedBundleId === b.id ? (
                         <div className="w-2 h-2 rounded-full bg-accent" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-text-soft" />
+                        <ChevronRight className="w-4 h-4 text-text-soft rtl-flip" />
                       )}
                     </button>
                   ))}

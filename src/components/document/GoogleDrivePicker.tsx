@@ -258,7 +258,7 @@ export function GoogleDrivePicker({
           <div className="flex items-center gap-1 px-4 py-2 bg-surface-alt border-b border-border overflow-x-auto">
             {folderPath.map((folder, index) => (
               <div key={folder.id} className="flex items-center">
-                {index > 0 && <ChevronRight className="w-4 h-4 text-text-soft mx-1" />}
+                {index > 0 && <ChevronRight className="w-4 h-4 text-text-soft mx-1 rtl-flip" />}
                 <button
                   onClick={() => navigateToFolder(folder.id)}
                   className={cn(
@@ -365,7 +365,7 @@ export function GoogleDrivePicker({
                         <Check className="w-4 h-4 text-white" />
                       </div>
                     )}
-                    {isFolderItem && <ChevronRight className="w-5 h-5 text-text-soft" />}
+                    {isFolderItem && <ChevronRight className="w-5 h-5 text-text-soft rtl-flip" />}
                   </button>
                 );
               })}

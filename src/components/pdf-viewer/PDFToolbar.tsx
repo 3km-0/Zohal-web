@@ -85,7 +85,7 @@ export function PDFToolbar({
           className="p-2 rounded-lg hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Previous page"
         >
-          <ChevronLeft className="w-5 h-5 text-text-soft" />
+          <ChevronLeft className="w-5 h-5 text-text-soft rtl-flip" />
         </button>
 
         <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export function PDFToolbar({
           className="p-2 rounded-lg hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Next page"
         >
-          <ChevronRight className="w-5 h-5 text-text-soft" />
+          <ChevronRight className="w-5 h-5 text-text-soft rtl-flip" />
         </button>
       </div>
 

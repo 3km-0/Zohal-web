@@ -105,6 +105,11 @@ body {
   text-align: right;
 }
 
+[dir='rtl'] .rtl-flip {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
 /* Grid Background Pattern */
 .grid-bg {
   position: fixed;
