@@ -304,6 +304,7 @@
     "fileTooLarge": "File too large (max 100MB)",
     "uploadFailed": "Upload failed",
     "privateNotSupported": "Private (local-only) is not supported on web yet.",
+    "privatePaidOnly": "Private Session is available on paid plans only.",
     "analyzePrivately": "Analyze Privately",
     "privateLeaveWarning": "You have a private session document. Leaving will lose the PDF.",
     "docxPrivateUnsupported": "DOCX files aren't supported in Privacy Mode."

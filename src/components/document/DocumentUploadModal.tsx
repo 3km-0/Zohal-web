@@ -38,6 +38,8 @@ interface FileWithPreview {
   progress?: number;
 }
 
+type SubscriptionTier = 'free' | 'core' | 'pro' | 'pro_plus' | 'premium' | 'team';
+
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const ALLOWED_TYPES = [
@@ -106,6 +108,7 @@ export function DocumentUploadModal({
   const [showOneDrive, setShowOneDrive] = useState(false);
   const [showZohalLibrary, setShowZohalLibrary] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>('free');
 
   // Check if cloud imports are available
   const hasGoogleDrive = isGoogleDriveConfigured();
@@ -113,6 +116,33 @@ export function DocumentUploadModal({
 
   // Is private/ephemeral mode selected?
   const isPrivateMode = privacyChoice === 'private';
+  const hasPrivateSanitizationAccess = subscriptionTier !== 'free';
+
+  useEffect(() => {
+    const loadSubscriptionTier = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single();
+
+      const tier = String(profile?.subscription_tier || 'free') as SubscriptionTier;
+      setSubscriptionTier(tier);
+    };
+
+    void loadSubscriptionTier();
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!hasPrivateSanitizationAccess && privacyChoice === 'private') {
+      setPrivacyChoice('standard');
+    }
+  }, [hasPrivateSanitizationAccess, privacyChoice]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -662,6 +692,7 @@ export function DocumentUploadModal({
                       name="privacy"
                       checked={privacyChoice === 'private'}
                       onChange={() => setPrivacyChoice('private')}
+                      disabled={!hasPrivateSanitizationAccess}
                       className="mt-1"
                     />
                     <span>
@@ -669,6 +700,9 @@ export function DocumentUploadModal({
                       <span className="block">
                         PDF stays in browser only. Sanitized text sent to AI. Lost on page close.
                       </span>
+                      {!hasPrivateSanitizationAccess && (
+                        <span className="block mt-1 text-amber-500">{t('privatePaidOnly')}</span>
+                      )}
                     </span>
                   </label>
                 </div>

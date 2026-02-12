@@ -304,6 +304,7 @@
     "fileTooLarge": "الملف كبير جداً (الحد الأقصى 100 ميجابايت)",
     "uploadFailed": "فشل الرفع",
     "privateNotSupported": "الوضع الخاص (محلي فقط) غير مدعوم على الويب بعد.",
+    "privatePaidOnly": "وضع الجلسة الخاصة متاح فقط للباقات المدفوعة.",
     "analyzePrivately": "تحليل خاص",
     "privateLeaveWarning": "لديك مستند جلسة خاصة. المغادرة ستفقد ملف PDF.",
     "docxPrivateUnsupported": "ملفات DOCX غير مدعومة في وضع الخصوصية."
