@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   X,
@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Plus,
 } from 'lucide-react';
-import { Button, Spinner, Badge } from '@/components/ui';
+import { Button, Spinner, Badge, ScholarTabs, type ScholarTab } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -56,11 +56,15 @@ export function AIPanel({
   onClose,
   documentType,
 }: AIPanelProps) {
-  const supabase = createClient();
+  // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
+  // any callbacks depending on it will change every render, which can re-trigger
+  // effects and constantly reset chat state.
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [loading, setLoading] = useState(false);
+  const [loadingConversation, setLoadingConversation] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
@@ -68,6 +72,8 @@ export function AIPanel({
   const [pinnedNotes, setPinnedNotes] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const chatSeqRef = useRef(0);
 
   // Load pinned notes (from explanations table where they're saved as notes)
   const loadPinnedNotes = useCallback(async () => {
@@ -133,18 +139,24 @@ export function AIPanel({
     }
   }, [supabase, documentId]);
 
-  // Initialize on mount - clear chat state and load auxiliary data
+  // Initialize on mount and when the document changes.
+  // (Do NOT tie this to callbacks that might change every render.)
   useEffect(() => {
-    // Always start with empty chat on new session
     setChatHistory([]);
     setCurrentConversationId(null);
     setResult(null);
     setError(null);
-    
-    // Load supporting data
+    setLoading(false);
+    setLoadingConversation(false);
+
+    // Cancel any in-flight chat request when switching documents / mounting.
+    chatSeqRef.current++;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+
     loadPinnedNotes();
     loadConversationHistory();
-  }, [loadPinnedNotes, loadConversationHistory]);
+  }, [documentId, loadPinnedNotes, loadConversationHistory]);
 
   const goToContractAnalysis = useCallback(() => {
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
@@ -203,6 +215,14 @@ export function AIPanel({
   const handleChat = useCallback(
     async (message: string) => {
       if (!message.trim()) return;
+      if (loading) return;
+
+      // Cancel any previous in-flight request so "+" and rapid sends behave predictably.
+      chatAbortRef.current?.abort();
+      const controller = new AbortController();
+      chatAbortRef.current = controller;
+      const seq = ++chatSeqRef.current;
+      const conversationIdAtSend = currentConversationId;
 
       const userMessage: ChatMessage = {
         role: 'user',
@@ -232,11 +252,12 @@ export function AIPanel({
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
+            signal: controller.signal,
             body: JSON.stringify({
               question: message,
               workspace_id: workspaceId,
               user_id: userId,
-              conversation_id: currentConversationId,
+              conversation_id: conversationIdAtSend,
               options: {
                 document_ids: [documentId],
                 top_k: 10,
@@ -254,10 +275,14 @@ export function AIPanel({
           return;
         }
 
+        // If the user started a new conversation (or hit "+") while the request was in-flight,
+        // ignore this stale response.
+        if (seq !== chatSeqRef.current) return;
+
         const data = (json || {}) as any;
 
         // Update conversation ID if new
-        if (data.conversation_id && !currentConversationId) {
+        if (data.conversation_id && !conversationIdAtSend) {
           setCurrentConversationId(data.conversation_id);
         }
 
@@ -267,13 +292,17 @@ export function AIPanel({
           timestamp: new Date().toISOString(),
         };
         setChatHistory((prev) => [...prev, assistantMessage]);
+        // Keep Conversations list in sync (otherwise "+" feels like it does nothing).
+        loadConversationHistory();
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
-        setLoading(false);
+        // Only clear loading for the latest request.
+        if (seq === chatSeqRef.current) setLoading(false);
       }
     },
-    [supabase, workspaceId, documentId, currentConversationId, toast]
+    [supabase, workspaceId, documentId, currentConversationId, toast, loading, loadConversationHistory]
   );
 
   const pinMessage = useCallback(
@@ -306,31 +335,53 @@ export function AIPanel({
   const loadConversation = useCallback(
     async (conversationId: string) => {
       try {
+        setLoadingConversation(true);
+        setError(null);
         const { data, error } = await supabase
           .from('explanations')
           .select('*')
           .eq('conversation_id', conversationId)
           .order('created_at', { ascending: true });
 
-        if (!error && data) {
-          const messages: ChatMessage[] = data.flatMap((item) => {
-            const msgs: ChatMessage[] = [];
-            if (item.input_text) {
-              msgs.push({
-                role: 'user',
-                content: item.input_text,
-                timestamp: item.created_at,
-              });
+        if (error) {
+          toast.showError(error, 'explanations');
+          setError(error.message);
+          return;
+        }
+
+        if (data) {
+          const messages: ChatMessage[] = [];
+          for (const item of data) {
+            const createdAt = item.created_at as string | undefined;
+            const role = (item.role as string | null) ?? null;
+            const requestType = (item.request_type as string | null) ?? null;
+            const inputText = (item.input_text as string | null) ?? null;
+            const responseText = (item.response_text as string | null) ?? null;
+
+            // ask-workspace persists a single assistant row that includes both question and answer.
+            // Render it as user+assistant for a proper chat transcript.
+            if (role === 'assistant' && requestType === 'ask' && inputText && responseText) {
+              messages.push({ role: 'user', content: inputText, timestamp: createdAt });
+              messages.push({ role: 'assistant', content: responseText, timestamp: createdAt });
+              continue;
             }
-            if (item.response_text) {
-              msgs.push({
-                role: 'assistant',
-                content: item.response_text,
-                timestamp: item.created_at,
-              });
+
+            // chat() edge function may persist separate user/assistant rows.
+            if (role === 'user') {
+              const content = inputText || responseText;
+              if (content) messages.push({ role: 'user', content, timestamp: createdAt });
+              continue;
             }
-            return msgs;
-          });
+            if (role === 'assistant') {
+              const content = responseText || inputText;
+              if (content) messages.push({ role: 'assistant', content, timestamp: createdAt });
+              continue;
+            }
+
+            // Fallback: treat as paired row.
+            if (inputText) messages.push({ role: 'user', content: inputText, timestamp: createdAt });
+            if (responseText) messages.push({ role: 'assistant', content: responseText, timestamp: createdAt });
+          }
 
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
@@ -338,18 +389,28 @@ export function AIPanel({
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
+        toast.showError(err, 'explanations');
+      }
+      finally {
+        setLoadingConversation(false);
       }
     },
-    [supabase]
+    [supabase, toast]
   );
 
   const startNewConversation = useCallback(() => {
+    // Cancel in-flight request and ignore any late responses.
+    chatSeqRef.current++;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+
     setActiveTab('chat');
     setChatHistory([]);
     setCurrentConversationId(null);
     setResult(null);
     setError(null);
     setLoading(false);
+    setLoadingConversation(false);
     setChatInput('');
   }, []);
 
@@ -378,44 +439,29 @@ export function AIPanel({
         </div>
       </div>
 
-      {/* Tabs - Matching iOS: Chat, Conversations, Notes */}
-      <div className="flex border-b border-border">
-        <button
-          onClick={() => setActiveTab('chat')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
-            activeTab === 'chat'
-              ? 'text-accent border-b-2 border-accent'
-              : 'text-text-soft hover:text-text'
-          )}
-        >
-          <Sparkles className="w-4 h-4" />
-          Chat
-        </button>
-        <button
-          onClick={() => setActiveTab('conversations')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
-            activeTab === 'conversations'
-              ? 'text-accent border-b-2 border-accent'
-              : 'text-text-soft hover:text-text'
-          )}
-        >
-          <Clock className="w-4 h-4" />
-          Conversations
-        </button>
-        <button
-          onClick={() => setActiveTab('notes')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
-            activeTab === 'notes'
-              ? 'text-accent border-b-2 border-accent'
-              : 'text-text-soft hover:text-text'
-          )}
-        >
-          <Bookmark className="w-4 h-4" />
-          Notes
-        </button>
+      {/* Tabs - Scholar theme */}
+      <div className="border-b border-border px-4 py-3">
+        <ScholarTabs
+          tabs={
+            [
+              { id: 'chat', label: 'Chat', icon: <Sparkles className="w-4 h-4" /> },
+              {
+                id: 'conversations',
+                label: 'Conversations',
+                icon: <Clock className="w-4 h-4" />,
+                count: conversationHistory.length,
+              },
+              {
+                id: 'notes',
+                label: 'Notes',
+                icon: <Bookmark className="w-4 h-4" />,
+                count: pinnedNotes.length,
+              },
+            ] satisfies ScholarTab[]
+          }
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as Tab)}
+        />
       </div>
 
       {/* Content */}
@@ -430,6 +476,31 @@ export function AIPanel({
                   <div className="p-3 bg-accent/5 border border-accent/20 rounded-scholar">
                     <p className="text-xs text-accent font-medium mb-1">Selected Text</p>
                     <p className="text-sm text-text line-clamp-3">{selectedText}</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          handleChat(
+                            `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
+                          )
+                        }
+                        disabled={loading || loadingConversation}
+                        title="Explain selected text"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Explain
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={goToContractAnalysis}
+                        title="Go to document analysis"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                        Analysis
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -510,10 +581,12 @@ export function AIPanel({
                     )}
                   </div>
                 ))}
-                {loading && (
+                {(loading || loadingConversation) && (
                   <div className="flex items-center gap-2 p-3">
                     <Spinner size="sm" />
-                    <span className="text-sm text-text-soft">Thinking...</span>
+                    <span className="text-sm text-text-soft">
+                      {loadingConversation ? 'Loading conversation...' : 'Thinking...'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -532,7 +605,7 @@ export function AIPanel({
                 />
                 <Button
                   onClick={() => handleChat(chatInput)}
-                  disabled={!chatInput.trim() || loading}
+                  disabled={!chatInput.trim() || loading || loadingConversation}
                   size="md"
                 >
                   <Send className="w-4 h-4" />
@@ -563,7 +636,7 @@ export function AIPanel({
                     className="p-4 bg-surface-alt border border-border rounded-scholar"
                   >
                     <div className="flex items-start gap-2">
-                      <Star className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <Star className="w-4 h-4 text-accentAlt flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-text line-clamp-4">{note.content}</p>
                         {note.timestamp && (
@@ -593,10 +666,18 @@ export function AIPanel({
             ) : (
               <div className="space-y-2">
                 {conversationHistory.map((conv) => (
+                  (() => {
+                    const isActive = conv.id === currentConversationId;
+                    return (
                   <button
                     key={conv.id}
                     onClick={() => loadConversation(conv.id)}
-                    className="w-full p-3 bg-surface-alt border border-border rounded-scholar hover:border-accent/50 transition-colors text-left group"
+                    className={cn(
+                      "w-full p-3 border rounded-scholar transition-colors text-left group",
+                      isActive
+                        ? "bg-accent/5 border-accent/40"
+                        : "bg-surface-alt border-border hover:border-accent/50"
+                    )}
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-text font-medium truncate flex-1">
@@ -614,6 +695,8 @@ export function AIPanel({
                       </span>
                     </div>
                   </button>
+                    );
+                  })()
                 ))}
               </div>
             )}
