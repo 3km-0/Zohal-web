@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Upload, FileText, AlertCircle, Cloud } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, Cloud, MessageCircle } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { Button, Card, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -11,6 +11,7 @@ import { cn, formatFileSize } from '@/lib/utils';
 import { GoogleDrivePicker } from './GoogleDrivePicker';
 import { OneDrivePicker } from './OneDrivePicker';
 import { ZohalLibraryPicker } from './ZohalLibraryPicker';
+import { WhatsAppPicker } from './WhatsAppPicker';
 import { PrivacySettingsPanel } from './PrivacySettingsPanel';
 import { isGoogleDriveConfigured } from '@/lib/google-drive';
 import { isOneDriveConfigured } from '@/lib/onedrive';
@@ -104,6 +105,7 @@ export function DocumentUploadModal({
   const [showGoogleDrive, setShowGoogleDrive] = useState(false);
   const [showOneDrive, setShowOneDrive] = useState(false);
   const [showZohalLibrary, setShowZohalLibrary] = useState(false);
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   // Check if cloud imports are available
   const hasGoogleDrive = isGoogleDriveConfigured();
@@ -740,6 +742,13 @@ export function DocumentUploadModal({
                 </button>
               )}
               <button
+                onClick={() => setShowWhatsApp(true)}
+                className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
+              >
+                <MessageCircle className="w-5 h-5 text-[#25D366]" />
+                <span className="text-sm font-medium text-text">{t('whatsapp')}</span>
+              </button>
+              <button
                 onClick={() => setShowZohalLibrary(true)}
                 className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
               >
@@ -846,6 +855,13 @@ export function DocumentUploadModal({
             setShowZohalLibrary(false);
             addFiles([file]);
           }}
+        />
+      )}
+
+      {showWhatsApp && (
+        <WhatsAppPicker
+          workspaceId={workspaceId}
+          onClose={() => setShowWhatsApp(false)}
         />
       )}
     </div>
