@@ -55,7 +55,7 @@ export function DeadlinesTab({
         options: {
           redirectTo: `${window.location.origin}/auth/callback?integration=google_drive&popup=1`,
           scopes:
-            'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events',
           queryParams: { access_type: 'offline', prompt: 'consent' },
           skipBrowserRedirect: true,
         },
