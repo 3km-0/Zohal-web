@@ -49,6 +49,14 @@ export function GoogleDrivePicker({
 
   const GOOGLE_PICKER_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
   const isConfigured = !!GOOGLE_PICKER_API_KEY;
+  const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+  // Picker needs appId (Google Cloud project number) for drive.file to correctly grant access.
+  // We can derive it from OAuth client id: "<projectNumber>-....apps.googleusercontent.com"
+  const googleAppId = useMemo(() => {
+    const m = GOOGLE_CLIENT_ID.match(/^(\d+)-/);
+    return m?.[1] || '';
+  }, [GOOGLE_CLIENT_ID]);
 
   const selectedSummary = useMemo(() => {
     if (selectedFiles.length === 0) return 'Select PDF files to import';
@@ -201,6 +209,10 @@ export function GoogleDrivePicker({
       setError('Google is not connected. Connect Google to import files.');
       return;
     }
+    if (!googleAppId) {
+      setError('Google Drive is not configured (missing app id).');
+      return;
+    }
     try {
       await ensureGooglePickerLoaded();
 
@@ -215,6 +227,8 @@ export function GoogleDrivePicker({
       const picker = new g.picker.PickerBuilder()
         .setDeveloperKey(GOOGLE_PICKER_API_KEY)
         .setOAuthToken(accessToken)
+        .setAppId(googleAppId)
+        .setOrigin(window.location.origin)
         .addView(view)
         .enableFeature(g.picker.Feature.MULTISELECT_ENABLED)
         .setTitle('Select PDF files')
