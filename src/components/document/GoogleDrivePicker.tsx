@@ -25,6 +25,7 @@ type PickedDriveFile = {
   id: string;
   name: string;
   sizeBytes?: number;
+  resourceKey?: string;
 };
 
 export function GoogleDrivePicker({
@@ -225,6 +226,7 @@ export function GoogleDrivePicker({
                 id: String(d?.id || ''),
                 name: String(d?.name || 'Untitled.pdf'),
                 sizeBytes: typeof d?.sizeBytes === 'number' ? d.sizeBytes : undefined,
+                resourceKey: d?.resourceKey ? String(d.resourceKey) : undefined,
               }))
               .filter((f: PickedDriveFile) => Boolean(f.id));
             setSelectedFiles(picked);
@@ -260,6 +262,7 @@ export function GoogleDrivePicker({
             file_id: f.id,
             file_name: f.name,
             file_size: f.sizeBytes || 0,
+            resource_key: f.resourceKey || null,
             workspace_id: workspaceId,
             folder_id: targetFolderId || null,
             user_id: user.id,

@@ -40,6 +40,8 @@ interface BackendErrorResponse {
   request_id?: string;
   // Legacy error format
   error?: string;
+  // Legacy detail message (some functions return `details` instead of `message`)
+  details?: string;
   // Optional legacy metadata (ignored by default mapping)
   current_tier?: string;
   required_tier?: string;
@@ -108,7 +110,7 @@ export function mapHttpError(
     backendResponse = data as BackendErrorResponse;
     requestId = backendResponse.request_id;
     errorCode = backendResponse.error_code as ErrorCode | undefined;
-    serverMessage = backendResponse.message ?? backendResponse.error;
+    serverMessage = backendResponse.message ?? backendResponse.details ?? backendResponse.error;
   }
 
   // Handle legacy errors returned by some functions (no error_code envelope).
