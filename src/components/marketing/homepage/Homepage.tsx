@@ -965,6 +965,7 @@ export function Homepage() {
                 >
                   {content.hero.ctas.find((c) => c.type === 'primary')?.label}
                 </PrimaryLinkButton>
+                {/* Temporarily hidden - 60s demo button
                 <SecondaryButton
                   onClick={() => {
                     trackMarketingEvent('cta_watch_demo_click');
@@ -973,6 +974,7 @@ export function Homepage() {
                 >
                   {content.hero.ctas.find((c) => c.type === 'secondary')?.label}
                 </SecondaryButton>
+                */}
               </div>
 
               <div className="mt-5 text-sm text-text-soft">{content.hero.proofLine}</div>
