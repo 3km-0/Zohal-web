@@ -44,6 +44,9 @@ export function Footer() {
         <p className="text-text-soft text-sm opacity-70">
           {t('footer.copyright', { year: currentYear })}
         </p>
+        <p className="text-text-soft text-xs opacity-60 mt-2">
+          Watd Information Technology Company © 2026
+        </p>
       </div>
     </footer>
   );
