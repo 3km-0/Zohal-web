@@ -1528,7 +1528,7 @@ export function Homepage() {
             </div>
 
             <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-text-soft">
-              <div>© {new Date().getFullYear()} {content.brand.name}</div>
+              <div>© {new Date().getFullYear()} Watd Information Technology Company</div>
               <div>{content.footer.legalNote}</div>
             </div>
           </div>
