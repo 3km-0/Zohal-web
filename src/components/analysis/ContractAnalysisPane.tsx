@@ -672,10 +672,10 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
         const pbs = data.playbooks as PlaybookRecord[];
         setPlaybooks(pbs);
         
-        // Auto-select first template if none selected
+        // Auto-select template if none selected
         if (!selectedPlaybookId && pbs.length > 0) {
-          // Prefer "Default (Renewal Pack)" if it exists, otherwise use first
-          const defaultPb = pbs.find(p => p.name === 'Default (Renewal Pack)') || pbs[0];
+          // Prefer "General Contract Analysis" as the product default.
+          const defaultPb = pbs.find((p) => p.name === 'General Contract Analysis') || pbs[0];
           setSelectedPlaybookId(defaultPb.id);
           setSelectedPlaybookVersionId(defaultPb.current_version?.id || '');
         }

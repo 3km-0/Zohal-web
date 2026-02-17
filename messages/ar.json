@@ -687,7 +687,7 @@
     },
     "playbook": {
       "label": "القالب",
-      "default": "الافتراضي (حزمة التجديد)",
+      "default": "حزمة التجديد",
       "helperSelected": "يستخدم القالب المحدد للتحكم في المتغيرات/الوحدات.",
       "helperDefault": "يشغّل قالب العقود الافتراضي."
     }
@@ -708,7 +708,7 @@
       "optional": "القالب (اختياري)",
       "manage": "إدارة القوالب",
       "label": "القالب",
-      "defaultRenewalPack": "الافتراضي (حزمة التجديد)",
+      "defaultRenewalPack": "حزمة التجديد",
       "zohalTemplates": "قوالب زحل",
       "yourTemplates": "قوالبك",
       "loadingTemplates": "جارٍ تحميل القوالب…",

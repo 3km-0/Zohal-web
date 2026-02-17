@@ -687,7 +687,7 @@
     },
     "playbook": {
       "label": "Template",
-      "default": "Default (Renewal Pack)",
+      "default": "Renewal Pack",
       "helperSelected": "Uses the selected template to gate variables/modules.",
       "helperDefault": "Runs the default contract template."
     }
@@ -708,7 +708,7 @@
       "optional": "Template (optional)",
       "manage": "Manage",
       "label": "Template",
-      "defaultRenewalPack": "Default (Renewal Pack)",
+      "defaultRenewalPack": "Renewal Pack",
       "zohalTemplates": "Zohal Templates",
       "yourTemplates": "Your Templates",
       "loadingTemplates": "Loading templates...",
