@@ -81,21 +81,11 @@ export function getTourSteps(tourId: TourId): TourStep[] {
           },
         },
         {
-          element: '[data-tour="viewer-ai-tools"]',
-          popover: {
-            title: 'Use AI Tools (Chat + Notes)',
-            description:
-              'Open AI Tools to ask questions, get explanations, and star helpful answers to save them into Notes.',
-            side: 'bottom',
-            align: 'end',
-          },
-        },
-        {
           element: '[data-tour="viewer-contract-analysis"]',
           popover: {
-            title: 'Run Document Analysis (Tap-to-Proof)',
+            title: 'Open Document Analysis',
             description:
-              'Document Analysis extracts variables, obligations, and risks with evidence links you can jump back to in the PDF.',
+              'Use this panel for both structured analysis and AI chat. Tap-to-Proof links jump back to the exact PDF evidence.',
             side: 'bottom',
             align: 'end',
           },
@@ -137,4 +127,3 @@ export function getTourSteps(tourId: TourId): TourStep[] {
       ];
   }
 }
-

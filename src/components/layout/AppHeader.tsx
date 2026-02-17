@@ -87,6 +87,20 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
               </div>
               <div className="py-1">
                 <Link
+                  href="/workspaces"
+                  className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  {tNav('dashboard')}
+                </Link>
+                <Link
+                  href="/home"
+                  className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  {tNav('home')}
+                </Link>
+                <Link
                   href="/settings"
                   className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
@@ -118,4 +132,3 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
     </header>
   );
 }
-

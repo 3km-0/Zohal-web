@@ -36,6 +36,7 @@
   },
   "nav": {
     "home": "Home",
+    "dashboard": "Dashboard",
     "workspaces": "Workspaces",
     "documents": "Documents",
     "notes": "Notes",

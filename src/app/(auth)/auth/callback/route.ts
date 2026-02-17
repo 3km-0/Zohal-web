@@ -66,6 +66,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(`${origin}/settings`);
+  // URL to redirect to after sign in process completes.
+  // OAuth callbacks triggered from integration flows should return to settings;
+  // regular auth should land in the main workspace experience.
+  if (integration === 'google_drive' || integration === 'onedrive') {
+    return NextResponse.redirect(`${origin}/settings`);
+  }
+  return NextResponse.redirect(`${origin}/workspaces`);
 }

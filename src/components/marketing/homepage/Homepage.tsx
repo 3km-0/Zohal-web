@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
+import { useAuth } from '@/hooks/useAuth';
 
 type Content = {
   brand: { name: string; tagline: string; theme: string };
@@ -650,6 +651,9 @@ function Accordion({
 function Nav({ content }: { content: Content }) {
   const isScrolled = useScrolled(12);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const tNav = useTranslations('nav');
+  const tSidebar = useTranslations('sidebar');
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -704,25 +708,53 @@ function Nav({ content }: { content: Content }) {
             />
           </div>
 
-          <Link
-            href={content.nav.actions.login.href}
-            className={cn(
-              'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
-              'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-            )}
-          >
-            {content.nav.actions.login.label}
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href="/workspaces"
+                className={cn(
+                  'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
+                  'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                )}
+              >
+                {tNav('dashboard')}
+              </Link>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className={cn(
+                  'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
+                  'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                )}
+              >
+                {tSidebar('logOut')}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href={content.nav.actions.login.href}
+                className={cn(
+                  'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
+                  'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                )}
+              >
+                {content.nav.actions.login.label}
+              </Link>
 
-          <div className="hidden sm:block">
-            <PrimaryLinkButton
-              href={content.nav.actions.primaryCta.href}
-              onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'nav' })}
-            >
-              {content.nav.actions.primaryCta.label}
-            </PrimaryLinkButton>
-          </div>
+              <div className="hidden sm:block">
+                <PrimaryLinkButton
+                  href={content.nav.actions.primaryCta.href}
+                  onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'nav' })}
+                >
+                  {content.nav.actions.primaryCta.label}
+                </PrimaryLinkButton>
+              </div>
+            </>
+          )}
 
           <button
             className={cn(
@@ -774,29 +806,59 @@ function Nav({ content }: { content: Content }) {
                 {l.label}
               </Link>
             ))}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-              <Link
-                href={content.nav.actions.login.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  'min-h-[44px] rounded-[var(--rSm)] border border-border bg-transparent px-4 py-3 text-center font-semibold text-text',
-                  'hover:border-highlight hover:text-highlight transition-colors duration-200',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                )}
-              >
-                {content.nav.actions.login.label}
-              </Link>
-              <PrimaryLinkButton
-                href={content.nav.actions.primaryCta.href}
-                onClick={() => {
-                  trackMarketingEvent('cta_start_free_click', { location: 'nav_mobile' });
-                  setMobileOpen(false);
-                }}
-                className="w-full"
-              >
-                {content.nav.actions.primaryCta.label}
-              </PrimaryLinkButton>
-            </div>
+            {user ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                <Link
+                  href="/workspaces"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'min-h-[44px] rounded-[var(--rSm)] border border-border bg-transparent px-4 py-3 text-center font-semibold text-text',
+                    'hover:border-highlight hover:text-highlight transition-colors duration-200',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                  )}
+                >
+                  {tNav('dashboard')}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    signOut();
+                  }}
+                  className={cn(
+                    'min-h-[44px] rounded-[var(--rSm)] border border-border bg-transparent px-4 py-3 text-center font-semibold text-text',
+                    'hover:border-highlight hover:text-highlight transition-colors duration-200',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                  )}
+                >
+                  {tSidebar('logOut')}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                <Link
+                  href={content.nav.actions.login.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'min-h-[44px] rounded-[var(--rSm)] border border-border bg-transparent px-4 py-3 text-center font-semibold text-text',
+                    'hover:border-highlight hover:text-highlight transition-colors duration-200',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                  )}
+                >
+                  {content.nav.actions.login.label}
+                </Link>
+                <PrimaryLinkButton
+                  href={content.nav.actions.primaryCta.href}
+                  onClick={() => {
+                    trackMarketingEvent('cta_start_free_click', { location: 'nav_mobile' });
+                    setMobileOpen(false);
+                  }}
+                  className="w-full"
+                >
+                  {content.nav.actions.primaryCta.label}
+                </PrimaryLinkButton>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

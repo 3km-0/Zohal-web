@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Scale, Sparkles, CircleHelp } from 'lucide-react';
+import { ArrowLeft, Scale, CircleHelp } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Spinner, Badge, Card, CardContent } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -13,6 +13,7 @@ import type { Document, Workspace } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
 import { cn } from '@/lib/utils';
 import { mapHttpError, notFound } from '@/lib/errors';
+import { useTranslations } from 'next-intl';
 
 interface DocumentViewerShellProps {
   initialMode?: RightPaneMode;
@@ -31,6 +32,7 @@ export default function DocumentViewerShell({
   const documentId = params.docId as string;
   const supabase = useMemo(() => createClient(), []);
   const { show, showSuccess, showError } = useToast();
+  const tTypes = useTranslations('documents.types');
 
   const [document, setDocument] = useState<Document | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -41,6 +43,41 @@ export default function DocumentViewerShell({
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [retrying, setRetrying] = useState(false);
+
+  const getDocumentTypeLabel = useCallback((documentType?: string | null) => {
+    switch (documentType) {
+      case 'textbook':
+      case 'contract':
+      case 'financial_report':
+      case 'problem_set':
+      case 'lecture_notes':
+      case 'paper':
+      case 'meeting_notes':
+      case 'invoice':
+      case 'legal_filing':
+      case 'other':
+        return tTypes(documentType);
+      default:
+        return 'Document';
+    }
+  }, [tTypes]);
+
+  const getAnalysisLabel = useCallback((documentType?: string | null) => {
+    switch (documentType) {
+      case 'contract':
+        return 'Contract Analysis';
+      case 'legal_filing':
+        return 'Legal Filing Analysis';
+      case 'financial_report':
+        return 'Financial Report Analysis';
+      case 'invoice':
+        return 'Invoice Analysis';
+      case 'meeting_notes':
+        return 'Meeting Notes Analysis';
+      default:
+        return 'Document Analysis';
+    }
+  }, []);
   
   const tapToProof = useMemo(() => {
     const pageStr = searchParams.get('page');
@@ -257,7 +294,7 @@ export default function DocumentViewerShell({
             <h1 className="font-semibold text-text truncate max-w-md">{document.title}</h1>
             <div className="flex items-center gap-2">
               {document.document_type && (
-                <Badge size="sm">{document.document_type}</Badge>
+                <Badge size="sm">{getDocumentTypeLabel(document.document_type)}</Badge>
               )}
               {document.privacy_mode && (
                 <Badge size="sm">
@@ -288,31 +325,20 @@ export default function DocumentViewerShell({
             <CircleHelp className="w-4 h-4" />
             Tour
           </Button>
-          {document.document_type === 'contract' && (
-            <Button
-              variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
-              size="sm"
-              data-tour="viewer-contract-analysis"
-              onClick={() => setPaneState(true, 'analysis')}
-            >
-              <Scale className="w-4 h-4" />
-              Document Analysis
-            </Button>
-          )}
           <Button
-            variant={showRightPane && rightPaneMode === 'chat' ? 'primary' : 'secondary'}
+            variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
             size="sm"
-            data-tour="viewer-ai-tools"
+            data-tour="viewer-contract-analysis"
             onClick={() => {
-              if (showRightPane && rightPaneMode === 'chat') {
+              if (showRightPane && rightPaneMode === 'analysis') {
                 setPaneState(false);
                 return;
               }
-              setPaneState(true, 'chat');
+              setPaneState(true, 'analysis');
             }}
           >
-            <Sparkles className="w-4 h-4" />
-            AI Tools
+            <Scale className="w-4 h-4" />
+            {getAnalysisLabel(document.document_type)}
           </Button>
         </div>
       </header>
@@ -347,15 +373,13 @@ export default function DocumentViewerShell({
                           links, but cannot display the unredacted PDF.
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2">
-                          {document.document_type === 'contract' && (
-                            <Button
-                              variant="secondary"
-                              onClick={() => setPaneState(true, 'analysis')}
-                            >
-                              <Scale className="w-4 h-4" />
-                              View document analysis
-                            </Button>
-                          )}
+                          <Button
+                            variant="secondary"
+                            onClick={() => setPaneState(true, 'analysis')}
+                          >
+                            <Scale className="w-4 h-4" />
+                            {getAnalysisLabel(document.document_type)}
+                          </Button>
                         </div>
                       </div>
                     </div>

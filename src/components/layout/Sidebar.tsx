@@ -6,11 +6,9 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
+  House,
   FolderOpen,
-  FileText,
-  StickyNote,
   Search,
-  CheckSquare,
   Settings,
   LogOut,
   ChevronLeft,
@@ -40,6 +38,7 @@ export function Sidebar({ className }: SidebarProps) {
   ];
 
   const bottomItems = [
+    { href: '/home', label: t('home'), icon: House },
     { href: '/subscription', label: tSidebar('subscription'), icon: Crown },
     { href: '/settings', label: t('settings'), icon: Settings },
   ];
@@ -153,4 +152,3 @@ function NavItem({ href, label, icon: Icon, active, collapsed }: NavItemProps) {
     </Link>
   );
 }
-
