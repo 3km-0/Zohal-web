@@ -111,8 +111,8 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
   const toast = useToast();
 
   // Run settings (per-run execution; does NOT require duplicating templates)
-  const [runLanguage, setRunLanguage] = useState<'auto' | 'en' | 'ar'>('auto');
-  const [runStrictness, setRunStrictness] = useState<'auto' | 'default' | 'strict'>('auto');
+  const [runLanguage, setRunLanguage] = useState<'en' | 'ar'>(() => (locale === 'ar' ? 'ar' : 'en'));
+  const [runStrictness, setRunStrictness] = useState<'default' | 'strict'>('default');
 
   // Persist run settings locally (best-effort; per-browser preference).
   useEffect(() => {
@@ -122,8 +122,16 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
       const json = JSON.parse(raw);
       const lang = json?.language;
       const strict = json?.strictness;
-      if (lang === 'auto' || lang === 'en' || lang === 'ar') setRunLanguage(lang);
-      if (strict === 'auto' || strict === 'default' || strict === 'strict') setRunStrictness(strict);
+      if (lang === 'en' || lang === 'ar') {
+        setRunLanguage(lang);
+      } else if (lang === 'auto') {
+        setRunLanguage(locale === 'ar' ? 'ar' : 'en');
+      }
+      if (strict === 'default' || strict === 'strict') {
+        setRunStrictness(strict);
+      } else if (strict === 'auto') {
+        setRunStrictness('default');
+      }
     } catch {
       // ignore
     }
@@ -1133,25 +1141,13 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
       if (userErr) throw userErr;
       const userId = userData.user.id;
 
-      // Resolve playbook options (language/strictness) deterministically:
-      // Run settings override playbook defaults; playbook defaults override UI locale.
-      const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
-      const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
-      const specLang = specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null;
-      const languagePref =
-        (runLanguage === 'ar' ? 'ar' : runLanguage === 'en' ? 'en' : null) ||
-        specLang ||
-        (locale === 'ar' ? 'ar' : 'en');
-      const strictnessPref =
-        (runStrictness === 'strict' ? 'strict' : runStrictness === 'default' ? 'default' : null) ||
-        (specOptions?.strictness === 'strict' ? 'strict' : null);
-      const playbook_options =
-        selectedPlaybookId || languagePref === 'ar' || strictnessPref
-          ? {
-              strictness: strictnessPref || undefined,
-              language: languagePref,
-            }
-          : undefined;
+      // Resolve per-run settings deterministically from explicit run controls.
+      const languagePref = runLanguage === 'ar' ? 'ar' : 'en';
+      const strictnessPref = runStrictness === 'strict' ? 'strict' : 'default';
+      const playbook_options = {
+        strictness: strictnessPref,
+        language: languagePref,
+      };
 
       const shouldUseDocset = effectiveScope === 'bundle';
       if (shouldUseDocset && docsetIssues.length > 0) {
@@ -1395,14 +1391,8 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     setReportSavedMessage(null);
     setIsGeneratingReport(true);
     try {
-      // Align report language with run settings; fall back to playbook defaults; then UI locale.
-      const selectedPb = selectedPlaybookId ? playbooks.find((p) => p.id === selectedPlaybookId) : null;
-      const specOptions = (selectedPb as any)?.current_version?.spec_json?.options || null;
-      const specLang = specOptions?.language === 'ar' ? 'ar' : specOptions?.language === 'en' ? 'en' : null;
-      const reportLanguage =
-        (runLanguage === 'ar' ? 'ar' : runLanguage === 'en' ? 'en' : null) ||
-        specLang ||
-        (locale === 'ar' ? 'ar' : 'en');
+      // Align report language with explicit run settings.
+      const reportLanguage = runLanguage === 'ar' ? 'ar' : 'en';
 
       // 1) Generate HTML via the existing exporter (same as iOS).
       const { data: reportData, error: reportErr } = await supabase.functions.invoke('export-contract-report', {
@@ -2225,9 +2215,8 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('runSettings.language')}</div>
                       <ScholarSelect
                         value={runLanguage}
-                        onChange={(e) => setRunLanguage(e.target.value as 'auto' | 'en' | 'ar')}
+                        onChange={(e) => setRunLanguage(e.target.value as 'en' | 'ar')}
                         options={[
-                          { value: 'auto', label: t('runSettings.auto') },
                           { value: 'en', label: t('runSettings.english') },
                           { value: 'ar', label: t('runSettings.arabic') },
                         ]}
@@ -2237,9 +2226,8 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('runSettings.strictness')}</div>
                       <ScholarSelect
                         value={runStrictness}
-                        onChange={(e) => setRunStrictness(e.target.value as 'auto' | 'default' | 'strict')}
+                        onChange={(e) => setRunStrictness(e.target.value as 'default' | 'strict')}
                         options={[
-                          { value: 'auto', label: t('runSettings.auto') },
                           { value: 'default', label: t('runSettings.default') },
                           { value: 'strict', label: t('runSettings.strict') },
                         ]}
