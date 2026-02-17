@@ -512,7 +512,7 @@
       "scope": {
         "description": "Control whether this template runs on a single document, DocSets, or both, and define required DocSet roles.",
         "scopeLabel": "Scope",
-        "single": "Single document",
+        "single": "Single only",
         "bundle": "DocSet only",
         "either": "Single or DocSet",
         "rolesTitle": "DocSet roles",
