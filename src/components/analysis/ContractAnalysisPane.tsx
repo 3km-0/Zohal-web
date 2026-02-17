@@ -2869,19 +2869,44 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                   for (let i = 0; i < m.result.length; i++) {
                     const item = m.result[i];
                     const itemObj = typeof item === 'object' && item ? item : {};
+                    const itemEvidenceRaw =
+                      (itemObj as any).evidence && Array.isArray((itemObj as any).evidence) && (itemObj as any).evidence.length > 0
+                        ? (itemObj as any).evidence[0]
+                        : Array.isArray(m.evidence) && m.evidence.length > 0
+                        ? (m.evidence[i] || m.evidence[0])
+                        : null;
+                    const itemPage = itemEvidenceRaw ? Number((itemEvidenceRaw as any).page_number || 0) : 0;
+                    const itemSnippet = itemEvidenceRaw
+                      ? String((itemEvidenceRaw as any).source_quote || (itemEvidenceRaw as any).snippet || '')
+                      : '';
+                    const itemId = `${moduleId}::${i}`;
+                    if (rejectedSets.modules.has(itemId)) continue;
                     customItems.push({
-                      id: `${moduleId}_${i}`,
+                      id: itemId,
                       title: String(itemObj.title || itemObj.name || `Item ${i + 1}`),
                       subtitle: itemObj.subtitle || undefined,
                       body: itemObj.description || itemObj.summary || (typeof item === 'string' ? item : undefined),
                       severity: itemObj.severity || itemObj.risk_level,
                       confidence: (itemObj.confidence || itemObj.ai_confidence || m.ai_confidence) as AIConfidence | undefined,
+                      evidence: itemPage
+                        ? {
+                            page_number: itemPage,
+                            snippet: itemSnippet.slice(0, 240) || undefined,
+                          }
+                        : undefined,
+                      sourceHref: itemPage
+                        ? `/workspaces/${workspaceId}/documents/${documentId}?page=${itemPage}&quote=${encodeURIComponent(itemSnippet.slice(0, 160))}${embedded ? '&pane=analysis' : ''}`
+                        : null,
+                      sourcePage: itemPage || undefined,
                       icon: <Puzzle className="w-4 h-4" />,
                     });
                   }
                 } else {
+                  const moduleResultId = `${moduleId}::result`;
+                  const isResultRejected = rejectedSets.modules.has(moduleResultId);
+                  if (!isResultRejected) {
                   customItems.push({
-                    id: `${moduleId}_result`,
+                    id: moduleResultId,
                     title: m.title,
                     subtitle: m.status || undefined,
                     confidence: m.ai_confidence as AIConfidence | undefined,
@@ -2892,9 +2917,10 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       snippet: (m.evidence[0] as any)?.source_quote || (m.evidence[0] as any)?.snippet,
                     } : undefined,
                     sourceHref: m.evidence?.[0] && (m.evidence[0] as any)?.page_number
-                      ? `/workspaces/${workspaceId}/documents/${documentId}?page=${(m.evidence[0] as any).page_number}&quote=${encodeURIComponent(((m.evidence[0] as any)?.source_quote || '').slice(0, 160))}`
+                      ? `/workspaces/${workspaceId}/documents/${documentId}?page=${(m.evidence[0] as any).page_number}&quote=${encodeURIComponent(((m.evidence[0] as any)?.source_quote || '').slice(0, 160))}${embedded ? '&pane=analysis' : ''}`
                       : null,
                   });
+                  }
                 }
               }
 
@@ -2904,7 +2930,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                   moduleTitle={m?.title || moduleId}
                   workspaceId={workspaceId}
                   documentId={documentId}
-                  onReject={() => rejectItem('module', moduleId)}
+                  onReject={(itemId) => rejectItem('module', itemId)}
                   isModuleRejected={rejectedSets.modules.has(moduleId)}
                   onRestoreModule={() => restoreItem('module', moduleId)}
                   isPatchingSnapshot={isPatchReadOnly}
