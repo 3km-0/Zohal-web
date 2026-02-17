@@ -1,5 +1,5 @@
 import type { Database } from '@/types/supabase';
-import type { AnalysisRunScope, AnalysisRunStatus, AnalysisRunSummary } from '@/types/analysis-runs';
+import type { AnalysisRunDocsetMode, AnalysisRunScope, AnalysisRunStatus, AnalysisRunSummary } from '@/types/analysis-runs';
 
 type ExtractionRunRow = Database['public']['Tables']['extraction_runs']['Row'];
 type ActionRow = Database['public']['Tables']['actions']['Row'];
@@ -44,8 +44,36 @@ function parseScope(inputConfig: unknown): AnalysisRunScope {
   if (Array.isArray(documentIds) && documentIds.length > 1) {
     return 'bundle';
   }
+  const bundleDocIds = bundle.document_ids;
+  if (Array.isArray(bundleDocIds) && bundleDocIds.length > 1) {
+    return 'bundle';
+  }
+  const scopeDocIds = config.scope_document_ids;
+  if (Array.isArray(scopeDocIds) && scopeDocIds.length > 1) {
+    return 'bundle';
+  }
 
   return 'single';
+}
+
+function parseDocsetMode(inputConfig: unknown): AnalysisRunDocsetMode | null {
+  const config = asRecord(inputConfig);
+  const bundle = asRecord(config.bundle);
+  const raw =
+    asString(config.docset_mode) ||
+    asString(config.docsetMode) ||
+    asString(bundle.docset_mode) ||
+    asString(bundle.docsetMode);
+  if (raw === 'saved' || raw === 'ephemeral') return raw;
+
+  const hasSavedPack =
+    asString(config.pack_id) ||
+    asString(config.packId) ||
+    asString(bundle.pack_id) ||
+    asString(bundle.bundle_id);
+  if (hasSavedPack) return 'saved';
+
+  return parseScope(config) === 'bundle' ? 'ephemeral' : null;
 }
 
 export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow | null): AnalysisRunSummary {
@@ -80,6 +108,11 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     asString(bundle.pack_id) ||
     asString(bundle.bundle_id) ||
     null;
+  const docsetMode = parseDocsetMode(config);
+  const savedDocsetName =
+    asString(bundle.saved_docset_name) ||
+    asString(config.saved_docset_name) ||
+    null;
 
   const versionId =
     asString(outputSummary.version_id) ||
@@ -102,6 +135,8 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     playbookLabel,
     scope: parseScope(run.input_config),
     packId,
+    docsetMode,
+    savedDocsetName,
     versionId,
     verificationObjectId,
   };

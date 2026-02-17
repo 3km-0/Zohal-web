@@ -65,9 +65,43 @@ describe('analysis run utilities', () => {
     expect(summary.actionId).toBe('action-1');
     expect(summary.status).toBe('succeeded');
     expect(summary.scope).toBe('bundle');
+    expect(summary.docsetMode).toBe('saved');
+    expect(summary.savedDocsetName).toBeNull();
     expect(summary.templateId).toBe('template-1');
     expect(summary.versionId).toBe('version-1');
     expect(summary.verificationObjectId).toBe('vo-1');
+  });
+
+  it('derives ephemeral docset mode from input config', () => {
+    const summary = toAnalysisRunSummary(
+      {
+        id: 'run-2',
+        status: 'running',
+        created_at: '2026-01-02T00:00:00Z',
+        updated_at: '2026-01-02T00:01:00Z',
+        input_config: {
+          document_ids: ['doc-1', 'doc-2'],
+          bundle: {
+            docset_mode: 'ephemeral',
+            saved_docset_name: 'Q1 Vendor Docs',
+          },
+        },
+        output_summary: {},
+        extraction_type: 'contract_analysis',
+        document_id: 'doc-1',
+        workspace_id: 'ws-1',
+        user_id: 'u-1',
+        completed_at: null,
+        error: null,
+        model: 'model',
+        prompt_version: '1',
+        started_at: null,
+      } as any
+    );
+
+    expect(summary.scope).toBe('bundle');
+    expect(summary.docsetMode).toBe('ephemeral');
+    expect(summary.savedDocsetName).toBe('Q1 Vendor Docs');
   });
 
   it('selects newest run with a version by default', () => {
@@ -82,6 +116,8 @@ describe('analysis run utilities', () => {
         playbookLabel: null,
         scope: 'single',
         packId: null,
+        docsetMode: null,
+        savedDocsetName: null,
         versionId: null,
         verificationObjectId: null,
       },
@@ -95,6 +131,8 @@ describe('analysis run utilities', () => {
         playbookLabel: null,
         scope: 'single',
         packId: null,
+        docsetMode: null,
+        savedDocsetName: null,
         versionId: 'v2',
         verificationObjectId: 'vo',
       },

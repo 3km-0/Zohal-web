@@ -731,8 +731,48 @@
       "defaultLabel": "تحليل العقد",
       "scopeSingle": "مستند واحد",
       "scopeBundle": "حزمة",
+      "scopeDocset": "مجموعة مستندات",
+      "scopeDocsetSaved": "مجموعة محفوظة",
+      "scopeDocsetUnsaved": "مجموعة غير محفوظة",
+      "unsaved": "غير محفوظة",
       "historicalReadOnly": "أنت تعرض لقطة تشغيل سابقة. التعديل معطّل في وضع القراءة فقط.",
       "selectedStatus": "التشغيل المحدد حالته {status}. سيتم عرض التقدم المباشر عند توفره."
+    },
+    "docset": {
+      "templateHelp": "اختر قالب هذا التشغيل.",
+      "scopeTitle": "النطاق",
+      "scopeSingle": "مستند واحد",
+      "scopeDocset": "مجموعة مستندات",
+      "scopeEnforced": "هذا القالب يفرض النطاق: {scope}",
+      "title": "مجموعة المستندات",
+      "help": "أنشئ مجموعة مستندات متعددة لهذا التشغيل.",
+      "savedPickerPlaceholder": "استخدام مجموعة محفوظة",
+      "manageSaved": "إدارة المحفوظ",
+      "unnamed": "مجموعة بدون اسم",
+      "searchPlaceholder": "ابحث في مستندات مساحة العمل",
+      "workspaceRoot": "جذر مساحة العمل",
+      "remove": "إزالة",
+      "add": "إضافة",
+      "selectedTitle": "{count} محدد",
+      "emptySelection": "لا توجد مستندات محددة بعد.",
+      "primaryDocument": "المستند الأساسي",
+      "precedencePolicy": "سياسة الأولوية",
+      "saveToggle": "حفظ هذه المجموعة",
+      "namePlaceholder": "اسم المجموعة (اختياري)",
+      "run": "تشغيل التحليل",
+      "running": "جارٍ التحليل…",
+      "precedence": {
+        "manual": "يدوي",
+        "primaryFirst": "الأساسي أولاً",
+        "latestWins": "الأحدث يفوز"
+      },
+      "validation": {
+        "minTwoDocuments": "يجب أن تحتوي مجموعة المستندات على مستندين على الأقل.",
+        "currentDocumentRequired": "يجب تضمين المستند الحالي في المجموعة.",
+        "missingRequiredRole": "الدور المطلوب مفقود: {role}",
+        "roleMustBeUnique": "يجب أن يكون الدور فريداً: {role}",
+        "invalidDocset": "إعداد مجموعة المستندات غير صالح."
+      }
     },
     "tabs": {
       "overview": "نظرة عامة",

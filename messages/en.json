@@ -731,8 +731,48 @@
       "defaultLabel": "Contract analysis",
       "scopeSingle": "Single",
       "scopeBundle": "Bundle",
+      "scopeDocset": "DocSet",
+      "scopeDocsetSaved": "Saved DocSet",
+      "scopeDocsetUnsaved": "Unsaved DocSet",
+      "unsaved": "Unsaved",
       "historicalReadOnly": "You are viewing a historical run snapshot. Editing is disabled in read-only mode.",
       "selectedStatus": "Selected run is {status}. Live progress is shown when available."
+    },
+    "docset": {
+      "templateHelp": "Choose a template for this run.",
+      "scopeTitle": "Scope",
+      "scopeSingle": "Single Document",
+      "scopeDocset": "DocSet",
+      "scopeEnforced": "This template enforces: {scope}",
+      "title": "DocSet",
+      "help": "Build a multi-document input set for this run.",
+      "savedPickerPlaceholder": "Use saved DocSet",
+      "manageSaved": "Manage Saved",
+      "unnamed": "Unnamed DocSet",
+      "searchPlaceholder": "Search workspace documents",
+      "workspaceRoot": "Workspace Root",
+      "remove": "Remove",
+      "add": "Add",
+      "selectedTitle": "{count} selected",
+      "emptySelection": "No documents selected yet.",
+      "primaryDocument": "Primary document",
+      "precedencePolicy": "Precedence policy",
+      "saveToggle": "Save this DocSet",
+      "namePlaceholder": "DocSet name (optional)",
+      "run": "Run Analysis",
+      "running": "Analyzing…",
+      "precedence": {
+        "manual": "Manual",
+        "primaryFirst": "Primary first",
+        "latestWins": "Latest wins"
+      },
+      "validation": {
+        "minTwoDocuments": "DocSet must include at least two documents.",
+        "currentDocumentRequired": "Current document must be included in DocSet.",
+        "missingRequiredRole": "Missing required role: {role}",
+        "roleMustBeUnique": "Role must be unique: {role}",
+        "invalidDocset": "DocSet configuration is invalid."
+      }
     },
     "tabs": {
       "overview": "Overview",

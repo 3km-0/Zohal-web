@@ -51,6 +51,29 @@ type BundlePack = {
   member_count?: number;
 };
 
+type PlaybookScope = 'single' | 'bundle' | 'either';
+type RunScope = 'single' | 'bundle';
+type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
+type DocsetMode = 'ephemeral' | 'saved';
+
+type WorkspaceFolder = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+};
+
+type WorkspaceDoc = {
+  id: string;
+  title: string;
+  folder_id: string | null;
+};
+
+type DocsetMember = {
+  document_id: string;
+  role: string;
+  sort_order: number;
+};
+
 type RejectedSets = {
   variables: Set<string>;
   clauses: Set<string>;
@@ -154,9 +177,20 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>(''); // empty = default
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
 
-  // Bundle selection for run (MVP): optional; default is single-doc.
+  // DocSet/run setup state.
+  const [scope, setScope] = useState<RunScope>('single');
   const [bundlePacks, setBundlePacks] = useState<BundlePack[]>([]);
   const [selectedBundleId, setSelectedBundleId] = useState<string>('');
+  const [docsetMode, setDocsetMode] = useState<DocsetMode>('ephemeral');
+  const [docsetMembers, setDocsetMembers] = useState<DocsetMember[]>([]);
+  const [docsetName, setDocsetName] = useState<string>('');
+  const [saveDocset, setSaveDocset] = useState(false);
+  const [docsetSearch, setDocsetSearch] = useState('');
+  const [docsetIssues, setDocsetIssues] = useState<string[]>([]);
+  const [docsetPrimaryDocumentId, setDocsetPrimaryDocumentId] = useState<string>(documentId);
+  const [docsetPrecedencePolicy, setDocsetPrecedencePolicy] = useState<'manual' | 'primary_first' | 'latest_wins'>('manual');
+  const [workspaceDocs, setWorkspaceDocs] = useState<WorkspaceDoc[]>([]);
+  const [workspaceFolders, setWorkspaceFolders] = useState<WorkspaceFolder[]>([]);
   const [showBundleModal, setShowBundleModal] = useState(false);
   const autoRunTriggered = useRef(false);
 
@@ -173,6 +207,56 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     return selectedRun.versionId !== currentVersionId;
   }, [currentVersionId, selectedRun]);
   const isPatchReadOnly = isPatchingSnapshot || isHistoricalRunSelected;
+
+  const selectedPlaybook = useMemo(
+    () => playbooks.find((p) => p.id === selectedPlaybookId) || null,
+    [playbooks, selectedPlaybookId]
+  );
+
+  const selectedPlaybookSpec = useMemo(() => {
+    const raw = selectedPlaybook?.current_version?.spec_json;
+    return raw && typeof raw === 'object' ? raw : null;
+  }, [selectedPlaybook]);
+
+  const enforcedPlaybookScope = useMemo<PlaybookScope>(() => {
+    const raw = String((selectedPlaybookSpec as any)?.scope || '').trim().toLowerCase();
+    if (raw === 'single' || raw === 'bundle' || raw === 'either') return raw;
+    return 'either';
+  }, [selectedPlaybookSpec]);
+
+  const bundleSchemaRoles = useMemo<BundleSchemaRole[]>(() => {
+    const roles = (selectedPlaybookSpec as any)?.bundle_schema?.roles;
+    if (!Array.isArray(roles)) return [];
+    return roles
+      .map((r: any) => ({
+        role: String(r?.role || '').trim(),
+        required: r?.required === true,
+        multiple: r?.multiple === true,
+      }))
+      .filter((r: BundleSchemaRole) => !!r.role);
+  }, [selectedPlaybookSpec]);
+
+  const effectiveScope = useMemo<RunScope>(() => {
+    if (enforcedPlaybookScope === 'bundle') return 'bundle';
+    if (enforcedPlaybookScope === 'single') return 'single';
+    return scope;
+  }, [enforcedPlaybookScope, scope]);
+
+  const folderNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of workspaceFolders) map.set(f.id, f.name);
+    return map;
+  }, [workspaceFolders]);
+
+  const filteredWorkspaceDocs = useMemo(() => {
+    const q = docsetSearch.trim().toLowerCase();
+    if (!q) return workspaceDocs;
+    return workspaceDocs.filter((d) => {
+      const title = d.title.toLowerCase();
+      const folder = d.folder_id ? (folderNameById.get(d.folder_id) || '').toLowerCase() : '';
+      return title.includes(q) || folder.includes(q);
+    });
+  }, [docsetSearch, folderNameById, workspaceDocs]);
 
   function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
     if (!evidence?.page_number) return null;
@@ -630,6 +714,170 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     }
   }
 
+  async function loadWorkspaceDocsetSources() {
+    try {
+      const [{ data: docs }, { data: folders }] = await Promise.all([
+        supabase
+          .from('documents')
+          .select('id,title,folder_id,storage_path')
+          .eq('workspace_id', workspaceId)
+          .is('deleted_at', null)
+          .neq('storage_path', 'local')
+          .order('updated_at', { ascending: false }),
+        supabase
+          .from('workspace_folders')
+          .select('id,name,parent_id')
+          .eq('workspace_id', workspaceId)
+          .is('deleted_at', null)
+          .order('name', { ascending: true }),
+      ]);
+
+      const nextDocs: WorkspaceDoc[] = ((docs || []) as any[])
+        .map((d) => ({
+          id: String(d.id),
+          title: String(d.title || d.id),
+          folder_id: d.folder_id ? String(d.folder_id) : null,
+        }));
+      setWorkspaceDocs(nextDocs);
+      setWorkspaceFolders(
+        ((folders || []) as any[]).map((f) => ({
+          id: String(f.id),
+          name: String(f.name || ''),
+          parent_id: f.parent_id ? String(f.parent_id) : null,
+        }))
+      );
+
+      // Ensure current document is always in the selectable set.
+      if (!nextDocs.some((d) => d.id === documentId)) {
+        setWorkspaceDocs((prev) => [
+          { id: documentId, title: 'Current document', folder_id: null },
+          ...prev,
+        ]);
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
+  async function loadDocsetFromSavedPack(packId: string) {
+    if (!packId) return;
+    try {
+      const [{ data: packRow }, { data: members, error: membersErr }, { data: docRows }] = await Promise.all([
+        supabase
+          .from('packs')
+          .select('id,name,precedence_policy,primary_document_id')
+          .eq('id', packId)
+          .maybeSingle(),
+        supabase
+          .from('pack_members')
+          .select('document_id,role,sort_order')
+          .eq('pack_id', packId)
+          .order('sort_order', { ascending: true }),
+        supabase
+          .from('documents')
+          .select('id,title')
+          .eq('workspace_id', workspaceId)
+          .is('deleted_at', null),
+      ]);
+      if (membersErr) return;
+
+      const titlesById = new Map<string, string>();
+      for (const d of (docRows || []) as any[]) {
+        titlesById.set(String(d.id), String(d.title || d.id));
+      }
+
+      const normalized = ((members || []) as any[])
+        .map((m, idx) => ({
+          document_id: String(m?.document_id || '').toLowerCase(),
+          role: String(m?.role || 'other').trim().toLowerCase() || 'other',
+          sort_order: Number.isFinite(m?.sort_order) ? Number(m.sort_order) : idx,
+        }))
+        .filter((m) => !!m.document_id);
+
+      setSelectedBundleId(packId);
+      setDocsetMode('saved');
+      setDocsetName(String((packRow as any)?.name || '').trim());
+      setDocsetPrecedencePolicy(
+        (String((packRow as any)?.precedence_policy || 'manual').toLowerCase() as any) === 'primary_first'
+          ? 'primary_first'
+          : (String((packRow as any)?.precedence_policy || 'manual').toLowerCase() as any) === 'latest_wins'
+            ? 'latest_wins'
+            : 'manual'
+      );
+      setDocsetPrimaryDocumentId(
+        String((packRow as any)?.primary_document_id || documentId).toLowerCase()
+      );
+      setDocsetMembers(
+        normalized.map((m, idx) => ({
+          document_id: m.document_id,
+          role: m.role,
+          sort_order: idx,
+        }))
+      );
+
+      // Keep local source cache fresh for titles/search.
+      setWorkspaceDocs((prev) => {
+        const next = [...prev];
+        for (const m of normalized) {
+          if (!next.some((d) => d.id === m.document_id)) {
+            next.push({
+              id: m.document_id,
+              title: titlesById.get(m.document_id) || m.document_id,
+              folder_id: null,
+            });
+          }
+        }
+        return next;
+      });
+    } catch {
+      // best-effort
+    }
+  }
+
+  function addDocumentToDocset(docId: string) {
+    setSelectedBundleId('');
+    setDocsetMode('ephemeral');
+    setDocsetMembers((prev) => {
+      if (prev.some((m) => m.document_id === docId)) return prev;
+      const role = docId === docsetPrimaryDocumentId ? 'primary' : 'other';
+      return [...prev, { document_id: docId, role, sort_order: prev.length }];
+    });
+  }
+
+  function removeDocumentFromDocset(docId: string) {
+    setSelectedBundleId('');
+    setDocsetMode('ephemeral');
+    setDocsetMembers((prev) =>
+      prev
+        .filter((m) => m.document_id !== docId)
+        .map((m, idx) => ({ ...m, sort_order: idx }))
+    );
+  }
+
+  function moveDocsetMember(docId: string, direction: 'up' | 'down') {
+    setSelectedBundleId('');
+    setDocsetMode('ephemeral');
+    setDocsetMembers((prev) => {
+      const idx = prev.findIndex((m) => m.document_id === docId);
+      if (idx < 0) return prev;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+      const next = [...prev];
+      const tmp = next[idx];
+      next[idx] = next[swapIdx];
+      next[swapIdx] = tmp;
+      return next.map((m, i) => ({ ...m, sort_order: i }));
+    });
+  }
+
+  function updateDocsetMemberRole(docId: string, role: string) {
+    setSelectedBundleId('');
+    setDocsetMode('ephemeral');
+    setDocsetMembers((prev) =>
+      prev.map((m) => (m.document_id === docId ? { ...m, role: role.trim().toLowerCase() || 'other' } : m))
+    );
+  }
+
   // Multi-document bundle packs: load source document titles/roles for UI chips.
   const bundlePackId = (snapshot?.pack as any)?.bundle?.pack_id ?? snapshot?.pack?.bundle?.bundle_id ?? null;
   const bundleBundleId = snapshot?.pack?.bundle?.bundle_id ?? null;
@@ -687,6 +935,71 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
       cancelled = true;
     };
   }, [bundlePackId, bundleBundleId, bundleDocIdsKey, bundle, supabase]);
+
+  useEffect(() => {
+    if (enforcedPlaybookScope === 'bundle') setScope('bundle');
+    if (enforcedPlaybookScope === 'single') setScope('single');
+  }, [enforcedPlaybookScope]);
+
+  useEffect(() => {
+    if (effectiveScope !== 'bundle') {
+      setDocsetIssues([]);
+      return;
+    }
+
+    // Seed current document by default the first time bundle scope is selected.
+    if (!docsetMembers.some((m) => m.document_id === documentId)) {
+      setDocsetMembers((prev) => {
+        if (prev.some((m) => m.document_id === documentId)) return prev;
+        return [{ document_id: documentId, role: 'primary', sort_order: 0 }, ...prev].map((m, idx) => ({
+          ...m,
+          sort_order: idx,
+        }));
+      });
+      return;
+    }
+
+    if (!docsetMembers.some((m) => m.document_id === docsetPrimaryDocumentId)) {
+      setDocsetPrimaryDocumentId(documentId);
+    }
+
+    const issues: string[] = [];
+    if (docsetMembers.length < 2) {
+      issues.push(t('docset.validation.minTwoDocuments'));
+    }
+    if (!docsetMembers.some((m) => m.document_id === documentId)) {
+      issues.push(t('docset.validation.currentDocumentRequired'));
+    }
+
+    if (bundleSchemaRoles.length > 0) {
+      const counts = new Map<string, number>();
+      for (const m of docsetMembers) {
+        const role = String(m.role || '').trim().toLowerCase();
+        if (!role) continue;
+        counts.set(role, (counts.get(role) || 0) + 1);
+      }
+      for (const def of bundleSchemaRoles) {
+        const role = def.role.trim().toLowerCase();
+        const count = counts.get(role) || 0;
+        if (def.required && count === 0) {
+          issues.push(t('docset.validation.missingRequiredRole', { role: def.role }));
+        }
+        if (!def.multiple && count > 1) {
+          issues.push(t('docset.validation.roleMustBeUnique', { role: def.role }));
+        }
+      }
+    }
+
+    setDocsetIssues(issues);
+  }, [
+    bundleSchemaRoles,
+    docsetMembers,
+    docsetPrimaryDocumentId,
+    documentId,
+    effectiveScope,
+    enforcedPlaybookScope,
+    t,
+  ]);
 
   async function createPinnedContextSetFromThisDocument() {
     const name = window.prompt(t('prompts.referencePackName'));
@@ -760,6 +1073,41 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     }
   }
 
+  async function persistDocsetAsPack(userId: string): Promise<string> {
+    const name = docsetName.trim() || null;
+    const { data: pack, error: packErr } = await supabase
+      .from('packs')
+      .insert({
+        workspace_id: workspaceId,
+        name,
+        pack_type: 'bundle',
+        precedence_policy: docsetPrecedencePolicy,
+        primary_document_id: docsetPrimaryDocumentId || documentId,
+        created_by: userId,
+      })
+      .select('id')
+      .single();
+    if (packErr || !pack?.id) {
+      throw packErr || new Error('Failed to create DocSet');
+    }
+
+    if (docsetMembers.length > 0) {
+      const rows = docsetMembers.map((m, idx) => ({
+        pack_id: pack.id,
+        document_id: m.document_id,
+        role: String(m.role || 'other').trim().toLowerCase() || 'other',
+        sort_order: idx,
+        added_by: userId,
+      }));
+      const { error: membersErr } = await supabase
+        .from('pack_members')
+        .upsert(rows, { onConflict: 'pack_id,document_id' });
+      if (membersErr) throw membersErr;
+    }
+
+    return String(pack.id);
+  }
+
   async function analyzeOnce() {
     setIsAnalyzing(true);
     setError(null);
@@ -795,19 +1143,40 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
             }
           : undefined;
 
-      // If a bundle pack is selected, include it (and document_ids for reproducibility).
-      let bundleDocumentIds: string[] | undefined = undefined;
-      const packId = selectedBundleId || '';
-      if (packId) {
-        const { data: members, error: memErr } = await supabase
-          .from('pack_members')
-          .select('document_id, sort_order')
-          .eq('pack_id', packId)
-          .order('sort_order', { ascending: true });
-        if (!memErr && Array.isArray(members)) {
-          bundleDocumentIds = (members as any[])
-            .map((m) => String(m?.document_id || '').toLowerCase())
-            .filter(Boolean);
+      const shouldUseDocset = effectiveScope === 'bundle';
+      if (shouldUseDocset && docsetIssues.length > 0) {
+        setError(docsetIssues[0] || t('docset.validation.invalidDocset'));
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const normalizedDocsetMembers: DocsetMember[] = shouldUseDocset
+        ? docsetMembers
+            .map((m, idx) => ({
+              document_id: String(m.document_id || '').toLowerCase().trim(),
+              role: String(m.role || 'other').trim().toLowerCase() || 'other',
+              sort_order: Number.isFinite(m.sort_order) ? Number(m.sort_order) : idx,
+            }))
+            .filter((m) => !!m.document_id)
+            .sort((a, b) => a.sort_order - b.sort_order)
+        : [];
+
+      const docsetDocumentIds = shouldUseDocset
+        ? Array.from(new Set(normalizedDocsetMembers.map((m) => m.document_id)))
+        : [];
+
+      let resolvedPackId: string | undefined;
+      let resolvedDocsetMode: DocsetMode = 'ephemeral';
+      if (shouldUseDocset) {
+        if (saveDocset) {
+          resolvedPackId = await persistDocsetAsPack(userId);
+          resolvedDocsetMode = 'saved';
+          setSelectedBundleId(resolvedPackId);
+          setDocsetMode('saved');
+          await loadBundlePacks();
+        } else if (selectedBundleId && docsetMode === 'saved') {
+          resolvedPackId = selectedBundleId;
+          resolvedDocsetMode = 'saved';
         }
       }
 
@@ -822,10 +1191,17 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
           workspace_id: workspaceId,
           user_id: userId,
           ...(playbook_options ? { playbook_options } : {}),
-          ...(packId
+          ...(shouldUseDocset
             ? {
-                pack_id: packId,
-                document_ids: bundleDocumentIds && bundleDocumentIds.length > 0 ? bundleDocumentIds : undefined,
+                ...(resolvedPackId ? { pack_id: resolvedPackId } : {}),
+                document_ids: docsetDocumentIds,
+                member_roles: normalizedDocsetMembers,
+                primary_document_id: docsetPrimaryDocumentId || documentId,
+                precedence_policy: docsetPrecedencePolicy,
+                docset_mode: resolvedDocsetMode,
+                ...(resolvedDocsetMode === 'saved' && docsetName.trim()
+                  ? { saved_docset_name: docsetName.trim() }
+                  : {}),
               }
             : {}),
           ...(selectedPlaybookId
@@ -971,7 +1347,10 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
 
     if (pbId) setSelectedPlaybookId(pbId);
     if (pbVid) setSelectedPlaybookVersionId(pbVid);
-    if (bId) setSelectedBundleId(bId);
+    if (bId) {
+      setScope('bundle');
+      void loadDocsetFromSavedPack(bId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -1248,6 +1627,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     load();
     loadPlaybooks();
     loadBundlePacks();
+    loadWorkspaceDocsetSources();
     loadRuns();
     
     // Re-load when tab becomes visible (handles laptop sleep, tab switching)
@@ -1319,7 +1699,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
               ...(contract ? [{
                 label: t('actions.reanalyze'),
                 icon: <RefreshCw className="w-4 h-4" />,
-                onClick: () => { setShowSettings(true); setTab('template-select'); },
+                onClick: () => { setShowSettings(true); setTab('overview'); },
               },
               { type: 'divider' as const }] : []),
               { type: 'section', label: 'Report' },
@@ -1385,7 +1765,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                 size="sm"
                 onClick={() => {
                   setShowSettings(true);
-                  setTab('template-select');
+                  setTab('overview');
                 }}
               >
                 {t('runs.newRun')}
@@ -1417,15 +1797,23 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                     <p className="text-sm font-medium text-text truncate">
                       {run.playbookLabel || t('runs.defaultLabel')}
                     </p>
-                    <Badge
-                      size="sm"
-                      variant={run.status === 'failed' ? 'error' : run.status === 'running' ? 'warning' : run.status === 'succeeded' ? 'success' : 'default'}
-                    >
-                      {run.status}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      {run.scope === 'bundle' && run.docsetMode === 'ephemeral' && (
+                        <Badge size="sm" variant="warning">{t('runs.unsaved')}</Badge>
+                      )}
+                      {run.scope === 'bundle' && run.docsetMode === 'saved' && run.savedDocsetName && (
+                        <Badge size="sm">{run.savedDocsetName}</Badge>
+                      )}
+                      <Badge
+                        size="sm"
+                        variant={run.status === 'failed' ? 'error' : run.status === 'running' ? 'warning' : run.status === 'succeeded' ? 'success' : 'default'}
+                      >
+                        {run.status}
+                      </Badge>
+                    </div>
                   </div>
                   <p className="mt-1 text-xs text-text-soft">
-                    {run.scope === 'bundle' ? t('runs.scopeBundle') : t('runs.scopeSingle')} · {new Date(run.createdAt).toLocaleString()}
+                    {run.scope === 'bundle' ? t('runs.scopeDocset') : t('runs.scopeSingle')} · {new Date(run.createdAt).toLocaleString()}
                   </p>
                 </button>
               ))}
@@ -1479,209 +1867,261 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
               />
             )}
 
-            {/* Analysis Configuration - Tabbed Interface */}
+            {/* Analysis Configuration */}
             <ScholarNotebookCard>
               <div className="p-4 space-y-4">
-                {/* Mini tabs for Template/Bundle selection */}
-                <div className="flex border-b border-border">
-                  <button
-                    onClick={() => setTab('template-select')}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors -mb-px",
-                      tab === 'template-select' || tab === 'overview'
-                        ? "border-accent text-accent"
-                        : "border-transparent text-text-soft hover:text-text"
-                    )}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    Template
-                    {selectedPlaybookId && (
-                      <Badge size="sm" variant="success">Selected</Badge>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setTab('bundle-select')}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors -mb-px",
-                      tab === 'bundle-select'
-                        ? "border-accent text-accent"
-                        : "border-transparent text-text-soft hover:text-text"
-                    )}
-                  >
-                    <Layers className="w-4 h-4" />
-                    Bundle
-                    {selectedBundleId && (
-                      <Badge size="sm" variant="success">Selected</Badge>
-                    )}
-                  </button>
-                </div>
-
-                {/* Template Selection Content */}
-                {(tab === 'template-select' || tab === 'overview') && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-text-soft">
-                        Choose an analysis template to use.
-                      </p>
-                      <Link
-                        href={`/workspaces/${workspaceId}/playbooks?returnTo=${encodeURIComponent(
-                          `/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`
-                        )}`}
-                        className="text-xs font-semibold text-accent hover:underline"
-                      >
-                        {t('playbook.manage')}
-                      </Link>
-                    </div>
-                    <div className="space-y-2">
-                      {/* All templates from database - no hardcoded options */}
-                      {playbooks.length === 0 ? (
-                        <div className="p-4 rounded-scholar border border-border bg-surface-alt text-center">
-                          <p className="text-sm text-text-soft mb-2">{t('playbook.loadingTemplates')}</p>
-                          <p className="text-xs text-text-soft">{t('playbook.templatesAutoCreated')}</p>
-                        </div>
-                      ) : (
-                        <>
-                          {/* System Templates */}
-                          {playbooks.filter(pb => pb.is_system_preset).length > 0 && (
-                            <div className="space-y-2">
-                              <div className="text-xs font-semibold text-text-soft uppercase tracking-wider px-1">
-                                {t('playbook.zohalTemplates')}
-                              </div>
-                              {playbooks.filter(pb => pb.is_system_preset).map((pb) => (
-                                <button
-                                  key={pb.id}
-                                  onClick={() => {
-                                    setSelectedPlaybookId(pb.id);
-                                    setSelectedPlaybookVersionId(pb.current_version?.id || '');
-                                  }}
-                                  className={cn(
-                                    "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                                    selectedPlaybookId === pb.id
-                                      ? "border-accent bg-accent/5"
-                                      : "border-border bg-surface-alt hover:border-accent/50"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
-                                    <span className="font-semibold text-text">{pb.name}</span>
-                                  </div>
-                                  {selectedPlaybookId === pb.id && (
-                                    <CheckCircle className="w-4 h-4 text-accent" />
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* User Templates */}
-                          {playbooks.filter(pb => !pb.is_system_preset).length > 0 && (
-                            <div className="space-y-2 mt-4">
-                              <div className="text-xs font-semibold text-text-soft uppercase tracking-wider px-1">
-                                {t('playbook.yourTemplates')}
-                              </div>
-                              {playbooks.filter(pb => !pb.is_system_preset).map((pb) => (
-                                <button
-                                  key={pb.id}
-                                  onClick={() => {
-                                    setSelectedPlaybookId(pb.id);
-                                    setSelectedPlaybookVersionId(pb.current_version?.id || '');
-                                  }}
-                                  className={cn(
-                                    "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                                    selectedPlaybookId === pb.id
-                                      ? "border-accent bg-accent/5"
-                                      : "border-border bg-surface-alt hover:border-accent/50"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <BookOpen className={cn("w-4 h-4", selectedPlaybookId === pb.id ? "text-accent" : "text-text-soft")} />
-                                    <span className="font-semibold text-text">{pb.name}</span>
-                                  </div>
-                                  {selectedPlaybookId === pb.id && (
-                                    <CheckCircle className="w-4 h-4 text-accent" />
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-text-soft">{t('docset.templateHelp')}</p>
+                    <Link
+                      href={`/workspaces/${workspaceId}/playbooks?returnTo=${encodeURIComponent(
+                        `/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`
+                      )}`}
+                      className="text-xs font-semibold text-accent hover:underline"
+                    >
+                      {t('playbook.manage')}
+                    </Link>
                   </div>
-                )}
-
-                {/* Bundle Selection Content */}
-                {tab === 'bundle-select' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-text-soft">
-                        Optionally analyze multiple documents together.
-                      </p>
-                      <button
-                        onClick={() => setShowBundleModal(true)}
-                        className="text-xs font-semibold text-accent hover:underline"
-                      >
-                        Manage Bundles
-                      </button>
+                  {playbooks.length === 0 ? (
+                    <div className="p-4 rounded-scholar border border-border bg-surface-alt text-center">
+                      <p className="text-sm text-text-soft mb-2">{t('playbook.loadingTemplates')}</p>
+                      <p className="text-xs text-text-soft">{t('playbook.templatesAutoCreated')}</p>
                     </div>
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => setSelectedBundleId('')}
-                        className={cn(
-                          "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                          !selectedBundleId
-                            ? "border-accent bg-accent/5"
-                            : "border-border bg-surface-alt hover:border-accent/50"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className={cn("w-4 h-4", !selectedBundleId ? "text-accent" : "text-text-soft")} />
-                          <span className="font-semibold text-text">Single document (this file only)</span>
-                        </div>
-                        {!selectedBundleId && (
-                          <CheckCircle className="w-4 h-4 text-accent" />
-                        )}
-                      </button>
-                      {bundlePacks.map((b) => (
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                      {playbooks.map((pb) => (
                         <button
-                          key={b.id}
-                          onClick={() => setSelectedBundleId(b.id)}
+                          key={pb.id}
+                          onClick={() => {
+                            setSelectedPlaybookId(pb.id);
+                            setSelectedPlaybookVersionId(pb.current_version?.id || '');
+                          }}
                           className={cn(
-                            "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
-                            selectedBundleId === b.id
-                              ? "border-accent bg-accent/5"
-                              : "border-border bg-surface-alt hover:border-accent/50"
+                            'w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left',
+                            selectedPlaybookId === pb.id
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border bg-surface-alt hover:border-accent/50'
                           )}
                         >
                           <div className="flex items-center gap-3">
-                            <Package className={cn("w-4 h-4", selectedBundleId === b.id ? "text-accent" : "text-text-soft")} />
-                            <div>
-                              <span className="font-semibold text-text">{b.name || 'Unnamed Bundle'}</span>
-                              <span className="text-xs text-text-soft ml-2">({b.member_count} docs)</span>
-                            </div>
+                            <BookOpen className={cn('w-4 h-4', selectedPlaybookId === pb.id ? 'text-accent' : 'text-text-soft')} />
+                            <span className="font-semibold text-text">{pb.name}</span>
                           </div>
-                          {selectedBundleId === b.id && (
-                            <CheckCircle className="w-4 h-4 text-accent" />
-                          )}
+                          {selectedPlaybookId === pb.id && <CheckCircle className="w-4 h-4 text-accent" />}
                         </button>
                       ))}
                     </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-border space-y-2">
+                  <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('docset.scopeTitle')}</div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={effectiveScope === 'single' ? 'primary' : 'secondary'}
+                      onClick={() => setScope('single')}
+                      disabled={enforcedPlaybookScope === 'bundle'}
+                    >
+                      {t('docset.scopeSingle')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={effectiveScope === 'bundle' ? 'primary' : 'secondary'}
+                      onClick={() => setScope('bundle')}
+                      disabled={enforcedPlaybookScope === 'single'}
+                    >
+                      {t('docset.scopeDocset')}
+                    </Button>
+                  </div>
+                  {enforcedPlaybookScope !== 'either' && (
+                    <p className="text-xs text-text-soft">
+                      {t('docset.scopeEnforced', { scope: enforcedPlaybookScope })}
+                    </p>
+                  )}
+                </div>
+
+                {effectiveScope === 'bundle' && (
+                  <div className="pt-3 border-t border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('docset.title')}</div>
+                        <p className="text-xs text-text-soft">{t('docset.help')}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedBundleId}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (!value) {
+                              setSelectedBundleId('');
+                              setDocsetMode('ephemeral');
+                              return;
+                            }
+                            void loadDocsetFromSavedPack(value);
+                          }}
+                          className="px-2 py-1.5 border border-border rounded-md bg-surface text-sm text-text"
+                        >
+                          <option value="">{t('docset.savedPickerPlaceholder')}</option>
+                          {bundlePacks.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name || t('docset.unnamed')} ({b.member_count || 0})
+                            </option>
+                          ))}
+                        </select>
+                        <Button variant="ghost" size="sm" onClick={() => setShowBundleModal(true)}>
+                          {t('docset.manageSaved')}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2">
+                        <input
+                          value={docsetSearch}
+                          onChange={(e) => setDocsetSearch(e.target.value)}
+                          placeholder={t('docset.searchPlaceholder')}
+                          className="w-full px-3 py-2 rounded-md border border-border bg-surface text-sm text-text"
+                        />
+                        <div className="max-h-40 overflow-auto space-y-1 pr-1">
+                          {filteredWorkspaceDocs.map((d) => {
+                            const inDocset = docsetMembers.some((m) => m.document_id === d.id);
+                            return (
+                              <div key={d.id} className="flex items-center justify-between gap-2 p-2 border border-border rounded-md bg-surface">
+                                <div className="min-w-0">
+                                  <p className="text-sm text-text truncate">{d.title}</p>
+                                  <p className="text-xs text-text-soft truncate">
+                                    {d.folder_id ? folderNameById.get(d.folder_id) || t('docset.workspaceRoot') : t('docset.workspaceRoot')}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={inDocset ? 'secondary' : 'primary'}
+                                  onClick={() => (inDocset ? removeDocumentFromDocset(d.id) : addDocumentToDocset(d.id))}
+                                >
+                                  {inDocset ? t('docset.remove') : t('docset.add')}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2">
+                        <div className="text-xs text-text-soft">{t('docset.selectedTitle', { count: docsetMembers.length })}</div>
+                        {docsetMembers.length === 0 ? (
+                          <p className="text-sm text-text-soft">{t('docset.emptySelection')}</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {docsetMembers
+                              .slice()
+                              .sort((a, b) => a.sort_order - b.sort_order)
+                              .map((m, idx) => {
+                                const doc = workspaceDocs.find((d) => d.id === m.document_id);
+                                return (
+                                  <div key={`${m.document_id}_${idx}`} className="flex flex-wrap items-center gap-2 p-2 border border-border rounded-md bg-surface">
+                                    <span className="text-sm text-text min-w-[180px] truncate flex-1">{doc?.title || m.document_id}</span>
+                                    <select
+                                      value={m.role}
+                                      onChange={(e) => updateDocsetMemberRole(m.document_id, e.target.value)}
+                                      className="px-2 py-1 border border-border rounded-md bg-surface text-xs text-text"
+                                    >
+                                      {bundleSchemaRoles.length > 0
+                                        ? bundleSchemaRoles.map((r) => (
+                                            <option key={r.role} value={r.role.toLowerCase()}>
+                                              {r.role}
+                                            </option>
+                                          ))
+                                        : (
+                                          <>
+                                            <option value="primary">primary</option>
+                                            <option value="other">other</option>
+                                          </>
+                                        )}
+                                    </select>
+                                    <Button size="sm" variant="ghost" onClick={() => moveDocsetMember(m.document_id, 'up')} disabled={idx === 0}>↑</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => moveDocsetMember(m.document_id, 'down')} disabled={idx === docsetMembers.length - 1}>↓</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => removeDocumentFromDocset(m.document_id)}>
+                                      {t('docset.remove')}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-text-soft mb-1">{t('docset.primaryDocument')}</div>
+                        <select
+                          value={docsetPrimaryDocumentId}
+                          onChange={(e) => setDocsetPrimaryDocumentId(e.target.value)}
+                          className="w-full px-2 py-2 border border-border rounded-md bg-surface text-sm text-text"
+                        >
+                          {docsetMembers.map((m) => {
+                            const doc = workspaceDocs.find((d) => d.id === m.document_id);
+                            return (
+                              <option key={m.document_id} value={m.document_id}>
+                                {doc?.title || m.document_id}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="text-xs text-text-soft mb-1">{t('docset.precedencePolicy')}</div>
+                        <ScholarSelect
+                          value={docsetPrecedencePolicy}
+                          onChange={(e) => setDocsetPrecedencePolicy(e.target.value as 'manual' | 'primary_first' | 'latest_wins')}
+                          options={[
+                            { value: 'manual', label: t('docset.precedence.manual') },
+                            { value: 'primary_first', label: t('docset.precedence.primaryFirst') },
+                            { value: 'latest_wins', label: t('docset.precedence.latestWins') },
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm text-text">
+                      <input
+                        type="checkbox"
+                        checked={saveDocset}
+                        onChange={(e) => setSaveDocset(e.target.checked)}
+                      />
+                      {t('docset.saveToggle')}
+                    </label>
+                    {saveDocset && (
+                      <input
+                        value={docsetName}
+                        onChange={(e) => setDocsetName(e.target.value)}
+                        placeholder={t('docset.namePlaceholder')}
+                        className="w-full px-3 py-2 rounded-md border border-border bg-surface text-sm text-text"
+                      />
+                    )}
+
+                    {docsetIssues.length > 0 && (
+                      <div className="p-2 border border-warning/40 bg-warning/10 rounded-scholar text-xs text-warning space-y-1">
+                        {docsetIssues.map((issue, idx) => (
+                          <p key={`${issue}_${idx}`}>• {issue}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Run Button */}
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div className="flex items-center gap-2 text-sm text-text-soft">
                     {selectedPlaybookId && (
                       <Badge size="sm">
                         <BookOpen className="w-3 h-3 mr-1" />
-                        {playbooks.find(p => p.id === selectedPlaybookId)?.name || 'Template'}
+                        {playbooks.find((p) => p.id === selectedPlaybookId)?.name || t('runs.defaultLabel')}
                       </Badge>
                     )}
-                    {selectedBundleId && (
-                      <Badge size="sm">
-                        <Package className="w-3 h-3 mr-1" />
-                        {bundlePacks.find(b => b.id === selectedBundleId)?.name || 'Bundle'}
+                    {effectiveScope === 'bundle' && (
+                      <Badge size="sm" variant={saveDocset || selectedBundleId ? 'success' : 'warning'}>
+                        {saveDocset || selectedBundleId ? t('runs.scopeDocsetSaved') : t('runs.scopeDocsetUnsaved')}
                       </Badge>
                     )}
                   </div>
@@ -1690,10 +2130,10 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       if (!isAnalyzing) analyzeOnce();
                     }}
                     variant="primary"
-                    disabled={isAnalyzing}
+                    disabled={isAnalyzing || (effectiveScope === 'bundle' && docsetIssues.length > 0)}
                     data-tour="contract-analyze"
                   >
-                    {isAnalyzing ? 'Analyzing…' : 'Run Analysis'}
+                    {isAnalyzing ? t('docset.running') : t('docset.run')}
                   </Button>
                 </div>
 
