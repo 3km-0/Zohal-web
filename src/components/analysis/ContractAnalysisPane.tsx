@@ -1760,16 +1760,18 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant={showSettings ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => {
-                  setShowSettings(true);
-                  setTab('overview');
-                }}
-              >
-                {t('runs.newRun')}
-              </Button>
+              {runs.length > 0 && (
+                <Button
+                  variant={showSettings ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => {
+                    setShowSettings(true);
+                    setTab('overview');
+                  }}
+                >
+                  {t('runs.newRun')}
+                </Button>
+              )}
               {embedded && onSwitchToChat && (
                 <Button variant="ghost" size="sm" onClick={onSwitchToChat}>
                   {t('runs.chat')}
