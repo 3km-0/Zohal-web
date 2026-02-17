@@ -1947,88 +1947,124 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
 
                 {effectiveScope === 'bundle' && (
                   <div className="pt-3 border-t border-border space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
                         <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('docset.title')}</div>
-                        <p className="text-xs text-text-soft">{t('docset.help')}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={selectedBundleId}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (!value) {
-                              setSelectedBundleId('');
-                              setDocsetMode('ephemeral');
-                              return;
-                            }
-                            void loadDocsetFromSavedPack(value);
-                          }}
-                          className="px-2 py-1.5 border border-border rounded-md bg-surface text-sm text-text"
+                        <button
+                          onClick={() => setShowBundleModal(true)}
+                          className="flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent/80 transition-colors px-2 py-1 rounded-md hover:bg-accent/5"
                         >
-                          <option value="">{t('docset.savedPickerPlaceholder')}</option>
-                          {bundlePacks.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.name || t('docset.unnamed')} ({b.member_count || 0})
-                            </option>
-                          ))}
-                        </select>
-                        <Button variant="ghost" size="sm" onClick={() => setShowBundleModal(true)}>
+                          <Settings className="w-3 h-3" />
                           {t('docset.manageSaved')}
-                        </Button>
+                        </button>
                       </div>
+                      <p className="text-xs text-text-soft">{t('docset.help')}</p>
+                      <select
+                        value={selectedBundleId}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (!value) {
+                            setSelectedBundleId('');
+                            setDocsetMode('ephemeral');
+                            return;
+                          }
+                          void loadDocsetFromSavedPack(value);
+                        }}
+                        className="w-full px-2.5 py-2 border border-border rounded-md bg-surface-alt text-sm text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                      >
+                        <option value="">{t('docset.savedPickerPlaceholder')}</option>
+                        {bundlePacks.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name || t('docset.unnamed')} ({b.member_count || 0})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2">
-                        <input
-                          value={docsetSearch}
-                          onChange={(e) => setDocsetSearch(e.target.value)}
-                          placeholder={t('docset.searchPlaceholder')}
-                          className="w-full px-3 py-2 rounded-md border border-border bg-surface text-sm text-text"
-                        />
-                        <div className="max-h-40 overflow-auto space-y-1 pr-1">
+                    <div className="space-y-3">
+                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2.5">
+                        <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">{t('docset.add')}</div>
+                        <div className="relative">
+                          <FileSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-soft pointer-events-none" />
+                          <input
+                            value={docsetSearch}
+                            onChange={(e) => setDocsetSearch(e.target.value)}
+                            placeholder={t('docset.searchPlaceholder')}
+                            className="w-full pl-8 pr-3 py-2 rounded-md border border-border bg-surface text-sm text-text placeholder:text-text-soft/50 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                          />
+                        </div>
+                        <div className="max-h-72 overflow-y-auto overscroll-contain space-y-1.5 pr-1">
                           {filteredWorkspaceDocs.map((d) => {
                             const inDocset = docsetMembers.some((m) => m.document_id === d.id);
                             return (
-                              <div key={d.id} className="flex items-center justify-between gap-2 p-2 border border-border rounded-md bg-surface">
-                                <div className="min-w-0">
-                                  <p className="text-sm text-text truncate">{d.title}</p>
-                                  <p className="text-xs text-text-soft truncate">
-                                    {d.folder_id ? folderNameById.get(d.folder_id) || t('docset.workspaceRoot') : t('docset.workspaceRoot')}
-                                  </p>
+                              <div
+                                key={d.id}
+                                className={cn(
+                                  'flex items-center justify-between gap-2 p-2.5 rounded-md border transition-colors',
+                                  inDocset
+                                    ? 'border-accent/30 bg-accent/5'
+                                    : 'border-border bg-surface hover:border-accent/20'
+                                )}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  <div className={cn(
+                                    'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0',
+                                    inDocset ? 'bg-accent/15' : 'bg-surface-alt'
+                                  )}>
+                                    {inDocset
+                                      ? <CheckCircle className="w-3.5 h-3.5 text-accent" />
+                                      : <FileText className="w-3 h-3 text-text-soft" />}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-text truncate">{d.title}</p>
+                                    <p className="text-[11px] text-text-soft truncate">
+                                      {d.folder_id ? folderNameById.get(d.folder_id) || t('docset.workspaceRoot') : t('docset.workspaceRoot')}
+                                    </p>
+                                  </div>
                                 </div>
                                 <Button
                                   size="sm"
                                   variant={inDocset ? 'secondary' : 'primary'}
                                   onClick={() => (inDocset ? removeDocumentFromDocset(d.id) : addDocumentToDocset(d.id))}
+                                  className="flex-shrink-0"
                                 >
                                   {inDocset ? t('docset.remove') : t('docset.add')}
                                 </Button>
                               </div>
                             );
                           })}
+                          {filteredWorkspaceDocs.length === 0 && (
+                            <p className="text-xs text-text-soft text-center py-4">{t('docset.searchPlaceholder')}</p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2">
-                        <div className="text-xs text-text-soft">{t('docset.selectedTitle', { count: docsetMembers.length })}</div>
+                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">
+                            {t('docset.selectedTitle', { count: docsetMembers.length })}
+                          </div>
+                        </div>
                         {docsetMembers.length === 0 ? (
-                          <p className="text-sm text-text-soft">{t('docset.emptySelection')}</p>
+                          <div className="flex flex-col items-center justify-center py-5 text-text-soft">
+                            <Package className="w-5 h-5 mb-1.5 opacity-40" />
+                            <p className="text-xs">{t('docset.emptySelection')}</p>
+                          </div>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-1.5 max-h-56 overflow-y-auto overscroll-contain pr-1">
                             {docsetMembers
                               .slice()
                               .sort((a, b) => a.sort_order - b.sort_order)
                               .map((m, idx) => {
                                 const doc = workspaceDocs.find((d) => d.id === m.document_id);
                                 return (
-                                  <div key={`${m.document_id}_${idx}`} className="flex flex-wrap items-center gap-2 p-2 border border-border rounded-md bg-surface">
-                                    <span className="text-sm text-text min-w-[180px] truncate flex-1">{doc?.title || m.document_id}</span>
+                                  <div key={`${m.document_id}_${idx}`} className="flex items-center gap-2 p-2 border border-border rounded-md bg-surface">
+                                    <span className="text-[11px] font-medium text-text-soft w-5 text-center flex-shrink-0">{idx + 1}</span>
+                                    <span className="text-sm text-text truncate flex-1 min-w-0">{doc?.title || m.document_id}</span>
                                     <select
                                       value={m.role}
                                       onChange={(e) => updateDocsetMemberRole(m.document_id, e.target.value)}
-                                      className="px-2 py-1 border border-border rounded-md bg-surface text-xs text-text"
+                                      className="px-2 py-1 border border-border rounded-md bg-surface-alt text-xs text-text flex-shrink-0 cursor-pointer"
                                     >
                                       {bundleSchemaRoles.length > 0
                                         ? bundleSchemaRoles.map((r) => (
@@ -2043,11 +2079,28 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                                           </>
                                         )}
                                     </select>
-                                    <Button size="sm" variant="ghost" onClick={() => moveDocsetMember(m.document_id, 'up')} disabled={idx === 0}>↑</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => moveDocsetMember(m.document_id, 'down')} disabled={idx === docsetMembers.length - 1}>↓</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => removeDocumentFromDocset(m.document_id)}>
-                                      {t('docset.remove')}
-                                    </Button>
+                                    <div className="flex items-center flex-shrink-0">
+                                      <button
+                                        onClick={() => moveDocsetMember(m.document_id, 'up')}
+                                        disabled={idx === 0}
+                                        className="p-1 rounded hover:bg-surface-alt disabled:opacity-30 transition-colors"
+                                      >
+                                        <svg className="w-3.5 h-3.5 text-text-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M5 15l7-7 7 7" /></svg>
+                                      </button>
+                                      <button
+                                        onClick={() => moveDocsetMember(m.document_id, 'down')}
+                                        disabled={idx === docsetMembers.length - 1}
+                                        className="p-1 rounded hover:bg-surface-alt disabled:opacity-30 transition-colors"
+                                      >
+                                        <svg className="w-3.5 h-3.5 text-text-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
+                                      </button>
+                                    </div>
+                                    <button
+                                      onClick={() => removeDocumentFromDocset(m.document_id)}
+                                      className="p-1 rounded hover:bg-error/10 transition-colors flex-shrink-0"
+                                    >
+                                      <X className="w-3.5 h-3.5 text-error/70" />
+                                    </button>
                                   </div>
                                 );
                               })}
@@ -2058,11 +2111,11 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <div className="text-xs text-text-soft mb-1">{t('docset.primaryDocument')}</div>
+                        <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('docset.primaryDocument')}</div>
                         <select
                           value={docsetPrimaryDocumentId}
                           onChange={(e) => setDocsetPrimaryDocumentId(e.target.value)}
-                          className="w-full px-2 py-2 border border-border rounded-md bg-surface text-sm text-text"
+                          className="w-full px-2.5 py-2 border border-border rounded-md bg-surface-alt text-sm text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
                         >
                           {docsetMembers.map((m) => {
                             const doc = workspaceDocs.find((d) => d.id === m.document_id);
@@ -2075,7 +2128,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                         </select>
                       </div>
                       <div>
-                        <div className="text-xs text-text-soft mb-1">{t('docset.precedencePolicy')}</div>
+                        <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('docset.precedencePolicy')}</div>
                         <ScholarSelect
                           value={docsetPrecedencePolicy}
                           onChange={(e) => setDocsetPrecedencePolicy(e.target.value as 'manual' | 'primary_first' | 'latest_wins')}
@@ -2088,47 +2141,57 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       </div>
                     </div>
 
-                    <label className="flex items-center gap-2 text-sm text-text">
-                      <input
-                        type="checkbox"
-                        checked={saveDocset}
-                        onChange={(e) => setSaveDocset(e.target.checked)}
-                      />
-                      {t('docset.saveToggle')}
+                    <label className="flex items-center gap-2.5 text-sm text-text cursor-pointer group">
+                      <div className="relative flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={saveDocset}
+                          onChange={(e) => setSaveDocset(e.target.checked)}
+                          className="peer sr-only"
+                        />
+                        <div className="w-8 h-[18px] rounded-full bg-border peer-checked:bg-accent transition-colors" />
+                        <div className="absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-3.5" />
+                      </div>
+                      <span className="text-sm">{t('docset.saveToggle')}</span>
                     </label>
                     {saveDocset && (
                       <input
                         value={docsetName}
                         onChange={(e) => setDocsetName(e.target.value)}
                         placeholder={t('docset.namePlaceholder')}
-                        className="w-full px-3 py-2 rounded-md border border-border bg-surface text-sm text-text"
+                        className="w-full px-3 py-2 rounded-md border border-border bg-surface text-sm text-text placeholder:text-text-soft/50 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
                       />
                     )}
 
                     {docsetIssues.length > 0 && (
-                      <div className="p-2 border border-warning/40 bg-warning/10 rounded-scholar text-xs text-warning space-y-1">
-                        {docsetIssues.map((issue, idx) => (
-                          <p key={`${issue}_${idx}`}>• {issue}</p>
-                        ))}
+                      <div className="flex items-start gap-2.5 p-3 border border-highlight/30 bg-highlight/5 rounded-scholar">
+                        <AlertTriangle className="w-4 h-4 text-highlight flex-shrink-0 mt-0.5" />
+                        <div className="space-y-1 text-xs">
+                          {docsetIssues.map((issue, idx) => (
+                            <p key={`${issue}_${idx}`} className="text-text">{issue}</p>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="flex items-center gap-2 text-sm text-text-soft">
-                    {selectedPlaybookId && (
-                      <Badge size="sm">
-                        <BookOpen className="w-3 h-3 mr-1" />
-                        {playbooks.find((p) => p.id === selectedPlaybookId)?.name || t('runs.defaultLabel')}
-                      </Badge>
-                    )}
-                    {effectiveScope === 'bundle' && (
-                      <Badge size="sm" variant={saveDocset || selectedBundleId ? 'success' : 'warning'}>
-                        {saveDocset || selectedBundleId ? t('runs.scopeDocsetSaved') : t('runs.scopeDocsetUnsaved')}
-                      </Badge>
-                    )}
-                  </div>
+                <div className="pt-3 border-t border-border space-y-3">
+                  {(selectedPlaybookId || effectiveScope === 'bundle') && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedPlaybookId && (
+                        <Badge size="sm">
+                          <BookOpen className="w-3 h-3 mr-1" />
+                          {playbooks.find((p) => p.id === selectedPlaybookId)?.name || t('runs.defaultLabel')}
+                        </Badge>
+                      )}
+                      {effectiveScope === 'bundle' && (
+                        <Badge size="sm" variant={saveDocset || selectedBundleId ? 'success' : 'warning'}>
+                          {saveDocset || selectedBundleId ? t('runs.scopeDocsetSaved') : t('runs.scopeDocsetUnsaved')}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                   <Button
                     onClick={() => {
                       if (!isAnalyzing) analyzeOnce();
@@ -2136,19 +2199,20 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                     variant="primary"
                     disabled={isAnalyzing || (effectiveScope === 'bundle' && docsetIssues.length > 0)}
                     data-tour="contract-analyze"
+                    className="w-full justify-center"
                   >
                     {isAnalyzing ? t('docset.running') : t('docset.run')}
                   </Button>
                 </div>
 
                 {/* Run Settings (per-run; does not require duplicating templates) */}
-                <div className="pt-3 border-t border-border space-y-2">
-                  <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">
+                <div className="pt-3 border-t border-border space-y-2.5">
+                  <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">
                     {t('runSettings.title')}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <div className="text-xs text-text-soft mb-1">{t('runSettings.language')}</div>
+                      <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('runSettings.language')}</div>
                       <ScholarSelect
                         value={runLanguage}
                         onChange={(e) => setRunLanguage(e.target.value as 'auto' | 'en' | 'ar')}
@@ -2160,7 +2224,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       />
                     </div>
                     <div>
-                      <div className="text-xs text-text-soft mb-1">{t('runSettings.strictness')}</div>
+                      <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('runSettings.strictness')}</div>
                       <ScholarSelect
                         value={runStrictness}
                         onChange={(e) => setRunStrictness(e.target.value as 'auto' | 'default' | 'strict')}
@@ -2172,7 +2236,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                       />
                     </div>
                   </div>
-                  <div className="text-xs text-text-soft">
+                  <div className="text-[11px] text-text-soft">
                     {t('runSettings.caption')}
                   </div>
                 </div>
