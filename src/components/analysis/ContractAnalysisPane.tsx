@@ -1936,7 +1936,9 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                   </div>
                   {enforcedPlaybookScope !== 'either' && (
                     <p className="text-xs text-text-soft">
-                      {t('docset.scopeEnforced', { scope: enforcedPlaybookScope })}
+                      {t('docset.scopeEnforced', {
+                        scope: enforcedPlaybookScope === 'single' ? t('docset.scopeSingle') : t('docset.scopeDocset'),
+                      })}
                     </p>
                   )}
                 </div>
