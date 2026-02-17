@@ -334,6 +334,16 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     const pb = (snapshot?.pack as any)?.playbook as any;
     const raw = Array.isArray(pb?.modules_enabled) ? pb.modules_enabled : Array.isArray(pb?.modules) ? pb.modules : null;
     const set = new Set<string>((raw || []).map((x: any) => String(x || '').trim()).filter(Boolean));
+    const core = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
+    const hasCoreInSet = core.some((id) => set.has(id));
+    if (!hasCoreInSet) {
+      // Backward-safe recovery for snapshots where modules_enabled was accidentally written with only custom module ids.
+      if ((snapshot?.variables || []).length > 0) set.add('variables');
+      if ((snapshot?.clauses || []).length > 0) set.add('clauses');
+      if ((snapshot?.obligations || []).length > 0) set.add('obligations');
+      if ((snapshot?.risks || []).length > 0) set.add('risks');
+      if ((snapshot?.obligations || []).some((o: any) => !!o?.due_at)) set.add('deadlines');
+    }
     if (set.size === 0) return defaults;
     // Dependency rules (match backend intent)
     if (set.has('deadlines')) set.add('variables');
