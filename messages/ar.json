@@ -694,25 +694,25 @@
   },
   "contractAnalysis": {
     "runSettings": {
-      "title": "إعدادات التشغيل",
-      "caption": "تُطبّق هذه الإعدادات على هذا التشغيل فقط ولا تتطلب نسخ القالب.",
+      "title": "إعدادات التحليل",
+      "caption": "تُطبّق هذه الإعدادات على هذا التحليل فقط ولا تتطلب نسخ القالب.",
       "language": "لغة المخرجات",
-      "strictness": "درجة التحفّظ",
+      "strictness": "درجة الدقة",
       "auto": "تلقائي",
       "english": "الإنجليزية",
       "arabic": "العربية",
       "default": "افتراضي",
-      "strict": "تحفّظ أعلى"
+      "strict": "صارم"
     },
     "playbook": {
       "optional": "القالب (اختياري)",
-      "manage": "إدارة",
+      "manage": "إدارة القوالب",
       "label": "القالب",
       "defaultRenewalPack": "الافتراضي (حزمة التجديد)",
       "zohalTemplates": "قوالب زحل",
       "yourTemplates": "قوالبك",
-      "loadingTemplates": "جاري تحميل القوالب...",
-      "templatesAutoCreated": "سيتم إنشاء القوالب تلقائياً."
+      "loadingTemplates": "جارٍ تحميل القوالب…",
+      "templatesAutoCreated": "ستُنشأ القوالب تلقائياً."
     },
     "reports": {
       "savedToWorkspace": "تم حفظ التقرير في مساحة العمل ← التقارير.",
@@ -722,11 +722,11 @@
       "reanalyze": "إعادة التحليل"
     },
     "runs": {
-      "title": "التشغيلات",
-      "loading": "جارٍ تحميل التشغيلات...",
-      "recentCount": "{count} تشغيل حديث",
-      "empty": "لا توجد تشغيلات بعد",
-      "newRun": "تشغيل جديد",
+      "title": "التحليلات",
+      "loading": "جارٍ تحميل التحليلات…",
+      "recentCount": "{count} تحليل سابق",
+      "empty": "لا توجد تحليلات بعد",
+      "newRun": "تحليل جديد",
       "chat": "المحادثة",
       "defaultLabel": "تحليل العقد",
       "scopeSingle": "مستند واحد",
@@ -735,43 +735,43 @@
       "scopeDocsetSaved": "مجموعة محفوظة",
       "scopeDocsetUnsaved": "مجموعة غير محفوظة",
       "unsaved": "غير محفوظة",
-      "historicalReadOnly": "أنت تعرض لقطة تشغيل سابقة. التعديل معطّل في وضع القراءة فقط.",
-      "selectedStatus": "التشغيل المحدد حالته {status}. سيتم عرض التقدم المباشر عند توفره."
+      "historicalReadOnly": "تعرض نتائج تحليل سابق. التعديل غير متاح في وضع القراءة.",
+      "selectedStatus": "حالة التحليل المحدد: {status}. يُعرض التقدّم المباشر عند توفّره."
     },
     "docset": {
-      "templateHelp": "اختر قالب هذا التشغيل.",
+      "templateHelp": "اختر القالب المناسب لهذا التحليل.",
       "scopeTitle": "النطاق",
       "scopeSingle": "مستند واحد",
       "scopeDocset": "مجموعة مستندات",
-      "scopeEnforced": "هذا القالب يفرض النطاق: {scope}",
+      "scopeEnforced": "هذا القالب يتطلب: {scope}",
       "title": "مجموعة المستندات",
-      "help": "أنشئ مجموعة مستندات متعددة لهذا التشغيل.",
-      "savedPickerPlaceholder": "استخدام مجموعة محفوظة",
+      "help": "حدّد المستندات التي يشملها هذا التحليل.",
+      "savedPickerPlaceholder": "اختيار مجموعة محفوظة",
       "manageSaved": "إدارة المحفوظ",
       "unnamed": "مجموعة بدون اسم",
-      "searchPlaceholder": "ابحث في مستندات مساحة العمل",
-      "workspaceRoot": "جذر مساحة العمل",
+      "searchPlaceholder": "البحث في مستندات مساحة العمل",
+      "workspaceRoot": "المجلد الرئيسي",
       "remove": "إزالة",
       "add": "إضافة",
       "selectedTitle": "{count} محدد",
-      "emptySelection": "لا توجد مستندات محددة بعد.",
+      "emptySelection": "لم يتم تحديد مستندات بعد.",
       "primaryDocument": "المستند الأساسي",
-      "precedencePolicy": "سياسة الأولوية",
-      "saveToggle": "حفظ هذه المجموعة",
+      "precedencePolicy": "أولوية المستندات",
+      "saveToggle": "حفظ هذه المجموعة لاستخدامها لاحقاً",
       "namePlaceholder": "اسم المجموعة (اختياري)",
-      "run": "تشغيل التحليل",
+      "run": "بدء التحليل",
       "running": "جارٍ التحليل…",
       "precedence": {
         "manual": "يدوي",
         "primaryFirst": "الأساسي أولاً",
-        "latestWins": "الأحدث يفوز"
+        "latestWins": "الأحدث يتقدّم"
       },
       "validation": {
-        "minTwoDocuments": "يجب أن تحتوي مجموعة المستندات على مستندين على الأقل.",
+        "minTwoDocuments": "يجب أن تحتوي المجموعة على مستندين على الأقل.",
         "currentDocumentRequired": "يجب تضمين المستند الحالي في المجموعة.",
-        "missingRequiredRole": "الدور المطلوب مفقود: {role}",
-        "roleMustBeUnique": "يجب أن يكون الدور فريداً: {role}",
-        "invalidDocset": "إعداد مجموعة المستندات غير صالح."
+        "missingRequiredRole": "دور مطلوب مفقود: {role}",
+        "roleMustBeUnique": "لا يمكن تكرار هذا الدور: {role}",
+        "invalidDocset": "إعداد المجموعة غير صالح."
       }
     },
     "tabs": {
@@ -786,28 +786,28 @@
       "exceptions": "الاستثناءات"
     },
     "empty": {
-      "notAnalyzedTitle": "لم يتم التحليل بعد",
-      "notAnalyzedDescription": "لا يوجد تحليل محفوظ لهذا العقد. شغّل التحليل مرة واحدة ثم يمكنك فتحه لاحقاً في أي وقت.",
+      "notAnalyzedTitle": "لم يُحلَّل بعد",
+      "notAnalyzedDescription": "لا يوجد تحليل محفوظ لهذا العقد. ابدأ التحليل مرة ويمكنك الرجوع إليه في أي وقت.",
       "noVariablesSnapshotTitle": "لا توجد لقطة متغيرات",
-      "noVariablesSnapshotDescription": "يعتمد هذا العرض على اللقطة القانونية (snapshot) الرسمية. أعد تشغيل التحليل إذا لزم الأمر.",
+      "noVariablesSnapshotDescription": "يعتمد هذا العرض على اللقطة الرسمية. أعِد التحليل إذا لزم الأمر.",
       "noVariablesTitle": "لا توجد متغيرات",
-      "noVariablesDescription": "لم يتم حفظ أي متغيرات في اللقطة القانونية الرسمية.",
+      "noVariablesDescription": "لم يتم استخراج متغيرات من هذا التحليل.",
       "noClausesTitle": "لا توجد بنود",
-      "noClausesDescription": "لم يتم حفظ أي بنود لهذا التحليل.",
+      "noClausesDescription": "لم يتم استخراج بنود من هذا التحليل.",
       "noObligationsTitle": "لا توجد التزامات",
-      "noObligationsDescription": "لم يتم حفظ أي التزامات لهذا التحليل.",
-      "noDeadlinesTitle": "لا توجد مواعيد نهائية",
-      "noDeadlinesDescription": "لم يتم العثور على تواريخ عقد أو التزامات لها مواعيد استحقاق.",
+      "noObligationsDescription": "لم يتم استخراج التزامات من هذا التحليل.",
+      "noDeadlinesTitle": "لا توجد مواعيد",
+      "noDeadlinesDescription": "لم يُعثر على تواريخ أو مواعيد استحقاق في هذا العقد.",
       "noRisksTitle": "لا توجد مخاطر",
-      "noRisksDescription": "لم يتم حفظ أي مخاطر لهذا التحليل."
+      "noRisksDescription": "لم يتم رصد مخاطر في هذا التحليل."
     },
     "needsReview": {
-      "title": "بحاجة إلى مراجعة",
-      "subtitle": "فحوصات playbook الحتمية / نتائج المُدقِّق المحسوبة بعد مرحلة الدمج."
+      "title": "تحتاج مراجعة",
+      "subtitle": "نتائج الفحص الآلي والتدقيق بعد اكتمال التحليل."
     },
     "privacyMode": {
-      "sanitizedTitle": "مستند مُنقّى (وضع الخصوصية)",
-      "sanitizedSubtitle": "يتم إخفاء بعض الحقول قبل المعالجة السحابية. لا تقم بتخمين المحتوى المحجوب."
+      "sanitizedTitle": "مستند مُنقّح (وضع الخصوصية)",
+      "sanitizedSubtitle": "تم إخفاء بعض الحقول قبل المعالجة. لا تحاول تخمين المحتوى المحجوب."
     },
     "progress": {
       "title": "تحليل العقد قيد التنفيذ",
