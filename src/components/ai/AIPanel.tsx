@@ -28,6 +28,7 @@ interface AIPanelProps {
   currentPage?: number;
   onClose: () => void;
   documentType?: DocumentType;
+  onOpenAnalysis?: () => void;
 }
 
 // Tab types matching iOS RightPanelView
@@ -55,6 +56,7 @@ export function AIPanel({
   currentPage,
   onClose,
   documentType,
+  onOpenAnalysis,
 }: AIPanelProps) {
   // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
   // any callbacks depending on it will change every render, which can re-trigger
@@ -159,8 +161,12 @@ export function AIPanel({
   }, [documentId, loadPinnedNotes, loadConversationHistory]);
 
   const goToContractAnalysis = useCallback(() => {
+    if (onOpenAnalysis) {
+      onOpenAnalysis();
+      return;
+    }
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
-  }, [router, workspaceId, documentId]);
+  }, [onOpenAnalysis, router, workspaceId, documentId]);
 
   const handleExplain = useCallback(
     async (text: string, requestType: string = 'explain') => {
@@ -415,7 +421,7 @@ export function AIPanel({
   }, []);
 
   return (
-    <div className="w-96 flex flex-col bg-surface h-full">
+    <div className="w-full flex flex-col bg-surface h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">

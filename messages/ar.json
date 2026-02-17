@@ -720,6 +720,19 @@
     "actions": {
       "reanalyze": "إعادة التحليل"
     },
+    "runs": {
+      "title": "التشغيلات",
+      "loading": "جارٍ تحميل التشغيلات...",
+      "recentCount": "{count} تشغيل حديث",
+      "empty": "لا توجد تشغيلات بعد",
+      "newRun": "تشغيل جديد",
+      "chat": "المحادثة",
+      "defaultLabel": "تحليل العقد",
+      "scopeSingle": "مستند واحد",
+      "scopeBundle": "حزمة",
+      "historicalReadOnly": "أنت تعرض لقطة تشغيل سابقة. التعديل معطّل في وضع القراءة فقط.",
+      "selectedStatus": "التشغيل المحدد حالته {status}. سيتم عرض التقدم المباشر عند توفره."
+    },
     "tabs": {
       "overview": "نظرة عامة",
       "variables": "المتغيرات",
@@ -806,7 +819,8 @@
       "generateReportFailed": "فشل إنشاء التقرير",
       "createTaskFailed": "فشل إنشاء المهمة",
       "snapshotVersionMissing": "تعذر العثور على كائن التحقق أو الإصدار. أعد تشغيل التحليل أولاً.",
-      "snapshotPatchFailed": "فشل تطبيق تحديث اللقطة."
+      "snapshotPatchFailed": "فشل تطبيق تحديث اللقطة.",
+      "historicalRunReadOnly": "التشغيلات السابقة للقراءة فقط. انتقل إلى أحدث تشغيل للتعديل."
     }
   },
   "marketingHome": {

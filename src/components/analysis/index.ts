@@ -6,3 +6,4 @@ export * from './AtAGlanceSummary';
 export * from './OverviewTab';
 export * from './GenericModuleTab';
 export * from './DeadlinesTab';
+export * from './ContractAnalysisPane';

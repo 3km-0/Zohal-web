@@ -720,6 +720,19 @@
     "actions": {
       "reanalyze": "Re-analyze"
     },
+    "runs": {
+      "title": "Runs",
+      "loading": "Loading runs...",
+      "recentCount": "{count} recent run(s)",
+      "empty": "No runs yet",
+      "newRun": "New Run",
+      "chat": "Chat",
+      "defaultLabel": "Contract analysis",
+      "scopeSingle": "Single",
+      "scopeBundle": "Bundle",
+      "historicalReadOnly": "You are viewing a historical run snapshot. Editing is disabled in read-only mode.",
+      "selectedStatus": "Selected run is {status}. Live progress is shown when available."
+    },
     "tabs": {
       "overview": "Overview",
       "variables": "Variables",
@@ -806,7 +819,8 @@
       "generateReportFailed": "Failed to generate report",
       "createTaskFailed": "Failed to create task",
       "snapshotVersionMissing": "Missing verification object or version. Re-run analysis first.",
-      "snapshotPatchFailed": "Failed to apply snapshot update."
+      "snapshotPatchFailed": "Failed to apply snapshot update.",
+      "historicalRunReadOnly": "Historical runs are read-only. Switch to the latest run to edit."
     }
   },
   "marketingHome": {
