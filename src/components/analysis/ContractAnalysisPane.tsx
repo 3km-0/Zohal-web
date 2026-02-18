@@ -392,8 +392,10 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     const out: Array<{ id: string; label: string; icon: any; total: number | null; attentionCount: number }> = [
       { id: 'overview', label: t('tabs.overview'), icon: FileText, total: null, attentionCount: 0 },
     ];
+    let reviewTotal = 0;
     if (enabledModules.has('variables')) {
       const visibleVariables = (snapshot?.variables || []).filter((v) => !rejectedSets.variables.has(v.id));
+      reviewTotal += visibleVariables.filter((v) => v.verification_state === 'needs_review').length;
       out.push({
         id: 'variables',
         label: t('tabs.variables'),
@@ -410,6 +412,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     }
     if (enabledModules.has('obligations')) {
       const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
+      reviewTotal += attention.obligations;
       out.push({
         id: 'obligations',
         label: t('tabs.obligations'),
@@ -420,6 +423,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     }
     if (enabledModules.has('deadlines')) {
       const visibleDeadlines = deadlines.filter((o) => !rejectedSets.obligations.has(o.id));
+      reviewTotal += attention.deadlines;
       out.push({ id: 'deadlines', label: t('tabs.deadlines'), icon: Calendar, total: visibleDeadlines.length, attentionCount: attention.deadlines });
     }
     if (enabledModules.has('risks')) {
@@ -436,11 +440,22 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     if (v3Enabled || v3Verdicts.length > 0) {
       const visibleVerdicts = v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)));
       const attentionCount = visibleVerdicts.filter((v) => String(v?.status || '') !== 'pass').length;
+      reviewTotal += attentionCount;
       out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: Scale, total: visibleVerdicts.length, attentionCount });
     }
     if (v3Enabled || v3Exceptions.length > 0) {
       const visibleExceptions = v3Exceptions.filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`)));
+      reviewTotal += visibleExceptions.length;
       out.push({ id: 'exceptions', label: t('tabs.exceptions'), icon: AlertTriangle, total: visibleExceptions.length, attentionCount: visibleExceptions.length });
+    }
+    if (reviewTotal > 0) {
+      out.splice(1, 0, {
+        id: 'review',
+        label: t('tabs.review'),
+        icon: ShieldAlert,
+        total: reviewTotal,
+        attentionCount: reviewTotal,
+      });
     }
     out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: Puzzle, total: null, attentionCount: 0 })));
     return out;
@@ -2379,6 +2394,72 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                 isRunningCompliance={isRunningCompliance}
                 proofHref={proofHref}
               />
+            )}
+
+            {tab === 'review' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-scholar border border-border bg-surface">
+                  <div className="text-sm font-bold text-text">{t('needsReview.title')}</div>
+                  <p className="text-xs text-text-soft mt-1">{t('needsReview.subtitle')}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setTab('variables')}>
+                      {t('tabs.variables')}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setTab('obligations')}>
+                      {t('tabs.obligations')}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setTab('deadlines')}>
+                      {t('tabs.deadlines')}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setTab('verdicts')}>
+                      {t('tabs.verdicts')}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setTab('exceptions')}>
+                      {t('tabs.exceptions')}
+                    </Button>
+                  </div>
+                </div>
+
+                <GenericModuleTab
+                  moduleId="review:variables"
+                  moduleTitle={t('tabs.variables')}
+                  emptyTitle={t('empty.noVariablesTitle')}
+                  emptyDescription={t('empty.noVariablesDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  onReject={(id) => rejectItem('variable', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={(snapshot?.variables || [])
+                    .filter((v) => !rejectedSets.variables.has(v.id))
+                    .filter((v) => v.verification_state === 'needs_review')
+                    .map((v) => ({
+                      id: v.id,
+                      title: v.display_name,
+                      subtitle: v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`,
+                      confidence: v.ai_confidence as AIConfidence,
+                      evidence: v.evidence,
+                      sourceHref: proofHref(v.evidence),
+                      sourcePage: v.evidence?.page_number ?? undefined,
+                      icon: <Table2 className="w-4 h-4" />,
+                      toolAction: { type: 'edit' as const, label: 'Edit' },
+                      needsAttention: true,
+                      attentionLabel: 'Needs Review',
+                      children: (v as any).verifier?.status ? (
+                        <div className="text-xs text-text-soft space-y-1">
+                          <div>
+                            Verifier: {String((v as any).verifier.status).toUpperCase()}
+                            {(v as any).verifier?.semantic?.status
+                              ? ` · Semantic: ${String((v as any).verifier.semantic.status).toUpperCase()}`
+                              : ''}
+                            {(v as any).verifier?.judge?.status
+                              ? ` · Judge: ${String((v as any).verifier.judge.status).toUpperCase()}`
+                              : ''}
+                          </div>
+                        </div>
+                      ) : undefined,
+                    }))}
+                />
+              </div>
             )}
 
             {tab === 'variables' && (

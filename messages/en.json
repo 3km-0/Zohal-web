@@ -776,6 +776,7 @@
     },
     "tabs": {
       "overview": "Overview",
+      "review": "Review",
       "variables": "Variables",
       "clauses": "Clauses",
       "obligations": "Obligations",
