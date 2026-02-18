@@ -491,6 +491,77 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
 
     const parsed = parseSnapshot(data.snapshot_json, sourceDocId);
     setSnapshot(parsed);
+    applySnapshotToCoreModules(parsed);
+  }
+
+  function applySnapshotToCoreModules(parsed: EvidenceGradeSnapshot | null) {
+    // Snapshot-canonical rendering: use snapshot arrays when available.
+    // Projections remain as accelerators and fallback for older runs / partial snapshots.
+    if (!parsed || !contract?.id) return;
+
+    if (Array.isArray(parsed.clauses) && parsed.clauses.length > 0) {
+      const mapped: LegalClause[] = parsed.clauses.map((c) => ({
+        id: String(c.id),
+        contract_id: String(contract.id),
+        clause_type: String(c.clause_type || 'other'),
+        clause_title: c.clause_title ? String(c.clause_title) : undefined,
+        clause_number: c.clause_number ? String(c.clause_number) : undefined,
+        text: String(c.text || ''),
+        risk_level: (c.risk_level === 'high' || c.risk_level === 'medium' || c.risk_level === 'low') ? c.risk_level : 'low',
+        page_number: c.evidence?.page_number,
+        start_page: undefined,
+        end_page: undefined,
+        char_start: c.evidence?.char_start,
+        char_end: c.evidence?.char_end,
+        is_missing_standard_protection: Boolean(c.is_missing_standard_protection),
+        created_at: contract.created_at,
+      }));
+      setClauses(mapped);
+    }
+
+    if (Array.isArray(parsed.obligations) && parsed.obligations.length > 0) {
+      const mapped: LegalObligation[] = parsed.obligations.map((o) => {
+        const vState = String(o.verification_state || 'extracted');
+        const confidenceState: 'extracted' | 'needs_review' | 'confirmed' =
+          vState === 'needs_review' ? 'needs_review' : 'extracted';
+        const conf = o.ai_confidence === 'high' || o.ai_confidence === 'medium' || o.ai_confidence === 'low' ? o.ai_confidence : undefined;
+        return {
+          id: String(o.id),
+          contract_id: String(contract.id),
+          task_id: undefined,
+          obligation_type: String(o.obligation_type || 'other'),
+          due_at: o.due_at ? String(o.due_at) : undefined,
+          recurrence: o.recurrence ? String(o.recurrence) : undefined,
+          summary: o.summary ? String(o.summary) : undefined,
+          action: o.action ? String(o.action) : undefined,
+          condition: o.condition ? String(o.condition) : undefined,
+          responsible_party: o.responsible_party ? String(o.responsible_party) : undefined,
+          confidence_state: confidenceState,
+          confidence: conf,
+          source_clause_id: undefined,
+          page_number: o.evidence?.page_number,
+          user_notes: undefined,
+          confirmed_at: undefined,
+          confirmed_by: undefined,
+          created_at: contract.created_at,
+        };
+      });
+      setObligations(mapped);
+    }
+
+    if (Array.isArray(parsed.risks) && parsed.risks.length > 0) {
+      const mapped: LegalRiskFlag[] = parsed.risks.map((r) => ({
+        id: String(r.id),
+        contract_id: String(contract.id),
+        severity: (r.severity === 'critical' || r.severity === 'high' || r.severity === 'medium' || r.severity === 'low') ? r.severity : 'low',
+        description: String(r.description || ''),
+        explanation: r.explanation ? String(r.explanation) : undefined,
+        resolved: Boolean(r.resolved),
+        page_number: r.evidence?.page_number ?? null,
+        created_at: contract.created_at,
+      }));
+      setRisks(mapped);
+    }
   }
 
   async function loadRuns(options?: { keepSelection?: boolean }) {
@@ -675,6 +746,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
           if (!vovErr && vov?.snapshot_json) {
             const parsed = parseSnapshot(vov.snapshot_json, documentId);
             setSnapshot(parsed);
+            applySnapshotToCoreModules(parsed);
           }
         } else {
           setCurrentVersionId(null);
