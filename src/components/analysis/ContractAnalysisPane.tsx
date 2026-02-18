@@ -433,10 +433,6 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
       out.push({ id: 'risks', label: t('tabs.risks'), icon: ShieldAlert, total: totalRisks, attentionCount: attention.risks });
     }
     const v3Enabled = !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled;
-    if (v3Enabled || v3Records.length > 0) {
-      const visibleRecords = v3Records.filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`)));
-      out.push({ id: 'records', label: t('tabs.records'), icon: Layers, total: visibleRecords.length, attentionCount: 0 });
-    }
     if (v3Enabled || v3Verdicts.length > 0) {
       const visibleVerdicts = v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)));
       const attentionCount = visibleVerdicts.filter((v) => String(v?.status || '') !== 'pass').length;
@@ -1685,29 +1681,64 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     );
   }
 
-  async function addFindingRecord() {
-    const title = window.prompt(t('v3.addFindingPromptTitle'));
-    if (!title || !title.trim()) return;
-    const summary = window.prompt(t('v3.addFindingPromptSummary')) || '';
+  async function addManualRisk() {
+    const description = window.prompt(t('v3.addRiskPromptDescription'));
+    if (!description || !description.trim()) return;
+    const severity = (window.prompt(t('v3.addRiskPromptSeverity')) || 'medium').trim().toLowerCase();
+    const explanation = (window.prompt(t('v3.addRiskPromptExplanation')) || '').trim();
     await applySnapshotPatches(
       [
         {
-          op: 'add_record',
+          op: 'add_risk',
           value: {
-            record_type: 'finding',
-            title: title.trim(),
-            summary: summary.trim() || undefined,
-            severity: 'medium',
+            severity,
+            description: description.trim(),
+            explanation: explanation || undefined,
           },
         },
       ],
-      t('v3.addFindingChangeNote')
+      t('v3.addRiskChangeNote')
     );
   }
 
-  async function updateRecordStatus(recordId: string, status: 'confirmed' | 'rejected' | 'resolved') {
-    const op = status === 'confirmed' ? 'confirm_record' : status === 'rejected' ? 'reject_record' : 'resolve_record';
-    await applySnapshotPatches([{ op, target_id: recordId }], `${t('v3.changeNotePrefix')}: ${status}`);
+  async function addManualObligation() {
+    const summary = window.prompt(t('v3.addObligationPromptSummary'));
+    if (!summary || !summary.trim()) return;
+    const obligationType = (window.prompt(t('v3.addObligationPromptType')) || 'other').trim().toLowerCase();
+    const dueAt = (window.prompt(t('v3.addObligationPromptDueAt')) || '').trim();
+    await applySnapshotPatches(
+      [
+        {
+          op: 'add_obligation',
+          value: {
+            obligation_type: obligationType || 'other',
+            summary: summary.trim(),
+            due_at: dueAt || undefined,
+          },
+        },
+      ],
+      t('v3.addObligationChangeNote')
+    );
+  }
+
+  async function addManualClause() {
+    const text = window.prompt(t('v3.addClausePromptText'));
+    if (!text || !text.trim()) return;
+    const clauseType = (window.prompt(t('v3.addClausePromptType')) || 'other').trim().toLowerCase();
+    const riskLevel = (window.prompt(t('v3.addClausePromptRisk')) || 'low').trim().toLowerCase();
+    await applySnapshotPatches(
+      [
+        {
+          op: 'add_clause',
+          value: {
+            clause_type: clauseType || 'other',
+            text: text.trim(),
+            risk_level: riskLevel || 'low',
+          },
+        },
+      ],
+      t('v3.addClauseChangeNote')
+    );
   }
 
   useEffect(() => {
@@ -2575,60 +2606,75 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
             )}
 
             {tab === 'clauses' && (
-              <GenericModuleTab
-                moduleId="clauses"
-                moduleTitle={t('tabs.clauses')}
-                emptyTitle={t('empty.noClausesTitle')}
-                emptyDescription={t('empty.noClausesDescription')}
-                workspaceId={workspaceId}
-                documentId={documentId}
-                groupBy="severity"
-                onReject={(id) => rejectItem('clause', id)}
-                isPatchingSnapshot={isPatchReadOnly}
-                items={(() => {
-                  const allClauses = snapshot?.clauses?.length
-                    ? snapshot.clauses.map((c) => ({
-                        id: c.id,
-                        title: c.clause_title || c.clause_type || 'Clause',
-                        subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
-                        body: c.text,
-                        severity: c.risk_level,
-                        evidence: c.evidence,
-                        sourceHref: proofHref(c.evidence),
-                        sourcePage: c.evidence?.page_number ?? undefined,
-                        icon: <ScrollText className="w-4 h-4" />,
-                        iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
-                      }))
-                    : clauses.map((c) => ({
-                        id: c.id,
-                        title: c.clause_title || c.clause_type || 'Clause',
-                        subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
-                        body: c.text,
-                        severity: c.risk_level,
-                        sourceHref: c.page_number
-                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent((c.text || '').slice(0, 120))}`
-                          : null,
-                        sourcePage: c.page_number ?? undefined,
-                        icon: <ScrollText className="w-4 h-4" />,
-                        iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
-                      }));
-                  return allClauses.filter((c) => !rejectedSets.clauses.has(c.id)) as GenericModuleItem[];
-                })()}
-              />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-text-soft">{t('empty.noClausesDescription')}</p>
+                  <Button size="sm" onClick={addManualClause} disabled={isPatchReadOnly || isPatchingSnapshot}>
+                    {t('v3.addClause')}
+                  </Button>
+                </div>
+                <GenericModuleTab
+                  moduleId="clauses"
+                  moduleTitle={t('tabs.clauses')}
+                  emptyTitle={t('empty.noClausesTitle')}
+                  emptyDescription={t('empty.noClausesDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  groupBy="severity"
+                  onReject={(id) => rejectItem('clause', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={(() => {
+                    const allClauses = snapshot?.clauses?.length
+                      ? snapshot.clauses.map((c) => ({
+                          id: c.id,
+                          title: c.clause_title || c.clause_type || 'Clause',
+                          subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
+                          body: c.text,
+                          severity: c.risk_level,
+                          evidence: c.evidence,
+                          sourceHref: proofHref(c.evidence),
+                          sourcePage: c.evidence?.page_number ?? undefined,
+                          icon: <ScrollText className="w-4 h-4" />,
+                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
+                        }))
+                      : clauses.map((c) => ({
+                          id: c.id,
+                          title: c.clause_title || c.clause_type || 'Clause',
+                          subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
+                          body: c.text,
+                          severity: c.risk_level,
+                          sourceHref: c.page_number
+                            ? `/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent((c.text || '').slice(0, 120))}`
+                            : null,
+                          sourcePage: c.page_number ?? undefined,
+                          icon: <ScrollText className="w-4 h-4" />,
+                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
+                        }));
+                    return allClauses.filter((c) => !rejectedSets.clauses.has(c.id)) as GenericModuleItem[];
+                  })()}
+                />
+              </div>
             )}
 
             {tab === 'obligations' && (
-              <GenericModuleTab
-                moduleId="obligations"
-                moduleTitle={t('tabs.obligations')}
-                emptyTitle={t('empty.noObligationsTitle')}
-                emptyDescription={t('empty.noObligationsDescription')}
-                workspaceId={workspaceId}
-                documentId={documentId}
-                groupBy="metadata"
-                onReject={(id) => rejectItem('obligation', id)}
-                isPatchingSnapshot={isPatchReadOnly}
-                items={(() => {
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-text-soft">{t('empty.noObligationsDescription')}</p>
+                  <Button size="sm" onClick={addManualObligation} disabled={isPatchReadOnly || isPatchingSnapshot}>
+                    {t('v3.addObligation')}
+                  </Button>
+                </div>
+                <GenericModuleTab
+                  moduleId="obligations"
+                  moduleTitle={t('tabs.obligations')}
+                  emptyTitle={t('empty.noObligationsTitle')}
+                  emptyDescription={t('empty.noObligationsDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  groupBy="metadata"
+                  onReject={(id) => rejectItem('obligation', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={(() => {
                   const confidenceMap: Record<string, AIConfidence> = { confirmed: 'high', extracted: 'medium', needs_review: 'low' };
                   const normalizedObligations = isHistoricalRunSelected && snapshot?.obligations?.length
                     ? snapshot.obligations.map((o) => ({
@@ -2701,8 +2747,9 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                         ),
                       };
                     }) as GenericModuleItem[];
-                })()}
-              />
+                  })()}
+                />
+              </div>
             )}
 
             {tab === 'deadlines' && (
@@ -2772,17 +2819,24 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
             )}
 
             {tab === 'risks' && (
-              <GenericModuleTab
-                moduleId="risks"
-                moduleTitle={t('tabs.risks')}
-                emptyTitle={t('empty.noRisksTitle')}
-                emptyDescription={t('empty.noRisksDescription')}
-                workspaceId={workspaceId}
-                documentId={documentId}
-                groupBy="severity"
-                onReject={(id) => rejectItem('risk', id)}
-                isPatchingSnapshot={isPatchReadOnly}
-                items={(() => {
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-text-soft">{t('empty.noRisksDescription')}</p>
+                  <Button size="sm" onClick={addManualRisk} disabled={isPatchReadOnly || isPatchingSnapshot}>
+                    {t('v3.addRisk')}
+                  </Button>
+                </div>
+                <GenericModuleTab
+                  moduleId="risks"
+                  moduleTitle={t('tabs.risks')}
+                  emptyTitle={t('empty.noRisksTitle')}
+                  emptyDescription={t('empty.noRisksDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  groupBy="severity"
+                  onReject={(id) => rejectItem('risk', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={(() => {
                   const severityConf: Record<string, AIConfidence> = { critical: 'high', high: 'high', medium: 'medium', low: 'low', unknown: 'medium' };
                   const allRisks = snapshot?.risks?.length
                     ? snapshot.risks.map((r) => ({
@@ -2811,98 +2865,8 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                         iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
                       }));
                   return allRisks.filter((r) => !rejectedSets.risks.has(r.id)) as GenericModuleItem[];
-                })()}
-              />
-            )}
-
-            {tab === 'records' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-text-soft">{t('v3.recordsSubtitle')}</p>
-                  <Button size="sm" onClick={addFindingRecord} disabled={isPatchingSnapshot}>
-                    {isPatchingSnapshot ? t('v3.saving') : t('v3.addFinding')}
-                  </Button>
-                </div>
-                {v3Records.filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`))).length === 0 ? (
-                  <EmptyState title={t('v3.noRecordsTitle')} description={t('v3.noRecordsDescription')} />
-                ) : (
-                  v3Records
-                    .filter((r, idx) => !rejectedSets.records.has(String(r?.id || `record_${idx}`)))
-                    .map((r, idx) => {
-                    const id = String(r?.id || `record_${idx}`);
-                    const status = String(r?.status || 'proposed');
-                    const severity = String(r?.severity || '').toLowerCase();
-                    const evidenceLinks = Array.isArray((r as any)?.evidence)
-                      ? ((r as any).evidence as any[])
-                          .slice(0, 8)
-                          .map((e) => ({
-                            page: typeof e?.page_number === 'number' ? e.page_number : null,
-                            quote: typeof e?.source_quote === 'string' ? e.source_quote : typeof e?.snippet === 'string' ? e.snippet : '',
-                            docId: typeof e?.document_id === 'string' ? e.document_id : documentId,
-                          }))
-                          .filter((e) => !!e.page && !!e.quote)
-                      : [];
-                    return (
-                      <Card key={id}>
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between gap-2">
-                            <span>{String(r?.title || r?.summary || r?.record_type || 'Record')}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge size="sm">{status}</Badge>
-                              {severity ? <Badge size="sm">{severity}</Badge> : null}
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {r?.summary ? <p className="text-sm text-text">{String(r.summary)}</p> : null}
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={isPatchingSnapshot || status === 'confirmed'}
-                              onClick={() => updateRecordStatus(id, 'confirmed')}
-                            >
-                              {t('v3.confirm')}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={isPatchingSnapshot || status === 'rejected'}
-                              onClick={() => updateRecordStatus(id, 'rejected')}
-                            >
-                              {t('v3.reject')}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={isPatchingSnapshot || status === 'resolved'}
-                              onClick={() => updateRecordStatus(id, 'resolved')}
-                            >
-                              {t('v3.resolve')}
-                            </Button>
-                          </div>
-                          {evidenceLinks.length > 0 ? (
-                            <ul className="space-y-2">
-                              {evidenceLinks.map((e, eidx) => (
-                                <li key={`${id}_ev_${eidx}`}>
-                                  <Link
-                                    href={`/workspaces/${workspaceId}/documents/${e.docId}?page=${e.page}&quote=${encodeURIComponent(
-                                      e.quote.slice(0, 160)
-                                    )}`}
-                                    className="text-sm font-semibold text-accent hover:underline"
-                                  >
-                                    Page {e.page}
-                                  </Link>
-                                  <div className="text-sm text-text-soft">“{e.quote}”</div>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                )}
+                  })()}
+                />
               </div>
             )}
 
