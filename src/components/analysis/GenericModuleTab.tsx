@@ -36,6 +36,7 @@ export interface GenericModuleTabProps {
   moduleId: string;
   moduleTitle: string;
   items: GenericModuleItem[];
+  layout?: 'cards' | 'table' | 'list' | 'timeline';
   groupBy?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -48,12 +49,16 @@ export interface GenericModuleTabProps {
   documentId: string;
   /** Additional header actions (e.g. add finding) */
   headerAction?: ReactNode;
+  /** Optional raw module result for recursive fallback rendering */
+  rawResult?: unknown;
+  rawSchema?: Record<string, unknown> | null;
 }
 
 export function GenericModuleTab({
   moduleId,
   moduleTitle,
   items,
+  layout,
   groupBy,
   emptyTitle,
   emptyDescription,
@@ -64,6 +69,7 @@ export function GenericModuleTab({
   workspaceId,
   documentId,
   headerAction,
+  rawResult,
 }: GenericModuleTabProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
@@ -113,6 +119,13 @@ export function GenericModuleTab({
   }
 
   if (items.length === 0) {
+    if (rawResult !== undefined && rawResult !== null) {
+      return (
+        <div className="rounded-scholar border border-border bg-surface p-3">
+          <RecursiveValue value={rawResult} depth={0} />
+        </div>
+      );
+    }
     return (
       <EmptyState
         title={emptyTitle || `No ${moduleTitle}`}
@@ -151,6 +164,7 @@ export function GenericModuleTab({
                 key={item.id}
                 className={cn(
                   'animate-fadeInUp',
+                  layout === 'list' && 'border border-border rounded-scholar px-2',
                   getSeverityBorderClass(item.severity) !== 'border-l-border' && 'border-l-[3px]',
                   getSeverityBorderClass(item.severity),
                   'rounded-r-scholar',
@@ -198,4 +212,45 @@ export function GenericModuleTab({
       ))}
     </div>
   );
+}
+
+function RecursiveValue({ value, depth }: { value: unknown; depth: number }) {
+  if (depth > 5) {
+    return <code className="text-xs text-text-soft">…</code>;
+  }
+  if (value === null || value === undefined) {
+    return <code className="text-xs text-text-soft">null</code>;
+  }
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return <span className="text-sm text-text break-words">{String(value)}</span>;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <code className="text-xs text-text-soft">[]</code>;
+    return (
+      <div className="space-y-2">
+        {value.slice(0, 100).map((item, idx) => (
+          <div key={idx} className="rounded-scholar border border-border/70 bg-surface-alt p-2">
+            <RecursiveValue value={item} depth={depth + 1} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) return <code className="text-xs text-text-soft">{'{}'}</code>;
+    return (
+      <div className="space-y-2">
+        {entries.slice(0, 120).map(([k, v]) => (
+          <div key={k} className="rounded-scholar border border-border/70 bg-surface-alt p-2">
+            <div className="text-xs font-semibold text-text-soft">{k}</div>
+            <div className="mt-1">
+              <RecursiveValue value={v} depth={depth + 1} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <code className="text-xs text-text-soft">{String(value)}</code>;
 }

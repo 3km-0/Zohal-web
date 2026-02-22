@@ -36,6 +36,20 @@ type PlaybookSpecV1 = {
     json_schema: Record<string, unknown>;
     enabled?: boolean;
     show_in_report?: boolean;
+    kind?: 'core' | 'custom';
+    ui_hints?: {
+      layout?: 'cards' | 'table' | 'list' | 'timeline';
+      title_field?: string;
+      subtitle_field?: string;
+      severity_field?: string;
+      date_field?: string;
+      group_by?: string;
+    };
+  }>;
+  verification_targets?: Array<{
+    module_id: string;
+    field_path: string;
+    severity?: 'warning' | 'blocker';
   }>;
   custom_modules?: Array<{
     id: string;
@@ -202,6 +216,24 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
           >,
           enabled: m?.enabled === false ? false : true,
           show_in_report: m?.show_in_report === true,
+          kind: m?.kind === 'core' || m?.kind === 'custom' ? m.kind : undefined,
+          ui_hints:
+            m?.ui_hints && typeof m.ui_hints === 'object' && !Array.isArray(m.ui_hints)
+              ? {
+                  layout:
+                    m.ui_hints.layout === 'cards' ||
+                    m.ui_hints.layout === 'table' ||
+                    m.ui_hints.layout === 'list' ||
+                    m.ui_hints.layout === 'timeline'
+                      ? m.ui_hints.layout
+                      : undefined,
+                  title_field: typeof m.ui_hints.title_field === 'string' ? m.ui_hints.title_field : undefined,
+                  subtitle_field: typeof m.ui_hints.subtitle_field === 'string' ? m.ui_hints.subtitle_field : undefined,
+                  severity_field: typeof m.ui_hints.severity_field === 'string' ? m.ui_hints.severity_field : undefined,
+                  date_field: typeof m.ui_hints.date_field === 'string' ? m.ui_hints.date_field : undefined,
+                  group_by: typeof m.ui_hints.group_by === 'string' ? m.ui_hints.group_by : undefined,
+                }
+              : undefined,
         }))
         .filter((m: any) => !!m.id)
     : undefined;
@@ -221,6 +253,7 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
         json_schema: defaultModuleSchema(id),
         enabled: true,
         show_in_report: true,
+        kind: (CORE_MODULE_ORDER as readonly string[]).includes(id) ? 'core' : 'custom',
       });
     }
     for (const cm of custom_modules || []) {
@@ -233,10 +266,20 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
         json_schema: cm.json_schema || { type: 'object', properties: {}, required: [] },
         enabled: cm.enabled !== false,
         show_in_report: cm.show_in_report === true,
+        kind: 'custom',
       });
     }
     modules_v2 = derived;
   }
+  const verification_targets = Array.isArray(input?.verification_targets)
+    ? input.verification_targets
+        .map((t: any) => ({
+          module_id: String(t?.module_id || '').trim(),
+          field_path: String(t?.field_path || '').trim(),
+          severity: t?.severity === 'blocker' ? 'blocker' : t?.severity === 'warning' ? 'warning' : undefined,
+        }))
+        .filter((t: any) => !!t.module_id && !!t.field_path)
+    : undefined;
   const variables = Array.isArray(input?.variables) ? input.variables : [];
   const normalizedVars = variables
     .map((v: any) => ({
@@ -318,6 +361,7 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
     modules,
     outputs,
     modules_v2,
+    verification_targets,
     variables: normalizedVars,
     record_types,
     rules,
@@ -338,6 +382,7 @@ export default function WorkspacePlaybooksPage() {
   const { showError, showSuccess } = useToast();
   const t = useTranslations('playbooks');
   const tCommon = useTranslations('common');
+  const draftHeadAutosaveEnabled = process.env.NEXT_PUBLIC_PLAYBOOK_AUTOSAVE_DRAFT_HEAD_ENABLED === 'true';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -361,6 +406,7 @@ export default function WorkspacePlaybooksPage() {
       json_schema: defaultModuleSchema(id),
       enabled: true,
       show_in_report: true,
+      kind: 'core' as const,
     })),
     variables: [],
     checks: [],
@@ -429,45 +475,77 @@ export default function WorkspacePlaybooksPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Save draft version (debounced auto-save)
+  const loadDraftHeadSpec = useCallback(
+    async (playbookId: string): Promise<PlaybookSpecV1 | null> => {
+      if (!draftHeadAutosaveEnabled) return null;
+      try {
+        const { data, error } = await supabase.functions.invoke('playbooks-save-draft', {
+          body: { playbook_id: playbookId, mode: 'get' },
+        });
+        if (error) throw error;
+        const draft = data?.draft;
+        if (!draft?.spec_json || typeof draft.spec_json !== 'object') return null;
+        const pb = playbooks.find((p) => p.id === playbookId);
+        return normalizeSpec(draft.spec_json, pb?.name || 'Draft');
+      } catch {
+        return null;
+      }
+    },
+    [draftHeadAutosaveEnabled, supabase, playbooks]
+  );
+
+  // Save draft (debounced autosave)
   const saveDraft = useCallback(async (specToSave: PlaybookSpecV1) => {
     if (!selected || isSystemPreset) return;
     setIsSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('playbooks-create-version', {
-        body: {
-          playbook_id: selected.id,
-          spec_json: specToSave,
-          changelog: 'Auto-save',
-          make_current: true,
-        },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || 'Failed to save');
-      setLastSaved(new Date());
+      if (draftHeadAutosaveEnabled) {
+        const { data, error } = await supabase.functions.invoke('playbooks-save-draft', {
+          body: {
+            playbook_id: selected.id,
+            spec_json: specToSave,
+            mode: 'save',
+          },
+        });
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.message || 'Failed to save draft');
+        setLastSaved(new Date());
+      } else {
+        const { data, error } = await supabase.functions.invoke('playbooks-create-version', {
+          body: {
+            playbook_id: selected.id,
+            spec_json: specToSave,
+            changelog: 'Auto-save',
+            make_current: true,
+          },
+        });
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.message || 'Failed to save');
+        setLastSaved(new Date());
 
-      // Keep local list in sync so switching templates doesn't "lose" edits.
-      const v = data?.version as { id?: string; version_number?: number; published_at?: string | null } | undefined;
-      if (v?.id && typeof v.version_number === 'number') {
-        const versionId = v.id;
-        const versionNumber = v.version_number;
-        const publishedAt = v.published_at ?? null;
-        setPlaybooks((prev) =>
-          prev.map((pb) =>
-            pb.id === selected.id
-              ? {
-                  ...pb,
-                  current_version_id: versionId,
-                  current_version: {
-                    id: versionId,
-                    version_number: versionNumber,
-                    spec_json: specToSave,
-                    published_at: publishedAt ?? pb.current_version?.published_at ?? null,
-                  },
-                }
-              : pb
-          )
-        );
+        // Keep local list in sync so switching templates doesn't "lose" edits.
+        const v = data?.version as { id?: string; version_number?: number; published_at?: string | null } | undefined;
+        if (v?.id && typeof v.version_number === 'number') {
+          const versionId = v.id;
+          const versionNumber = v.version_number;
+          const publishedAt = v.published_at ?? null;
+          setPlaybooks((prev) =>
+            prev.map((pb) =>
+              pb.id === selected.id
+                ? {
+                    ...pb,
+                    current_version_id: versionId,
+                    current_version: {
+                      id: versionId,
+                      version_number: versionNumber,
+                      spec_json: specToSave,
+                      published_at: publishedAt ?? pb.current_version?.published_at ?? null,
+                    },
+                  }
+                : pb
+            )
+          );
+        }
       }
 
       // Also update the playbook name if changed
@@ -480,7 +558,7 @@ export default function WorkspacePlaybooksPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [selected, isSystemPreset, supabase, showError]);
+  }, [selected, isSystemPreset, supabase, showError, draftHeadAutosaveEnabled]);
 
   // Debounced auto-save when spec changes (only for non-system templates)
   useEffect(() => {
@@ -517,7 +595,8 @@ export default function WorkspacePlaybooksPage() {
           const first = rows[0];
           setSelectedId(first.id);
           const initial = normalizeSpec(first.current_version?.spec_json, first.name);
-          setSpec(initial);
+          const draft = await loadDraftHeadSpec(first.id);
+          setSpec(draft || initial);
         }
         return rows;
       }
@@ -534,10 +613,13 @@ export default function WorkspacePlaybooksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
-  function selectPlaybook(id: string) {
+  async function selectPlaybook(id: string) {
     setSelectedId(id);
     const pb = playbooks.find((p) => p.id === id);
-    if (pb) setSpec(normalizeSpec(pb.current_version?.spec_json, pb.name));
+    if (!pb) return;
+    const base = normalizeSpec(pb.current_version?.spec_json, pb.name);
+    const draft = await loadDraftHeadSpec(pb.id);
+    setSpec(draft || base);
   }
 
   async function createPlaybook() {
@@ -556,6 +638,7 @@ export default function WorkspacePlaybooksPage() {
           json_schema: defaultModuleSchema(id),
           enabled: true,
           show_in_report: true,
+          kind: 'core' as const,
         })),
         variables: [],
         checks: [],
@@ -585,8 +668,27 @@ export default function WorkspacePlaybooksPage() {
     if (!selected || isSystemPreset) return;
     setPublishing(true);
     try {
+      let publishVersionId = selected.current_version_id;
+      if (draftHeadAutosaveEnabled) {
+        const { data: checkpointData, error: checkpointErr } = await supabase.functions.invoke('playbooks-create-version', {
+          body: {
+            playbook_id: selected.id,
+            spec_json: spec,
+            changelog: 'Publish checkpoint',
+            make_current: true,
+          },
+        });
+        if (checkpointErr) throw checkpointErr;
+        if (!checkpointData?.ok) throw new Error(checkpointData?.message || 'Failed to checkpoint before publish');
+        publishVersionId = checkpointData?.version?.id || publishVersionId;
+        // Best-effort cleanup. Immutable checkpoint already exists.
+        await supabase.functions.invoke('playbooks-save-draft', {
+          body: { playbook_id: selected.id, mode: 'clear' },
+        });
+      }
+
       const { data, error } = await supabase.functions.invoke('playbooks-publish', {
-        body: { playbook_id: selected.id, version_id: selected.current_version_id },
+        body: { playbook_id: selected.id, version_id: publishVersionId },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.message || 'Failed to publish');
@@ -724,7 +826,9 @@ export default function WorkspacePlaybooksPage() {
                   {playbooks.map((pb) => (
                     <button
                       key={pb.id}
-                      onClick={() => selectPlaybook(pb.id)}
+                      onClick={() => {
+                        void selectPlaybook(pb.id);
+                      }}
                       className={cn(
                         'w-full text-left px-4 py-3 transition-colors relative',
                         pb.id === selectedId
@@ -940,6 +1044,7 @@ export default function WorkspacePlaybooksPage() {
                                   json_schema: { type: 'object', properties: {}, required: [] } as Record<string, unknown>,
                                   enabled: true,
                                   show_in_report: true,
+                                  kind: 'custom' as const,
                                 };
                                 return syncLegacyFromModulesV2({ ...p, modules_v2: [...(p.modules_v2 || []), mod] });
                               })

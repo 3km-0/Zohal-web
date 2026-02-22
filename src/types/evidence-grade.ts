@@ -172,6 +172,26 @@ export interface RiskWithEvidence {
   resolved: boolean
 }
 
+export interface ModuleExecutionMeta {
+  module_id: string
+  started_at?: string | null
+  duration_ms?: number | null
+  status?: string | null
+  error_code?: string | null
+  source?: string | null
+}
+
+export interface ModuleEnvelope {
+  id: string
+  title: string
+  status: 'ok' | 'error' | string
+  result: unknown
+  evidence: Array<Record<string, unknown>>
+  ai_confidence?: AIConfidence | null
+  error?: string | null
+  show_in_report?: boolean
+}
+
 // =============================================================================
 // Evidence Grade Snapshot
 // =============================================================================
@@ -190,7 +210,8 @@ export interface EvidenceGradeSnapshot {
     template_id?: string
     template_version?: string
     modules_activated?: string[]
-    modules?: Record<string, unknown>
+    modules?: Record<string, ModuleEnvelope | Record<string, unknown>>
+    module_execution?: Record<string, ModuleExecutionMeta | Record<string, unknown>>
     capabilities?: {
       analysis_v3?: {
         enabled?: boolean
@@ -220,6 +241,10 @@ export interface EvidenceGradeSnapshot {
     exceptions_v3?: Array<Record<string, unknown>>
     exceptions_summary?: { blocker: number; warning: number }
     exceptions?: Array<Record<string, unknown>>
+    verifier_targets_summary?: {
+      summary?: { green: number; yellow: number; red: number; skipped: number }
+      targets?: Array<Record<string, unknown>>
+    }
   }
   
   /** Verified variables (the core of evidence-grade data) */

@@ -94,6 +94,41 @@ function toRejectedSet(value: unknown): Set<string> {
   );
 }
 
+function readPathValue(input: unknown, path: string | undefined): unknown {
+  if (!path) return undefined;
+  const tokens = String(path)
+    .split('.')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  let current: any = input;
+  for (const token of tokens) {
+    if (current == null) return undefined;
+    if (token.endsWith('[]')) {
+      const key = token.slice(0, -2);
+      const arr = key ? current?.[key] : current;
+      if (!Array.isArray(arr)) return undefined;
+      current = arr[0];
+      continue;
+    }
+    current = current?.[token];
+  }
+  return current;
+}
+
+function normalizeEvidence(raw: any): { page_number?: number; snippet?: string; document_id?: string } | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const page = typeof raw.page_number === 'number' ? raw.page_number : undefined;
+  const snippetRaw = typeof raw.snippet === 'string' ? raw.snippet : typeof raw.source_quote === 'string' ? raw.source_quote : '';
+  const snippet = snippetRaw.trim() ? snippetRaw.trim().slice(0, 240) : undefined;
+  const document_id = typeof raw.document_id === 'string' && raw.document_id.trim() ? raw.document_id.trim() : undefined;
+  if (!page && !snippet) return undefined;
+  return { page_number: page, snippet, document_id };
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
 interface ContractAnalysisPaneProps {
   embedded?: boolean;
   onSwitchToChat?: () => void;
@@ -266,7 +301,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     });
   }, [docsetSearch, folderNameById, workspaceDocs]);
 
-  function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
+  const proofHref = useCallback((evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) => {
     if (!evidence?.page_number) return null;
     const quote = (evidence.snippet || '').slice(0, 160);
     const bbox = evidence.bbox ? `${evidence.bbox.x},${evidence.bbox.y},${evidence.bbox.width},${evidence.bbox.height}` : null;
@@ -274,7 +309,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     const paneParam = embedded ? '&pane=analysis' : '';
     const base = `/workspaces/${workspaceId}/documents/${targetDocId}?page=${evidence.page_number}&quote=${encodeURIComponent(quote)}${paneParam}`;
     return bbox ? `${base}&bbox=${encodeURIComponent(bbox)}` : base;
-  }
+  }, [documentId, embedded, workspaceId]);
 
   const deadlines = useMemo(() => {
     return obligations
@@ -283,27 +318,51 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
       .sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''));
   }, [obligations]);
 
-  const customModules = useMemo(() => {
-    // v2: modules live at snapshot.pack.modules as a map keyed by module id.
+  const moduleManifests = useMemo(() => {
+    const manifests = (snapshot?.pack as any)?.playbook?.modules_v2;
+    return Array.isArray(manifests) ? (manifests as Array<Record<string, any>>) : [];
+  }, [snapshot]);
+
+  const moduleManifestById = useMemo(() => {
+    const map = new Map<string, Record<string, any>>();
+    for (const raw of moduleManifests) {
+      const id = String(raw?.id || '').trim();
+      if (id) map.set(id, raw);
+    }
+    return map;
+  }, [moduleManifests]);
+
+  const moduleEnvelopes = useMemo(() => {
     const pack: any = snapshot?.pack as any;
     const dict = pack?.modules && typeof pack.modules === 'object' && !Array.isArray(pack.modules) ? pack.modules : null;
-    if (!dict) return [];
-    const core = new Set(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
-    return Object.entries(dict)
-      .map(([id, raw]) => {
-        const m: any = raw && typeof raw === 'object' ? raw : {};
-        return {
-          id: String(m?.id || id || '').trim(),
-          title: String(m?.title || id || '').trim(),
-          status: String(m?.status || ''),
-          error: m?.error ? String(m.error) : null,
-          ai_confidence: m?.ai_confidence ? String(m.ai_confidence) : null,
-          result: m?.result ?? null,
-          evidence: Array.isArray(m?.evidence) ? (m.evidence as any[]) : [],
-        };
-      })
-      .filter((m) => !!m.id && !!m.title && !core.has(m.id));
+    if (!dict) return {} as Record<string, any>;
+    const out: Record<string, any> = {};
+    for (const [id, raw] of Object.entries(dict)) {
+      const m: any = raw && typeof raw === 'object' ? raw : {};
+      const moduleId = String(m?.id || id || '').trim();
+      if (!moduleId) continue;
+      out[moduleId] = {
+        id: moduleId,
+        title: String(m?.title || id || '').trim() || moduleId,
+        status: String(m?.status || 'ok').trim() || 'ok',
+        error: m?.error ? String(m.error) : null,
+        ai_confidence: m?.ai_confidence ? String(m.ai_confidence) : null,
+        result: m?.result ?? null,
+        evidence: Array.isArray(m?.evidence) ? (m.evidence as any[]) : [],
+        show_in_report: m?.show_in_report === true,
+      };
+    }
+    return out;
   }, [snapshot]);
+
+  const genericRendererPrimaryWeb = process.env.NEXT_PUBLIC_ANALYSIS_GENERIC_RENDERER_PRIMARY_WEB === 'true';
+  const genericRendererPrimaryWebDebug = searchParams.get('analysis_generic_renderer') === '1';
+  const genericRendererPrimary = genericRendererPrimaryWeb || genericRendererPrimaryWebDebug;
+
+  const customModules = useMemo(() => {
+    const core = new Set(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
+    return Object.values(moduleEnvelopes).filter((m: any) => !!m.id && !!m.title && !core.has(m.id));
+  }, [moduleEnvelopes]);
 
   const v3Records = useMemo(() => {
     const arr = (snapshot?.pack as any)?.records;
@@ -388,6 +447,79 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     };
   }, [obligations, deadlines, rejectedSets]);
 
+  const shouldUseGenericModuleTab = useCallback(
+    (moduleId: string) => genericRendererPrimary && !!moduleEnvelopes[moduleId],
+    [genericRendererPrimary, moduleEnvelopes]
+  );
+
+  const buildGenericModuleItems = useCallback(
+    (moduleId: string, envelope: any): GenericModuleItem[] => {
+      const manifest = moduleManifestById.get(moduleId) || {};
+      const uiHints = isPlainRecord((manifest as any).ui_hints) ? ((manifest as any).ui_hints as Record<string, unknown>) : {};
+      const titleField = typeof uiHints.title_field === 'string' ? uiHints.title_field : undefined;
+      const subtitleField = typeof uiHints.subtitle_field === 'string' ? uiHints.subtitle_field : undefined;
+      const severityField = typeof uiHints.severity_field === 'string' ? uiHints.severity_field : undefined;
+      const groupByField = typeof uiHints.group_by === 'string' ? uiHints.group_by : undefined;
+      const moduleEvidence = Array.isArray(envelope?.evidence) ? envelope.evidence : [];
+      const fallbackEvidence = normalizeEvidence(moduleEvidence[0]);
+
+      const toItem = (raw: unknown, idx: number): GenericModuleItem => {
+        const row = isPlainRecord(raw) ? raw : { value: raw };
+        const rowEvidence =
+          normalizeEvidence(Array.isArray((row as any).evidence) ? (row as any).evidence[0] : (row as any).evidence) ||
+          normalizeEvidence(row) ||
+          normalizeEvidence(moduleEvidence[idx]) ||
+          fallbackEvidence;
+        const title =
+          String(readPathValue(row, titleField) || (row as any).title || (row as any).name || `${envelope.title || moduleId} ${idx + 1}`).trim();
+        const subtitleRaw = readPathValue(row, subtitleField) || (row as any).subtitle;
+        const severityRaw = readPathValue(row, severityField) || (row as any).severity || (row as any).risk_level;
+        const body =
+          String((row as any).summary || (row as any).description || (row as any).explanation || (row as any).message || '').trim() ||
+          (!isPlainRecord(raw) ? String(raw ?? '') : '');
+        const metadata: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(row)) {
+          if (['title', 'name', 'subtitle', 'summary', 'description', 'explanation', 'message', 'severity', 'risk_level', 'evidence'].includes(k)) continue;
+          if (v === null || v === undefined) continue;
+          if (typeof v === 'object') continue;
+          metadata[k] = v;
+        }
+        if (groupByField) {
+          const groupByValue = readPathValue(row, groupByField);
+          if (groupByValue != null) metadata[groupByField] = groupByValue as any;
+        }
+        return {
+          id: `${moduleId}::${idx}`,
+          title: title || `${envelope.title || moduleId} ${idx + 1}`,
+          subtitle: subtitleRaw == null ? undefined : String(subtitleRaw),
+          body: body || undefined,
+          severity: severityRaw == null ? undefined : String(severityRaw),
+          confidence: (envelope.ai_confidence || (row as any).ai_confidence || (row as any).confidence || undefined) as AIConfidence | undefined,
+          evidence: rowEvidence,
+          sourceHref: rowEvidence ? proofHref(rowEvidence as any) : null,
+          sourcePage: rowEvidence?.page_number,
+          icon: <Puzzle className="w-4 h-4" />,
+          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+        };
+      };
+
+      const result = envelope?.result;
+      if (Array.isArray(result)) {
+        return result.map((row, idx) => toItem(row, idx));
+      }
+      if (isPlainRecord(result)) {
+        const keys = Object.keys(result);
+        if (keys.length === 1 && Array.isArray((result as any)[keys[0]])) {
+          return ((result as any)[keys[0]] as unknown[]).map((row, idx) => toItem(row, idx));
+        }
+        return [toItem(result, 0)];
+      }
+      if (result == null) return [];
+      return [toItem(result, 0)];
+    },
+    [moduleManifestById, proofHref]
+  );
+
   const tabs = useMemo(() => {
     const out: Array<{ id: string; label: string; icon: any; total: number | null; attentionCount: number }> = [
       { id: 'overview', label: t('tabs.overview'), icon: FileText, total: null, attentionCount: 0 },
@@ -455,7 +587,7 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     }
     out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: Puzzle, total: null, attentionCount: 0 })));
     return out;
-  }, [enabledModules, snapshot, clauses, obligations, risks, deadlines, attention, customModules, v3Records, v3Verdicts, v3Exceptions, rejectedSets, t]);
+  }, [enabledModules, snapshot, clauses, obligations, risks, deadlines, attention, customModules, v3Verdicts, v3Exceptions, rejectedSets, t]);
 
   useEffect(() => {
     // If the current tab becomes unavailable due to template module gating, fall back to overview.
@@ -1689,11 +1821,15 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     await applySnapshotPatches(
       [
         {
-          op: 'add_risk',
+          op: 'add_record',
           value: {
+            module_id: 'risks',
+            record_type: 'risk',
+            title: description.trim(),
+            summary: description.trim(),
             severity,
-            description: description.trim(),
-            explanation: explanation || undefined,
+            rationale: explanation || undefined,
+            fields: { module_id: 'risks' },
           },
         },
       ],
@@ -1709,11 +1845,16 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     await applySnapshotPatches(
       [
         {
-          op: 'add_obligation',
+          op: 'add_record',
           value: {
-            obligation_type: obligationType || 'other',
+            module_id: 'obligations',
+            record_type: 'obligation',
             summary: summary.trim(),
-            due_at: dueAt || undefined,
+            fields: {
+              module_id: 'obligations',
+              obligation_type: obligationType || 'other',
+              due_at: dueAt || undefined,
+            },
           },
         },
       ],
@@ -1729,15 +1870,46 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
     await applySnapshotPatches(
       [
         {
-          op: 'add_clause',
+          op: 'add_record',
           value: {
-            clause_type: clauseType || 'other',
-            text: text.trim(),
-            risk_level: riskLevel || 'low',
+            module_id: 'clauses',
+            record_type: 'clause',
+            summary: text.trim(),
+            severity: riskLevel || 'low',
+            fields: {
+              module_id: 'clauses',
+              clause_type: clauseType || 'other',
+              risk_level: riskLevel || 'low',
+            },
           },
         },
       ],
       t('v3.addClauseChangeNote')
+    );
+  }
+
+  async function addManualRecordForModule(moduleId: string, moduleTitle?: string) {
+    const title = window.prompt(t('v3.addRecordPromptTitle', { module: moduleTitle || moduleId })) || '';
+    const summary = window.prompt(t('v3.addRecordPromptSummary')) || '';
+    if (!summary.trim() && !title.trim()) return;
+    const severity = (window.prompt(t('v3.addRecordPromptSeverity')) || '').trim().toLowerCase();
+    const notes = (window.prompt(t('v3.addRecordPromptNotes')) || '').trim();
+    await applySnapshotPatches(
+      [
+        {
+          op: 'add_record',
+          value: {
+            module_id: moduleId,
+            record_type: 'record',
+            title: title.trim() || undefined,
+            summary: summary.trim() || title.trim(),
+            severity: severity || undefined,
+            rationale: notes || undefined,
+            fields: { module_id: moduleId },
+          },
+        },
+      ],
+      t('v3.addRecordChangeNote', { module: moduleTitle || moduleId })
     );
   }
 
@@ -2566,307 +2738,459 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
             )}
 
             {tab === 'variables' && (
-              <GenericModuleTab
-                moduleId="variables"
-                moduleTitle={t('tabs.variables')}
-                emptyTitle={t('empty.noVariablesTitle')}
-                emptyDescription={!snapshot ? t('empty.noVariablesSnapshotDescription') : t('empty.noVariablesDescription')}
-                workspaceId={workspaceId}
-                documentId={documentId}
-                onReject={(id) => rejectItem('variable', id)}
-                isPatchingSnapshot={isPatchReadOnly}
-                items={(snapshot?.variables || [])
-                  .filter((v) => !rejectedSets.variables.has(v.id))
-                  .map((v) => ({
-                    id: v.id,
-                    title: v.display_name,
-                    subtitle: v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`,
-                    confidence: v.ai_confidence as AIConfidence,
-                    evidence: v.evidence,
-                    sourceHref: proofHref(v.evidence),
-                    sourcePage: v.evidence?.page_number ?? undefined,
-                    icon: <Table2 className="w-4 h-4" />,
-                    toolAction: { type: 'edit' as const, label: 'Edit' },
-                    needsAttention: v.verification_state === 'needs_review',
-                    attentionLabel: v.verification_state === 'needs_review' ? 'Needs Review' : undefined,
-                    children: v.verifier?.status ? (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={cn(
-                          'inline-flex w-2 h-2 rounded-full',
-                          v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-highlight'
-                        )} />
-                        <span className="text-text-soft">
-                          Verifier: {v.verifier.status.toUpperCase()}
-                          {v.verifier.reasons?.length ? ` (${v.verifier.reasons.join(', ')})` : ''}
-                        </span>
-                      </div>
-                    ) : undefined,
-                  }))}
-              />
+              shouldUseGenericModuleTab('variables') ? (
+                <GenericModuleTab
+                  moduleId="variables"
+                  moduleTitle={moduleEnvelopes['variables']?.title || t('tabs.variables')}
+                  emptyTitle={t('empty.noVariablesTitle')}
+                  emptyDescription={t('empty.noVariablesDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  onReject={(id) => rejectItem('module', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={buildGenericModuleItems('variables', moduleEnvelopes['variables'])}
+                  layout={moduleManifestById.get('variables')?.ui_hints?.layout as any}
+                  rawResult={moduleEnvelopes['variables']?.result}
+                />
+              ) : (
+                <GenericModuleTab
+                  moduleId="variables"
+                  moduleTitle={t('tabs.variables')}
+                  emptyTitle={t('empty.noVariablesTitle')}
+                  emptyDescription={!snapshot ? t('empty.noVariablesSnapshotDescription') : t('empty.noVariablesDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  onReject={(id) => rejectItem('variable', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={(snapshot?.variables || [])
+                    .filter((v) => !rejectedSets.variables.has(v.id))
+                    .map((v) => ({
+                      id: v.id,
+                      title: v.display_name,
+                      subtitle: v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`,
+                      confidence: v.ai_confidence as AIConfidence,
+                      evidence: v.evidence,
+                      sourceHref: proofHref(v.evidence),
+                      sourcePage: v.evidence?.page_number ?? undefined,
+                      icon: <Table2 className="w-4 h-4" />,
+                      toolAction: { type: 'edit' as const, label: 'Edit' },
+                      needsAttention: v.verification_state === 'needs_review',
+                      attentionLabel: v.verification_state === 'needs_review' ? 'Needs Review' : undefined,
+                      children: v.verifier?.status ? (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={cn(
+                            'inline-flex w-2 h-2 rounded-full',
+                            v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-highlight'
+                          )} />
+                          <span className="text-text-soft">
+                            Verifier: {v.verifier.status.toUpperCase()}
+                            {v.verifier.reasons?.length ? ` (${v.verifier.reasons.join(', ')})` : ''}
+                          </span>
+                        </div>
+                      ) : undefined,
+                    }))}
+                />
+              )
             )}
 
             {tab === 'clauses' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-text-soft">{t('empty.noClausesDescription')}</p>
-                  <Button size="sm" onClick={addManualClause} disabled={isPatchReadOnly || isPatchingSnapshot}>
-                    {t('v3.addClause')}
-                  </Button>
-                </div>
-                <GenericModuleTab
-                  moduleId="clauses"
-                  moduleTitle={t('tabs.clauses')}
-                  emptyTitle={t('empty.noClausesTitle')}
-                  emptyDescription={t('empty.noClausesDescription')}
-                  workspaceId={workspaceId}
-                  documentId={documentId}
-                  groupBy="severity"
-                  onReject={(id) => rejectItem('clause', id)}
-                  isPatchingSnapshot={isPatchReadOnly}
-                  items={(() => {
-                    const allClauses = snapshot?.clauses?.length
-                      ? snapshot.clauses.map((c) => ({
-                          id: c.id,
-                          title: c.clause_title || c.clause_type || 'Clause',
-                          subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
-                          body: c.text,
-                          severity: c.risk_level,
-                          evidence: c.evidence,
-                          sourceHref: proofHref(c.evidence),
-                          sourcePage: c.evidence?.page_number ?? undefined,
-                          icon: <ScrollText className="w-4 h-4" />,
-                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
-                        }))
-                      : clauses.map((c) => ({
-                          id: c.id,
-                          title: c.clause_title || c.clause_type || 'Clause',
-                          subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
-                          body: c.text,
-                          severity: c.risk_level,
-                          sourceHref: c.page_number
-                            ? `/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent((c.text || '').slice(0, 120))}`
-                            : null,
-                          sourcePage: c.page_number ?? undefined,
-                          icon: <ScrollText className="w-4 h-4" />,
-                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
-                        }));
-                    return allClauses.filter((c) => !rejectedSets.clauses.has(c.id)) as GenericModuleItem[];
-                  })()}
-                />
+                {shouldUseGenericModuleTab('clauses') ? (
+                  <GenericModuleTab
+                    moduleId="clauses"
+                    moduleTitle={moduleEnvelopes['clauses']?.title || t('tabs.clauses')}
+                    emptyTitle={t('empty.noClausesTitle')}
+                    emptyDescription={t('empty.noClausesDescription')}
+                    workspaceId={workspaceId}
+                    documentId={documentId}
+                    onReject={(id) => rejectItem('module', id)}
+                    isPatchingSnapshot={isPatchReadOnly}
+                    items={buildGenericModuleItems('clauses', moduleEnvelopes['clauses'])}
+                    layout={moduleManifestById.get('clauses')?.ui_hints?.layout as any}
+                    rawResult={moduleEnvelopes['clauses']?.result}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-text-soft">{t('empty.noClausesDescription')}</p>
+                      <Button size="sm" onClick={addManualClause} disabled={isPatchReadOnly || isPatchingSnapshot}>
+                        {t('v3.addClause')}
+                      </Button>
+                    </div>
+                    <GenericModuleTab
+                      moduleId="clauses"
+                      moduleTitle={t('tabs.clauses')}
+                      emptyTitle={t('empty.noClausesTitle')}
+                      emptyDescription={t('empty.noClausesDescription')}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      groupBy="severity"
+                      onReject={(id) => rejectItem('clause', id)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                      items={(() => {
+                        const allClauses = snapshot?.clauses?.length
+                          ? snapshot.clauses.map((c) => ({
+                              id: c.id,
+                              title: c.clause_title || c.clause_type || 'Clause',
+                              subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
+                              body: c.text,
+                              severity: c.risk_level,
+                              evidence: c.evidence,
+                              sourceHref: proofHref(c.evidence),
+                              sourcePage: c.evidence?.page_number ?? undefined,
+                              icon: <ScrollText className="w-4 h-4" />,
+                              iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
+                            }))
+                          : clauses.map((c) => ({
+                              id: c.id,
+                              title: c.clause_title || c.clause_type || 'Clause',
+                              subtitle: c.clause_number ? `Clause ${c.clause_number}` : undefined,
+                              body: c.text,
+                              severity: c.risk_level,
+                              sourceHref: c.page_number
+                                ? `/workspaces/${workspaceId}/documents/${documentId}?page=${c.page_number}&quote=${encodeURIComponent((c.text || '').slice(0, 120))}`
+                                : null,
+                              sourcePage: c.page_number ?? undefined,
+                              icon: <ScrollText className="w-4 h-4" />,
+                              iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
+                            }));
+                        const manual = v3Records
+                          .filter((r: any) => {
+                            const mid = String(r?.module_id || r?.fields?.module_id || '').trim().toLowerCase();
+                            return mid === 'clauses';
+                          })
+                          .map((r: any, idx: number) => {
+                            const id = String(r?.id || `manual_clause_${idx}`);
+                            const risk = String(r?.severity || r?.fields?.risk_level || 'low').toLowerCase();
+                            const body = String(r?.summary || r?.fields?.text || '').trim();
+                            return {
+                              id,
+                              title: String(r?.title || r?.fields?.clause_type || 'Manual clause'),
+                              subtitle: r?.fields?.clause_number ? `Clause ${String(r.fields.clause_number)}` : undefined,
+                              body: body || undefined,
+                              severity: risk,
+                              icon: <ScrollText className="w-4 h-4" />,
+                              iconColor: risk === 'high' ? 'text-error' : risk === 'medium' ? 'text-highlight' : 'text-success',
+                            };
+                          })
+                          .filter((c: any) => !!c.id && !!c.body);
+                        return [...allClauses, ...(manual as any[])].filter((c: any) => !rejectedSets.clauses.has(String(c.id))) as GenericModuleItem[];
+                      })()}
+                    />
+                  </>
+                )}
               </div>
             )}
 
             {tab === 'obligations' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-text-soft">{t('empty.noObligationsDescription')}</p>
-                  <Button size="sm" onClick={addManualObligation} disabled={isPatchReadOnly || isPatchingSnapshot}>
-                    {t('v3.addObligation')}
-                  </Button>
-                </div>
-                <GenericModuleTab
-                  moduleId="obligations"
-                  moduleTitle={t('tabs.obligations')}
-                  emptyTitle={t('empty.noObligationsTitle')}
-                  emptyDescription={t('empty.noObligationsDescription')}
-                  workspaceId={workspaceId}
-                  documentId={documentId}
-                  groupBy="metadata"
-                  onReject={(id) => rejectItem('obligation', id)}
-                  isPatchingSnapshot={isPatchReadOnly}
-                  items={(() => {
-                  const confidenceMap: Record<string, AIConfidence> = { confirmed: 'high', extracted: 'medium', needs_review: 'low' };
-                  const normalizedObligations = isHistoricalRunSelected && snapshot?.obligations?.length
-                    ? snapshot.obligations.map((o) => ({
-                        id: o.id,
-                        summary: o.summary || o.action || 'Obligation',
-                        action: o.action || '',
-                        obligation_type: o.obligation_type || '',
-                        responsible_party: o.responsible_party || '',
-                        confidence: o.ai_confidence || undefined,
-                        confidence_state: o.verification_state || undefined,
-                        page_number: o.evidence?.page_number ?? null,
-                        due_at: o.due_at || null,
-                        task_id: null,
-                      }))
-                    : obligations;
+                {shouldUseGenericModuleTab('obligations') ? (
+                  <GenericModuleTab
+                    moduleId="obligations"
+                    moduleTitle={moduleEnvelopes['obligations']?.title || t('tabs.obligations')}
+                    emptyTitle={t('empty.noObligationsTitle')}
+                    emptyDescription={t('empty.noObligationsDescription')}
+                    workspaceId={workspaceId}
+                    documentId={documentId}
+                    onReject={(id) => rejectItem('module', id)}
+                    isPatchingSnapshot={isPatchReadOnly}
+                    items={buildGenericModuleItems('obligations', moduleEnvelopes['obligations'])}
+                    layout={moduleManifestById.get('obligations')?.ui_hints?.layout as any}
+                    rawResult={moduleEnvelopes['obligations']?.result}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-text-soft">{t('empty.noObligationsDescription')}</p>
+                      <Button size="sm" onClick={addManualObligation} disabled={isPatchReadOnly || isPatchingSnapshot}>
+                        {t('v3.addObligation')}
+                      </Button>
+                    </div>
+                    <GenericModuleTab
+                      moduleId="obligations"
+                      moduleTitle={t('tabs.obligations')}
+                      emptyTitle={t('empty.noObligationsTitle')}
+                      emptyDescription={t('empty.noObligationsDescription')}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      groupBy="metadata"
+                      onReject={(id) => rejectItem('obligation', id)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                      items={(() => {
+                      const confidenceMap: Record<string, AIConfidence> = { confirmed: 'high', extracted: 'medium', needs_review: 'low' };
+                      const normalizedObligations = isHistoricalRunSelected && snapshot?.obligations?.length
+                        ? snapshot.obligations.map((o) => ({
+                            id: o.id,
+                            summary: o.summary || o.action || 'Obligation',
+                            action: o.action || '',
+                            obligation_type: o.obligation_type || '',
+                            responsible_party: o.responsible_party || '',
+                            confidence: o.ai_confidence || undefined,
+                            confidence_state: o.verification_state || undefined,
+                            page_number: o.evidence?.page_number ?? null,
+                            due_at: o.due_at || null,
+                            task_id: null,
+                          }))
+                        : obligations;
 
-                  return normalizedObligations
-                    .filter((o) => !rejectedSets.obligations.has(o.id))
-                    .sort((a, b) => {
-                      const aNR = a.confidence_state === 'needs_review' ? 0 : 1;
-                      const bNR = b.confidence_state === 'needs_review' ? 0 : 1;
-                      if (aNR !== bNR) return aNR - bNR;
-                      const da = a.due_at || '';
-                      const db = b.due_at || '';
-                      if (da && db && da !== db) return da.localeCompare(db);
-                      return (a.page_number ?? 999999) - (b.page_number ?? 999999);
-                    })
-                    .map((o) => {
-                      const isDbObligation = 'contract_id' in o;
-                      const canAddTask = !isHistoricalRunSelected && isDbObligation && !o.task_id && !o.due_at;
+                      const manualObligations = v3Records
+                        .filter((rec: any) => {
+                          const mid = String(rec?.module_id || rec?.fields?.module_id || '').trim().toLowerCase();
+                          return mid === 'obligations';
+                        })
+                        .map((rec: any, idx: number) => {
+                          const id = String(rec?.id || `manual_ob_${idx}`);
+                          const fields = (rec?.fields && typeof rec.fields === 'object') ? rec.fields : {};
+                          return {
+                            id,
+                            summary: String(rec?.summary || rec?.title || 'Obligation'),
+                            action: String(rec?.rationale || ''),
+                            obligation_type: String(fields?.obligation_type || rec?.record_type || 'other'),
+                            responsible_party: String(fields?.responsible_party || ''),
+                            confidence: 'high',
+                            confidence_state: 'confirmed',
+                            page_number: null,
+                            due_at: fields?.due_at ? String(fields.due_at) : null,
+                            task_id: null,
+                          };
+                        });
 
-                      return {
-                        id: o.id,
-                        title: o.summary || o.action || o.obligation_type || 'Obligation',
-                        subtitle: o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined,
-                        confidence: (o.confidence || confidenceMap[o.confidence_state || ''] || 'medium') as AIConfidence,
-                        needsAttention: o.confidence_state === 'needs_review' || o.confidence === 'low',
-                        attentionLabel: o.confidence_state === 'needs_review' ? 'Needs Review' : o.confidence === 'low' ? 'Low Confidence' : undefined,
-                        spotCheckSuggested: o.confidence === 'medium' && o.confidence_state !== 'needs_review',
-                        severity: o.obligation_type,
-                        sourceHref: o.page_number != null
-                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
-                          : null,
-                        sourcePage: o.page_number ?? undefined,
-                        icon: <ClipboardCheck className="w-4 h-4" />,
-                        toolAction: o.due_at ? { type: 'calendar' as const, label: 'Add to Calendar' } : { type: 'task' as const, label: 'Add Task' },
-                        onToolAction: isHistoricalRunSelected
-                          ? undefined
-                          : o.task_id
+                      return [...normalizedObligations, ...(manualObligations as any[])]
+                        .filter((o) => !rejectedSets.obligations.has(o.id))
+                        .sort((a, b) => {
+                          const aNR = a.confidence_state === 'needs_review' ? 0 : 1;
+                          const bNR = b.confidence_state === 'needs_review' ? 0 : 1;
+                          if (aNR !== bNR) return aNR - bNR;
+                          const da = a.due_at || '';
+                          const db = b.due_at || '';
+                          if (da && db && da !== db) return da.localeCompare(db);
+                          return (a.page_number ?? 999999) - (b.page_number ?? 999999);
+                        })
+                        .map((o) => {
+                          const isDbObligation = 'contract_id' in o;
+                          const canAddTask = !isHistoricalRunSelected && isDbObligation && !o.task_id && !o.due_at;
+                          const onToolAction = isHistoricalRunSelected
                             ? undefined
-                            : o.due_at
-                              ? () => exportCalendar()
-                              : canAddTask
-                                ? () => addTaskFromObligation(o as LegalObligation)
-                                : undefined,
-                        children: (
-                          <div className="space-y-2">
-                            {o.action && (
-                              <p className="text-sm text-text">
-                                <span className="text-text-soft">Action: </span>{o.action}
-                              </p>
-                            )}
-                            {o.due_at && (
-                              <p className="text-xs text-text-soft">
-                                Due: <span className="text-text font-medium">{o.due_at}</span>
-                              </p>
-                            )}
-                            {o.task_id && <Badge size="sm" variant="success">Task added</Badge>}
-                          </div>
-                        ),
-                      };
-                    }) as GenericModuleItem[];
-                  })()}
-                />
+                            : o.task_id
+                              ? undefined
+                              : o.due_at
+                                ? () => exportCalendar()
+                                : canAddTask
+                                  ? () => addTaskFromObligation(o as LegalObligation)
+                                  : undefined;
+
+                          return {
+                            id: o.id,
+                            title: o.summary || o.action || o.obligation_type || 'Obligation',
+                            subtitle: o.responsible_party ? `Responsible: ${o.responsible_party}` : undefined,
+                            confidence: (o.confidence || confidenceMap[o.confidence_state || ''] || 'medium') as AIConfidence,
+                            needsAttention: o.confidence_state === 'needs_review' || o.confidence === 'low',
+                            attentionLabel: o.confidence_state === 'needs_review' ? 'Needs Review' : o.confidence === 'low' ? 'Low Confidence' : undefined,
+                            spotCheckSuggested: o.confidence === 'medium' && o.confidence_state !== 'needs_review',
+                            severity: o.obligation_type,
+                            sourceHref: o.page_number != null
+                              ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
+                              : null,
+                            sourcePage: o.page_number ?? undefined,
+                            icon: <ClipboardCheck className="w-4 h-4" />,
+                            toolAction: onToolAction
+                              ? (o.due_at ? { type: 'calendar' as const, label: 'Add to Calendar' } : { type: 'task' as const, label: 'Add Task' })
+                              : undefined,
+                            onToolAction,
+                            children: (
+                              <div className="space-y-2">
+                                {o.action && (
+                                  <p className="text-sm text-text">
+                                    <span className="text-text-soft">Action: </span>{o.action}
+                                  </p>
+                                )}
+                                {o.due_at && (
+                                  <p className="text-xs text-text-soft">
+                                    Due: <span className="text-text font-medium">{o.due_at}</span>
+                                  </p>
+                                )}
+                                {o.task_id && <Badge size="sm" variant="success">Task added</Badge>}
+                              </div>
+                            ),
+                          };
+                        }) as GenericModuleItem[];
+                      })()}
+                    />
+                  </>
+                )}
               </div>
             )}
 
             {tab === 'deadlines' && (
-              <DeadlinesTab
-                documentId={documentId}
-                effectiveDate={contract.effective_date}
-                endDate={contract.end_date}
-                noticeDeadline={(() => {
-                  const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
-                  return notice?.toISOString() ?? null;
-                })()}
-                emptyTitle={t('empty.noDeadlinesTitle')}
-                emptyDescription={t('empty.noDeadlinesDescription')}
-                items={(() => {
-                  const items: DeadlineItem[] = [];
-                  const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
-                  
-                  if (contract.end_date) {
-                    items.push({
-                      key: 'contract_end',
-                      title: 'Contract End Date',
-                      dueDate: contract.end_date,
-                      dueLabel: contract.end_date,
-                      description: 'Contract term ends',
-                      href: proofHref(endEvidence),
-                      isContractDate: true,
-                    });
-                    if (contract.auto_renewal) {
+              shouldUseGenericModuleTab('deadlines') ? (
+                <GenericModuleTab
+                  moduleId="deadlines"
+                  moduleTitle={moduleEnvelopes['deadlines']?.title || t('tabs.deadlines')}
+                  emptyTitle={t('empty.noDeadlinesTitle')}
+                  emptyDescription={t('empty.noDeadlinesDescription')}
+                  workspaceId={workspaceId}
+                  documentId={documentId}
+                  onReject={(id) => rejectItem('module', id)}
+                  isPatchingSnapshot={isPatchReadOnly}
+                  items={buildGenericModuleItems('deadlines', moduleEnvelopes['deadlines'])}
+                  layout={moduleManifestById.get('deadlines')?.ui_hints?.layout as any}
+                  rawResult={moduleEnvelopes['deadlines']?.result}
+                />
+              ) : (
+                <DeadlinesTab
+                  documentId={documentId}
+                  effectiveDate={contract.effective_date}
+                  endDate={contract.end_date}
+                  noticeDeadline={(() => {
+                    const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
+                    return notice?.toISOString() ?? null;
+                  })()}
+                  emptyTitle={t('empty.noDeadlinesTitle')}
+                  emptyDescription={t('empty.noDeadlinesDescription')}
+                  items={(() => {
+                    const items: DeadlineItem[] = [];
+                    const endEvidence = snapshot?.variables.find((v) => v.name === 'end_date')?.evidence;
+                    
+                    if (contract.end_date) {
                       items.push({
-                        key: 'renewal',
-                        title: 'Auto-Renewal Date',
+                        key: 'contract_end',
+                        title: 'Contract End Date',
                         dueDate: contract.end_date,
                         dueLabel: contract.end_date,
-                        description: 'Contract renews automatically unless notice is given',
+                        description: 'Contract term ends',
                         href: proofHref(endEvidence),
                         isContractDate: true,
                       });
+                      if (contract.auto_renewal) {
+                        items.push({
+                          key: 'renewal',
+                          title: 'Auto-Renewal Date',
+                          dueDate: contract.end_date,
+                          dueLabel: contract.end_date,
+                          description: 'Contract renews automatically unless notice is given',
+                          href: proofHref(endEvidence),
+                          isContractDate: true,
+                        });
+                      }
+                      const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
+                      if (notice) {
+                        items.push({
+                          key: 'notice_deadline',
+                          title: 'Notice Deadline',
+                          dueDate: notice.toISOString(),
+                          dueLabel: notice.toLocaleDateString(),
+                          description: `Last day to provide ${contract.notice_period_days ?? ''}-day notice`,
+                          href: proofHref(endEvidence),
+                          isContractDate: true,
+                        });
+                      }
                     }
-                    const notice = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
-                    if (notice) {
+                    for (const o of deadlines.filter((x) => !rejectedSets.obligations.has(x.id))) {
                       items.push({
-                        key: 'notice_deadline',
-                        title: 'Notice Deadline',
-                        dueDate: notice.toISOString(),
-                        dueLabel: notice.toLocaleDateString(),
-                        description: `Last day to provide ${contract.notice_period_days ?? ''}-day notice`,
-                        href: proofHref(endEvidence),
-                        isContractDate: true,
+                        key: `ob_${o.id}`,
+                        title: o.obligation_type,
+                        dueDate: o.due_at || null,
+                        dueLabel: o.due_at || '—',
+                        description: o.summary || o.action || '—',
+                        href: o.page_number != null
+                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
+                          : null,
                       });
                     }
-                  }
-                  for (const o of deadlines.filter((x) => !rejectedSets.obligations.has(x.id))) {
-                    items.push({
-                      key: `ob_${o.id}`,
-                      title: o.obligation_type,
-                      dueDate: o.due_at || null,
-                      dueLabel: o.due_at || '—',
-                      description: o.summary || o.action || '—',
-                      href: o.page_number != null
-                        ? `/workspaces/${workspaceId}/documents/${documentId}?page=${o.page_number}&quote=${encodeURIComponent((o.summary || o.action || '').slice(0, 140))}`
-                        : null,
-                    });
-                  }
-                  return items;
-                })()}
-              />
+                    return items;
+                  })()}
+                />
+              )
             )}
 
             {tab === 'risks' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-text-soft">{t('empty.noRisksDescription')}</p>
-                  <Button size="sm" onClick={addManualRisk} disabled={isPatchReadOnly || isPatchingSnapshot}>
-                    {t('v3.addRisk')}
-                  </Button>
-                </div>
-                <GenericModuleTab
-                  moduleId="risks"
-                  moduleTitle={t('tabs.risks')}
-                  emptyTitle={t('empty.noRisksTitle')}
-                  emptyDescription={t('empty.noRisksDescription')}
-                  workspaceId={workspaceId}
-                  documentId={documentId}
-                  groupBy="severity"
-                  onReject={(id) => rejectItem('risk', id)}
-                  isPatchingSnapshot={isPatchReadOnly}
-                  items={(() => {
-                  const severityConf: Record<string, AIConfidence> = { critical: 'high', high: 'high', medium: 'medium', low: 'low', unknown: 'medium' };
-                  const allRisks = snapshot?.risks?.length
-                    ? snapshot.risks.map((r) => ({
-                        id: r.id,
-                        title: r.description || 'Risk',
-                        body: r.explanation,
-                        severity: r.severity,
-                        confidence: severityConf[r.severity || 'unknown'] || ('medium' as AIConfidence),
-                        evidence: r.evidence,
-                        sourceHref: proofHref(r.evidence),
-                        sourcePage: r.evidence?.page_number ?? undefined,
-                        icon: <ShieldAlert className="w-4 h-4" />,
-                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
-                      }))
-                    : risks.map((r) => ({
-                        id: r.id,
-                        title: r.description || 'Risk',
-                        body: r.explanation,
-                        severity: r.severity,
-                        confidence: severityConf[r.severity || 'unknown'] || ('medium' as AIConfidence),
-                        sourceHref: r.page_number
-                          ? `/workspaces/${workspaceId}/documents/${documentId}?page=${r.page_number}&quote=${encodeURIComponent((r.description || '').slice(0, 140))}`
-                          : null,
-                        sourcePage: r.page_number ?? undefined,
-                        icon: <ShieldAlert className="w-4 h-4" />,
-                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
-                      }));
-                  return allRisks.filter((r) => !rejectedSets.risks.has(r.id)) as GenericModuleItem[];
-                  })()}
-                />
+                {shouldUseGenericModuleTab('risks') ? (
+                  <GenericModuleTab
+                    moduleId="risks"
+                    moduleTitle={moduleEnvelopes['risks']?.title || t('tabs.risks')}
+                    emptyTitle={t('empty.noRisksTitle')}
+                    emptyDescription={t('empty.noRisksDescription')}
+                    workspaceId={workspaceId}
+                    documentId={documentId}
+                    onReject={(id) => rejectItem('module', id)}
+                    isPatchingSnapshot={isPatchReadOnly}
+                    items={buildGenericModuleItems('risks', moduleEnvelopes['risks'])}
+                    layout={moduleManifestById.get('risks')?.ui_hints?.layout as any}
+                    rawResult={moduleEnvelopes['risks']?.result}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-text-soft">{t('empty.noRisksDescription')}</p>
+                      <Button size="sm" onClick={addManualRisk} disabled={isPatchReadOnly || isPatchingSnapshot}>
+                        {t('v3.addRisk')}
+                      </Button>
+                    </div>
+                    <GenericModuleTab
+                      moduleId="risks"
+                      moduleTitle={t('tabs.risks')}
+                      emptyTitle={t('empty.noRisksTitle')}
+                      emptyDescription={t('empty.noRisksDescription')}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      groupBy="severity"
+                      onReject={(id) => rejectItem('risk', id)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                      items={(() => {
+                      const severityConf: Record<string, AIConfidence> = { critical: 'high', high: 'high', medium: 'medium', low: 'low', unknown: 'medium' };
+                      const allRisks = snapshot?.risks?.length
+                        ? snapshot.risks.map((r) => ({
+                            id: r.id,
+                            title: r.description || 'Risk',
+                            body: r.explanation,
+                            severity: r.severity,
+                            confidence: severityConf[r.severity || 'unknown'] || ('medium' as AIConfidence),
+                            evidence: r.evidence,
+                            sourceHref: proofHref(r.evidence),
+                            sourcePage: r.evidence?.page_number ?? undefined,
+                            icon: <ShieldAlert className="w-4 h-4" />,
+                            iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
+                          }))
+                        : risks.map((r) => ({
+                            id: r.id,
+                            title: r.description || 'Risk',
+                            body: r.explanation,
+                            severity: r.severity,
+                            confidence: severityConf[r.severity || 'unknown'] || ('medium' as AIConfidence),
+                            sourceHref: r.page_number
+                              ? `/workspaces/${workspaceId}/documents/${documentId}?page=${r.page_number}&quote=${encodeURIComponent((r.description || '').slice(0, 140))}`
+                              : null,
+                            sourcePage: r.page_number ?? undefined,
+                            icon: <ShieldAlert className="w-4 h-4" />,
+                            iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
+                          }));
+                      const manual = v3Records
+                        .filter((rec: any) => {
+                          const mid = String(rec?.module_id || rec?.fields?.module_id || '').trim().toLowerCase();
+                          return mid === 'risks';
+                        })
+                        .map((rec: any, idx: number) => {
+                          const id = String(rec?.id || `manual_risk_${idx}`);
+                          const sev = String(rec?.severity || 'medium').toLowerCase();
+                          const desc = String(rec?.title || rec?.summary || '').trim();
+                          const expl = String(rec?.rationale || '').trim();
+                          return {
+                            id,
+                            title: desc || 'Manual risk',
+                            body: expl || undefined,
+                            severity: sev,
+                            confidence: severityConf[sev || 'unknown'] || ('medium' as AIConfidence),
+                            icon: <ShieldAlert className="w-4 h-4" />,
+                            iconColor: sev === 'critical' || sev === 'high' ? 'text-error' : sev === 'medium' ? 'text-highlight' : 'text-success',
+                          };
+                        })
+                        .filter((r: any) => !!r.id && !!r.title);
+                      return [...allRisks, ...(manual as any[])].filter((r: any) => !rejectedSets.risks.has(String(r.id))) as GenericModuleItem[];
+                      })()}
+                    />
+                  </>
+                )}
               </div>
             )}
 
@@ -3040,21 +3364,56 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                   }
                 }
               }
+              
+              const manualModuleItems = v3Records
+                .filter((rec: any) => {
+                  const mid = String(rec?.module_id || rec?.fields?.module_id || '').trim().toLowerCase();
+                  return mid === String(moduleId).trim().toLowerCase();
+                })
+                .map((rec: any, idx: number) => {
+                  const id = String(rec?.id || `${moduleId}::manual_${idx}`);
+                  return {
+                    id,
+                    title: String(rec?.title || rec?.summary || t('v3.manualRecordTitle')),
+                    body: String(rec?.summary || rec?.rationale || '').trim() || undefined,
+                    severity: rec?.severity ? String(rec.severity) : undefined,
+                    confidence: 'high' as AIConfidence,
+                    icon: <Puzzle className="w-4 h-4" />,
+                  } satisfies GenericModuleItem;
+                })
+                .filter((it: any) => !!it.id && (it.body || it.title));
+              
+              for (const it of manualModuleItems) {
+                if (rejectedSets.modules.has(String((it as any).id))) continue;
+                customItems.push(it as any);
+              }
 
               return (
-                <GenericModuleTab
-                  moduleId={moduleId}
-                  moduleTitle={m?.title || moduleId}
-                  workspaceId={workspaceId}
-                  documentId={documentId}
-                  onReject={(itemId) => rejectItem('module', itemId)}
-                  isModuleRejected={rejectedSets.modules.has(moduleId)}
-                  onRestoreModule={() => restoreItem('module', moduleId)}
-                  isPatchingSnapshot={isPatchReadOnly}
-                  emptyTitle="Missing module"
-                  emptyDescription="This custom module was not found in the snapshot."
-                  items={customItems}
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-text-soft">{t('v3.customModuleManualRecordHint')}</p>
+                    <Button
+                      size="sm"
+                      onClick={() => addManualRecordForModule(moduleId, m?.title)}
+                      disabled={isPatchReadOnly || isPatchingSnapshot}
+                    >
+                      {t('v3.addRecord')}
+                    </Button>
+                  </div>
+                  <GenericModuleTab
+                    moduleId={moduleId}
+                    moduleTitle={m?.title || moduleId}
+                    workspaceId={workspaceId}
+                    documentId={documentId}
+                    onReject={(itemId) => rejectItem('module', itemId)}
+                    isModuleRejected={rejectedSets.modules.has(moduleId)}
+                    onRestoreModule={() => restoreItem('module', moduleId)}
+                    isPatchingSnapshot={isPatchReadOnly}
+                    emptyTitle="Missing module"
+                    emptyDescription="This custom module was not found in the snapshot."
+                    items={customItems}
+                  />
+                </div>
               );
             })()}
           </div>
