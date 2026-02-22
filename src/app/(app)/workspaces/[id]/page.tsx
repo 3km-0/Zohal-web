@@ -17,6 +17,8 @@ import {
   RefreshCcw,
   Share2,
   CircleHelp,
+  Sparkles,
+  Search as SearchIcon,
 } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 import Image from 'next/image';
@@ -61,6 +63,7 @@ export default function WorkspaceDetailPage() {
   const t = useTranslations('documents');
   const tFolders = useTranslations('folders');
   const tCommon = useTranslations('common');
+  const tSearch = useTranslations('search');
   const supabase = useMemo(() => createClient(), []);
   const { showError, showSuccess } = useToast();
 
@@ -79,6 +82,7 @@ export default function WorkspaceDetailPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<WorkspaceFolder | null>(null);
+  const [semanticPrompt, setSemanticPrompt] = useState('');
   
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
@@ -420,6 +424,13 @@ export default function WorkspaceDetailPage() {
     setDraggedItem(null);
   };
 
+  const handleSemanticSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = semanticPrompt.trim();
+    if (!q) return;
+    router.push(`/search?scope=workspace&workspaceId=${workspaceId}&q=${encodeURIComponent(q)}`);
+  };
+
   if (!workspace && !loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -480,6 +491,29 @@ export default function WorkspaceDetailPage() {
       />
 
       <WorkspaceTabs workspaceId={workspaceId} active="documents" showMembersTab={orgMultiUserEnabled} />
+
+      <div className="px-6 pt-4">
+        <form onSubmit={handleSemanticSubmit}>
+          <Card className="border-accent/20 bg-gradient-to-br from-surface to-surface-alt" padding="lg">
+            <div className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-text">
+              <Sparkles className="h-4 w-4 text-accent" />
+              {tSearch('workspaceComposerTitle')}
+            </div>
+            <textarea
+              value={semanticPrompt}
+              onChange={(e) => setSemanticPrompt(e.target.value)}
+              placeholder={tSearch('workspaceComposerPlaceholder')}
+              className="w-full min-h-[90px] rounded-scholar border border-border bg-surface p-3 text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <div className="mt-3 flex justify-end">
+              <Button type="submit" disabled={!semanticPrompt.trim()}>
+                <SearchIcon className="h-4 w-4" />
+                {tSearch('workspaceComposerSubmit')}
+              </Button>
+            </div>
+          </Card>
+        </form>
+      </div>
 
       {/* Breadcrumb */}
       {folderPath.length > 0 && (

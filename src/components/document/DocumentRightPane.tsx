@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 interface DocumentRightPaneProps {
   documentId: string;
   workspaceId: string;
+  documentPrivacyMode?: boolean;
   selectedText: string;
   currentPage: number;
   documentType?: DocumentType;
@@ -22,6 +23,7 @@ interface DocumentRightPaneProps {
 export function DocumentRightPane({
   documentId,
   workspaceId,
+  documentPrivacyMode = false,
   selectedText,
   currentPage,
   documentType,
@@ -75,6 +77,7 @@ export function DocumentRightPane({
           <AIPanel
             documentId={documentId}
             workspaceId={workspaceId}
+            documentPrivacyMode={documentPrivacyMode}
             selectedText={selectedText}
             currentPage={currentPage}
             onClose={onClose}

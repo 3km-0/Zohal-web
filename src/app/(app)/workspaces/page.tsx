@@ -2,14 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, FolderOpen, MoreVertical, Archive, Trash2, Edit2 } from 'lucide-react';
+import { Plus, FolderOpen, MoreVertical, Archive, Trash2, Edit2, Sparkles, Search as SearchIcon } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, EmptyState, Spinner } from '@/components/ui';
+import { Button, Card, EmptyState, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
+import { useRouter } from 'next/navigation';
 
 // Unified blue folder color for all workspace types
 const BLUE_FOLDER = { main: '#2563eb', light: '#3b82f6' };
@@ -66,11 +67,13 @@ function StyledFolder({ color, lightColor, className }: { color: string; lightCo
 export default function WorkspacesPage() {
   const t = useTranslations('workspaces');
   const supabase = createClient();
+  const router = useRouter();
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+  const [semanticPrompt, setSemanticPrompt] = useState('');
 
   type AccessibleWorkspaceRow = Workspace & {
     access_role?: string;
@@ -142,6 +145,13 @@ export default function WorkspacesPage() {
     }
   };
 
+  const handleSemanticSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = semanticPrompt.trim();
+    if (!q) return;
+    router.push(`/search?scope=global&q=${encodeURIComponent(q)}`);
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader
@@ -155,6 +165,27 @@ export default function WorkspacesPage() {
       />
 
       <div className="flex-1 overflow-auto p-6">
+        <form onSubmit={handleSemanticSubmit} className="max-w-4xl mb-6">
+          <Card className="border-accent/20 bg-gradient-to-br from-surface to-surface-alt" padding="lg">
+            <div className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-text">
+              <Sparkles className="h-4 w-4 text-accent" />
+              {t('semanticComposerTitle')}
+            </div>
+            <textarea
+              value={semanticPrompt}
+              onChange={(e) => setSemanticPrompt(e.target.value)}
+              placeholder={t('semanticComposerPlaceholder')}
+              className="w-full min-h-[96px] rounded-scholar border border-border bg-surface p-3 text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <div className="mt-3 flex justify-end">
+              <Button type="submit" disabled={!semanticPrompt.trim()}>
+                <SearchIcon className="h-4 w-4" />
+                {t('semanticComposerSubmit')}
+              </Button>
+            </div>
+          </Card>
+        </form>
+
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Spinner size="lg" />

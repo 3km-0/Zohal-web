@@ -468,6 +468,71 @@ export interface SearchResult {
   language: string;
 }
 
+export type UnifiedSearchScope = 'global' | 'workspace';
+export type UnifiedSearchStatus = 'answered' | 'needs_clarification' | 'insufficient_evidence';
+
+export interface UnifiedSearchMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface UnifiedSearchResult {
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  page_number: number;
+  content_text: string;
+  similarity: number;
+  quality: 'strong' | 'good' | 'weak';
+}
+
+export interface UnifiedSearchInsightAnswer {
+  answer: string;
+  insight_id: string;
+  kind: string;
+  document_id: string;
+  document_title: string;
+  page_number: number;
+  confidence: number;
+  source: 'exact' | 'semantic';
+}
+
+export interface UnifiedSearchAIAnswer {
+  answer: string;
+  citations: Array<{
+    document_id: string;
+    document_title: string;
+    page_number: number;
+    quote: string;
+  }>;
+  confidence: number;
+}
+
+export interface UnifiedSearchAppliedScope {
+  scope: UnifiedSearchScope;
+  workspace_ids: string[];
+  workspace_count: number;
+}
+
+export interface UnifiedSearchResponse {
+  success: boolean;
+  query: string;
+  query_type: 'question' | 'search';
+  conversation_id?: string;
+  status?: UnifiedSearchStatus;
+  clarifying_question?: string;
+  applied_scope?: UnifiedSearchAppliedScope;
+  insight_answer?: UnifiedSearchInsightAnswer;
+  ai_answer?: UnifiedSearchAIAnswer;
+  search_results: UnifiedSearchResult[];
+  search_results_count: number;
+  insights_time_ms: number;
+  search_time_ms: number;
+  ai_time_ms: number;
+  total_time_ms: number;
+  request_id: string;
+}
+
 export interface AskWorkspaceResult {
   success: boolean;
   conversation_id: string;
@@ -483,4 +548,3 @@ export interface AskWorkspaceResult {
   confidence: number;
   source: 'insights' | 'rag';
 }
-

@@ -24,6 +24,7 @@ import type { DocumentType } from '@/types/database';
 interface AIPanelProps {
   documentId: string;
   workspaceId: string;
+  documentPrivacyMode?: boolean;
   selectedText?: string;
   currentPage?: number;
   onClose: () => void;
@@ -48,10 +49,18 @@ interface ConversationSummary {
   messageCount: number;
 }
 
+interface ChatEdgeResponse {
+  conversation_id?: string;
+  message?: {
+    content?: string;
+  };
+}
+
 
 export function AIPanel({
   documentId,
   workspaceId,
+  documentPrivacyMode = false,
   selectedText,
   currentPage,
   onClose,
@@ -74,6 +83,7 @@ export function AIPanel({
   const [pinnedNotes, setPinnedNotes] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [documentContext, setDocumentContext] = useState<string>('');
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatSeqRef = useRef(0);
 
@@ -141,6 +151,45 @@ export function AIPanel({
     }
   }, [supabase, documentId]);
 
+  // Load compact document context from indexed chunks for chat grounding.
+  const loadDocumentContext = useCallback(async () => {
+    if (documentPrivacyMode) {
+      setDocumentContext('');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('document_chunks')
+        .select('page_number, chunk_index, content_text')
+        .eq('document_id', documentId)
+        .order('page_number', { ascending: true })
+        .order('chunk_index', { ascending: true })
+        .limit(80);
+
+      if (error || !data || data.length === 0) {
+        setDocumentContext('');
+        return;
+      }
+
+      const maxChars = 12000;
+      let total = 0;
+      const lines: string[] = [];
+      for (const row of data as Array<{ page_number: number | null; content_text: string | null }>) {
+        const text = (row.content_text || '').trim();
+        if (!text) continue;
+        const line = `[Page ${row.page_number ?? 1}] ${text}`;
+        if (total + line.length > maxChars) break;
+        lines.push(line);
+        total += line.length + 1;
+      }
+
+      setDocumentContext(lines.join('\n'));
+    } catch {
+      setDocumentContext('');
+    }
+  }, [supabase, documentId, documentPrivacyMode]);
+
   // Initialize on mount and when the document changes.
   // (Do NOT tie this to callbacks that might change every render.)
   useEffect(() => {
@@ -150,6 +199,7 @@ export function AIPanel({
     setError(null);
     setLoading(false);
     setLoadingConversation(false);
+    setDocumentContext('');
 
     // Cancel any in-flight chat request when switching documents / mounting.
     chatSeqRef.current++;
@@ -158,7 +208,8 @@ export function AIPanel({
 
     loadPinnedNotes();
     loadConversationHistory();
-  }, [documentId, loadPinnedNotes, loadConversationHistory]);
+    loadDocumentContext();
+  }, [documentId, loadPinnedNotes, loadConversationHistory, loadDocumentContext]);
 
   const goToContractAnalysis = useCallback(() => {
     if (onOpenAnalysis) {
@@ -250,8 +301,20 @@ export function AIPanel({
         const userId = session.user?.id;
         if (!userId) throw new Error('Missing user');
 
+        const contextParts: string[] = documentPrivacyMode ? [] : [
+          `Document ID: ${documentId}`,
+          documentType ? `Document Type: ${documentType}` : '',
+          typeof currentPage === 'number' ? `Current Page: ${currentPage}` : '',
+          selectedText ? `Selected Text:\n${selectedText}` : '',
+          documentContext ? `Document Context:\n${documentContext}` : '',
+        ].filter(Boolean);
+
+        const firstTurnContext = !conversationIdAtSend && contextParts.length > 0
+          ? contextParts.join('\n\n')
+          : undefined;
+
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-workspace`,
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
           {
             method: 'POST',
             headers: {
@@ -260,22 +323,28 @@ export function AIPanel({
             },
             signal: controller.signal,
             body: JSON.stringify({
-              question: message,
-              workspace_id: workspaceId,
               user_id: userId,
+              document_id: documentId,
+              workspace_id: workspaceId,
               conversation_id: conversationIdAtSend,
-              options: {
-                document_ids: [documentId],
-                top_k: 10,
-                include_quotes: true,
-              },
+              message,
+              context: firstTurnContext,
+              request_type: 'chat',
+              rag_options: documentPrivacyMode
+                ? {
+                    top_k: 10,
+                    threshold: 0.45,
+                    document_ids: [documentId],
+                    include_quotes: true,
+                  }
+                : undefined,
             }),
           }
         );
 
         const json = await response.json().catch(() => null);
         if (!response.ok) {
-          const uiErr = mapHttpError(response.status, json, 'ask-workspace');
+          const uiErr = mapHttpError(response.status, json, 'chat');
           toast.show(uiErr);
           setError(uiErr.message);
           return;
@@ -285,7 +354,7 @@ export function AIPanel({
         // ignore this stale response.
         if (seq !== chatSeqRef.current) return;
 
-        const data = (json || {}) as any;
+        const data = (json || {}) as ChatEdgeResponse;
 
         // Update conversation ID if new
         if (data.conversation_id && !conversationIdAtSend) {
@@ -294,7 +363,7 @@ export function AIPanel({
 
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: data.answer || 'No response',
+          content: data.message?.content || 'No response',
           timestamp: new Date().toISOString(),
         };
         setChatHistory((prev) => [...prev, assistantMessage]);
@@ -308,7 +377,7 @@ export function AIPanel({
         if (seq === chatSeqRef.current) setLoading(false);
       }
     },
-    [supabase, workspaceId, documentId, currentConversationId, toast, loading, loadConversationHistory]
+    [supabase, documentId, workspaceId, documentType, documentPrivacyMode, currentPage, selectedText, documentContext, currentConversationId, toast, loading, loadConversationHistory]
   );
 
   const pinMessage = useCallback(

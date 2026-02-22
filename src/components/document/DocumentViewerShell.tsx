@@ -420,6 +420,7 @@ export default function DocumentViewerShell({
           <DocumentRightPane
             documentId={documentId}
             workspaceId={workspaceId}
+            documentPrivacyMode={!!document.privacy_mode}
             selectedText={selectedText}
             currentPage={currentPage}
             documentType={document.document_type || undefined}
