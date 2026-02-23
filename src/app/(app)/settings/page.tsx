@@ -15,6 +15,7 @@ import {
   Link2,
   CheckCircle,
   XCircle,
+  MapPin,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Input, Badge, Spinner } from '@/components/ui';
@@ -56,7 +57,7 @@ export default function SettingsPage() {
 
   // Profile form state
   const [displayName, setDisplayName] = useState('');
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; owner_id: string; multi_user_enabled?: boolean }>>([]);
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; owner_id: string; multi_user_enabled?: boolean; data_locality_enabled?: boolean }>>([]);
   const [defaultOrgId, setDefaultOrgId] = useState<string | null>(null);
   const [savingOrg, setSavingOrg] = useState(false);
 
@@ -96,7 +97,7 @@ export default function SettingsPage() {
       // Best-effort org list (RLS may restrict in some environments)
       const { data: orgs } = await supabase
         .from('organizations')
-        .select('id, name, owner_id, multi_user_enabled')
+        .select('id, name, owner_id, multi_user_enabled, data_locality_enabled')
         .order('created_at', { ascending: false });
       setOrganizations((orgs as any[]) || []);
 
@@ -250,6 +251,11 @@ export default function SettingsPage() {
     );
   }
 
+  const subscriptionTier = String(profile?.subscription_tier || '').toLowerCase();
+  const canOpenDataLocality = subscriptionTier === 'premium' ||
+    subscriptionTier === 'ultra' ||
+    organizations.some((org) => org.data_locality_enabled === true);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} />
@@ -316,6 +322,17 @@ export default function SettingsPage() {
             {profile?.subscription_tier === 'free' && (
               <Button variant="secondary" className="mt-4">
                 {tSettings('upgradeToPro')}
+              </Button>
+            )}
+
+            {canOpenDataLocality && (
+              <Button
+                variant="secondary"
+                className="mt-3"
+                onClick={() => router.push('/settings/data-locality')}
+              >
+                <MapPin className="w-4 h-4" />
+                {tSettings('dataLocality')}
               </Button>
             )}
           </Card>

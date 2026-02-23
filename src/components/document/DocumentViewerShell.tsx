@@ -43,6 +43,7 @@ export default function DocumentViewerShell({
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [retrying, setRetrying] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
 
   const getDocumentTypeLabel = useCallback((documentType?: string | null) => {
     switch (documentType) {
@@ -138,6 +139,16 @@ export default function DocumentViewerShell({
     [pathname, rightPaneMode, router, searchParams]
   );
 
+  // Auto-poll while document is converting/processing
+  useEffect(() => {
+    const isProcessing =
+      document?.processing_status === 'processing' ||
+      document?.processing_status === 'pending';
+    if (!isProcessing) return;
+    const timer = setTimeout(() => setPollCount((c) => c + 1), 5000);
+    return () => clearTimeout(timer);
+  }, [document?.processing_status, pollCount]);
+
   // Fetch document and workspace
   useEffect(() => {
     async function fetchData() {
@@ -209,7 +220,7 @@ export default function DocumentViewerShell({
     }
 
     fetchData();
-  }, [supabase, documentId, workspaceId, show, showError]);
+  }, [supabase, documentId, workspaceId, show, showError, pollCount]);
 
   // Subscribe to document updates so type/status reflects background processing
   // (e.g. classify-document updating document_type from 'other' to 'legal_filing').
@@ -446,7 +457,7 @@ export default function DocumentViewerShell({
                         <div>
                           <h2 className="text-lg font-semibold text-text">Converting document…</h2>
                           <p className="mt-1 text-sm text-text-soft">
-                            Your document is being converted to PDF. This usually takes under a minute. Refresh to check progress.
+                            Your document is being converted to PDF. This usually takes under a minute. Checking automatically…
                           </p>
                         </div>
                       </div>
