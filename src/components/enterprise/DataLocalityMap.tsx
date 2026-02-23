@@ -1,6 +1,5 @@
 'use client';
 
-import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
 import { cn } from '@/lib/utils';
 
 export interface DataLocalityRegion {
@@ -20,7 +19,14 @@ interface DataLocalityMapProps {
   onSelectRegion: (region: DataLocalityRegion) => void;
 }
 
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+/** Convert lat/lng to rough x/y percentages inside a 980×420 Mercator-ish box */
+function toXY(lat: number, lng: number): { x: number; y: number } {
+  const x = ((lng + 180) / 360) * 100;
+  const latRad = (lat * Math.PI) / 180;
+  const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+  const y = ((Math.PI - mercN) / (2 * Math.PI)) * 100;
+  return { x: Math.max(1, Math.min(99, x)), y: Math.max(1, Math.min(99, y)) };
+}
 
 export function DataLocalityMap({
   regions,
@@ -35,61 +41,71 @@ export function DataLocalityMap({
         <span className="text-xs text-white/60">Tap a region node to provision</span>
       </div>
 
-      <div className="relative h-[360px] w-full rounded-scholar bg-[#0a1020]/70">
-        <ComposableMap
-          projection="geoMercator"
-          projectionConfig={{ scale: 125, center: [10, 25] }}
-          width={980}
-          height={420}
-          style={{ width: '100%', height: '100%' }}
+      {/* Dot-grid map — pure SVG, no external library */}
+      <div className="relative h-[260px] w-full overflow-hidden rounded-scholar bg-[#0a1020]/70">
+        <svg
+          viewBox="0 0 980 420"
+          preserveAspectRatio="xMidYMid meet"
+          className="h-full w-full"
+          aria-label="Global data region map"
         >
-          <Geographies geography={GEO_URL}>
-            {({ geographies }) =>
-              geographies.map((geo) => (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  fill="#1f2a3d"
-                  stroke="#2e3c52"
-                  strokeWidth={0.45}
-                  style={{
-                    default: { outline: 'none' },
-                    hover: { outline: 'none', fill: '#283a54' },
-                    pressed: { outline: 'none' },
-                  }}
-                />
-              ))
-            }
-          </Geographies>
+          {/* subtle grid lines */}
+          {Array.from({ length: 19 }, (_, i) => (
+            <line
+              key={`v${i}`}
+              x1={(i + 1) * 49}
+              y1={0}
+              x2={(i + 1) * 49}
+              y2={420}
+              stroke="#1f2a3d"
+              strokeWidth={0.5}
+            />
+          ))}
+          {Array.from({ length: 8 }, (_, i) => (
+            <line
+              key={`h${i}`}
+              x1={0}
+              y1={(i + 1) * 47}
+              x2={980}
+              y2={(i + 1) * 47}
+              stroke="#1f2a3d"
+              strokeWidth={0.5}
+            />
+          ))}
 
           {regions.map((region) => {
+            const { x, y } = toXY(region.lat, region.lng);
+            const cx = (x / 100) * 980;
+            const cy = (y / 100) * 420;
             const isSelected = selectedRegionCode === region.region_code;
             const isCurrent = currentRegionCode === region.region_code;
+            const fill = isCurrent ? '#22c55e' : isSelected ? '#f59e0b' : '#60a5fa';
+            const r = isSelected ? 8 : 6;
+
             return (
-              <Marker
+              <g
                 key={region.region_code}
-                coordinates={[region.lng, region.lat]}
+                className="cursor-pointer"
                 onClick={() => onSelectRegion(region)}
+                role="button"
+                aria-label={`${region.city}, ${region.country_code}`}
               >
-                <g className="cursor-pointer">
-                  <circle
-                    r={isSelected ? 8 : 6}
-                    fill={isCurrent ? '#22c55e' : isSelected ? '#f59e0b' : '#60a5fa'}
-                    stroke="#f8fafc"
-                    strokeWidth={1.2}
-                  />
-                  <circle
-                    r={isSelected ? 16 : 13}
-                    fill="none"
-                    stroke={isCurrent ? '#22c55e' : '#60a5fa'}
-                    strokeWidth={1.2}
-                    className={cn('opacity-60', 'animate-pulse')}
-                  />
-                </g>
-              </Marker>
+                <circle r={r + 8} cx={cx} cy={cy} fill={fill} opacity={0.15} />
+                <circle r={r} cx={cx} cy={cy} fill={fill} stroke="#f8fafc" strokeWidth={1.2} />
+                <text
+                  x={cx}
+                  y={cy - r - 4}
+                  textAnchor="middle"
+                  fill="#e2e8f0"
+                  fontSize={9}
+                  fontFamily="sans-serif"
+                >
+                  {region.region_code}
+                </text>
+              </g>
             );
           })}
-        </ComposableMap>
+        </svg>
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -109,9 +125,15 @@ export function DataLocalityMap({
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold">{region.region_code}</span>
-                {isCurrent && <span className="rounded bg-success/20 px-1.5 py-0.5 text-[10px] text-success">Current</span>}
+                {isCurrent && (
+                  <span className="rounded bg-success/20 px-1.5 py-0.5 text-[10px] text-success">
+                    Current
+                  </span>
+                )}
               </div>
-              <div>{region.city}, {region.country_code}</div>
+              <div>
+                {region.city}, {region.country_code}
+              </div>
             </button>
           );
         })}
