@@ -11,6 +11,7 @@ type LibraryItem = {
   id: string;
   title: string;
   url: string;
+  objectPath?: string | null;
   description?: string | null;
   source?: string | null;
   region?: string | null;
@@ -20,6 +21,38 @@ type LibraryItem = {
 interface ZohalLibraryPickerProps {
   onClose: () => void;
   onSelectFile: (file: File) => void;
+}
+
+function normalizeLibraryObjectPath(value: unknown): string | null {
+  const path = String(value || '').trim().replace(/^\/+/, '');
+  if (!path) return null;
+  return path.startsWith('zohal-library/') ? path : null;
+}
+
+function deriveLibraryObjectPathFromUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('gs://')) {
+    const noScheme = trimmed.replace(/^gs:\/\//, '');
+    const slash = noScheme.indexOf('/');
+    if (slash < 0) return null;
+    const path = noScheme.slice(slash + 1).replace(/^\/+/, '');
+    return normalizeLibraryObjectPath(path);
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const path = decodeURIComponent(parsed.pathname).replace(/^\/+/, '');
+    const marker = path.indexOf('zohal-library/');
+    if (marker >= 0) {
+      return normalizeLibraryObjectPath(path.slice(marker));
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPickerProps) {
@@ -53,6 +86,9 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
           id: String(raw?.id || raw?.slug || raw?.key || raw?.title || '').trim(),
           title: String(raw?.title || raw?.name || raw?.id || '').trim(),
           url: String(raw?.url || raw?.download_url || raw?.href || '').trim(),
+          objectPath:
+            normalizeLibraryObjectPath(raw?.object_path) ||
+            deriveLibraryObjectPathFromUrl(String(raw?.url || raw?.download_url || raw?.href || '')),
           description: raw?.description ? String(raw.description) : null,
           source: raw?.source ? String(raw.source) : null,
           region: raw?.region ? String(raw.region) : null,
@@ -76,9 +112,36 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     setDownloadingId(it.id);
     setError(null);
     try {
-      const res = await fetch(it.url);
-      if (!res.ok) throw new Error(`${t('errors.downloadFailed')} (${res.status})`);
-      const blob = await res.blob();
+      let blob: Blob | null = null;
+
+      // Prefer authenticated server-side download for private GCS objects.
+      if (it.objectPath) {
+        const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
+          body: { object_path: it.objectPath },
+        });
+
+        if (!error) {
+          if (data instanceof Blob) {
+            blob = data;
+          } else if (data instanceof ArrayBuffer) {
+            blob = new Blob([data], { type: 'application/pdf' });
+          } else if (response) {
+            blob = await response.blob();
+          }
+        } else {
+          console.warn('[ZohalLibraryPicker] zohal-library-download failed, falling back to direct URL', {
+            objectPath: it.objectPath,
+            error,
+          });
+        }
+      }
+
+      if (!blob) {
+        const res = await fetch(it.url);
+        if (!res.ok) throw new Error(`${t('errors.downloadFailed')} (${res.status})`);
+        blob = await res.blob();
+      }
+
       const file = new File([blob], `${it.title}.pdf`, { type: 'application/pdf' });
       onSelectFile(file);
       onClose();
@@ -161,4 +224,3 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     </div>
   );
 }
-
