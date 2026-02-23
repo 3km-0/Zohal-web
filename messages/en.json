@@ -87,6 +87,8 @@
     "resendCodeSuccess": "A new code has been sent to your email.",
     "enterEmailFirst": "Please enter your email address first.",
     "backToSignup": "Back to sign up",
+    "emailAlreadyRegistered": "This email is already registered.",
+    "signInInstead": "Sign in instead",
     "apple": "Apple",
     "google": "Google",
     "microsoft": "Microsoft",

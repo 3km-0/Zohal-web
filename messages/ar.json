@@ -87,6 +87,8 @@
     "resendCodeSuccess": "تم إرسال رمز جديد إلى بريدك الإلكتروني.",
     "enterEmailFirst": "يرجى إدخال عنوان بريدك الإلكتروني أولاً.",
     "backToSignup": "العودة إلى إنشاء الحساب",
+    "emailAlreadyRegistered": "هذا البريد الإلكتروني مسجل بالفعل.",
+    "signInInstead": "تسجيل الدخول بدلاً من ذلك",
     "apple": "Apple",
     "google": "Google",
     "microsoft": "Microsoft",
