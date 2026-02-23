@@ -70,11 +70,10 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent>
           <Button
-            variant="secondary"
             className="w-full"
-            onClick={() => router.push('/auth/login')}
+            onClick={() => router.push(`/auth/verify?email=${encodeURIComponent(email)}`)}
           >
-            {t('login')}
+            {t('enterVerificationCode')}
           </Button>
         </CardContent>
       </Card>
