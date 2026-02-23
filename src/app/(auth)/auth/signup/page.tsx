@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +44,8 @@ export default function SignupPage() {
 
     if (result.success) {
       setSuccess(true);
+    } else if (result.alreadyRegistered) {
+      setAlreadyRegistered(true);
     } else {
       setFormError(result.error?.message || t('signUpFailed'));
     }
@@ -55,6 +58,35 @@ export default function SignupPage() {
       setFormError(result.error?.message || t('signUpWith', { provider: providerName }));
     }
   };
+
+  if (alreadyRegistered) {
+    return (
+      <Card className="w-full max-w-md" padding="lg">
+        <CardHeader className="text-center">
+          <div className="w-16 h-16 bg-warning/10 border border-warning/20 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+            👋
+          </div>
+          <CardTitle className="text-2xl">{t('hasAccount')}</CardTitle>
+          <CardDescription>{t('emailAlreadyRegistered')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button
+            className="w-full"
+            onClick={() => router.push(`/auth/login?email=${encodeURIComponent(email)}`)}
+          >
+            {t('signInInstead')}
+          </Button>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => router.push('/auth/forgot-password')}
+          >
+            {t('forgotPassword')}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (success) {
     return (

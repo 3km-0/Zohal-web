@@ -129,6 +129,13 @@ export function useAuth() {
         return { success: false, error };
       }
 
+      // Supabase returns a fake success for already-registered emails (email
+      // enumeration protection). Detect this by checking for empty identities.
+      if (data.user && data.user.identities?.length === 0) {
+        setState((prev) => ({ ...prev, loading: false }));
+        return { success: false, alreadyRegistered: true, error: null };
+      }
+
       setState({
         user: data.user,
         session: data.session,

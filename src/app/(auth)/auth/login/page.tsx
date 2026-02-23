@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   const { signIn, signInWithOAuth, loading, error } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
