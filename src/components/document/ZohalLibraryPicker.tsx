@@ -24,9 +24,10 @@ interface ZohalLibraryPickerProps {
 }
 
 function normalizeLibraryObjectPath(value: unknown): string | null {
-  const path = String(value || '').trim().replace(/^\/+/, '');
+  const path = decodeURIComponent(String(value || '').trim()).replace(/^\/+/, '');
   if (!path) return null;
-  return path.startsWith('zohal-library/') ? path : null;
+  if (path.includes('..')) return null;
+  return path;
 }
 
 function deriveLibraryObjectPathFromUrl(rawUrl: string): string | null {
@@ -43,16 +44,35 @@ function deriveLibraryObjectPathFromUrl(rawUrl: string): string | null {
 
   try {
     const parsed = new URL(trimmed);
-    const path = decodeURIComponent(parsed.pathname).replace(/^\/+/, '');
-    const marker = path.indexOf('zohal-library/');
-    if (marker >= 0) {
-      return normalizeLibraryObjectPath(path.slice(marker));
+
+    // Virtual-hosted-style GCS URL: https://<bucket>.storage.googleapis.com/<object>
+    if (parsed.hostname.endsWith('.storage.googleapis.com')) {
+      return normalizeLibraryObjectPath(parsed.pathname);
     }
+
+    // Path-style GCS URL patterns.
+    if (parsed.hostname === 'storage.googleapis.com') {
+      const parts = decodeURIComponent(parsed.pathname).split('/').filter(Boolean);
+      if (parts.length === 0) return null;
+
+      // JSON API download path: /download/storage/v1/b/<bucket>/o/<object>
+      const oIndex = parts.indexOf('o');
+      if (oIndex >= 0 && oIndex + 1 < parts.length) {
+        return normalizeLibraryObjectPath(parts.slice(oIndex + 1).join('/'));
+      }
+
+      // Basic path-style object URL: /<bucket>/<object>
+      if (parts.length >= 2) {
+        return normalizeLibraryObjectPath(parts.slice(1).join('/'));
+      }
+
+      return normalizeLibraryObjectPath(parts[0]);
+    }
+
+    return normalizeLibraryObjectPath(parsed.pathname);
   } catch {
     return null;
   }
-
-  return null;
 }
 
 export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPickerProps) {
