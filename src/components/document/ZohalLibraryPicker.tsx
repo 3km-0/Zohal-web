@@ -114,7 +114,7 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
           region: raw?.region ? String(raw.region) : null,
           tags: Array.isArray(raw?.tags) ? (raw.tags as any[]).map((x) => String(x)) : null,
         }))
-        .filter((it) => !!it.id && !!it.title && !!it.url);
+        .filter((it) => !!it.id && !!it.title && (!!it.url || !!it.objectPath));
 
       setItems(normalized);
     } catch (e) {
@@ -134,29 +134,29 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     try {
       let blob: Blob | null = null;
 
-      // Prefer authenticated server-side download for private GCS objects.
+      // Prefer authenticated server-side download when object path is available.
       if (it.objectPath) {
         const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
           body: { object_path: it.objectPath },
         });
 
-        if (!error) {
-          if (data instanceof Blob) {
-            blob = data;
-          } else if (data instanceof ArrayBuffer) {
-            blob = new Blob([data], { type: 'application/pdf' });
-          } else if (response) {
-            blob = await response.blob();
-          }
-        } else {
-          console.warn('[ZohalLibraryPicker] zohal-library-download failed, falling back to direct URL', {
-            objectPath: it.objectPath,
-            error,
-          });
+        if (error) {
+          throw error;
+        }
+        if (response && !response.ok) {
+          throw new Error(`${t('errors.downloadFailed')} (${response.status})`);
+        }
+        if (data instanceof Blob) {
+          blob = data;
+        } else if (data instanceof ArrayBuffer) {
+          blob = new Blob([data], { type: 'application/pdf' });
+        } else if (response) {
+          blob = await response.blob();
         }
       }
 
       if (!blob) {
+        if (!it.url) throw new Error(t('errors.downloadFailed'));
         const res = await fetch(it.url);
         if (!res.ok) throw new Error(`${t('errors.downloadFailed')} (${res.status})`);
         blob = await res.blob();
