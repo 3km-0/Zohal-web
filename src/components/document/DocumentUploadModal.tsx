@@ -527,12 +527,20 @@ export function DocumentUploadModal({
 
     if (insertError) throw insertError;
 
-    try {
-      await supabase.functions.invoke('convert-to-pdf', {
-        body: { document_id: documentId, source_storage_path: sourceStoragePath },
-      });
-    } catch (err) {
-      console.warn('[Upload] convert-to-pdf failed (non-fatal):', err);
+    const { error: convertError } = await supabase.functions.invoke('convert-to-pdf', {
+      body: { document_id: documentId, source_storage_path: sourceStoragePath },
+    });
+
+    if (convertError) {
+      console.warn('[Upload] convert-to-pdf failed:', convertError);
+      setFiles((prev) =>
+        prev.map((f) =>
+          idsToMark.includes(f.id)
+            ? { ...f, status: 'error' as const, error: 'Conversion failed — open the document to retry.' }
+            : f
+        )
+      );
+      return documentId;
     }
 
     setFiles((prev) =>

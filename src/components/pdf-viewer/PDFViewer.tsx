@@ -61,7 +61,11 @@ export function PDFViewer({
       } catch (err) {
         if (cancelled) return;
         console.error('PDF load error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load PDF');
+        const isMissing = err instanceof Error &&
+          (err.name === 'MissingPDFException' || err.message.startsWith('Missing PDF'));
+        setError(isMissing
+          ? 'This document is not available. It may still be processing or the conversion failed.'
+          : 'Failed to load PDF. Please try refreshing the page.');
         setLoading(false);
       }
     }

@@ -163,6 +163,14 @@ export default function DocumentViewerShell({
         if (docData.privacy_mode) {
           setPdfUrl(null);
         }
+        // Failed conversion — PDF doesn't exist, don't even try to fetch
+        else if (docData.processing_status === 'failed') {
+          setPdfUrl(null);
+        }
+        // Still processing — PDF not ready yet
+        else if (docData.processing_status === 'processing' || docData.processing_status === 'pending') {
+          setPdfUrl(null);
+        }
         // Get signed URL for PDF from GCS gateway
         else if (docData.storage_path && docData.storage_path !== 'local') {
           const { data: urlData, error: urlError } = await supabase.functions.invoke(
@@ -237,25 +245,40 @@ export default function DocumentViewerShell({
   const retryIndexing = useCallback(async () => {
     setRetrying(true);
     try {
-      const { error, response } = await supabase.functions.invoke('enqueue-document-ingestion', {
-        body: { document_id: documentId },
-      });
-      if (error) {
-        const json = response ? await response.json().catch(() => null) : null;
-        const uiErr = mapHttpError(response?.status ?? 500, json, 'enqueue-document-ingestion');
-        show(uiErr);
-        return;
+      const sourceMeta = (document as any)?.source_metadata as Record<string, unknown> | undefined;
+      const isDocxConversion = typeof sourceMeta?.conversion_method === 'string' &&
+        (sourceMeta.conversion_method as string).includes('cloudconvert');
+
+      if (isDocxConversion) {
+        const { error, response } = await supabase.functions.invoke('convert-to-pdf', {
+          body: { document_id: documentId },
+        });
+        if (error) {
+          const json = response ? await response.json().catch(() => null) : null;
+          show(mapHttpError(response?.status ?? 500, json, 'convert-to-pdf'));
+          return;
+        }
+        showSuccess('Conversion started', 'Your document is being converted. This usually takes under a minute.');
+      } else {
+        const { error, response } = await supabase.functions.invoke('enqueue-document-ingestion', {
+          body: { document_id: documentId },
+        });
+        if (error) {
+          const json = response ? await response.json().catch(() => null) : null;
+          show(mapHttpError(response?.status ?? 500, json, 'enqueue-document-ingestion'));
+          return;
+        }
+        showSuccess('Queued for indexing', 'We’ll retry processing in the background.');
       }
-      showSuccess('Queued for indexing', 'We’ll retry processing in the background.');
-      // Re-fetch doc to update status quickly
+
       const { data: docData } = await supabase.from('documents').select('*').eq('id', documentId).single();
       if (docData) setDocument(docData);
     } catch (e) {
-      showError(e, 'enqueue-document-ingestion');
+      showError(e, 'retry');
     } finally {
       setRetrying(false);
     }
-  }, [supabase, documentId, show, showSuccess, showError]);
+  }, [supabase, documentId, document, show, showSuccess, showError]);
 
   if (loading) {
     return (
@@ -386,30 +409,64 @@ export default function DocumentViewerShell({
                   </CardContent>
                 </Card>
               ) : (
-                <div className="text-center">
-                  <p className="text-text-soft mb-2">
-                    {document.storage_path === 'local'
-                      ? 'This document exists only on the device that imported it (not uploaded to cloud).'
-                      : 'PDF not available'}
-                  </p>
-                  {document.processing_status !== 'completed' && (
-                    <div className="space-y-3">
-                      <Badge variant="warning">Processing: {document.processing_status}</Badge>
-                      {(document.processing_status === 'failed' || document.processing_status === 'pending') && (
-                        <div>
-                          <Button
-                            variant="secondary"
-                            onClick={retryIndexing}
-                            disabled={retrying}
-                          >
-                            {retrying ? <Spinner size="sm" /> : null}
-                            Retry indexing
-                          </Button>
+                <Card className="max-w-xl w-full mx-4">
+                  <CardContent className="p-6">
+                    {document.processing_status === 'failed' ? (
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 h-9 w-9 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
+                          <span className="text-lg">⚠️</span>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        <div className="flex-1">
+                          <h2 className="text-lg font-semibold text-text">Conversion failed</h2>
+                          <p className="mt-1 text-sm text-text-soft">
+                            {(() => {
+                              const meta = (document as any)?.source_metadata as Record<string, unknown> | undefined;
+                              const convErr = meta?.conversion_error as string | undefined;
+                              if (convErr === 'conversion_timed_out') return 'The conversion timed out. Please try again.';
+                              if (convErr) return convErr;
+                              return 'We could not convert your document. Please try again or upload it as a PDF.';
+                            })()}
+                          </p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Button onClick={retryIndexing} disabled={retrying}>
+                              {retrying ? <Spinner size="sm" /> : null}
+                              Retry conversion
+                            </Button>
+                            <Button variant="secondary" onClick={() => router.push(`/workspaces/${workspaceId}`)}>
+                              Back to workspace
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : document.processing_status === 'processing' || document.processing_status === 'pending' ? (
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 h-9 w-9 rounded-lg bg-surface-alt flex items-center justify-center shrink-0">
+                          <Spinner size="sm" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-semibold text-text">Converting document…</h2>
+                          <p className="mt-1 text-sm text-text-soft">
+                            Your document is being converted to PDF. This usually takes under a minute. Refresh to check progress.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 h-9 w-9 rounded-lg bg-surface-alt flex items-center justify-center shrink-0">
+                          <span className="text-lg">📄</span>
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-semibold text-text">PDF not available</h2>
+                          <p className="mt-1 text-sm text-text-soft">
+                            {document.storage_path === 'local'
+                              ? 'This document only exists on the iOS device that imported it.'
+                              : 'The PDF for this document is not available on the web.'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
