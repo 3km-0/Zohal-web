@@ -121,6 +121,7 @@ export function AIPanel({
         .from('explanations')
         .select('conversation_id, request_type, input_text, response_text, created_at')
         .eq('document_id', documentId)
+        .in('request_type', ['chat', 'user_message'])
         .not('conversation_id', 'is', null)
         .order('created_at', { ascending: false });
 
@@ -330,14 +331,6 @@ export function AIPanel({
               message,
               context: firstTurnContext,
               request_type: 'chat',
-              rag_options: documentPrivacyMode
-                ? {
-                    top_k: 10,
-                    threshold: 0.45,
-                    document_ids: [documentId],
-                    include_quotes: true,
-                  }
-                : undefined,
             }),
           }
         );
@@ -416,6 +409,7 @@ export function AIPanel({
           .from('explanations')
           .select('*')
           .eq('conversation_id', conversationId)
+          .in('request_type', ['chat', 'user_message'])
           .order('created_at', { ascending: true });
 
         if (error) {
@@ -429,19 +423,10 @@ export function AIPanel({
           for (const item of data) {
             const createdAt = item.created_at as string | undefined;
             const role = (item.role as string | null) ?? null;
-            const requestType = (item.request_type as string | null) ?? null;
             const inputText = (item.input_text as string | null) ?? null;
             const responseText = (item.response_text as string | null) ?? null;
 
-            // ask-workspace persists a single assistant row that includes both question and answer.
-            // Render it as user+assistant for a proper chat transcript.
-            if (role === 'assistant' && requestType === 'ask' && inputText && responseText) {
-              messages.push({ role: 'user', content: inputText, timestamp: createdAt });
-              messages.push({ role: 'assistant', content: responseText, timestamp: createdAt });
-              continue;
-            }
-
-            // chat() edge function may persist separate user/assistant rows.
+            // chat() edge function persists separate user/assistant rows.
             if (role === 'user') {
               const content = inputText || responseText;
               if (content) messages.push({ role: 'user', content, timestamp: createdAt });
