@@ -5,8 +5,20 @@ import { NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const tokenHash = requestUrl.searchParams.get('token_hash');
+  const type = requestUrl.searchParams.get('type') as 'signup' | 'email' | 'recovery' | 'invite' | null;
   const integration = requestUrl.searchParams.get('integration');
   const origin = requestUrl.origin;
+
+  // Handle email OTP / magic-link verification (token_hash flow)
+  if (tokenHash && type) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) {
+      return NextResponse.redirect(`${origin}/auth/verify?error=invalid_link`);
+    }
+    return NextResponse.redirect(`${origin}/workspaces`);
+  }
 
   if (code) {
     const supabase = await createClient();
