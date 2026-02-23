@@ -132,35 +132,29 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     setDownloadingId(it.id);
     setError(null);
     try {
+      const objectPath = it.objectPath || deriveLibraryObjectPathFromUrl(it.url);
+      if (!objectPath) throw new Error(`${t('errors.downloadFailed')} (library path missing)`);
+
+      const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
+        body: { object_path: objectPath },
+      });
+
+      if (error) {
+        throw error;
+      }
+      if (response && !response.ok) {
+        throw new Error(`${t('errors.downloadFailed')} (${response.status})`);
+      }
+
       let blob: Blob | null = null;
-
-      // Prefer authenticated server-side download when object path is available.
-      if (it.objectPath) {
-        const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
-          body: { object_path: it.objectPath },
-        });
-
-        if (error) {
-          throw error;
-        }
-        if (response && !response.ok) {
-          throw new Error(`${t('errors.downloadFailed')} (${response.status})`);
-        }
-        if (data instanceof Blob) {
-          blob = data;
-        } else if (data instanceof ArrayBuffer) {
-          blob = new Blob([data], { type: 'application/pdf' });
-        } else if (response) {
-          blob = await response.blob();
-        }
+      if (data instanceof Blob) {
+        blob = data;
+      } else if (data instanceof ArrayBuffer) {
+        blob = new Blob([data], { type: 'application/pdf' });
+      } else if (response) {
+        blob = await response.blob();
       }
-
-      if (!blob) {
-        if (!it.url) throw new Error(t('errors.downloadFailed'));
-        const res = await fetch(it.url);
-        if (!res.ok) throw new Error(`${t('errors.downloadFailed')} (${res.status})`);
-        blob = await res.blob();
-      }
+      if (!blob) throw new Error(t('errors.downloadFailed'));
 
       const file = new File([blob], `${it.title}.pdf`, { type: 'application/pdf' });
       onSelectFile(file);
