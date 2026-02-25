@@ -47,7 +47,18 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
   const [error, setError] = useState('');
 
   const currentRegionCode = currentPlane?.region || null;
+  const regionLocked = Boolean(currentRegionCode);
+  const canSelectRegion = eligible && !regionLocked;
   const functionBase = useMemo(() => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1`, []);
+
+  const ineligibleMessage = useMemo(() => {
+    const reason = (eligibilityReason || '').toLowerCase();
+    if (reason === 'org_admin_required') return t('reasonOrgAdminRequired');
+    if (reason === 'org_not_eligible' || reason === 'org_data_locality_disabled' || reason === 'org_multi_user_disabled') {
+      return t('reasonTeamRequired');
+    }
+    return t('orgIneligibleBody');
+  }, [eligibilityReason, t]);
 
   const invokeFunction = useCallback(async (name: string, payload: Record<string, unknown>) => {
     const {
@@ -99,7 +110,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
   }, [invokeFunction, orgId, t]);
 
   const startProvisioning = useCallback(async () => {
-    if (!orgId || !selectedRegion) return;
+    if (!orgId || !selectedRegion || regionLocked) return;
 
     setProvisioning(true);
     setError('');
@@ -125,7 +136,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
     } finally {
       setProvisioning(false);
     }
-  }, [invokeFunction, orgId, selectedRegion, t]);
+  }, [invokeFunction, orgId, regionLocked, selectedRegion, t]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -182,17 +193,22 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
               : t('sharedMode')}
           </div>
 
+          <div className="rounded-scholar border border-border bg-surface-alt p-3 text-xs text-text-soft">
+            {regionLocked ? t('regionLockedBody') : t('noMigrationBody')}
+          </div>
+
           {eligible ? (
             <DataLocalityMap
               regions={regions}
               selectedRegionCode={selectedRegion?.region_code || null}
               currentRegionCode={currentRegionCode}
+              interactive={canSelectRegion}
               onSelectRegion={setSelectedRegion}
             />
           ) : (
             <div className="rounded-scholar border border-warning/40 bg-warning/10 p-4 text-sm text-text">
               <p className="mb-2 font-medium">{t('ineligibleTitle')}</p>
-              <p className="text-text-soft">{t('orgIneligibleBody')}</p>
+              <p className="text-text-soft">{ineligibleMessage}</p>
               {eligibilityReason && (
                 <p className="mt-2 text-xs text-text-soft">{t('reason')}: {eligibilityReason}</p>
               )}
@@ -207,7 +223,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
         </Card>
       )}
 
-      {selectedRegion && (
+      {selectedRegion && canSelectRegion && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
           <Card padding="lg" className="w-full max-w-lg border-border bg-surface">
             <h3 className="mb-2 text-lg font-semibold text-text">{t('confirmTitle', { region: selectedRegion.region_code })}</h3>

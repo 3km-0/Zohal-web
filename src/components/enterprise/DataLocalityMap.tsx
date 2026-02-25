@@ -16,6 +16,7 @@ interface DataLocalityMapProps {
   regions: DataLocalityRegion[];
   selectedRegionCode: string | null;
   currentRegionCode?: string | null;
+  interactive?: boolean;
   onSelectRegion: (region: DataLocalityRegion) => void;
 }
 
@@ -32,13 +33,16 @@ export function DataLocalityMap({
   regions,
   selectedRegionCode,
   currentRegionCode,
+  interactive = true,
   onSelectRegion,
 }: DataLocalityMapProps) {
   return (
     <div className="relative overflow-hidden rounded-scholar border border-border bg-[radial-gradient(circle_at_top,#1d2a3f_0%,#0f1726_45%,#0b1220_100%)] p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-white/90">Global Provisioning Map</h3>
-        <span className="text-xs text-white/60">Tap a region node to provision</span>
+        <span className="text-xs text-white/60">
+          {interactive ? 'Tap a region node to provision' : 'Region selection locked'}
+        </span>
       </div>
 
       {/* Dot-grid map — pure SVG, no external library */}
@@ -85,8 +89,10 @@ export function DataLocalityMap({
             return (
               <g
                 key={region.region_code}
-                className="cursor-pointer"
-                onClick={() => onSelectRegion(region)}
+                className={interactive ? 'cursor-pointer' : 'cursor-default'}
+                onClick={() => {
+                  if (interactive) onSelectRegion(region);
+                }}
                 role="button"
                 aria-label={`${region.city}, ${region.country_code}`}
               >
@@ -115,12 +121,16 @@ export function DataLocalityMap({
           return (
             <button
               key={region.region_code}
-              onClick={() => onSelectRegion(region)}
+              onClick={() => {
+                if (interactive) onSelectRegion(region);
+              }}
+              disabled={!interactive}
               className={cn(
                 'rounded-scholar border px-3 py-2 text-left text-xs transition',
                 isSelected
                   ? 'border-accent bg-accent/15 text-text'
                   : 'border-border bg-surface/50 text-text-soft hover:border-accent/50 hover:text-text',
+                !interactive && 'cursor-default opacity-80 hover:border-border hover:text-text-soft',
               )}
             >
               <div className="flex items-center justify-between gap-2">
