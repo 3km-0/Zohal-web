@@ -75,6 +75,11 @@ When enabled for a workspace, the internal scaffold is available at:
 
 `/workspaces/<workspace_id>/pipelines`
 
+Delta-to-GA backend capabilities (consumed by scaffold and follow-up UX work):
+- `pipelines-node-catalog`, `pipelines-validate-spec`, `pipelines-node-action`
+- `pipeline-connections-test`
+- `pipelines-get-artifact` (artifact pointer retrieval / signed access)
+
 ## Building for Production
 
 ```bash

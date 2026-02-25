@@ -620,7 +620,8 @@
       "emptyDescription": "Create your first pipeline to start composing agent flows."
     },
     "palette": {
-      "title": "Node Palette"
+      "title": "Node Palette",
+      "blockedSuffix": "(Blocked)"
     },
     "builder": {
       "namePlaceholder": "Pipeline name",
@@ -638,8 +639,18 @@
       "invalidTestJson": "Invalid test input JSON.",
       "testRun": "Test Run",
       "running": "Running...",
+      "runStatus": "Run Status",
+      "statusReason": "Reason",
       "liveEvents": "Live Events",
-      "noEvents": "No events yet."
+      "noEvents": "No events yet.",
+      "approvalsTitle": "Human Approvals",
+      "approve": "Approve",
+      "reject": "Reject",
+      "retryTitle": "Retry Nodes",
+      "retry": "Retry",
+      "policyDeniedTitle": "Policy Denials",
+      "nodeActionFailed": "Failed to apply node action.",
+      "nodeActionSuccess": "Node action applied."
     }
   },
   "packs": {

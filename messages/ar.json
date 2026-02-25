@@ -620,7 +620,8 @@
       "emptyDescription": "أنشئ أول خط معالجة لبدء تركيب تدفقات الوكلاء."
     },
     "palette": {
-      "title": "لوحة العقد"
+      "title": "لوحة العقد",
+      "blockedSuffix": "(محظور)"
     },
     "builder": {
       "namePlaceholder": "اسم خط المعالجة",
@@ -638,8 +639,18 @@
       "invalidTestJson": "تنسيق JSON لمدخلات الاختبار غير صالح.",
       "testRun": "تشغيل اختبار",
       "running": "جارٍ التشغيل...",
+      "runStatus": "حالة التشغيل",
+      "statusReason": "السبب",
       "liveEvents": "الأحداث المباشرة",
-      "noEvents": "لا توجد أحداث حتى الآن."
+      "noEvents": "لا توجد أحداث حتى الآن.",
+      "approvalsTitle": "موافقات بشرية",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "retryTitle": "عقد قابلة لإعادة المحاولة",
+      "retry": "إعادة المحاولة",
+      "policyDeniedTitle": "رفض بسبب السياسة",
+      "nodeActionFailed": "تعذر تنفيذ إجراء العقدة.",
+      "nodeActionSuccess": "تم تنفيذ إجراء العقدة."
     }
   },
   "packs": {

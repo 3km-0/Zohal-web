@@ -42,15 +42,29 @@ type PipelineRow = {
   } | null;
 };
 
-const palette: Array<{ kind: PipelineNodeKind; label: string }> = [
-  { kind: 'trigger.manual_start', label: 'Manual Start' },
-  { kind: 'agent.standard_zohal_verifier', label: 'Standard Verifier' },
-  { kind: 'logic.if_discrepancy', label: 'If Discrepancy' },
-  { kind: 'logic.parallel_group', label: 'Parallel Group (UI)' },
-  { kind: 'logic.wait_human_approval', label: 'Wait Human' },
-  { kind: 'output.generate_decision_pack', label: 'Decision Pack' },
-  { kind: 'output.webhook_json', label: 'Webhook (Blocked)' },
+const fallbackPalette: Array<{ kind: PipelineNodeKind; label: string; enabled: boolean }> = [
+  { kind: 'trigger.manual_start', label: 'Manual Start', enabled: true },
+  { kind: 'agent.standard_zohal_verifier', label: 'Standard Verifier', enabled: true },
+  { kind: 'logic.if_discrepancy', label: 'If Discrepancy', enabled: true },
+  { kind: 'logic.parallel_group', label: 'Parallel Group (UI)', enabled: true },
+  { kind: 'logic.wait_human_approval', label: 'Wait Human', enabled: true },
+  { kind: 'output.generate_decision_pack', label: 'Decision Pack', enabled: true },
+  { kind: 'output.webhook_json', label: 'Webhook', enabled: false },
 ];
+
+type CatalogNode = {
+  kind: PipelineNodeKind;
+  title: string;
+  execution: string;
+  enabled: boolean;
+};
+
+type RunNodeRow = {
+  node_id: string;
+  status: string;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+};
 
 function nodeBadgeVariant(status: string | undefined): 'default' | 'warning' | 'success' | 'error' {
   if (status === 'succeeded') return 'success';
@@ -80,6 +94,10 @@ export default function PipelinesPage() {
   const [lastEventId, setLastEventId] = useState<number>(0);
   const [runEvents, setRunEvents] = useState<Array<Record<string, unknown>>>([]);
   const [nodeStatusById, setNodeStatusById] = useState<Record<string, string>>({});
+  const [runNodes, setRunNodes] = useState<RunNodeRow[]>([]);
+  const [runStatus, setRunStatus] = useState<string>('');
+  const [runStatusReason, setRunStatusReason] = useState<string>('');
+  const [catalogNodes, setCatalogNodes] = useState<CatalogNode[]>([]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -88,6 +106,15 @@ export default function PipelinesPage() {
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId) || null;
 
   const enabled = isPipelineBuilderEnabledForWorkspace(workspaceId);
+
+  const palette = useMemo(() => {
+    if (catalogNodes.length === 0) return fallbackPalette;
+    return catalogNodes.map((n) => ({
+      kind: n.kind,
+      label: n.title,
+      enabled: n.enabled,
+    }));
+  }, [catalogNodes]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -115,10 +142,32 @@ export default function PipelinesPage() {
     setLoading(false);
   }, [selectedPipelineId, supabase, toast, workspaceId]);
 
+  const loadNodeCatalog = useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('pipelines-node-catalog', {
+      body: { workspace_id: workspaceId },
+    });
+
+    if (error || !data?.ok || !Array.isArray(data.nodes)) {
+      return;
+    }
+
+    const mapped: CatalogNode[] = data.nodes
+      .filter((n: any) => typeof n?.kind === 'string')
+      .map((n: any) => ({
+        kind: n.kind as PipelineNodeKind,
+        title: String(n.title || n.kind),
+        execution: String(n.execution || 'internal'),
+        enabled: n.enabled === true,
+      }));
+
+    setCatalogNodes(mapped);
+  }, [supabase, workspaceId]);
+
   useEffect(() => {
     if (!enabled) return;
     void loadPipelines();
-  }, [enabled, loadPipelines]);
+    void loadNodeCatalog();
+  }, [enabled, loadNodeCatalog, loadPipelines]);
 
   const loadSelectedDraftOrCurrent = useCallback(async (pipeline: PipelineRow) => {
     const { data: draftData } = await supabase.functions.invoke('pipelines-save-draft', {
@@ -273,6 +322,9 @@ export default function PipelinesPage() {
     setRunEvents([]);
     setLastEventId(0);
     setNodeStatusById({});
+    setRunNodes([]);
+    setRunStatus('running');
+    setRunStatusReason('');
 
     const { data, error } = await supabase.functions.invoke('pipelines-start-run', {
       body: {
@@ -289,6 +341,25 @@ export default function PipelinesPage() {
     }
 
     setActiveRunId(String(data.pipeline_run_id));
+  };
+
+  const runNodeAction = async (nodeId: string, action: 'approve' | 'reject' | 'retry') => {
+    if (!activeRunId) return;
+
+    const { data, error } = await supabase.functions.invoke('pipelines-node-action', {
+      body: {
+        pipeline_run_id: activeRunId,
+        node_id: nodeId,
+        action,
+      },
+    });
+
+    if (error || !data?.ok) {
+      toast.showError(error || new Error(t('builder.nodeActionFailed')), 'pipelines-node-action');
+      return;
+    }
+
+    toast.showSuccess(t('builder.nodeActionSuccess'));
   };
 
   useEffect(() => {
@@ -322,8 +393,12 @@ export default function PipelinesPage() {
           nextStatus[String(node.node_id)] = String(node.status || 'pending');
         }
         setNodeStatusById(nextStatus);
+        setRunNodes((runData.nodes || []) as RunNodeRow[]);
 
         const runStatus = String(runData.run?.status || '');
+        const runReason = String(runData.run?.status_reason || '');
+        setRunStatus(runStatus);
+        setRunStatusReason(runReason);
         if (['succeeded', 'failed', 'cancelled'].includes(runStatus)) {
           setRunning(false);
           clearInterval(timer);
@@ -333,6 +408,21 @@ export default function PipelinesPage() {
 
     return () => clearInterval(timer);
   }, [activeRunId, lastEventId, supabase]);
+
+  const waitingHumanNodes = useMemo(
+    () => runNodes.filter((n) => n.status === 'waiting_human'),
+    [runNodes],
+  );
+
+  const retryableNodes = useMemo(
+    () => runNodes.filter((n) => ['failed', 'waiting_external'].includes(n.status)),
+    [runNodes],
+  );
+
+  const policyDeniedEvents = useMemo(
+    () => runEvents.filter((event) => String(event.event_type || '') === 'policy_denied').slice(-5),
+    [runEvents],
+  );
 
   useEffect(() => {
     setNodes((prev) =>
@@ -430,10 +520,10 @@ export default function PipelinesPage() {
                     size="sm"
                     onClick={() => addNode(item.kind)}
                     className="justify-start"
-                    disabled={!selectedPipelineId}
+                    disabled={!selectedPipelineId || item.enabled === false}
                   >
                     <Layers className="w-3.5 h-3.5 mr-2" />
-                    {item.label}
+                    {item.label}{item.enabled === false ? ` ${t('palette.blockedSuffix')}` : ''}
                   </Button>
                 ))}
               </div>
@@ -509,6 +599,66 @@ export default function PipelinesPage() {
               {activeRunId ? (
                 <div className="border border-border rounded-scholar p-3 bg-surface">
                   <div className="text-xs font-semibold text-text-soft uppercase tracking-wide mb-2">{t('builder.liveEvents')}</div>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <Badge size="sm" variant={nodeBadgeVariant(runStatus)}>
+                      {t('builder.runStatus')}: {runStatus || 'running'}
+                    </Badge>
+                    {runStatusReason ? (
+                      <Badge size="sm" variant="warning">
+                        {t('builder.statusReason')}: {runStatusReason}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {waitingHumanNodes.length > 0 ? (
+                    <div className="mb-3 space-y-2">
+                      <div className="text-xs font-semibold text-text-soft uppercase tracking-wide">{t('builder.approvalsTitle')}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {waitingHumanNodes.map((node) => (
+                          <div key={`approve-${node.node_id}`} className="flex items-center gap-2 border border-border rounded-scholar px-2 py-1">
+                            <span className="text-xs">{node.node_id}</span>
+                            <Button size="sm" variant="ghost" onClick={() => runNodeAction(node.node_id, 'approve')}>
+                              {t('builder.approve')}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => runNodeAction(node.node_id, 'reject')}>
+                              {t('builder.reject')}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {retryableNodes.length > 0 ? (
+                    <div className="mb-3 space-y-2">
+                      <div className="text-xs font-semibold text-text-soft uppercase tracking-wide">{t('builder.retryTitle')}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {retryableNodes.map((node) => (
+                          <div key={`retry-${node.node_id}`} className="flex items-center gap-2 border border-border rounded-scholar px-2 py-1">
+                            <span className="text-xs">{node.node_id}</span>
+                            <Badge size="sm" variant={node.status === 'failed' ? 'error' : 'warning'}>
+                              {node.status}
+                            </Badge>
+                            <Button size="sm" variant="ghost" onClick={() => runNodeAction(node.node_id, 'retry')}>
+                              {t('builder.retry')}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {policyDeniedEvents.length > 0 ? (
+                    <div className="mb-3 border border-red-200 bg-red-50 text-red-700 rounded-scholar p-2 text-xs space-y-1">
+                      <div className="font-semibold">{t('builder.policyDeniedTitle')}</div>
+                      {policyDeniedEvents.map((event: any) => (
+                        <div key={`policy-${event.id}`}>
+                          #{event.id} {String(event.node_id || 'run')}: {String((event.payload_preview_json as any)?.reason || 'policy_denied')}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-wrap gap-2 mb-3">
                     {nodes.map((node) => (
                       <Badge key={node.id} size="sm" variant={nodeBadgeVariant(nodeStatusById[node.id])}>
