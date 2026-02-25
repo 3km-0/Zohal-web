@@ -15,8 +15,10 @@ const LOCALE_COOKIE = 'NEXT_LOCALE';
 const LOCALE_EXPLICIT_COOKIE = 'LOCALE_EXPLICIT';
 
 function detectGccLocale(request: NextRequest): 'ar' | null {
-  // Only defer to an existing locale if the user deliberately chose it
+  // User explicitly chose a language via the switcher — always respect it
   if (request.cookies.get(LOCALE_EXPLICIT_COOKIE)?.value === '1') return null;
+  // Locale already set to Arabic (our redirect already ran) — prevents loop
+  if (request.cookies.get(LOCALE_COOKIE)?.value === 'ar') return null;
 
   // Vercel injects x-vercel-ip-country at the edge; Cloudflare uses cf-ipcountry
   const country =
