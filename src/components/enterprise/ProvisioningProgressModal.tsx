@@ -32,11 +32,11 @@ const STEP_ORDER = [
 function humanStep(step: string): string {
   const mapping: Record<string, string> = {
     queued: 'Queued',
-    validating: 'Validating Workspace',
+    validating: 'Validating Organization',
     creating_kms: 'Creating CMEK (KMS)',
     creating_bucket: 'Creating Regional Bucket',
     applying_iam: 'Applying IAM',
-    updating_control_plane: 'Activating Workspace Routing',
+    updating_control_plane: 'Activating Organization Routing',
     done: 'Completed',
     error: 'Error',
   };

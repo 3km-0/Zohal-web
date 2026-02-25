@@ -15,7 +15,6 @@ import {
   Link2,
   CheckCircle,
   XCircle,
-  MapPin,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Input, Badge, Spinner } from '@/components/ui';
@@ -23,6 +22,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/types/database';
+import { OrgDataLocalityPanel } from '@/components/enterprise/OrgDataLocalityPanel';
 
 function readThemeFromStorage(): 'light' | 'dark' | null {
   try {
@@ -58,6 +58,7 @@ export default function SettingsPage() {
   // Profile form state
   const [displayName, setDisplayName] = useState('');
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; owner_id: string; multi_user_enabled?: boolean; data_locality_enabled?: boolean }>>([]);
+  const [orgRoles, setOrgRoles] = useState<Record<string, string>>({});
   const [defaultOrgId, setDefaultOrgId] = useState<string | null>(null);
   const [savingOrg, setSavingOrg] = useState(false);
 
@@ -94,12 +95,23 @@ export default function SettingsPage() {
         setIntegrations(integrationsRes.data);
       }
 
-      // Best-effort org list (RLS may restrict in some environments)
-      const { data: orgs } = await supabase
-        .from('organizations')
-        .select('id, name, owner_id, multi_user_enabled, data_locality_enabled')
-        .order('created_at', { ascending: false });
+      // Best-effort org list and caller role map (RLS may restrict in some environments)
+      const [{ data: orgs }, { data: memberships }] = await Promise.all([
+        supabase
+          .from('organizations')
+          .select('id, name, owner_id, multi_user_enabled, data_locality_enabled')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('organization_members')
+          .select('org_id, role')
+          .eq('user_id', user.id),
+      ]);
       setOrganizations((orgs as any[]) || []);
+      const roleMap: Record<string, string> = {};
+      for (const row of (memberships || []) as Array<{ org_id: string; role: string }>) {
+        roleMap[String(row.org_id)] = String(row.role || '').toLowerCase();
+      }
+      setOrgRoles(roleMap);
 
       setLoading(false);
     }
@@ -251,11 +263,6 @@ export default function SettingsPage() {
     );
   }
 
-  const subscriptionTier = String(profile?.subscription_tier || '').toLowerCase();
-  const canOpenDataLocality = subscriptionTier === 'premium' ||
-    subscriptionTier === 'ultra' ||
-    organizations.some((org) => org.data_locality_enabled === true);
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} />
@@ -325,16 +332,6 @@ export default function SettingsPage() {
               </Button>
             )}
 
-            {canOpenDataLocality && (
-              <Button
-                variant="secondary"
-                className="mt-3"
-                onClick={() => router.push('/settings/data-locality')}
-              >
-                <MapPin className="w-4 h-4" />
-                {tSettings('dataLocality')}
-              </Button>
-            )}
           </Card>
 
           {/* Organization Section (Enterprise) */}
@@ -372,31 +369,43 @@ export default function SettingsPage() {
                       const org = organizations.find((o) => o.id === defaultOrgId);
                       if (!org) return null;
                       const isOwner = org.owner_id === user?.id;
-                      if (!isOwner) return null;
+                      const role = String(orgRoles[org.id] || '').toLowerCase();
+                      const isOrgAdmin = isOwner || role === 'owner' || role === 'admin';
+                      if (!isOrgAdmin) return null;
                       return (
-                        <div className="p-4 bg-surface-alt rounded-scholar border border-border">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <div className="font-medium text-text">Enterprise multi-user</div>
-                              <div className="text-sm text-text-soft">
-                                Enable workspace sharing via members. Safe to keep off until you’re ready to flip.
+                        <div className="space-y-4">
+                          <div className="p-4 bg-surface-alt rounded-scholar border border-border">
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <div className="font-medium text-text">Enterprise multi-user</div>
+                                <div className="text-sm text-text-soft">
+                                  Enable workspace sharing via members. Safe to keep off until you’re ready to flip.
+                                </div>
                               </div>
-                            </div>
-                            <button
-                              className={cn(
-                                'w-12 h-7 rounded-full border transition-colors flex items-center px-1',
-                                org.multi_user_enabled ? 'bg-accent border-accent' : 'bg-surface border-border'
-                              )}
-                              onClick={() => handleToggleOrgMultiUser(org.id, !org.multi_user_enabled)}
-                              aria-label="Toggle enterprise multi-user"
-                            >
-                              <span
+                              <button
                                 className={cn(
-                                  'w-5 h-5 rounded-full bg-white transition-transform',
-                                  org.multi_user_enabled ? 'translate-x-5' : 'translate-x-0'
+                                  'w-12 h-7 rounded-full border transition-colors flex items-center px-1',
+                                  org.multi_user_enabled ? 'bg-accent border-accent' : 'bg-surface border-border'
                                 )}
-                              />
-                            </button>
+                                onClick={() => handleToggleOrgMultiUser(org.id, !org.multi_user_enabled)}
+                                aria-label="Toggle enterprise multi-user"
+                              >
+                                <span
+                                  className={cn(
+                                    'w-5 h-5 rounded-full bg-white transition-transform',
+                                    org.multi_user_enabled ? 'translate-x-5' : 'translate-x-0'
+                                  )}
+                                />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-surface-alt rounded-scholar border border-border">
+                            <OrgDataLocalityPanel
+                              key={`${org.id}:${org.multi_user_enabled ? '1' : '0'}:${org.data_locality_enabled ? '1' : '0'}`}
+                              orgId={org.id}
+                              orgName={org.name}
+                            />
                           </div>
                         </div>
                       );
