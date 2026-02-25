@@ -8,6 +8,22 @@ type CookieToSet = {
   options: CookieOptions;
 };
 
+const GCC_COUNTRY_CODES = new Set(['SA', 'AE', 'KW', 'QA', 'BH', 'OM']);
+const LOCALE_COOKIE = 'NEXT_LOCALE';
+
+function detectGccLocale(request: NextRequest): 'ar' | null {
+  if (request.cookies.has(LOCALE_COOKIE)) return null;
+
+  const country =
+    request.headers.get('x-vercel-ip-country') ??
+    request.headers.get('cf-ipcountry');
+
+  if (country && GCC_COUNTRY_CODES.has(country.toUpperCase())) {
+    return 'ar';
+  }
+  return null;
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -64,6 +80,17 @@ export async function middleware(request: NextRequest) {
 
   if (isAuthPath && user) {
     return NextResponse.redirect(new URL('/workspaces', request.url));
+  }
+
+  // Auto-set Arabic for first-time visitors from GCC countries.
+  // Only fires when no explicit locale preference cookie exists.
+  const gccLocale = detectGccLocale(request);
+  if (gccLocale) {
+    response.cookies.set(LOCALE_COOKIE, gccLocale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      sameSite: 'lax',
+    });
   }
 
   return response;
