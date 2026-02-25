@@ -82,15 +82,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/workspaces', request.url));
   }
 
-  // Auto-set Arabic for first-time visitors from GCC countries.
-  // Only fires when no explicit locale preference cookie exists.
+  // Auto-set Arabic for first-time GCC visitors.
+  // We redirect (same URL) so the browser re-requests with the cookie already
+  // present, ensuring i18n/request.ts picks up Arabic on the very first render.
+  // Only fires on GET requests with no existing locale cookie.
   const gccLocale = detectGccLocale(request);
-  if (gccLocale) {
-    response.cookies.set(LOCALE_COOKIE, gccLocale, {
+  if (gccLocale && request.method === 'GET') {
+    const redirectResponse = NextResponse.redirect(request.nextUrl.clone());
+    // Carry over any Supabase session cookies refreshed above.
+    response.cookies.getAll().forEach(({ name, value, ...opts }) => {
+      redirectResponse.cookies.set(name, value, opts);
+    });
+    redirectResponse.cookies.set(LOCALE_COOKIE, gccLocale, {
       path: '/',
       maxAge: 60 * 60 * 24 * 365, // 1 year
       sameSite: 'lax',
     });
+    return redirectResponse;
   }
 
   return response;
