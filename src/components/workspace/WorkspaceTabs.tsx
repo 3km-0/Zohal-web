@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-type WorkspaceTabKey = 'documents' | 'notes' | 'reports' | 'packs' | 'members';
+type WorkspaceTabKey = 'documents' | 'notes' | 'reports' | 'pipelines' | 'packs' | 'members';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -26,6 +26,8 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
         ? 'members'
       : pathname.includes('/reports')
         ? 'reports'
+        : pathname.includes('/pipelines')
+          ? 'pipelines'
         : pathname.includes('/packs')
           ? 'packs'
         : 'documents');
@@ -34,6 +36,7 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     { key: 'documents', label: t('documents'), href: `/workspaces/${workspaceId}` },
     { key: 'notes', label: t('notes'), href: `/workspaces/${workspaceId}/notes` },
     { key: 'reports', label: t('reports'), href: `/workspaces/${workspaceId}/reports` },
+    { key: 'pipelines', label: t('pipelines'), href: `/workspaces/${workspaceId}/pipelines` },
     { key: 'packs', label: t('packs'), href: `/workspaces/${workspaceId}/packs` },
     ...(showMembersTab
       ? [{ key: 'members' as const, label: t('members'), href: `/workspaces/${workspaceId}/members` }]
@@ -64,4 +67,3 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     </div>
   );
 }
-

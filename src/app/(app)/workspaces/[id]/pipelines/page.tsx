@@ -20,6 +20,7 @@ import {
 import { Play, Save, CheckCircle2, Layers, RefreshCw } from 'lucide-react';
 
 import { AppHeader } from '@/components/layout/AppHeader';
+import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { Badge, Button, EmptyState, Input, ScholarNotebookCard, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { isPipelineBuilderEnabledForWorkspace } from '@/lib/feature-flags';
@@ -98,6 +99,7 @@ export default function PipelinesPage() {
   const [runStatus, setRunStatus] = useState<string>('');
   const [runStatusReason, setRunStatusReason] = useState<string>('');
   const [catalogNodes, setCatalogNodes] = useState<CatalogNode[]>([]);
+  const [serverWorkspaceEnabled, setServerWorkspaceEnabled] = useState<boolean | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -105,7 +107,8 @@ export default function PipelinesPage() {
   const draftSaveRef = useRef<number | null>(null);
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId) || null;
 
-  const enabled = isPipelineBuilderEnabledForWorkspace(workspaceId);
+  const envEnabled = isPipelineBuilderEnabledForWorkspace(workspaceId);
+  const enabled = serverWorkspaceEnabled ?? envEnabled;
 
   const palette = useMemo(() => {
     if (catalogNodes.length === 0) return fallbackPalette;
@@ -151,6 +154,10 @@ export default function PipelinesPage() {
       return;
     }
 
+    if (typeof data.workspace_enabled === 'boolean') {
+      setServerWorkspaceEnabled(data.workspace_enabled);
+    }
+
     const mapped: CatalogNode[] = data.nodes
       .filter((n: any) => typeof n?.kind === 'string')
       .map((n: any) => ({
@@ -164,10 +171,13 @@ export default function PipelinesPage() {
   }, [supabase, workspaceId]);
 
   useEffect(() => {
+    void loadNodeCatalog();
+  }, [loadNodeCatalog]);
+
+  useEffect(() => {
     if (!enabled) return;
     void loadPipelines();
-    void loadNodeCatalog();
-  }, [enabled, loadNodeCatalog, loadPipelines]);
+  }, [enabled, loadPipelines]);
 
   const loadSelectedDraftOrCurrent = useCallback(async (pipeline: PipelineRow) => {
     const { data: draftData } = await supabase.functions.invoke('pipelines-save-draft', {
@@ -447,10 +457,26 @@ export default function PipelinesPage() {
     );
   }, [nodeStatusById, setNodes]);
 
+  if (!enabled && serverWorkspaceEnabled === null) {
+    return (
+      <div className="min-h-screen bg-bg">
+        <AppHeader />
+        <WorkspaceTabs workspaceId={workspaceId} active="pipelines" />
+        <div className="mx-auto max-w-5xl p-6">
+          <div className="flex items-center gap-2 text-text-soft text-sm">
+            <Spinner size="sm" />
+            {t('list.loading')}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!enabled) {
     return (
       <div className="min-h-screen bg-bg">
         <AppHeader />
+        <WorkspaceTabs workspaceId={workspaceId} active="pipelines" />
         <div className="mx-auto max-w-5xl p-6">
           <EmptyState title={t('disabled.title')} description={t('disabled.description')} />
         </div>
@@ -461,6 +487,7 @@ export default function PipelinesPage() {
   return (
     <div className="min-h-screen bg-bg">
       <AppHeader />
+      <WorkspaceTabs workspaceId={workspaceId} active="pipelines" />
       <div className="mx-auto max-w-[1400px] p-4 md:p-6 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
         <ScholarNotebookCard header={t('list.title')}>
           <div className="space-y-3">
