@@ -10,6 +10,7 @@ export interface ProvisioningRun {
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
   step: string;
   progress: number;
+  error_code?: string | null;
   error_message?: string | null;
 }
 
@@ -41,6 +42,36 @@ function humanStep(step: string): string {
     error: 'Error',
   };
   return mapping[step] || step;
+}
+
+function userFacingProvisioningError(run: ProvisioningRun): string {
+  const code = String(run.error_code || '').toLowerCase();
+  const raw = String(run.error_message || '').toLowerCase();
+
+  if (code === 'kms_api_disabled') return 'Cloud KMS is not enabled for this project. Please enable it and retry.';
+  if (code === 'kms_permission_denied') return 'Provisioning service account lacks Cloud KMS permissions.';
+  if (code === 'storage_permission_denied') return 'Provisioning service account lacks Cloud Storage permissions.';
+  if (code === 'kms_key_not_ready') return 'Cloud KMS key was not ready in time. Please retry in 1-2 minutes.';
+  if (code === 'not_eligible') return 'Your organization is not eligible to configure data locality.';
+  if (code === 'region_unavailable') return 'The selected region is currently unavailable. Please choose a different region.';
+  if (code === 'control_plane_update_failed') return 'Provisioning completed partially but routing activation failed. Please contact support.';
+  if (code === 'service_account_config_invalid' || code === 'service_account_auth_failed') {
+    return 'Provisioning credentials are not configured correctly. Please contact support.';
+  }
+  if (code === 'provisioning_failed') return 'Provisioning failed due to a cloud configuration issue. Please contact support.';
+  if (code === 'transient_error') return 'Temporary provisioning issue. Please retry shortly.';
+
+  if (raw.includes('<!doctype html>') || raw.includes('<html')) {
+    return 'Provisioning failed due to a cloud configuration issue. Please retry, and contact support if it continues.';
+  }
+  if (raw.includes('data_locality_kms_')) {
+    return 'Cloud KMS provisioning failed. Please verify KMS API and permissions, then retry.';
+  }
+  if (raw.includes('data_locality_bucket_')) {
+    return 'Cloud Storage provisioning failed due to permissions. Please verify service account roles and retry.';
+  }
+
+  return 'Provisioning failed due to a cloud configuration issue. Please contact support.';
 }
 
 export function ProvisioningProgressModal({ open, run, onClose }: ProvisioningProgressModalProps) {
@@ -94,7 +125,7 @@ export function ProvisioningProgressModal({ open, run, onClose }: ProvisioningPr
             <div className="mb-1 flex items-center gap-2 font-medium">
               <AlertTriangle className="h-4 w-4" /> Provisioning failed
             </div>
-            <p>{run.error_message || 'An unexpected error occurred while provisioning.'}</p>
+            <p>{userFacingProvisioningError(run)}</p>
           </div>
         )}
       </Card>
