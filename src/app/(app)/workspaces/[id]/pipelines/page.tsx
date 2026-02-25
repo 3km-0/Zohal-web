@@ -74,6 +74,41 @@ function nodeBadgeVariant(status: string | undefined): 'default' | 'warning' | '
   return 'default';
 }
 
+async function resolveInvokeError(error: unknown, data: any, fallback: string): Promise<Error> {
+  if (data && typeof data === 'object') {
+    const message =
+      (typeof data.message === 'string' && data.message) ||
+      (typeof data.details === 'string' && data.details) ||
+      (typeof data.error === 'string' && data.error);
+    if (message) return new Error(message);
+  }
+
+  if (error && typeof error === 'object') {
+    const maybeContext = (error as any).context;
+    if (maybeContext && typeof maybeContext.clone === 'function') {
+      try {
+        const payload = await maybeContext.clone().json();
+        if (payload && typeof payload === 'object') {
+          const message =
+            (typeof payload.message === 'string' && payload.message) ||
+            (typeof payload.details === 'string' && payload.details) ||
+            (typeof payload.error === 'string' && payload.error);
+          if (message) return new Error(message);
+        }
+      } catch {
+        // Ignore parse failures and fall back to generic error mapping.
+      }
+    }
+
+    const rawMessage = (error as any).message;
+    if (typeof rawMessage === 'string' && rawMessage.trim()) {
+      return new Error(rawMessage);
+    }
+  }
+
+  return new Error(fallback);
+}
+
 export default function PipelinesPage() {
   const params = useParams<{ id: string }>();
   const workspaceId = String(params?.id || '').toLowerCase();
@@ -245,7 +280,8 @@ export default function PipelinesPage() {
     });
 
     if (error || !data?.ok) {
-      toast.showError(error || new Error('Failed to create pipeline'), 'pipelines-create');
+      const resolved = await resolveInvokeError(error, data, 'Failed to create pipeline');
+      toast.showError(resolved, 'pipelines-create');
       return;
     }
 
@@ -275,7 +311,8 @@ export default function PipelinesPage() {
     setCheckpointing(false);
 
     if (error || !data?.ok) {
-      toast.showError(error || new Error('Failed to checkpoint pipeline'), 'pipelines-create-version');
+      const resolved = await resolveInvokeError(error, data, 'Failed to checkpoint pipeline');
+      toast.showError(resolved, 'pipelines-create-version');
       return;
     }
 
@@ -294,7 +331,8 @@ export default function PipelinesPage() {
     setPublishing(false);
 
     if (error || !data?.ok) {
-      toast.showError(error || new Error('Failed to publish pipeline'), 'pipelines-publish');
+      const resolved = await resolveInvokeError(error, data, 'Failed to publish pipeline');
+      toast.showError(resolved, 'pipelines-publish');
       return;
     }
 
@@ -346,7 +384,8 @@ export default function PipelinesPage() {
 
     if (error || !data?.accepted || !data?.pipeline_run_id) {
       setRunning(false);
-      toast.showError(error || new Error('Failed to start run'), 'pipelines-start-run');
+      const resolved = await resolveInvokeError(error, data, 'Failed to start run');
+      toast.showError(resolved, 'pipelines-start-run');
       return;
     }
 
@@ -365,7 +404,8 @@ export default function PipelinesPage() {
     });
 
     if (error || !data?.ok) {
-      toast.showError(error || new Error(t('builder.nodeActionFailed')), 'pipelines-node-action');
+      const resolved = await resolveInvokeError(error, data, t('builder.nodeActionFailed'));
+      toast.showError(resolved, 'pipelines-node-action');
       return;
     }
 
@@ -459,7 +499,7 @@ export default function PipelinesPage() {
 
   if (!enabled && serverWorkspaceEnabled === null) {
     return (
-      <div className="min-h-screen bg-bg">
+      <div className="h-full overflow-y-auto bg-bg">
         <AppHeader />
         <WorkspaceTabs workspaceId={workspaceId} active="pipelines" />
         <div className="mx-auto max-w-5xl p-6">
@@ -474,7 +514,7 @@ export default function PipelinesPage() {
 
   if (!enabled) {
     return (
-      <div className="min-h-screen bg-bg">
+      <div className="h-full overflow-y-auto bg-bg">
         <AppHeader />
         <WorkspaceTabs workspaceId={workspaceId} active="pipelines" />
         <div className="mx-auto max-w-5xl p-6">
@@ -485,7 +525,7 @@ export default function PipelinesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="h-full overflow-y-auto bg-bg">
       <AppHeader />
       <WorkspaceTabs workspaceId={workspaceId} active="pipelines" />
       <div className="mx-auto max-w-[1400px] p-4 md:p-6 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
