@@ -16,6 +16,7 @@
     "@azure/msal-browser": "^5.0.2",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",
+    "@xyflow/react": "^12.10.1",
     "clsx": "^2.1.1",
     "driver.js": "^1.4.0",
     "framer-motion": "^11.15.0",

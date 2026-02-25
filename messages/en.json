@@ -606,6 +606,42 @@
       }
     }
   },
+  "pipelines": {
+    "disabled": {
+      "title": "Pipeline Builder is not enabled",
+      "description": "This internal foundation feature is currently gated for selected workspaces."
+    },
+    "list": {
+      "title": "Pipelines",
+      "newPlaceholder": "New pipeline name",
+      "create": "Create",
+      "loading": "Loading pipelines...",
+      "emptyTitle": "No pipelines yet",
+      "emptyDescription": "Create your first pipeline to start composing agent flows."
+    },
+    "palette": {
+      "title": "Node Palette"
+    },
+    "builder": {
+      "namePlaceholder": "Pipeline name",
+      "saving": "Saving draft...",
+      "reload": "Reload",
+      "checkpoint": "Checkpoint",
+      "checkpointing": "Checkpointing...",
+      "checkpointSaved": "Checkpoint saved",
+      "publish": "Publish",
+      "publishing": "Publishing...",
+      "published": "Pipeline published",
+      "selectTitle": "Select a pipeline",
+      "selectDescription": "Choose a pipeline from the left panel or create a new one.",
+      "testInput": "Test Run Input (JSON)",
+      "invalidTestJson": "Invalid test input JSON.",
+      "testRun": "Test Run",
+      "running": "Running...",
+      "liveEvents": "Live Events",
+      "noEvents": "No events yet."
+    }
+  },
   "packs": {
     "title": "Packs",
     "backToPacks": "Back to Packs",

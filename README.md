@@ -64,6 +64,17 @@ NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
+### Internal Pipeline Builder flags (foundation)
+
+```
+NEXT_PUBLIC_PIPELINE_BUILDER_ENABLED=true
+NEXT_PUBLIC_PIPELINE_BUILDER_WORKSPACE_ALLOWLIST=workspace_uuid_1,workspace_uuid_2
+```
+
+When enabled for a workspace, the internal scaffold is available at:
+
+`/workspaces/<workspace_id>/pipelines`
+
 ## Building for Production
 
 ```bash
@@ -76,4 +87,3 @@ See the main project documentation in `../zohal-core/Documentation/`:
 - [Engineering_Quality_Master_Plan.md](../zohal-core/Documentation/Engineering_Quality_Master_Plan.md)
 - [architecture.md](../zohal-core/Documentation/architecture.md)
 - [Scholor_Theme.md](../zohal-core/Documentation/Scholor_Theme.md)
-
