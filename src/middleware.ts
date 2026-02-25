@@ -14,7 +14,9 @@ const LOCALE_COOKIE = 'NEXT_LOCALE';
 function detectGccLocale(request: NextRequest): 'ar' | null {
   if (request.cookies.has(LOCALE_COOKIE)) return null;
 
+  // Try Vercel native geo, then standard Vercel header, then Cloudflare header
   const country =
+    request.geo?.country ??
     request.headers.get('x-vercel-ip-country') ??
     request.headers.get('cf-ipcountry');
 
