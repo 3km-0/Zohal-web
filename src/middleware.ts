@@ -10,9 +10,13 @@ type CookieToSet = {
 
 const GCC_COUNTRY_CODES = new Set(['SA', 'AE', 'KW', 'QA', 'BH', 'OM']);
 const LOCALE_COOKIE = 'NEXT_LOCALE';
+// Written only when the user actively clicks the language switcher.
+// Presence means "respect their choice; skip geo detection."
+const LOCALE_EXPLICIT_COOKIE = 'LOCALE_EXPLICIT';
 
 function detectGccLocale(request: NextRequest): 'ar' | null {
-  if (request.cookies.has(LOCALE_COOKIE)) return null;
+  // Only defer to an existing locale if the user deliberately chose it
+  if (request.cookies.get(LOCALE_EXPLICIT_COOKIE)?.value === '1') return null;
 
   // Vercel injects x-vercel-ip-country at the edge; Cloudflare uses cf-ipcountry
   const country =

@@ -12,11 +12,10 @@ export function LanguageSwitcher() {
 
   const toggleLanguage = () => {
     const newLocale = locale === 'en' ? 'ar' : 'en';
-    
-    // Set cookie to persist preference
+    // Persist locale preference and mark it as an explicit user choice so
+    // the geo-detection middleware won't override it on future visits.
     document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
-    
-    // Refresh the page to apply the new locale
+    document.cookie = `LOCALE_EXPLICIT=1; path=/; max-age=31536000`;
     router.refresh();
   };
 

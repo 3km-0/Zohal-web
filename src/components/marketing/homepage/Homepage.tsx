@@ -358,6 +358,7 @@ function LanguageToggle({
   const onToggle = () => {
     const newLocale = isEn ? 'ar' : 'en';
     document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
+    document.cookie = `LOCALE_EXPLICIT=1; path=/; max-age=31536000`;
     window.location.reload();
   };
 
