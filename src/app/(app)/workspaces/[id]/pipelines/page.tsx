@@ -45,9 +45,19 @@ type PipelineRow = {
 
 const fallbackPalette: Array<{ kind: PipelineNodeKind; label: string; enabled: boolean }> = [
   { kind: 'trigger.manual_start', label: 'Manual Start', enabled: true },
+  { kind: 'doc.enqueue_ingestion', label: 'Enqueue Ingestion', enabled: true },
+  { kind: 'doc.wait_indexed', label: 'Wait Indexed', enabled: true },
+  { kind: 'doc.classify', label: 'Classify Document', enabled: true },
+  { kind: 'ai.llm_task', label: 'LLM Task', enabled: true },
+  { kind: 'contract.generator', label: 'Contract Generator', enabled: true },
+  { kind: 'contract.reduce', label: 'Contract Reduce', enabled: true },
+  { kind: 'contract.verifier', label: 'Contract Verifier', enabled: true },
+  { kind: 'contract.judge', label: 'Contract Judge', enabled: true },
+  { kind: 'contract.snapshot_writer', label: 'Snapshot Writer', enabled: true },
   { kind: 'agent.standard_zohal_verifier', label: 'Standard Verifier', enabled: true },
   { kind: 'logic.if_discrepancy', label: 'If Discrepancy', enabled: true },
   { kind: 'logic.parallel_group', label: 'Parallel Group (UI)', enabled: true },
+  { kind: 'logic.subpipeline', label: 'Subpipeline', enabled: true },
   { kind: 'logic.wait_human_approval', label: 'Wait Human', enabled: true },
   { kind: 'output.generate_decision_pack', label: 'Decision Pack', enabled: true },
   { kind: 'output.webhook_json', label: 'Webhook', enabled: false },
@@ -58,6 +68,13 @@ type CatalogNode = {
   title: string;
   execution: string;
   enabled: boolean;
+  input_contract?: string | null;
+  output_contract?: string | null;
+  config_schema?: Record<string, unknown> | null;
+  ui_hints?: Record<string, unknown> | null;
+  palette_icon?: string | null;
+  palette_badge_i18n_keys?: string[] | null;
+  guardrail_warning_i18n_keys?: string[] | null;
 };
 
 type RunNodeRow = {
@@ -66,6 +83,28 @@ type RunNodeRow = {
   last_error_code?: string | null;
   last_error_message?: string | null;
 };
+
+type JsonSchema = {
+  type?: string;
+  title?: string;
+  description?: string;
+  enum?: unknown[];
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+};
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function schemaToFieldOrder(schema: Record<string, unknown> | null | undefined, uiHints: Record<string, unknown> | null | undefined) {
+  const s = (schema || {}) as JsonSchema;
+  const props = (s.properties || {}) as Record<string, JsonSchema>;
+  const order = Array.isArray((uiHints as any)?.config_order) ? ((uiHints as any).config_order as string[]) : [];
+  const keys = Object.keys(props);
+  const ordered = [...order.filter((k) => keys.includes(k)), ...keys.filter((k) => !order.includes(k))];
+  return { props, ordered };
+}
 
 function nodeBadgeVariant(status: string | undefined): 'default' | 'warning' | 'success' | 'error' {
   if (status === 'succeeded') return 'success';
@@ -135,6 +174,8 @@ export default function PipelinesPage() {
   const [runStatusReason, setRunStatusReason] = useState<string>('');
   const [catalogNodes, setCatalogNodes] = useState<CatalogNode[]>([]);
   const [serverWorkspaceEnabled, setServerWorkspaceEnabled] = useState<boolean | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [rawConfigDraft, setRawConfigDraft] = useState<string>('');
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -151,8 +192,61 @@ export default function PipelinesPage() {
       kind: n.kind,
       label: n.title,
       enabled: n.enabled,
+      badges: Array.isArray(n.palette_badge_i18n_keys) ? n.palette_badge_i18n_keys : [],
     }));
   }, [catalogNodes]);
+
+  const presetNodes = useMemo(() => {
+    return [
+      {
+        id: 'preset.openai_json',
+        label: t('palette.presets.openaiJson'),
+        kind: 'ai.llm_task' as PipelineNodeKind,
+        config: {
+          provider: 'openai',
+          model: 'gpt-5.2',
+          system_prompt: 'Return valid JSON only. Do not include markdown.',
+          prompt_template: 'Describe the task and required JSON output.',
+          output_json_schema: { type: 'object', additionalProperties: true },
+          temperature: 0,
+          max_tokens: 1200,
+        },
+      },
+      {
+        id: 'preset.vertex_gemini_json',
+        label: t('palette.presets.geminiJson'),
+        kind: 'ai.llm_task' as PipelineNodeKind,
+        config: {
+          provider: 'vertex',
+          model: 'gemini-1.5-pro',
+          system_prompt: 'Return valid JSON only. Do not include markdown.',
+          prompt_template: 'Describe the task and required JSON output.',
+          output_json_schema: { type: 'object', additionalProperties: true },
+          temperature: 0,
+          max_tokens: 1200,
+        },
+      },
+    ];
+  }, [t]);
+
+  const selectedNode = useMemo(() => {
+    if (!selectedNodeId) return null;
+    return nodes.find((n) => n.id === selectedNodeId) || null;
+  }, [nodes, selectedNodeId]);
+
+  const selectedNodeKind = String((selectedNode?.data as any)?.kind || '');
+  const selectedCatalogNode = useMemo(() => {
+    return catalogNodes.find((n) => n.kind === (selectedNodeKind as PipelineNodeKind)) || null;
+  }, [catalogNodes, selectedNodeKind]);
+
+  useEffect(() => {
+    if (!selectedNode) {
+      setRawConfigDraft('');
+      return;
+    }
+    const cfg = isRecord((selectedNode.data as any)?.config) ? ((selectedNode.data as any).config as Record<string, unknown>) : {};
+    setRawConfigDraft(JSON.stringify(cfg, null, 2));
+  }, [selectedNode]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -200,6 +294,17 @@ export default function PipelinesPage() {
         title: String(n.title || n.kind),
         execution: String(n.execution || 'internal'),
         enabled: n.enabled === true,
+        input_contract: typeof n.input_contract === 'string' ? n.input_contract : null,
+        output_contract: typeof n.output_contract === 'string' ? n.output_contract : null,
+        config_schema: isRecord(n.config_schema) ? (n.config_schema as Record<string, unknown>) : null,
+        ui_hints: isRecord(n.ui_hints) ? (n.ui_hints as Record<string, unknown>) : null,
+        palette_icon: typeof n.palette_icon === 'string' ? n.palette_icon : null,
+        palette_badge_i18n_keys: Array.isArray(n.palette_badge_i18n_keys)
+          ? (n.palette_badge_i18n_keys.filter((k: any) => typeof k === 'string') as string[])
+          : null,
+        guardrail_warning_i18n_keys: Array.isArray(n.guardrail_warning_i18n_keys)
+          ? (n.guardrail_warning_i18n_keys.filter((k: any) => typeof k === 'string') as string[])
+          : null,
       }));
 
     setCatalogNodes(mapped);
@@ -340,20 +445,56 @@ export default function PipelinesPage() {
     await loadPipelines();
   };
 
-  const addNode = (kind: PipelineNodeKind) => {
+  const addNode = (kind: PipelineNodeKind, opts?: { label?: string; config?: Record<string, unknown> }) => {
     const id = `${kind.replace(/\./g, '_')}_${Math.random().toString(36).slice(2, 7)}`;
+    const title = catalogNodes.find((n) => n.kind === kind)?.title || kind;
     const next: Node = {
       id,
       type: 'default',
       position: { x: 220 + nodes.length * 20, y: 140 + nodes.length * 20 },
       data: {
         kind,
-        label: kind,
-        config: {},
+        label: opts?.label || title,
+        config: opts?.config || {},
       },
     };
     setNodes((prev) => [...prev, next]);
+    setSelectedNodeId(id);
   };
+
+  const updateSelectedNodeConfig = useCallback(
+    (nextConfig: Record<string, unknown>) => {
+      if (!selectedNodeId) return;
+      setNodes((prev) =>
+        prev.map((n) => {
+          if (n.id !== selectedNodeId) return n;
+          return {
+            ...n,
+            data: {
+              ...(n.data as any),
+              config: nextConfig,
+            },
+          };
+        }),
+      );
+    },
+    [selectedNodeId, setNodes],
+  );
+
+  const applyRawConfigDraft = useCallback(() => {
+    if (!selectedNode) return;
+    try {
+      const parsed = JSON.parse(rawConfigDraft || '{}');
+      if (!isRecord(parsed)) {
+        toast.showError(new Error('Config JSON must be an object'), 'pipeline-node-config');
+        return;
+      }
+      updateSelectedNodeConfig(parsed);
+      toast.showSuccess(t('builder.nodeConfigSaved'));
+    } catch (e) {
+      toast.showError(e instanceof Error ? e : new Error('Invalid JSON'), 'pipeline-node-config');
+    }
+  }, [rawConfigDraft, selectedNode, t, toast, updateSelectedNodeConfig]);
 
   const runTest = async () => {
     if (!selectedPipelineId) return;
@@ -580,6 +721,29 @@ export default function PipelinesPage() {
             <div className="pt-2 border-t border-border space-y-2">
               <div className="text-xs font-semibold text-text-soft uppercase tracking-wide">{t('palette.title')}</div>
               <div className="grid grid-cols-1 gap-2">
+                <div className="rounded-scholar border border-border bg-surface p-2">
+                  <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wide">{t('palette.presets.title')}</div>
+                  <div className="mt-2 grid grid-cols-1 gap-2">
+                    {presetNodes.map((p) => (
+                      <Button
+                        key={p.id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addNode(p.kind, { label: p.label, config: p.config })}
+                        className="justify-start"
+                        disabled={!selectedPipelineId}
+                      >
+                        <Layers className="w-3.5 h-3.5 mr-2" />
+                        <span className="truncate">{p.label}</span>
+                        <span className="ml-auto flex items-center gap-1">
+                          <Badge size="sm" variant="success">{t('palette.presets.badge')}</Badge>
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-text-soft">{t('palette.presets.hint')}</div>
+                </div>
+
                 {palette.map((item) => (
                   <Button
                     key={item.kind}
@@ -590,7 +754,20 @@ export default function PipelinesPage() {
                     disabled={!selectedPipelineId || item.enabled === false}
                   >
                     <Layers className="w-3.5 h-3.5 mr-2" />
-                    {item.label}{item.enabled === false ? ` ${t('palette.blockedSuffix')}` : ''}
+                    <span className="truncate">{item.label}{item.enabled === false ? ` ${t('palette.blockedSuffix')}` : ''}</span>
+                    {Array.isArray((item as any).badges) && (item as any).badges.length ? (
+                      <span className="ml-auto flex items-center gap-1">
+                        {((item as any).badges as string[]).slice(0, 2).map((key) => (
+                          <Badge
+                            key={key}
+                            size="sm"
+                            variant={key.includes('canonical') ? 'error' : 'warning'}
+                          >
+                            {t(key as any)}
+                          </Badge>
+                        ))}
+                      </span>
+                    ) : null}
                   </Button>
                 ))}
               </div>
@@ -638,6 +815,7 @@ export default function PipelinesPage() {
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
+                  onNodeClick={(_, node) => setSelectedNodeId(node.id)}
                   fitView
                   minZoom={0.2}
                   maxZoom={2}
@@ -646,6 +824,155 @@ export default function PipelinesPage() {
                   <Controls />
                   <Background gap={20} size={1} color="#e7e5e4" />
                 </ReactFlow>
+              </div>
+
+              <div className="border border-border rounded-scholar p-3 bg-surface">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="text-xs font-semibold text-text-soft uppercase tracking-wide">{t('builder.nodeInspector')}</div>
+                  {selectedNode ? (
+                    <Badge size="sm" variant="default">
+                      {selectedCatalogNode?.title || selectedNodeKind || selectedNode.id}
+                    </Badge>
+                  ) : (
+                    <Badge size="sm" variant="default">
+                      {t('builder.noNodeSelected')}
+                    </Badge>
+                  )}
+                </div>
+
+                {!selectedNode ? (
+                  <div className="text-sm text-text-soft">{t('builder.nodeInspectorHint')}</div>
+                ) : (
+                  <div className="space-y-3">
+                    {Array.isArray(selectedCatalogNode?.guardrail_warning_i18n_keys) && selectedCatalogNode?.guardrail_warning_i18n_keys?.length ? (
+                      <div className="rounded-scholar border border-border bg-highlight/10 p-2">
+                        <div className="text-xs font-semibold text-text-soft uppercase tracking-wide">{t('builder.guardrailsTitle')}</div>
+                        <ul className="mt-1 space-y-1">
+                          {selectedCatalogNode.guardrail_warning_i18n_keys.slice(0, 4).map((key) => (
+                            <li key={key} className="text-xs text-text">
+                              - {t(key as any)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-text-soft">
+                      <div>
+                        <div className="font-semibold">{t('builder.nodeKind')}</div>
+                        <div className="text-text">{selectedNodeKind}</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold">{t('builder.nodeContracts')}</div>
+                        <div className="text-text">
+                          {(selectedCatalogNode?.input_contract || '—')}&nbsp;→&nbsp;{(selectedCatalogNode?.output_contract || '—')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const { props, ordered } = schemaToFieldOrder(selectedCatalogNode?.config_schema || null, selectedCatalogNode?.ui_hints || null);
+                      const currentConfig = isRecord((selectedNode.data as any)?.config) ? ((selectedNode.data as any).config as Record<string, unknown>) : {};
+                      if (ordered.length === 0) return null;
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {ordered.map((key) => {
+                            const field = props[key] || {};
+                            const label = field.title || key;
+                            const value = currentConfig[key];
+
+                            if (Array.isArray(field.enum)) {
+                              return (
+                                <label key={key} className="space-y-1">
+                                  <div className="text-xs font-medium text-text-soft">{label}</div>
+                                  <select
+                                    className="w-full rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+                                    value={typeof value === 'string' ? value : ''}
+                                    onChange={(e) => updateSelectedNodeConfig({ ...currentConfig, [key]: e.target.value })}
+                                  >
+                                    <option value="">{t('builder.selectPlaceholder')}</option>
+                                    {field.enum.map((opt, idx) => (
+                                      <option key={idx} value={String(opt)}>
+                                        {String(opt)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {field.description ? <div className="text-xs text-text-soft">{field.description}</div> : null}
+                                </label>
+                              );
+                            }
+
+                            if (field.type === 'boolean') {
+                              return (
+                                <label key={key} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={value === true}
+                                    onChange={(e) => updateSelectedNodeConfig({ ...currentConfig, [key]: e.target.checked })}
+                                  />
+                                  <span className="text-sm text-text">{label}</span>
+                                </label>
+                              );
+                            }
+
+                            if (field.type === 'array' || field.type === 'object') {
+                              return (
+                                <label key={key} className="space-y-1 md:col-span-2">
+                                  <div className="text-xs font-medium text-text-soft">{label}</div>
+                                  <textarea
+                                    className="w-full min-h-[64px] rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text font-mono"
+                                    value={JSON.stringify(value ?? (field.type === 'array' ? [] : {}), null, 2)}
+                                    onChange={(e) => {
+                                      try {
+                                        const parsed = JSON.parse(e.target.value || (field.type === 'array' ? '[]' : '{}'));
+                                        updateSelectedNodeConfig({ ...currentConfig, [key]: parsed });
+                                      } catch {
+                                        // keep last valid value; user can use raw config editor for complex editing
+                                      }
+                                    }}
+                                  />
+                                  {field.description ? <div className="text-xs text-text-soft">{field.description}</div> : null}
+                                </label>
+                              );
+                            }
+
+                            const isNumber = field.type === 'number' || field.type === 'integer';
+                            return (
+                              <label key={key} className="space-y-1">
+                                <div className="text-xs font-medium text-text-soft">{label}</div>
+                                <Input
+                                  value={value === undefined || value === null ? '' : String(value)}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const next = isNumber ? (raw.trim() ? Number(raw) : undefined) : raw;
+                                    updateSelectedNodeConfig({ ...currentConfig, [key]: next });
+                                  }}
+                                  placeholder={label}
+                                />
+                                {field.description ? <div className="text-xs text-text-soft">{field.description}</div> : null}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-text-soft mb-1">{t('builder.rawConfig')}</div>
+                      <textarea
+                        value={rawConfigDraft}
+                        onChange={(e) => setRawConfigDraft(e.target.value)}
+                        className="w-full min-h-[120px] rounded-scholar border border-border bg-surface px-3 py-2 text-xs text-text font-mono"
+                      />
+                      <div className="flex items-center justify-end gap-2 mt-2">
+                        <Button variant="ghost" size="sm" onClick={applyRawConfigDraft}>
+                          {t('builder.applyConfig')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-start">

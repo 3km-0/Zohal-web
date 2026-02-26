@@ -75,6 +75,11 @@ When enabled for a workspace, the internal scaffold is available at:
 
 `/workspaces/<workspace_id>/pipelines`
 
+### Presets UX (planned)
+Pipeline presets (node “recipes” and starter certified pipelines) are intended to remain a **pure UX layer**:
+- Preset nodes are prefilled configs for existing node kinds (no new runtime semantics).
+- Certified starter pipelines are shipped as global system preset pipelines that users can duplicate/edit.
+
 Delta-to-GA backend capabilities (consumed by scaffold and follow-up UX work):
 - `pipelines-node-catalog`, `pipelines-validate-spec`, `pipelines-node-action`
 - `pipeline-connections-test`

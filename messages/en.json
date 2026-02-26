@@ -622,7 +622,14 @@
     },
     "palette": {
       "title": "Node Palette",
-      "blockedSuffix": "(Blocked)"
+      "blockedSuffix": "(Blocked)",
+      "presets": {
+        "title": "Preset Nodes",
+        "badge": "Preset",
+        "hint": "These add an LLM Task node with prefilled settings you can edit.",
+        "openaiJson": "OpenAI JSON Task",
+        "geminiJson": "Gemini (Vertex) JSON Task"
+      }
     },
     "builder": {
       "namePlaceholder": "Pipeline name",
@@ -636,6 +643,16 @@
       "published": "Pipeline published",
       "selectTitle": "Select a pipeline",
       "selectDescription": "Choose a pipeline from the left panel or create a new one.",
+      "nodeInspector": "Node Inspector",
+      "noNodeSelected": "No node selected",
+      "nodeInspectorHint": "Click a node on the canvas to view and edit its configuration.",
+      "nodeKind": "Kind",
+      "nodeContracts": "Contracts",
+      "guardrailsTitle": "Guardrails",
+      "selectPlaceholder": "Select...",
+      "rawConfig": "Raw config (JSON)",
+      "applyConfig": "Apply",
+      "nodeConfigSaved": "Node config saved",
       "testInput": "Test Run Input (JSON)",
       "invalidTestJson": "Invalid test input JSON.",
       "testRun": "Test Run",
@@ -652,6 +669,14 @@
       "policyDeniedTitle": "Policy Denials",
       "nodeActionFailed": "Failed to apply node action.",
       "nodeActionSuccess": "Node action applied."
+    },
+    "badges": {
+      "canonical": "Canonical",
+      "external": "External"
+    },
+    "guardrails": {
+      "canonicalWrites": "Writes canonical snapshot + projections (gated).",
+      "externalSideEffect": "External side effect node (outbox-based; may be blocked by policy)."
     }
   },
   "packs": {
