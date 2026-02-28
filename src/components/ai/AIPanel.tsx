@@ -67,7 +67,6 @@ export function AIPanel({
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [loading, setLoading] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -146,7 +145,6 @@ export function AIPanel({
   useEffect(() => {
     setChatHistory([]);
     setCurrentConversationId(null);
-    setResult(null);
     setError(null);
     setLoading(false);
     setLoadingConversation(false);
@@ -168,55 +166,111 @@ export function AIPanel({
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
   }, [onOpenAnalysis, router, workspaceId, documentId]);
 
-  const handleExplain = useCallback(
-    async (text: string, requestType: string = 'explain') => {
-      if (!text.trim()) return;
+  const buildChatContext = useCallback(async () => {
+    const contextParts: string[] = [];
+    const maxChars = 15000;
+    let totalChars = 0;
 
-      setLoading(true);
-      setError(null);
+    const appendPart = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
 
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+      const separator = contextParts.length > 0 ? '\n\n' : '';
+      const availableChars = maxChars - totalChars - separator.length;
+      if (availableChars <= 0) return;
 
-        if (!session) throw new Error('Not authenticated');
+      const nextValue = trimmed.length > availableChars ? trimmed.slice(0, availableChars) : trimmed;
+      contextParts.push(nextValue);
+      totalChars += separator.length + nextValue.length;
+    };
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/explain`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              text,
-              document_id: documentId,
-              page_number: currentPage,
-              request_type: requestType,
-            }),
-          }
-        );
+    let isPrivacyModeDocument = false;
+    let documentTitle = '';
 
-        const json = await response.json().catch(() => null);
-        if (!response.ok) {
-          const uiErr = mapHttpError(response.status, json, 'explain');
-          toast.show(uiErr);
-          setError(uiErr.message);
-          return;
+    try {
+      const { data } = await supabase
+        .from('documents')
+        .select('title, privacy_mode')
+        .eq('id', documentId)
+        .single();
+
+      documentTitle = (data?.title as string | undefined) ?? '';
+      isPrivacyModeDocument = data?.privacy_mode === true;
+    } catch (err) {
+      console.error('Failed to load document metadata for chat context:', err);
+    }
+
+    if (documentTitle) appendPart(`Document: ${documentTitle}`);
+    if (documentType) appendPart(`Document type: ${documentType}`);
+    if (typeof currentPage === 'number') appendPart(`Current page: ${currentPage}`);
+    if (selectedText?.trim()) appendPart(`Selected text:\n${selectedText.trim()}`);
+
+    if (isPrivacyModeDocument) {
+      return contextParts.join('\n\n') || undefined;
+    }
+
+    const loadChunks = async (pageRange?: { start: number; end: number }) => {
+      let query = supabase
+        .from('document_chunks')
+        .select('page_number, chunk_index, content_text')
+        .eq('document_id', documentId)
+        .order('page_number', { ascending: true })
+        .order('chunk_index', { ascending: true })
+        .limit(80);
+
+      if (pageRange) {
+        query = query
+          .gte('page_number', pageRange.start)
+          .lte('page_number', pageRange.end);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    };
+
+    try {
+      const nearbyRange =
+        typeof currentPage === 'number'
+          ? { start: Math.max(1, currentPage - 2), end: Math.max(1, currentPage + 2) }
+          : undefined;
+
+      let chunks = await loadChunks(nearbyRange);
+      if (chunks.length === 0 && nearbyRange) {
+        chunks = await loadChunks();
+      }
+
+      if (chunks.length > 0) {
+        const pageBlocks: string[] = [];
+        let contentChars = 0;
+
+        for (const row of chunks as Array<{
+          page_number: number | null;
+          content_text: string | null;
+        }>) {
+          const text = (row.content_text ?? '').trim();
+          if (!text) continue;
+
+          const block = `--- Page ${row.page_number ?? 1} ---\n${text}`;
+          const separator = pageBlocks.length > 0 ? '\n\n' : '';
+          const availableChars = maxChars - totalChars - contentChars - separator.length;
+          if (availableChars <= 0) break;
+
+          const nextBlock = block.length > availableChars ? block.slice(0, availableChars) : block;
+          pageBlocks.push(nextBlock);
+          contentChars += separator.length + nextBlock.length;
         }
 
-        const data = (json || {}) as any;
-        setResult(data.explanation || data.response_html || data.response_text);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
+        if (pageBlocks.length > 0) {
+          appendPart(`--- DOCUMENT CONTENT ---\n${pageBlocks.join('\n\n')}\n--- END DOCUMENT CONTENT ---`);
+        }
       }
-    },
-    [supabase, documentId, currentPage, toast]
-  );
+    } catch (err) {
+      console.error('Failed to load document chunks for chat context:', err);
+    }
+
+    return contextParts.join('\n\n') || undefined;
+  }, [supabase, documentId, documentType, currentPage, selectedText]);
 
   const handleChat = useCallback(
     async (message: string) => {
@@ -250,8 +304,10 @@ export function AIPanel({
         const userId = session.user?.id;
         if (!userId) throw new Error('Missing user');
 
+        const context = await buildChatContext();
+
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-workspace`,
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
           {
             method: 'POST',
             headers: {
@@ -260,22 +316,20 @@ export function AIPanel({
             },
             signal: controller.signal,
             body: JSON.stringify({
-              question: message,
-              workspace_id: workspaceId,
               user_id: userId,
+              document_id: documentId,
+              workspace_id: workspaceId,
               conversation_id: conversationIdAtSend,
-              options: {
-                document_ids: [documentId],
-                top_k: 10,
-                include_quotes: true,
-              },
+              message,
+              context,
+              request_type: 'chat',
             }),
           }
         );
 
         const json = await response.json().catch(() => null);
         if (!response.ok) {
-          const uiErr = mapHttpError(response.status, json, 'ask-workspace');
+          const uiErr = mapHttpError(response.status, json, 'chat');
           toast.show(uiErr);
           setError(uiErr.message);
           return;
@@ -285,7 +339,7 @@ export function AIPanel({
         // ignore this stale response.
         if (seq !== chatSeqRef.current) return;
 
-        const data = (json || {}) as any;
+        const data = ((json || {}) as any).data ?? ((json || {}) as any);
 
         // Update conversation ID if new
         if (data.conversation_id && !conversationIdAtSend) {
@@ -294,8 +348,8 @@ export function AIPanel({
 
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: data.answer || 'No response',
-          timestamp: new Date().toISOString(),
+          content: data.message?.content || 'No response',
+          timestamp: data.message?.created_at || new Date().toISOString(),
         };
         setChatHistory((prev) => [...prev, assistantMessage]);
         // Keep Conversations list in sync (otherwise "+" feels like it does nothing).
@@ -308,7 +362,16 @@ export function AIPanel({
         if (seq === chatSeqRef.current) setLoading(false);
       }
     },
-    [supabase, workspaceId, documentId, currentConversationId, toast, loading, loadConversationHistory]
+    [
+      supabase,
+      workspaceId,
+      documentId,
+      currentConversationId,
+      toast,
+      loading,
+      loadConversationHistory,
+      buildChatContext,
+    ]
   );
 
   const pinMessage = useCallback(
@@ -413,7 +476,6 @@ export function AIPanel({
     setActiveTab('chat');
     setChatHistory([]);
     setCurrentConversationId(null);
-    setResult(null);
     setError(null);
     setLoading(false);
     setLoadingConversation(false);
@@ -475,7 +537,7 @@ export function AIPanel({
         {activeTab === 'chat' && (
           <div className="flex flex-col h-full">
             {/* Quick actions when no chat */}
-            {chatHistory.length === 0 && !result && (
+            {chatHistory.length === 0 && (
               <div className="p-4 space-y-4">
                 {/* Selected text display */}
                 {selectedText && (
@@ -535,31 +597,6 @@ export function AIPanel({
                 <div className="p-3 bg-error/10 border border-error/20 rounded-scholar">
                   <p className="text-sm text-error">{error}</p>
                 </div>
-              </div>
-            )}
-
-            {/* Explanation Result */}
-            {result && !loading && chatHistory.length === 0 && (
-              <div className="p-4">
-                <div className="p-4 bg-surface-alt border border-border rounded-scholar">
-                  <div
-                    className="prose prose-sm max-w-none text-text"
-                    dangerouslySetInnerHTML={{ __html: result }}
-                  />
-                </div>
-                <button
-                  onClick={() =>
-                    pinMessage({
-                      role: 'assistant',
-                      content: result,
-                      timestamp: new Date().toISOString(),
-                    })
-                  }
-                  className="mt-2 flex items-center gap-1.5 text-sm text-text-soft hover:text-accent transition-colors"
-                >
-                  <Star className="w-4 h-4" />
-                  Save to Notes
-                </button>
               </div>
             )}
 

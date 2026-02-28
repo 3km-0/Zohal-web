@@ -216,9 +216,11 @@ export default function WorkspaceReportsPage() {
               </Button>
             </div>
             <div className="flex-1 overflow-auto p-4">
-              <div
-                className="prose prose-sm max-w-none text-text"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              <iframe
+                title={previewTitle}
+                srcDoc={previewHtml}
+                className="w-full h-full min-h-[60vh] rounded-scholar border border-border bg-white"
+                sandbox="allow-scripts allow-popups allow-downloads"
               />
             </div>
           </div>
@@ -236,4 +238,3 @@ function escapeHtml(s: string) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
-
