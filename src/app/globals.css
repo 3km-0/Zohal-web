@@ -20,6 +20,7 @@
   --highlight: #c9973e;
   --grid-color: rgba(0, 0, 0, 0.03);
   --grid-opacity: 1;
+  --grid-size: 20px;
 
   /* Font Variables */
   --font-source-serif: 'Source Serif 4', Georgia, serif;
@@ -79,6 +80,7 @@
 
   --grid-color: rgba(255, 255, 255, 0.012);
   --grid-opacity: 0.55;
+  --grid-size: 30px;
   --shadowSm: 0 16px 52px rgba(3, 10, 7, 0.18);
   --shadowMd: 0 24px 80px rgba(3, 10, 7, 0.28);
 
@@ -152,7 +154,7 @@ body {
   opacity: var(--grid-opacity, 1);
   background-image: linear-gradient(var(--grid-color) 0.5px, transparent 0.5px),
     linear-gradient(90deg, var(--grid-color) 0.5px, transparent 0.5px);
-  background-size: 20px 20px;
+  background-size: var(--grid-size, 20px) var(--grid-size, 20px);
 }
 
 /* Focus Ring */
