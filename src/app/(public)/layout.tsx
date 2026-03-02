@@ -17,11 +17,15 @@ export default function PublicLayout({
   }
 
   return (
-    <>
+    <div
+      data-theme="scholar-dark"
+      className="relative min-h-screen bg-[color:var(--bg)] text-[color:var(--text)]"
+    >
+      <div className="grid-bg" />
       <Header />
       <main className="relative z-10 min-h-screen">{children}</main>
       <Footer />
-    </>
+    </div>
   );
 }
 

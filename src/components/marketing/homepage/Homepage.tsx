@@ -313,7 +313,7 @@ function PrimaryLinkButton({
         'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
         'bg-accent text-[#172018] font-semibold px-5 py-2.5',
         'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-        'shadow-[0_12px_35px_rgba(201,151,62,0.18)] hover:bg-highlight hover:-translate-y-0.5 active:translate-y-0',
+        'shadow-[0_10px_28px_rgba(201,151,62,0.14)] hover:bg-highlight hover:-translate-y-0.5 active:translate-y-0',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
         className
       )}
@@ -1020,7 +1020,7 @@ export function Homepage() {
               <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
                 {content.ui.mentalModelLine}
               </div>
-              <h1 className="mt-5 max-w-[14ch] text-5xl sm:text-6xl lg:text-8xl leading-[0.92] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
+              <h1 className="mt-5 max-w-[15ch] text-5xl sm:text-6xl lg:text-7xl leading-[1.02] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
                 {heroHeadline.lead}
                 {heroHeadline.accent ? (
                   <>
@@ -1029,7 +1029,7 @@ export function Homepage() {
                   </>
                 ) : null}
               </h1>
-              <p className="mt-7 text-lg sm:text-[1.4rem] text-text-soft leading-relaxed max-w-[30ch]">
+              <p className="mt-7 text-lg sm:text-[1.35rem] text-text-soft leading-relaxed max-w-[32ch]">
                 {content.hero.subhead}
               </p>
 

@@ -64,7 +64,7 @@
   --surface-alt: rgba(255, 255, 255, 0.03);
 
   --text: #e8e4dc;
-  --text-soft: rgba(232, 228, 220, 0.68);
+  --text-soft: rgba(232, 228, 220, 0.6);
 
   --border: rgba(255, 255, 255, 0.08);
 
@@ -75,9 +75,9 @@
   --success: #3ba46a;
   --error: #d46b55;
 
-  --grid-color: rgba(255, 255, 255, 0.045);
-  --shadowSm: 0 18px 60px rgba(3, 10, 7, 0.24);
-  --shadowMd: 0 28px 90px rgba(3, 10, 7, 0.34);
+  --grid-color: rgba(255, 255, 255, 0.02);
+  --shadowSm: 0 16px 52px rgba(3, 10, 7, 0.18);
+  --shadowMd: 0 24px 80px rgba(3, 10, 7, 0.28);
 
   --nav-bg-top: rgba(20, 31, 26, 0.4);
   --nav-bg-scrolled: rgba(20, 31, 26, 0.82);
