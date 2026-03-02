@@ -3,6 +3,14 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowRight,
+  FileText,
+  Languages,
+  Scale,
+  ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
@@ -180,6 +188,25 @@ function useMarketingHomeContent(): Content {
   return t.raw('content') as Content;
 }
 
+function splitHeroHeadline(headline: string, locale: string) {
+  const accent = locale === 'ar' ? 'المكاتب القانونية السعودية.' : 'Saudi Firms.';
+  if (!headline.endsWith(accent)) {
+    return { lead: headline, accent: '' };
+  }
+
+  return {
+    lead: headline.slice(0, -accent.length).trimEnd(),
+    accent,
+  };
+}
+
+function splitProofLine(line: string) {
+  return line
+    .split('•')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function useScrolled(thresholdPx = 12) {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -284,9 +311,9 @@ function PrimaryLinkButton({
       onClick={onClick}
       className={cn(
         'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
-        'bg-accent text-background font-semibold px-5 py-2.5',
+        'bg-accent text-[#172018] font-semibold px-5 py-2.5',
         'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-        'hover:bg-highlight hover:-translate-y-0.5 active:translate-y-0',
+        'shadow-[0_12px_35px_rgba(201,151,62,0.18)] hover:bg-highlight hover:-translate-y-0.5 active:translate-y-0',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
         className
       )}
@@ -362,8 +389,10 @@ function LanguageToggle({
 
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-[var(--rMd)] border border-border bg-surface p-6 shadow-[var(--shadowSm)]">
-      <div className="text-2xl sm:text-3xl font-semibold text-text">{value}</div>
+    <div className="rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 shadow-[var(--shadowSm)]">
+      <div className="text-2xl sm:text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+        {value}
+      </div>
       <div className="mt-2 text-sm text-text-soft">{label}</div>
     </div>
   );
@@ -387,7 +416,7 @@ function Card({
   return (
     <div
       className={cn(
-        'rounded-[var(--rMd)] border border-border bg-surface p-6 shadow-[var(--shadowSm)]',
+        'rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]',
         onClick &&
           'cursor-pointer transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent'
       )}
@@ -406,7 +435,9 @@ function Card({
       }
     >
       <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{brandLabel}</div>
-      <h3 className="mt-2 text-lg font-semibold text-text">{title}</h3>
+      <h3 className="mt-2 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+        {title}
+      </h3>
       {subtitle ? <p className="mt-2 text-text-soft">{subtitle}</p> : null}
       <ul className="mt-4 space-y-2 text-sm text-text-soft">
         {bullets.map((b) => (
@@ -543,11 +574,11 @@ function Nav({ content }: { content: Content }) {
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
       style={{ backgroundColor: bg, borderBottom: '1px solid var(--nav-border)' }}
     >
-      <div className="max-w-[1280px] mx-auto px-5 sm:px-8 lg:px-[72px] h-[72px] flex items-center justify-between">
+      <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-[72px] h-[78px] flex items-center justify-between font-[family:var(--font-inter)]">
         <Link
           href="/home"
           className={cn(
-            'text-xl sm:text-2xl font-semibold tracking-tight text-text',
+            'text-2xl sm:text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text',
             'hover:text-highlight transition-colors duration-200',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
           )}
@@ -771,108 +802,90 @@ function DecisionPackMock() {
   ] as const;
 
   return (
-    <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowMd)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+    <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] shadow-[var(--shadowMd)] overflow-hidden">
+      <div className="px-6 py-5 border-b border-border flex items-start justify-between gap-4">
         <div>
-          <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+          <div className="text-xs tracking-[0.18em] uppercase text-text-soft">
             {content.ui.mock.decisionPackLabel}
           </div>
-          <div className="text-lg font-semibold text-text">{content.ui.mock.samplePackTitle}</div>
+          <div className="mt-2 text-xl font-semibold text-text">{content.ui.mock.samplePackTitle}</div>
         </div>
         <div className="hidden sm:flex items-center gap-2">
-          <span className="px-3 py-1 rounded-[var(--rPill)] border border-[color:var(--accent-alt)] text-xs font-semibold text-text">
-            {content.ui.mock.provisional}
+          <span className="px-3 py-1 rounded-[var(--rPill)] border border-[color:var(--border)] text-xs font-semibold text-text-soft">
+            {content.ui.mock.reviewStatus}
           </span>
-          <span className="px-3 py-1 rounded-[var(--rPill)] border border-success text-xs font-semibold text-text">
-            {content.ui.mock.finalized}
+          <span className="px-3 py-1 rounded-[var(--rPill)] border border-success bg-[rgba(59,164,106,0.12)] text-xs font-semibold text-success">
+            {content.ui.mock.verifiedStatus}
           </span>
         </div>
       </div>
 
-      <div className="p-5 grid gap-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr,360px]">
-          <div className="rounded-[var(--rMd)] border border-border bg-[rgba(0,0,0,0.12)] p-4">
-            <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+      <div className="p-6 grid gap-4">
+        <div className="grid gap-4 xl:grid-cols-[180px,1fr]">
+          <div className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4">
+            <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
               {content.ui.mock.documentViewer}
             </div>
-            <div className="mt-3 grid gap-2">
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-11/12" />
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-10/12" />
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-8/12" />
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.08)] w-9/12" />
-              <div className="mt-3 rounded-[var(--rSm)] border border-[color:var(--highlight)] bg-[rgba(243,207,122,0.10)] p-3">
-                <div className="text-xs text-highlight">{content.ui.mock.highlightSnippet}</div>
+            <div className="mt-4 space-y-3">
+              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-11/12" />
+              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-9/12" />
+              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-10/12" />
+              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-8/12" />
+              <div className="rounded-[18px] border border-accent bg-[rgba(201,151,62,0.08)] p-3 text-sm leading-7 text-accent">
+                {content.ui.mock.highlightSnippet}
               </div>
             </div>
           </div>
 
-          <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-            <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+          <div className="space-y-3">
+            <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
               {content.ui.mock.verifiedVariables}
             </div>
-            <div className="mt-3 space-y-3">
-              {factRows.map((row) => (
-                <div key={row.label} className="rounded-[var(--rSm)] border border-border bg-surface p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-xs font-semibold text-text-soft">{row.label}</div>
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-[var(--rPill)] border text-[11px] font-semibold',
-                        row.accent === 'success'
-                          ? 'border-success text-text'
-                          : 'border-[color:var(--accent-alt)] text-text'
-                      )}
-                    >
-                      {row.status}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-sm text-text">{row.value}</div>
+            {factRows.map((row) => (
+              <div
+                key={row.label}
+                className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs font-semibold text-text-soft">{row.label}</div>
+                  <span
+                    className={cn(
+                      'px-2.5 py-1 rounded-[var(--rPill)] border text-[11px] font-semibold',
+                      row.accent === 'success'
+                        ? 'border-success bg-[rgba(59,164,106,0.12)] text-success'
+                        : 'border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-accent'
+                    )}
+                  >
+                    {row.status}
+                  </span>
                 </div>
-              ))}
-              <div className="rounded-[var(--rMd)] border border-[color:var(--accent-alt)] bg-[rgba(243,207,122,0.08)] p-4">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
-                  {content.ui.mock.exceptionsQueueTitle}
-                </div>
-                <div className="mt-2 text-sm font-semibold text-text">
-                  {content.ui.mock.exceptionsQueueBody}
-                </div>
+                <div className="mt-2 text-base text-text">{row.value}</div>
               </div>
-              <div className="rounded-[var(--rMd)] border border-border bg-surface p-4">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
-                  {content.ui.mock.fieldEvidenceLabel}
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <div className="rounded-[var(--rSm)] border border-border bg-[rgba(0,0,0,0.10)] p-3">
-                    <div className="text-xs text-text-soft">{pageLabel(4)}</div>
-                    <div className="mt-2 h-12 rounded bg-[rgba(255,255,255,0.08)]" />
-                    <div className="mt-2 h-2 rounded bg-[rgba(243,207,122,0.22)] w-10/12" />
-                  </div>
-                  <div className="rounded-[var(--rSm)] border border-border bg-[rgba(0,0,0,0.10)] p-3">
-                    <div className="text-xs text-text-soft">{pageLabel(12)}</div>
-                    <div className="mt-2 h-12 rounded bg-[rgba(255,255,255,0.08)]" />
-                    <div className="mt-2 h-2 rounded bg-[rgba(243,207,122,0.22)] w-9/12" />
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
-          <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{content.ui.mock.exports}</div>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {content.decisionPack.exportButtons.map((label) => (
-              <button
-                key={label}
-                className={cn(
-                  'min-h-[44px] rounded-[var(--rSm)] border border-border bg-surface px-3 text-sm font-semibold text-text',
-                  'hover:border-highlight hover:text-highlight transition-colors duration-200',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                )}
-                type="button"
+        <div className="rounded-[24px] border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.06)] p-5">
+          <div className="text-xs tracking-[0.16em] uppercase text-accent">
+            {content.ui.mock.exceptionsQueueTitle}
+          </div>
+          <div className="mt-3 text-xl leading-relaxed text-text">{content.ui.mock.exceptionsQueueBody}</div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
+            {content.ui.mock.fieldEvidenceLabel}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {[4, 12].map((page) => (
+              <div
+                key={page}
+                className="rounded-[18px] border border-border bg-[rgba(255,255,255,0.02)] p-3"
               >
-                {label}
-              </button>
+                <div className="text-xs text-text-soft">{pageLabel(page)}</div>
+                <div className="mt-2 h-14 rounded bg-[rgba(255,255,255,0.06)]" />
+                <div className="mt-2 h-2 rounded bg-[rgba(243,207,122,0.2)] w-10/12" />
+              </div>
             ))}
           </div>
         </div>
@@ -912,25 +925,30 @@ function CapabilityPreviewCard() {
   ] as const;
 
   return (
-    <div className="rounded-[var(--rLg)] border border-border bg-surface-alt p-6">
-      <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+    <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-6 shadow-[var(--shadowSm)]">
+      <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
         {content.ui.mock.uiMockLabel}
       </div>
-      <div className="mt-4 rounded-[var(--rMd)] border border-[color:var(--accent-alt)] bg-surface p-4">
-        <div className="text-sm font-semibold text-text">{content.ui.mock.exceptionsQueueTitle}</div>
+      <div className="mt-4 rounded-[22px] border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.06)] p-5">
+        <div className="text-xs tracking-[0.14em] uppercase text-accent">
+          {content.ui.mock.exceptionsQueueTitle}
+        </div>
         <div className="mt-2 text-sm text-text-soft">{content.ui.mock.exceptionsQueueBody}</div>
       </div>
       <div className="mt-4 space-y-3">
         {rows.map((row) => (
-          <div key={row.label} className="rounded-[var(--rMd)] border border-border bg-surface p-4">
+          <div
+            key={row.label}
+            className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="text-xs font-semibold text-text-soft">{row.label}</div>
               <span
                 className={cn(
                   'px-2 py-0.5 rounded-[var(--rPill)] border text-[11px] font-semibold',
                   row.tone === 'success'
-                    ? 'border-success text-text'
-                    : 'border-[color:var(--accent-alt)] text-text'
+                    ? 'border-success bg-[rgba(59,164,106,0.12)] text-success'
+                    : 'border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-accent'
                 )}
               >
                 {row.status}
@@ -945,6 +963,7 @@ function CapabilityPreviewCard() {
 }
 
 export function Homepage() {
+  const locale = useLocale();
   const content = useMarketingHomeContent();
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
 
@@ -952,23 +971,67 @@ export function Homepage() {
     () => content.capabilities.tabs.find((t) => t.id === activeCapability) ?? content.capabilities.tabs[0],
     [activeCapability, content.capabilities.tabs]
   );
+  const heroHeadline = useMemo(
+    () => splitHeroHeadline(content.hero.headline, locale),
+    [content.hero.headline, locale]
+  );
+  const proofItems = useMemo(() => splitProofLine(content.hero.proofLine), [content.hero.proofLine]);
+  const spotlightCards = useMemo(() => {
+    const defs = [
+      {
+        id: 'bilingual',
+        icon: Languages,
+      },
+      {
+        id: 'conflicts',
+        icon: TriangleAlert,
+      },
+      {
+        id: 'packs',
+        icon: FileText,
+      },
+    ];
+
+    return defs.map((def, index) => {
+      const tab = content.capabilities.tabs.find((item) => item.id === def.id);
+      return {
+        id: def.id,
+        icon: def.icon,
+        title: tab?.label ?? content.stats.items[index]?.value ?? '',
+        body: tab?.bullets[0] ?? content.stats.items[index]?.label ?? '',
+      };
+    });
+  }, [content.capabilities.tabs, content.stats.items]);
+  const proofIcons = [ShieldCheck, Languages, Scale];
 
   return (
-    <div className="min-h-screen bg-[color:var(--bg)]">
+    <div
+      data-theme="scholar-dark"
+      className="relative isolate min-h-screen overflow-x-hidden bg-[color:var(--bg)] font-[family:var(--font-inter)]"
+    >
+      <div className="grid-bg opacity-70" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[540px] bg-[radial-gradient(circle_at_18%_18%,rgba(18,82,54,0.28),transparent_34%),radial-gradient(circle_at_76%_14%,rgba(201,151,62,0.12),transparent_28%),linear-gradient(180deg,rgba(8,18,13,0.1),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-[420px] h-[680px] bg-[radial-gradient(circle_at_70%_20%,rgba(16,61,42,0.18),transparent_26%),radial-gradient(circle_at_30%_55%,rgba(201,151,62,0.06),transparent_24%)]" />
       <Nav content={content} />
 
-      <main className="pt-[72px]">
+      <main className="relative z-10 pt-[78px]">
         {/* Hero */}
-        <Section className="pt-10 sm:pt-14 lg:pt-20">
-          <div className="grid gap-10 lg:grid-cols-[7fr,5fr] lg:items-center">
+        <Section className="pt-12 sm:pt-16 lg:pt-24">
+          <div className="grid gap-12 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
             <Reveal>
               <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
                 {content.ui.mentalModelLine}
               </div>
-              <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-text">
-                {content.hero.headline}
+              <h1 className="mt-5 max-w-[12ch] text-5xl sm:text-6xl lg:text-8xl leading-[0.95] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-semibold text-text">
+                {heroHeadline.lead}
+                {heroHeadline.accent ? (
+                  <>
+                    {' '}
+                    <span className="text-accent">{heroHeadline.accent}</span>
+                  </>
+                ) : null}
               </h1>
-              <p className="mt-5 text-lg sm:text-xl text-text-soft leading-relaxed max-w-[62ch]">
+              <p className="mt-7 text-lg sm:text-[1.4rem] text-text-soft leading-relaxed max-w-[30ch]">
                 {content.hero.subhead}
               </p>
 
@@ -991,14 +1054,34 @@ export function Homepage() {
                   )}
                 >
                   {content.hero.ctas.find((c) => c.type === 'secondary')?.label}
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
 
-              <div className="mt-5 text-sm text-text-soft">{content.hero.proofLine}</div>
+              <div className="mt-10 border-t border-border pt-6">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {proofItems.map((item, index) => {
+                    const Icon = proofIcons[index] ?? ShieldCheck;
+                    return (
+                      <div key={item} className="flex items-center gap-3 text-sm text-text-soft">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-[rgba(255,255,255,0.02)] text-accent">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="max-w-[18ch]">{item}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </Reveal>
 
             <Reveal delayMs={90}>
-              <DecisionPackMock />
+              <div className="relative lg:pl-4">
+                <div className="absolute -inset-5 rounded-[40px] bg-[radial-gradient(circle_at_70%_16%,rgba(201,151,62,0.16),transparent_28%),radial-gradient(circle_at_20%_70%,rgba(20,75,53,0.34),transparent_34%)] blur-2xl" />
+                <div className="relative">
+                  <DecisionPackMock />
+                </div>
+              </div>
             </Reveal>
           </div>
         </Section>
@@ -1006,16 +1089,16 @@ export function Homepage() {
         {/* Credibility strip */}
         <Section className="py-10 sm:py-12 lg:py-14">
           <Reveal>
-            <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6 sm:p-7">
-              <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+            <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-6 sm:p-7">
+              <div className="text-xs tracking-[0.16em] uppercase text-text-soft">
                 {content.credibilityStrip.label}
               </div>
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {content.credibilityStrip.items.map((item) => (
                   <div
                     key={item}
                     className={cn(
-                      'rounded-[var(--rMd)] border border-border bg-transparent px-4 py-3',
+                      'rounded-[18px] border border-border bg-[rgba(255,255,255,0.02)] px-4 py-3',
                       'text-sm text-text-soft hover:bg-surface-alt transition-colors duration-200'
                     )}
                   >
@@ -1031,7 +1114,7 @@ export function Homepage() {
         <Section id="product">
           <div className="grid gap-8 lg:grid-cols-[7fr,5fr] lg:items-start">
             <Reveal>
-              <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+              <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
                 {content.problem.title}
               </h2>
               <div className="mt-5 space-y-4 text-text-soft text-base sm:text-lg leading-relaxed">
@@ -1042,25 +1125,25 @@ export function Homepage() {
             </Reveal>
 
             <Reveal delayMs={90}>
-              <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+              <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] shadow-[var(--shadowSm)] p-6">
+                <div className="text-xs tracking-[0.16em] uppercase text-text-soft">
                   {content.problem.sideCard.title}
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="rounded-[24px] border border-[rgba(212,107,85,0.3)] bg-[rgba(212,107,85,0.07)] p-5">
                     <div className="text-sm font-semibold text-text">{content.ui.beforeLabel}</div>
-                    <ul className="mt-2 space-y-2 text-sm text-text-soft">
+                    <ul className="mt-3 space-y-3 text-sm text-text-soft">
                       {content.problem.sideCard.before.map((b) => (
                         <li key={b} className="flex gap-2">
-                          <span className="text-danger">•</span>
+                          <span className="text-[#d46b55]">•</span>
                           <span>{b}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4">
+                  <div className="rounded-[24px] border border-[rgba(59,164,106,0.28)] bg-[rgba(59,164,106,0.07)] p-5">
                     <div className="text-sm font-semibold text-text">{content.ui.afterLabel}</div>
-                    <ul className="mt-2 space-y-2 text-sm text-text-soft">
+                    <ul className="mt-3 space-y-3 text-sm text-text-soft">
                       {content.problem.sideCard.after.map((b) => (
                         <li key={b} className="flex gap-2">
                           <span className="text-success">•</span>
@@ -1078,7 +1161,7 @@ export function Homepage() {
         {/* How it works */}
         <Section id="how">
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
               {content.howItWorks.title}
             </h2>
             <p className="mt-4 text-text-soft text-base sm:text-lg max-w-[72ch]">
@@ -1086,10 +1169,21 @@ export function Homepage() {
             </p>
           </Reveal>
 
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
             {content.howItWorks.steps.map((step, idx) => (
               <Reveal key={step.title} delayMs={idx * 90}>
-                <Card brandLabel={content.brand.name} title={step.title} bullets={[step.body]} />
+                <div className="rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-sm font-semibold text-accent">
+                      {idx + 1}
+                    </span>
+                    <div className="text-xs tracking-[0.14em] uppercase text-text-soft">{content.brand.name}</div>
+                  </div>
+                  <h3 className="mt-5 text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-text-soft leading-relaxed">{step.body}</p>
+                </div>
               </Reveal>
             ))}
           </div>
@@ -1113,12 +1207,23 @@ export function Homepage() {
 
         {/* Stats */}
         <Section>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {content.stats.items.map((s, idx) => (
-              <Reveal key={s.label} delayMs={idx * 90}>
-                <StatCard value={s.value} label={s.label} />
-              </Reveal>
-            ))}
+          <div className="grid gap-4 lg:grid-cols-3">
+            {spotlightCards.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <Reveal key={item.id} delayMs={idx * 90}>
+                  <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))] px-6 py-8 shadow-[var(--shadowSm)]">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-border bg-[rgba(255,255,255,0.02)] text-accent">
+                      <Icon className="h-8 w-8" />
+                    </span>
+                    <h3 className="mt-6 text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                      {item.title}
+                    </h3>
+                    <p className="mt-4 text-lg leading-relaxed text-text-soft">{item.body}</p>
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
           <Reveal className="mt-4 text-sm text-text-soft" delayMs={120}>
             {content.stats.footnote}
@@ -1128,7 +1233,7 @@ export function Homepage() {
         {/* Capabilities tabs */}
         <Section id="playbooks">
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
               {content.capabilities.title}
             </h2>
           </Reveal>
@@ -1146,12 +1251,14 @@ export function Homepage() {
 
           <div className="mt-6 grid gap-4 lg:grid-cols-[7fr,5fr] lg:items-start">
             <Reveal delayMs={90}>
-              <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+              <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-7">
+                <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
                   {capability?.label}
                 </div>
-                <h3 className="mt-2 text-2xl font-semibold text-text">{capability?.title}</h3>
-                <ul className="mt-4 space-y-2 text-text-soft">
+                <h3 className="mt-3 text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                  {capability?.title}
+                </h3>
+                <ul className="mt-5 space-y-3 text-text-soft">
                   {(capability?.bullets ?? []).map((b) => (
                     <li key={b} className="flex gap-2">
                       <span className="mt-[2px] text-highlight">•</span>
@@ -1171,7 +1278,7 @@ export function Homepage() {
         {/* Applications grid */}
         <Section>
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
               {content.applications.title}
             </h2>
           </Reveal>
@@ -1205,10 +1312,10 @@ export function Homepage() {
         <Section id={content.decisionPack.id}>
           <div className="grid gap-10 lg:grid-cols-[7fr,5fr] lg:items-start">
             <Reveal>
-              <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+              <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
                 {content.decisionPack.title}
               </h2>
-              <ul className="mt-5 space-y-3 text-text-soft">
+              <ul className="mt-5 space-y-3 text-text-soft text-base sm:text-lg">
                 {content.decisionPack.bullets.map((b) => (
                   <li key={b} className="flex gap-2">
                     <span className="mt-[2px] text-highlight">•</span>
@@ -1221,7 +1328,7 @@ export function Homepage() {
                   <button
                     key={b}
                     className={cn(
-                      'min-h-[44px] rounded-[var(--rSm)] border border-border bg-surface px-3 text-sm font-semibold text-text',
+                      'min-h-[44px] rounded-[16px] border border-border bg-[rgba(255,255,255,0.02)] px-3 text-sm font-semibold text-text',
                       'hover:border-highlight hover:text-highlight transition-colors duration-200',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                     )}
@@ -1234,17 +1341,19 @@ export function Homepage() {
             </Reveal>
 
             <Reveal delayMs={120}>
-              <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6">
-                <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+              <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-6">
+                <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
                   {content.ui.decisionPackPreview.deliverablesLabel}
                 </div>
                 <div className="mt-4 space-y-3">
                   {content.ui.decisionPackPreview.deliverables.map((label) => (
                     <div
                       key={label}
-                      className="rounded-[var(--rMd)] border border-border bg-surface-alt p-4"
+                      className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4"
                     >
-                      <div className="text-sm font-semibold text-text">{label}</div>
+                      <div className="text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+                        {label}
+                      </div>
                       <div className="mt-2 text-sm text-text-soft">
                         {content.ui.decisionPackPreview.deliverablesBody}
                       </div>
@@ -1259,7 +1368,7 @@ export function Homepage() {
         {/* Deployment & Isolation */}
         <Section id={content.security.id}>
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
               {content.security.title}
             </h2>
           </Reveal>
@@ -1284,7 +1393,7 @@ export function Homepage() {
         {/* Pricing */}
         <Section id={content.pricing.id}>
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
               {content.pricing.title}
             </h2>
           </Reveal>
@@ -1296,12 +1405,17 @@ export function Homepage() {
           <div className="mt-8 max-w-[460px] mx-auto">
             {content.pricing.professional.slice(0, 1).map((p) => (
               <Reveal key={p.id}>
-                <div className="rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <div className="text-lg font-semibold text-text">{p.name}</div>
-                    <div className="text-text-soft">{p.price}</div>
+                <div className="rounded-[34px] border border-[color:rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(22,35,28,0.96),rgba(16,27,21,0.98))] shadow-[var(--shadowMd)] p-7">
+                  <div className="text-xs tracking-[0.16em] uppercase text-accent">
+                    {content.pricing.toggleLabels[0]}
                   </div>
-                  <ul className="mt-4 space-y-2 text-sm text-text-soft">
+                  <div className="mt-4 flex items-baseline justify-between gap-4">
+                    <div className="text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                      {p.name}
+                    </div>
+                    <div className="text-base text-text-soft">{p.price}</div>
+                  </div>
+                  <ul className="mt-5 space-y-3 text-sm text-text-soft">
                     {p.bullets.map((b) => (
                       <li key={b} className="flex gap-2">
                         <span className="mt-[2px] text-highlight">•</span>
@@ -1324,7 +1438,7 @@ export function Homepage() {
           </div>
 
           <Reveal className="mt-6 max-w-[460px] mx-auto" delayMs={120}>
-            <div className="rounded-[var(--rLg)] border border-border bg-surface-alt p-6">
+            <div className="rounded-[24px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
               <div className="text-sm font-semibold text-text">{content.pricing.usageMeter.title}</div>
               <div className="mt-2 text-sm text-text-soft">{content.pricing.usageMeter.body}</div>
             </div>
@@ -1334,7 +1448,7 @@ export function Homepage() {
         {/* Insights */}
         <Section id={content.insights.id}>
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
               {content.insights.title}
             </h2>
             <p className="mt-4 text-text-soft text-base sm:text-lg max-w-[72ch]">
@@ -1348,13 +1462,15 @@ export function Homepage() {
                 <Link
                   href={i.href}
                   className={cn(
-                    'block rounded-[var(--rLg)] border border-border bg-surface shadow-[var(--shadowSm)] p-6',
+                    'block rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-6',
                     'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                   )}
                 >
-                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{i.tag}</div>
-                  <div className="mt-2 text-lg font-semibold text-text">{i.title}</div>
+                  <div className="text-xs tracking-[0.14em] uppercase text-text-soft">{i.tag}</div>
+                  <div className="mt-3 text-xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                    {i.title}
+                  </div>
                   <div className="mt-2 text-text-soft">{i.excerpt}</div>
                   <div className="mt-4 text-sm text-text-soft">
                     {i.date} • {i.readTime}
@@ -1373,7 +1489,7 @@ export function Homepage() {
         <Section>
           <div className="grid gap-10 lg:grid-cols-[7fr,5fr] lg:items-start">
             <Reveal>
-              <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+              <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
                 {content.faq.title}
               </h2>
               <p className="mt-4 text-text-soft">{content.faq.intro}</p>
@@ -1383,7 +1499,7 @@ export function Homepage() {
                 items={content.faq.items}
                 onOpen={(id) => trackMarketingEvent('faq_open', { question_id: id })}
               />
-              <div className="mt-6 rounded-[var(--rLg)] border border-border bg-surface-alt p-6">
+              <div className="mt-6 rounded-[28px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
                 <div className="text-text-soft">{content.faq.contactRow.note}</div>
                 <div className="mt-4 flex flex-col sm:flex-row gap-3">
                   <Link
@@ -1414,14 +1530,14 @@ export function Homepage() {
           <Reveal>
             <div
               className={cn(
-                'rounded-[var(--rLg)] border border-border',
-                'bg-gradient-to-br from-surface to-surface-alt',
+                'rounded-[36px] border border-[color:rgba(201,151,62,0.22)]',
+                'bg-[radial-gradient(circle_at_top_right,rgba(201,151,62,0.12),transparent_28%),linear-gradient(135deg,rgba(27,43,36,0.96),rgba(16,26,21,0.98))]',
                 'p-8 sm:p-10 lg:p-14 shadow-[var(--shadowSm)]'
               )}
             >
               <div className="grid gap-8 lg:grid-cols-[7fr,5fr] lg:items-center">
                 <div>
-                  <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text">
+                  <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
                     {content.finalCta.title}
                   </h2>
                   <p className="mt-4 text-text-soft text-base sm:text-lg">{content.finalCta.subhead}</p>
@@ -1445,8 +1561,8 @@ export function Homepage() {
                     </Link>
                   </div>
                 </div>
-                <div className="rounded-[var(--rLg)] border border-border bg-[rgba(0,0,0,0.12)] p-6">
-                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
+                <div className="rounded-[28px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
+                  <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
                     {content.ui.finalCta.previewLabel}
                   </div>
                   <div className="mt-4 space-y-3">
@@ -1461,17 +1577,19 @@ export function Homepage() {
         </Section>
 
         {/* Footer */}
-        <footer className="border-t border-border">
+        <footer className="border-t border-border bg-[rgba(0,0,0,0.08)]">
           <div className="max-w-[1280px] mx-auto px-5 sm:px-8 lg:px-[72px] py-14">
             <div className="grid gap-10 lg:grid-cols-[2fr,10fr]">
               <div>
-                <div className="text-2xl font-semibold text-text">{content.brand.name}</div>
+                <div className="text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                  {content.brand.name}
+                </div>
                 <div className="mt-2 text-text-soft">{content.brand.tagline}</div>
               </div>
               <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
                 {content.footer.columns.map((col) => (
                   <div key={col.title}>
-                    <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{col.title}</div>
+                    <div className="text-xs tracking-[0.14em] uppercase text-text-soft">{col.title}</div>
                     <div className="mt-3 space-y-2">
                       {col.links.map((l) => {
                         const isExternal = /^https?:\/\//i.test(l.href);
