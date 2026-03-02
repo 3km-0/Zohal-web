@@ -2,17 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { X, Play, Layers, FileText } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { X, Play, Layers, FileText, CheckCircle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 
 type PlaybookScope = 'single' | 'bundle' | 'either';
 type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
+type TemplateFilter = 'all' | 'commercial' | 'employment' | 'property' | 'finance' | 'compliance' | 'custom';
 
 type PlaybookRecord = {
   id: string;
   name: string;
+  is_system_preset?: boolean;
   current_version_id?: string | null;
   current_version?: { id: string; version_number: number; spec_json?: any } | null;
 };
@@ -38,8 +41,10 @@ export function RunAnalysisModal(props: {
   const { open, onClose, workspaceId, documentId, documentType, onOpenAITools } = props;
   const t = useTranslations('runAnalysis');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const isArabic = locale === 'ar';
 
   const isContract = documentType === 'contract';
 
@@ -47,6 +52,8 @@ export function RunAnalysisModal(props: {
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>('');
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateFilter, setTemplateFilter] = useState<TemplateFilter>('all');
 
   const [scope, setScope] = useState<Scope>('single');
   const [bundles, setBundles] = useState<DocumentBundleRow[]>([]);
@@ -92,6 +99,8 @@ export function RunAnalysisModal(props: {
     setSelectedBundleId('');
     setNewBundleName('');
     setCreatingBundle(false);
+    setTemplateSearch('');
+    setTemplateFilter('all');
     void loadPlaybooks();
     void loadBundles();
   }, [open, loadPlaybooks, loadBundles]);
@@ -100,6 +109,196 @@ export function RunAnalysisModal(props: {
     if (!selectedPlaybookId) return null;
     return playbooks.find((p) => p.id === selectedPlaybookId) || null;
   }, [playbooks, selectedPlaybookId]);
+
+  const localizedTemplateText = useCallback(
+    (
+      key:
+        | 'all'
+        | 'commercial'
+        | 'employment'
+        | 'property'
+        | 'finance'
+        | 'compliance'
+        | 'custom'
+        | 'customTemplates'
+        | 'systemLabel'
+        | 'search'
+        | 'autoDescription'
+        | 'customTemplate',
+      version?: number
+    ) => {
+      const ar = {
+        all: 'الكل',
+        commercial: 'تجاري',
+        employment: 'وظيفي',
+        property: 'عقاري',
+        finance: 'مالي',
+        compliance: 'امتثال',
+        custom: 'مخصص',
+        customTemplates: 'قوالبك',
+        systemLabel: 'من زحل',
+        search: 'ابحث في القوالب…',
+        autoDescription: 'يختار زحل القالب الأنسب لمستندك.',
+        customTemplate: version ? `قالب مخصص • v${version}` : 'قالب مخصص',
+      } as const;
+      const en = {
+        all: 'All',
+        commercial: 'Commercial',
+        employment: 'Employment',
+        property: 'Property',
+        finance: 'Finance',
+        compliance: 'Compliance',
+        custom: 'Custom',
+        customTemplates: 'Your templates',
+        systemLabel: 'System',
+        search: 'Search templates…',
+        autoDescription: 'Zohal picks the best template for your document.',
+        customTemplate: version ? `Custom template • v${version}` : 'Custom template',
+      } as const;
+      return (isArabic ? ar : en)[key];
+    },
+    [isArabic]
+  );
+
+  const noTemplateMatchText = useCallback(
+    (query: string) => (isArabic ? `لا توجد قوالب تطابق "${query}".` : `No templates match "${query}".`),
+    [isArabic]
+  );
+
+  const templateCategoryLabel = useCallback(
+    (category: TemplateFilter) => {
+      switch (category) {
+        case 'all':
+          return localizedTemplateText('all');
+        case 'commercial':
+          return localizedTemplateText('commercial');
+        case 'employment':
+          return localizedTemplateText('employment');
+        case 'property':
+          return localizedTemplateText('property');
+        case 'finance':
+          return localizedTemplateText('finance');
+        case 'compliance':
+          return localizedTemplateText('compliance');
+        case 'custom':
+          return localizedTemplateText('custom');
+      }
+    },
+    [localizedTemplateText]
+  );
+
+  const templateCategory = useCallback((playbook: PlaybookRecord): TemplateFilter => {
+    if (!playbook.is_system_preset) return 'custom';
+    const name = playbook.name.toLowerCase();
+    if (name.includes('employment') || name.includes('labor') || name.includes('hr')) return 'employment';
+    if (name.includes('real estate') || name.includes('lease') || name.includes('rent') || name.includes('property')) {
+      return 'property';
+    }
+    if (
+      name.includes('loan') ||
+      name.includes('credit') ||
+      name.includes('lending') ||
+      name.includes('finance') ||
+      name.includes('financial') ||
+      name.includes('insurance')
+    ) {
+      return 'finance';
+    }
+    if (name.includes('compliance') || name.includes('regulatory')) return 'compliance';
+    return 'commercial';
+  }, []);
+
+  const templateEmoji = useCallback((playbook: PlaybookRecord) => {
+    if (!playbook.is_system_preset) return '📝';
+    const name = playbook.name.toLowerCase();
+    if (name.includes('employment') || name.includes('labor') || name.includes('hr')) return '👔';
+    if (name.includes('real estate') || name.includes('lease') || name.includes('rent') || name.includes('property')) return '🏠';
+    if (name.includes('nda') || name.includes('confidential') || name.includes('non-disclosure')) return '🤐';
+    if (name.includes('service') || name.includes('msa') || name.includes('master')) return '🤝';
+    if (name.includes('construction') || name.includes('epc') || name.includes('build')) return '🏗️';
+    if (name.includes('shareholder') || name.includes('equity') || name.includes('share')) return '📊';
+    if (name.includes('loan') || name.includes('credit') || name.includes('lending')) return '🏦';
+    if (name.includes('finance') || name.includes('financial')) return '💰';
+    if (name.includes('insurance')) return '🛡️';
+    if (name.includes('intellectual') || name.includes('patent')) return '💡';
+    if (name.includes('license') || name.includes('licensing')) return '🔑';
+    if (name.includes('supply') || name.includes('procurement') || name.includes('vendor')) return '📦';
+    if (name.includes('purchase') || name.includes('sale') || name.includes('acquisition')) return '🛒';
+    if (name.includes('franchise')) return '🏪';
+    if (name.includes('partnership') || name.includes('joint venture')) return '🤲';
+    if (name.includes('settlement') || name.includes('dispute')) return '⚖️';
+    if (name.includes('compliance') || name.includes('regulatory')) return '✅';
+    if (name.includes('distribution') || name.includes('logistics')) return '🚚';
+    if (name.includes('software') || name.includes('saas') || name.includes('tech')) return '💻';
+    if (name.includes('consulting') || name.includes('advisory')) return '🎯';
+    return '📋';
+  }, []);
+
+  const templateDescription = useCallback(
+    (playbook: PlaybookRecord) => {
+      if (!playbook.is_system_preset) {
+        const version = playbook.current_version?.version_number;
+        return localizedTemplateText('customTemplate', version);
+      }
+      const name = playbook.name.toLowerCase();
+      if (isArabic) {
+        if (name.includes('general contract')) return 'البنود والالتزامات والمخاطر والمتغيرات الأساسية.';
+        if (name.includes('employment') || name.includes('labor')) return 'الأجر والواجبات والإنهاء وبنود الملكية الفكرية.';
+        if (name.includes('real estate') || name.includes('lease') || name.includes('rent')) return 'شروط العقار والإيجار والمدة والتزامات الصيانة.';
+        if (name.includes('nda') || name.includes('non-disclosure')) return 'التزامات السرية والاستثناءات والمدة.';
+        if (name.includes('msa') || name.includes('master service')) return 'نطاق العمل ومستويات الخدمة والدفع والمسؤولية.';
+        if (name.includes('service')) return 'التسليمات والدفع والمسؤولية وشروط الإنهاء.';
+        if (name.includes('construction') || name.includes('epc')) return 'المراحل والضمانات والجزاءات وشروط التسليم.';
+        if (name.includes('shareholder')) return 'الملكية وحقوق التصويت والأرباح وشروط الخروج.';
+        if (name.includes('loan') || name.includes('credit')) return 'الأصل والفائدة والعهود ومسببات التعثر.';
+        if (name.includes('insurance')) return 'التغطية والاستثناءات والأقساط والتزامات المطالبة.';
+        if (name.includes('intellectual')) return 'الملكية ونطاق الترخيص والعوائد والقيود.';
+        if (name.includes('supply') || name.includes('procurement')) return 'التسليم والتسعير والضمانات والتزامات المورد.';
+        if (name.includes('franchise')) return 'النطاق الجغرافي والرسوم والمعايير والتجديد.';
+        if (name.includes('compliance')) return 'المتطلبات التنظيمية والتقارير والتدقيق.';
+        if (name.includes('software') || name.includes('saas')) return 'الترخيص وحدود الاستخدام ومستويات الخدمة ومعالجة البيانات.';
+        return 'استخراج بدرجة دليل لهذا النوع من المستندات.';
+      }
+      if (name.includes('general contract')) return 'Clauses, obligations, risks and key variables.';
+      if (name.includes('employment') || name.includes('labor')) return 'Compensation, duties, termination and IP clauses.';
+      if (name.includes('real estate') || name.includes('lease') || name.includes('rent')) return 'Property terms, rent, duration and maintenance obligations.';
+      if (name.includes('nda') || name.includes('non-disclosure')) return 'Confidentiality obligations, carve-outs and duration.';
+      if (name.includes('msa') || name.includes('master service')) return 'Scope of work, SLAs, payment and liability terms.';
+      if (name.includes('service')) return 'Deliverables, payment, liability and termination terms.';
+      if (name.includes('construction') || name.includes('epc')) return 'Milestones, warranties, penalties and handover terms.';
+      if (name.includes('shareholder')) return 'Equity, voting rights, dividends and exit terms.';
+      if (name.includes('loan') || name.includes('credit')) return 'Principal, interest, covenants and default triggers.';
+      if (name.includes('insurance')) return 'Coverage, exclusions, premiums and claim obligations.';
+      if (name.includes('intellectual')) return 'Ownership, license scope, royalties and restrictions.';
+      if (name.includes('supply') || name.includes('procurement')) return 'Delivery, pricing, warranties and supplier obligations.';
+      if (name.includes('franchise')) return 'Territory, royalties, standards and renewal terms.';
+      if (name.includes('compliance')) return 'Regulatory requirements, reporting and audit obligations.';
+      if (name.includes('software') || name.includes('saas')) return 'License, usage limits, SLAs and data handling.';
+      return 'Evidence-grade extraction for this document type.';
+    },
+    [isArabic, localizedTemplateText]
+  );
+
+  const normalizedTemplateSearch = templateSearch.trim().toLowerCase();
+
+  const filteredPlaybooks = useMemo(() => {
+    return playbooks.filter((playbook) => {
+      const category = templateCategory(playbook);
+      const matchesFilter = templateFilter === 'all' || templateFilter === category || (templateFilter === 'custom' && category === 'custom');
+      const matchesSearch = !normalizedTemplateSearch || playbook.name.toLowerCase().includes(normalizedTemplateSearch);
+      return matchesFilter && matchesSearch;
+    });
+  }, [normalizedTemplateSearch, playbooks, templateCategory, templateFilter]);
+
+  const filteredSystemPlaybooks = useMemo(
+    () => filteredPlaybooks.filter((playbook) => playbook.is_system_preset),
+    [filteredPlaybooks]
+  );
+
+  const filteredCustomPlaybooks = useMemo(
+    () => filteredPlaybooks.filter((playbook) => !playbook.is_system_preset),
+    [filteredPlaybooks]
+  );
 
   const selectedPlaybookSpec = useMemo(() => {
     const raw = selectedPlaybook?.current_version?.spec_json;
@@ -319,18 +518,143 @@ export function RunAnalysisModal(props: {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-text">{t('playbook.label')}</div>
-                  <select
-                    className="w-full px-3 py-2 rounded-lg bg-surface-alt border border-border text-sm"
-                    value={selectedPlaybookId}
-                    onChange={(e) => setSelectedPlaybookId(e.target.value)}
-                  >
-                    <option value="">{t('playbook.default')}</option>
-                    {playbooks.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="rounded-xl border border-border bg-surface p-3 space-y-3">
+                    <Input
+                      value={templateSearch}
+                      onChange={(e) => setTemplateSearch(e.target.value)}
+                      placeholder={localizedTemplateText('search')}
+                    />
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {(['all', 'commercial', 'employment', 'property', 'finance', 'compliance', 'custom'] as TemplateFilter[]).map(
+                        (filter) => (
+                          <button
+                            key={filter}
+                            type="button"
+                            onClick={() => setTemplateFilter(filter)}
+                            className={cn(
+                              'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                              templateFilter === filter
+                                ? 'bg-accent text-white'
+                                : 'bg-surface-alt text-text-soft hover:text-text'
+                            )}
+                          >
+                            {templateCategoryLabel(filter)}
+                          </button>
+                        )
+                      )}
+                    </div>
+                    <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPlaybookId('');
+                          setSelectedPlaybookVersionId('');
+                        }}
+                        className={cn(
+                          'w-full rounded-xl border p-3 text-left transition-colors',
+                          selectedPlaybookId === ''
+                            ? 'border-accent bg-accent/5'
+                            : 'border-border bg-surface-alt hover:border-accent/40'
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="text-xl leading-none">✨</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{t('playbook.default')}</span>
+                              <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                            </div>
+                            <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+                              {localizedTemplateText('all')}
+                            </div>
+                            <p className="mt-1 text-sm text-text-soft">{localizedTemplateText('autoDescription')}</p>
+                          </div>
+                          {selectedPlaybookId === '' && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                        </div>
+                      </button>
+
+                      {filteredSystemPlaybooks.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                            {t('playbook.zohalTemplates')}
+                          </div>
+                          {filteredSystemPlaybooks.map((playbook) => (
+                            <button
+                              key={playbook.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPlaybookId(playbook.id);
+                                setSelectedPlaybookVersionId(playbook.current_version?.id || playbook.current_version_id || '');
+                              }}
+                              className={cn(
+                                'w-full rounded-xl border p-3 text-left transition-colors',
+                                selectedPlaybookId === playbook.id
+                                  ? 'border-accent bg-accent/5'
+                                  : 'border-border bg-surface-alt hover:border-accent/40'
+                              )}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="text-xl leading-none">{templateEmoji(playbook)}</div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-text">{playbook.name}</span>
+                                    <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                                  </div>
+                                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+                                    {templateCategoryLabel(templateCategory(playbook))}
+                                  </div>
+                                  <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
+                                </div>
+                                {selectedPlaybookId === playbook.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {filteredCustomPlaybooks.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                            {localizedTemplateText('customTemplates')}
+                          </div>
+                          {filteredCustomPlaybooks.map((playbook) => (
+                            <button
+                              key={playbook.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPlaybookId(playbook.id);
+                                setSelectedPlaybookVersionId(playbook.current_version?.id || playbook.current_version_id || '');
+                              }}
+                              className={cn(
+                                'w-full rounded-xl border p-3 text-left transition-colors',
+                                selectedPlaybookId === playbook.id
+                                  ? 'border-accent bg-accent/5'
+                                  : 'border-border bg-surface-alt hover:border-accent/40'
+                              )}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="text-xl leading-none">📝</div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-text">{playbook.name}</div>
+                                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+                                    {localizedTemplateText('custom')}
+                                  </div>
+                                  <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
+                                </div>
+                                {selectedPlaybookId === playbook.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {filteredSystemPlaybooks.length === 0 && filteredCustomPlaybooks.length === 0 && normalizedTemplateSearch ? (
+                        <div className="rounded-xl border border-dashed border-border bg-surface-alt px-3 py-5 text-sm text-text-soft">
+                          {noTemplateMatchText(templateSearch)}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                   <div className="text-xs text-text-soft">
                     {selectedPlaybookId ? t('playbook.helperSelected') : t('playbook.helperDefault')}
                   </div>
@@ -434,4 +758,3 @@ export function RunAnalysisModal(props: {
     </div>
   );
 }
-
