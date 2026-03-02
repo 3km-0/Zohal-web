@@ -19,6 +19,7 @@
   --error: #ef4444;
   --highlight: #c9973e;
   --grid-color: rgba(0, 0, 0, 0.03);
+  --grid-opacity: 1;
 
   /* Font Variables */
   --font-source-serif: 'Source Serif 4', Georgia, serif;
@@ -53,6 +54,7 @@
   --error: #ef4444;
 
   --grid-color: rgba(255, 255, 255, 0.03);
+  --grid-opacity: 0.7;
 
   --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
   --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
@@ -75,7 +77,8 @@
   --success: #3ba46a;
   --error: #d46b55;
 
-  --grid-color: rgba(255, 255, 255, 0.02);
+  --grid-color: rgba(255, 255, 255, 0.012);
+  --grid-opacity: 0.55;
   --shadowSm: 0 16px 52px rgba(3, 10, 7, 0.18);
   --shadowMd: 0 24px 80px rgba(3, 10, 7, 0.28);
 
@@ -103,6 +106,7 @@
   --error: #ef4444;
 
   --grid-color: rgba(255, 255, 255, 0.03);
+  --grid-opacity: 0.7;
   --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
   --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
 
@@ -145,8 +149,9 @@ body {
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  opacity: var(--grid-opacity, 1);
+  background-image: linear-gradient(var(--grid-color) 0.5px, transparent 0.5px),
+    linear-gradient(90deg, var(--grid-color) 0.5px, transparent 0.5px);
   background-size: 20px 20px;
 }
 
