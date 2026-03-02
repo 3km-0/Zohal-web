@@ -578,7 +578,7 @@ function Nav({ content }: { content: Content }) {
         <Link
           href="/home"
           className={cn(
-            'text-2xl sm:text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text',
+            'text-2xl sm:text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight leading-none text-text',
             'hover:text-highlight transition-colors duration-200',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
           )}
@@ -811,10 +811,10 @@ function DecisionPackMock() {
           <div className="mt-2 text-xl font-semibold text-text">{content.ui.mock.samplePackTitle}</div>
         </div>
         <div className="hidden sm:flex items-center gap-2">
-          <span className="px-3 py-1 rounded-[var(--rPill)] border border-[color:var(--border)] text-xs font-semibold text-text-soft">
+          <span className="px-3 py-1 rounded-[var(--rPill)] bg-[rgba(255,255,255,0.06)] text-xs font-semibold text-text-soft">
             {content.ui.mock.reviewStatus}
           </span>
-          <span className="px-3 py-1 rounded-[var(--rPill)] border border-success bg-[rgba(59,164,106,0.12)] text-xs font-semibold text-success">
+          <span className="px-3 py-1 rounded-[var(--rPill)] bg-[rgba(59,164,106,0.18)] text-xs font-semibold text-success">
             {content.ui.mock.verifiedStatus}
           </span>
         </div>
@@ -850,10 +850,10 @@ function DecisionPackMock() {
                   <div className="text-xs font-semibold text-text-soft">{row.label}</div>
                   <span
                     className={cn(
-                      'px-2.5 py-1 rounded-[var(--rPill)] border text-[11px] font-semibold',
+                      'px-2.5 py-1 rounded-[var(--rPill)] text-[11px] font-semibold',
                       row.accent === 'success'
-                        ? 'border-success bg-[rgba(59,164,106,0.12)] text-success'
-                        : 'border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-accent'
+                        ? 'bg-[rgba(59,164,106,0.18)] text-success'
+                        : 'border border-[color:var(--accent-alt)] text-accent'
                     )}
                   >
                     {row.status}
@@ -945,10 +945,10 @@ function CapabilityPreviewCard() {
               <div className="text-xs font-semibold text-text-soft">{row.label}</div>
               <span
                 className={cn(
-                  'px-2 py-0.5 rounded-[var(--rPill)] border text-[11px] font-semibold',
+                  'px-2 py-0.5 rounded-[var(--rPill)] text-[11px] font-semibold',
                   row.tone === 'success'
-                    ? 'border-success bg-[rgba(59,164,106,0.12)] text-success'
-                    : 'border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-accent'
+                    ? 'bg-[rgba(59,164,106,0.18)] text-success'
+                    : 'border border-[color:var(--accent-alt)] text-accent'
                 )}
               >
                 {row.status}
@@ -1009,9 +1009,7 @@ export function Homepage() {
       data-theme="scholar-dark"
       className="relative isolate min-h-screen overflow-x-hidden bg-[color:var(--bg)] font-[family:var(--font-inter)]"
     >
-      <div className="grid-bg opacity-70" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[540px] bg-[radial-gradient(circle_at_18%_18%,rgba(18,82,54,0.28),transparent_34%),radial-gradient(circle_at_76%_14%,rgba(201,151,62,0.12),transparent_28%),linear-gradient(180deg,rgba(8,18,13,0.1),transparent)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-[420px] h-[680px] bg-[radial-gradient(circle_at_70%_20%,rgba(16,61,42,0.18),transparent_26%),radial-gradient(circle_at_30%_55%,rgba(201,151,62,0.06),transparent_24%)]" />
+      <div className="grid-bg" />
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
@@ -1022,12 +1020,12 @@ export function Homepage() {
               <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
                 {content.ui.mentalModelLine}
               </div>
-              <h1 className="mt-5 max-w-[12ch] text-5xl sm:text-6xl lg:text-8xl leading-[0.95] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-semibold text-text">
+              <h1 className="mt-5 max-w-[14ch] text-5xl sm:text-6xl lg:text-8xl leading-[0.92] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
                 {heroHeadline.lead}
                 {heroHeadline.accent ? (
                   <>
                     {' '}
-                    <span className="text-accent">{heroHeadline.accent}</span>
+                    <span className="text-accent whitespace-nowrap">{heroHeadline.accent}</span>
                   </>
                 ) : null}
               </h1>
@@ -1076,11 +1074,8 @@ export function Homepage() {
             </Reveal>
 
             <Reveal delayMs={90}>
-              <div className="relative lg:pl-4">
-                <div className="absolute -inset-5 rounded-[40px] bg-[radial-gradient(circle_at_70%_16%,rgba(201,151,62,0.16),transparent_28%),radial-gradient(circle_at_20%_70%,rgba(20,75,53,0.34),transparent_34%)] blur-2xl" />
-                <div className="relative">
-                  <DecisionPackMock />
-                </div>
+              <div className="lg:pl-4">
+                <DecisionPackMock />
               </div>
             </Reveal>
           </div>

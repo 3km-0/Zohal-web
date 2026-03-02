@@ -75,7 +75,7 @@
   --success: #3ba46a;
   --error: #d46b55;
 
-  --grid-color: rgba(255, 255, 255, 0.02);
+  --grid-color: rgba(255, 255, 255, 0.045);
   --shadowSm: 0 18px 60px rgba(3, 10, 7, 0.24);
   --shadowMd: 0 28px 90px rgba(3, 10, 7, 0.34);
 
