@@ -1001,13 +1001,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Document Workflow IDE for Regulated Work",
-      "description": "Turn messy PDFs into verified variables and decision packs you can confidently forward. Built for regulated workflows: evidence, review, and enterprise boundaries."
+      "title": "Zohal — Bilingual Contract Analyst for Saudi Firms",
+      "description": "Zohal catches conflicting dates, risky clauses, and translation mistakes in Arabic and English contracts, then exports a verified decision pack with exact evidence."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "The AI studio for regulated documents.",
+        "tagline": "The bilingual contract analyst for Saudi firms.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -1021,12 +1021,12 @@
             "href": "#how"
           },
           {
-            "label": "Pricing",
-            "href": "#pricing"
+            "label": "Sample Pack",
+            "href": "#decision-pack"
           },
           {
-            "label": "Insights",
-            "href": "#insights"
+            "label": "Pricing",
+            "href": "#pricing"
           },
           {
             "label": "Security",
@@ -1049,82 +1049,86 @@
             "href": "/auth/login"
           },
           "primaryCta": {
-            "label": "Start free",
+            "label": "Start 14-Day Free Trial",
             "href": "/auth/signup"
           }
         }
       },
       "hero": {
-        "headline": "The AI studio for regulated documents.",
-        "subhead": "Drop contracts, invoices, portal exports, scans, and attachments — Arabic or English — and produce verified variables and decision packs with evidence you can forward.",
+        "headline": "The First Bilingual Contract Analyst for Saudi Firms.",
+        "subhead": "Zohal catches conflicting dates, risky clauses, and translation mistakes that generic AI misses. Upload a contract and get a verified decision pack your team can review and send.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start free",
+            "label": "Start 14-Day Free Trial",
             "href": "/auth/signup"
           },
           {
             "type": "secondary",
-            "label": "Watch 60s demo",
-            "action": "open_demo_modal"
+            "label": "See a Sample Pack",
+            "href": "#decision-pack"
           }
         ],
-        "proofLine": "Citations + visual grounding • Provisional → Finalized • Exception-first workflow",
+        "proofLine": "No credit card • Arabic + English review • Exact page and clause for every finding",
         "mock": {
-          "title": "Decision Pack Preview",
+          "title": "Sample Decision Pack",
           "panels": [
-            "Document Viewer",
-            "Verified Variables",
+            "Source Contract",
+            "Verified Facts",
             "Exports"
           ]
         }
       },
       "credibilityStrip": {
-        "label": "Built for regulated workflows.",
+        "label": "Built for contract review that must hold up.",
         "items": [
-          "In-region by default",
-          "Tenant-isolated for enterprise",
-          "Arabic/English OCR + layout",
-          "Evidence for every claim",
-          "Predictable “Not found”",
-          "Review + approvals"
+          "Arabic + English side-by-side",
+          "Conflict Radar for contradictions",
+          "Verified facts with page evidence",
+          "KSA-ready data residency controls",
+          "Client-ready memo exports",
+          "Zero-training on client files"
         ]
       },
       "problem": {
-        "title": "Document work is where risk hides.",
+        "title": "Don't let a typo cost you a client.",
         "body": [
-          "Teams are drowning in PDFs, scans, email attachments, and portal exports. The cost shows up as re-reading, re-typing, inconsistent decisions, and missed deadlines — while sensitive text leaks into public tools.",
-          "Zohal makes document AI governable and worth it: repeatable workflows, verified variables with receipts, and deliverables that survive scrutiny."
+          "You do not have an army of associates checking every page, every amendment, and every translation before a memo goes out.",
+          "Zohal does more than summarize. It verifies each finding against the source, shows the exact page and clause, and flags conflicts before they become client-facing mistakes."
         ],
         "sideCard": {
-          "title": "Before → After",
+          "title": "Before -> After",
           "before": [
-            "Manual extraction",
-            "Scattered notes",
-            "Risky forwarding"
+            "Missed renewals",
+            "Conflicting amendments",
+            "Summaries with no proof"
           ],
           "after": [
-            "Verified variables",
-            "Exceptions queue",
-            "Decision pack"
+            "Clause-level evidence",
+            "Conflict Radar",
+            "Client-ready decision pack"
           ]
         }
       },
       "howItWorks": {
-        "title": "From messy PDFs to decision packs.",
-        "subhead": "A workflow IDE: structured inputs → verified variables → repeatable steps → clean outputs.",
+        "title": "From messy PDF to client-ready memo in minutes.",
+        "subhead": "The workflow is simple: upload the file, review the conflicts, then export a clean decision pack.",
         "steps": [
           {
-            "title": "Ingest + Understand",
-            "body": "OCR + layout parsing for Arabic/English, tables, stamps, signatures, scans."
+            "title": "Upload Anything",
+            "body": "Scanned PDFs, photo attachments, signature pages, and bilingual contracts all go through the same intake flow."
           },
           {
-            "title": "Verify Variables",
-            "body": "Every key field becomes a Verification Object: claim, citations, visual grounding, confidence, version history."
+            "title": "Zohal Finds the Facts",
+            "body": "Key terms like dates, parties, liability, term, and governing law are extracted and linked back to the source text."
           },
           {
-            "title": "Run Templates + Ship",
-            "body": "Checks, discrepancies, exception queues, approvals — then export a forwardable Decision Pack."
+            "title": "Review the Conflict Radar",
+            "body": "Zohal flags contradictions across the main agreement, amendments, annexes, and translations before you send the memo."
+          },
+          {
+            "title": "Export and Send",
+            "body": "Download a branded decision pack in PDF or Word and send it directly to the client after review."
           }
         ],
         "ctas": [
@@ -1135,7 +1139,7 @@
           },
           {
             "type": "secondary",
-            "label": "How Templates work",
+            "label": "See how conflicts are flagged",
             "href": "#playbooks"
           }
         ]
@@ -1143,341 +1147,277 @@
       "stats": {
         "items": [
           {
-            "value": "20–80",
-            "label": "Verified variables per pack"
-          },
-          {
-            "value": "< 10 min",
-            "label": "Time to first draft pack"
-          },
-          {
-            "value": "Contracts • invoices • exports • scans",
-            "label": "Supported doc types"
+            "value": "Minutes, not hours",
+            "label": "To reach a first review pack"
           },
           {
             "value": "Arabic + English",
-            "label": "Languages"
+            "label": "Handled in one review flow"
+          },
+          {
+            "value": "Clause-level evidence",
+            "label": "For every surfaced finding"
+          },
+          {
+            "value": "Review before send",
+            "label": "Built for real legal workflows"
           }
         ],
-        "footnote": "Performance varies by document quality and workflow checks."
+        "footnote": "Final legal judgment stays with your team. Zohal speeds up review and makes evidence easier to verify."
       },
       "capabilities": {
-        "title": "Capabilities that make AI shippable.",
+        "title": "What your team sees, not technical jargon.",
         "tabs": [
           {
-            "id": "verification",
-            "label": "Verification Objects",
-            "title": "Verified variables with receipts.",
+            "id": "verified-facts",
+            "label": "Verified Facts",
+            "title": "Key legal facts in plain language.",
             "bullets": [
-              "Structured claims with citations + visual grounding",
-              "Provisional → Finalized with reviewer attribution",
-              "Confidence indicators + context snippets (not cherry-picked)"
+              "Party names, dates, term, liability, and governing law are presented as review-ready legal fields",
+              "Each fact stays tied to the page where it was found",
+              "Unclear fields stay marked for review instead of being guessed"
             ]
           },
           {
-            "id": "exceptions",
-            "label": "Discrepancies & Exceptions",
-            "title": "Conflict-first, exception-driven workflow.",
+            "id": "conflicts",
+            "label": "Conflict Radar",
+            "title": "Contradictions are obvious before they reach the client.",
             "bullets": [
-              "Conflicts become explicit discrepancy records",
-              "“Not found / unsupported” routes to exceptions automatically",
-              "Humans focus on disputes, not re-checking everything"
+              "Amendments that disagree with the master agreement are surfaced immediately",
+              "Cross-language differences are shown as review items, not hidden in summaries",
+              "The team reviews exceptions instead of re-reading every page from scratch"
             ]
           },
           {
-            "id": "playbooks",
-            "label": "Playbook Builder",
-            "title": "Schema-first workflows — not free-form prompts.",
+            "id": "bilingual",
+            "label": "Bilingual Review",
+            "title": "Arabic and English checked in one place.",
             "bullets": [
-              "Variables (types, required/optional, evidence rules)",
-              "Checks (consistency, thresholds, discrepancy rules)",
-              "Outputs (memo sections, trackers, evidence map, exports)"
+              "Mixed layouts, stamps, tables, and scans are handled in the same review flow",
+              "Arabic and English evidence can be checked side by side",
+              "Translation mistakes are surfaced with source-linked proof"
             ]
           },
           {
             "id": "packs",
             "label": "Decision Packs",
-            "title": "Forwardable deliverables, every time.",
+            "title": "A memo you can actually send.",
             "bullets": [
-              "Web-first pack with branded header",
-              "Variable cards with “Show evidence” toggles",
-              "One-click exports: PDF / CSV / JSON + finalized snapshot"
+              "Verified findings, conflicts, and evidence are packaged into a clean summary",
+              "Exports are designed for internal review or direct client delivery",
+              "The output looks like legal work product, not raw AI output"
             ]
           },
           {
-            "id": "governance",
-            "label": "Governance",
-            "title": "Adoption without chaos.",
+            "id": "review",
+            "label": "Review Controls",
+            "title": "Your team stays in control of the final answer.",
             "bullets": [
-              "Workspaces, roles, assignments, approvals",
-              "Audit exports tied to verified variables",
-              "Enterprise tenant isolation with dedicated boundaries"
+              "Review checkpoints keep important findings from shipping unchecked",
+              "History makes it clear what changed and what still needs attention",
+              "Access stays limited to the people working on the matter"
             ]
           }
         ]
       },
       "applications": {
-        "title": "Applications that sell — on one platform.",
+        "title": "Where firms use it first.",
         "cards": [
           {
             "id": "contracts",
-            "title": "Contracts",
-            "subtitle": "Review, obligations, diligence — fast and defensible.",
+            "title": "Contract Review",
+            "subtitle": "Catch renewal terms, liability language, and hidden conflicts before they reach the partner.",
             "bullets": [
-              "Parties, term, renewal, termination, liability, governing law",
-              "Obligations tracker + renewals calendar",
-              "Risk flags backed by citations"
+              "Dates, parties, term, governing law, liability, and termination clauses",
+              "Clause-level evidence for each highlighted finding",
+              "Clean memo output for partner review"
             ],
             "cta": {
-              "label": "Explore Contracts",
+              "label": "See contract review",
               "href": "#product"
             }
           },
           {
-            "id": "ap",
-            "title": "AP / Invoices",
-            "subtitle": "Verified capture + exception-driven approvals.",
+            "id": "amendments",
+            "title": "Amendments and Side Letters",
+            "subtitle": "Check what changed without re-reading the full stack manually.",
             "bullets": [
-              "Header fields, VAT/totals, line items",
-              "Confidence + mismatches route to exceptions",
-              "Export-ready outputs"
+              "Master agreement versus amendment comparison",
+              "Conflicting terms surfaced as explicit review items",
+              "Clear handoff for final legal judgment"
             ],
             "cta": {
-              "label": "Explore AP",
-              "href": "#product"
-            }
-          },
-          {
-            "id": "governance",
-            "title": "Compliance & Governance",
-            "subtitle": "Adopt AI without turning teams into auditors.",
-            "bullets": [
-              "RBAC + workspace partitions",
-              "Audit exports tied to verified variables",
-              "Retention windows (phased)"
-            ],
-            "cta": {
-              "label": "Explore Governance",
-              "href": "#security"
-            }
-          },
-          {
-            "id": "playbooks",
-            "title": "Templates",
-            "subtitle": "Custom workflows without free-form prompting.",
-            "bullets": [
-              "Variables (schema) + checks + outputs",
-              "Versioned specs + run manifests",
-              "Generator + Verifier loop with escalation"
-            ],
-            "cta": {
-              "label": "Explore Templates",
+              "label": "See amendment review",
               "href": "#playbooks"
+            }
+          },
+          {
+            "id": "bilingual-work",
+            "title": "Bilingual Contracts",
+            "subtitle": "Review Arabic and English versions together before anything is sent out.",
+            "bullets": [
+              "Side-by-side evidence for both languages",
+              "Layout-aware handling for scans, stamps, and annexes",
+              "Translation mismatches surfaced early"
+            ],
+            "cta": {
+              "label": "See bilingual review",
+              "href": "#product"
+            }
+          },
+          {
+            "id": "counsel",
+            "title": "In-House Counsel",
+            "subtitle": "Get to a documented first pass faster when the business needs an answer now.",
+            "bullets": [
+              "Fast first-pass review with evidence links",
+              "Decision packs that are easy to share with stakeholders",
+              "Clear record of what was checked and what needs escalation"
+            ],
+            "cta": {
+              "label": "See legal ops flow",
+              "href": "#security"
             }
           }
         ]
       },
       "decisionPack": {
         "id": "decision-pack",
-        "title": "Decision packs you can forward.",
+        "title": "A decision pack you can send to the client.",
         "bullets": [
-          "Citation-backed memo (structured headings)",
-          "Obligations / exceptions tracker (CSV/JSON)",
-          "Evidence map: each key variable links to highlight + snippet",
-          "Finalized snapshot for sharing"
+          "Executive summary with verified findings in plain legal language",
+          "Conflict list with exact page references for faster review",
+          "Key facts table linked to the source text",
+          "Export options built for PDF and Word handoff"
         ],
         "exportButtons": [
           "Export PDF",
-          "Export CSV",
-          "Export JSON",
-          "Finalize Snapshot"
+          "Export Word",
+          "Share Memo",
+          "Download Evidence"
         ]
       },
       "security": {
         "id": "security",
-        "title": "In-region by default. Tenant-isolated for enterprise.",
+        "title": "Saudi-native security for client work.",
         "leftBullets": [
-          "Residency-friendly deployment defaults",
-          "Data locality controls for KSA and in-region operations",
-          "Strong tenant boundaries for enterprise",
-          "Clean audit logs and per-tenant controls",
-          "Predictable uncertainty: confidence + “not found” + exceptions"
+          "KSA-ready data residency controls for firms that need local handling",
+          "Zero-training policy: client documents are not used to train models",
+          "Each export carries a manifest of what was checked and when",
+          "Workspace-based access and review history for controlled collaboration",
+          "Clear handling when evidence is missing or contradictory"
         ],
         "rightCard": {
-          "title": "Dedicated tenant boundary (enterprise)",
+          "title": "Built for confidential matters",
           "bullets": [
-            "Dedicated project per customer",
-            "Separate storage/database/function scopes",
-            "Per-tenant access controls",
-            "Audit logs scoped per tenant"
+            "Evidence stays linked to the source inside the workspace",
+            "Review history makes changes easy to audit",
+            "Access can stay limited to the active matter team",
+            "Exports remain structured for internal review or client delivery"
           ]
         }
       },
       "pricing": {
         "id": "pricing",
-        "title": "Pricing that matches how teams adopt.",
+        "title": "One plan for the firms we serve.",
         "toggleLabels": [
-          "Professional",
-          "Firm / Enterprise"
+          "The Partner Plan"
         ],
         "professional": [
           {
-            "id": "pro",
-            "name": "Zohal Professional",
-            "price": "$39.99/mo",
+            "id": "partner",
+            "name": "The Partner Plan",
+            "price": "SAR 1,200 / month",
             "bullets": [
-              "Built for individual and growing team workflows",
-              "OCR + extraction + Q&A with citations",
-              "Review memo export",
-              "Personal activity log",
-              "Volume cap"
+              "Billed annually for boutique firms and in-house counsel",
+              "Unlimited contract uploads",
+              "Full bilingual analysis (Arabic/English)",
+              "Conflict and discrepancy radar",
+              "Client-ready decision pack exports",
+              "KSA-ready data residency controls"
             ],
             "cta": {
-              "label": "Start Professional",
-              "href": "/auth/signup?plan=pro"
-            }
-          },
-          {
-            "id": "pro_plus",
-            "name": "Zohal Professional Plus",
-            "price": "$149/mo",
-            "bullets": [
-              "Everything in Professional",
-              "Up to 2 light custom playbooks",
-              "Higher volume cap",
-              "Priority async support"
-            ],
-            "cta": {
-              "label": "Start Plus",
-              "href": "/auth/signup?plan=pro_plus"
+              "label": "Start 14-Day Free Trial",
+              "href": "/auth/signup"
             }
           }
         ],
-        "enterprise": [
-          {
-            "id": "starter",
-            "name": "Zohal Firm Starter",
-            "price": "SAR 15k/year + VAT",
-            "bullets": [
-              "Collaboration-ready workspace",
-              "1 workspace (or up to 3 matters/projects)",
-              "Core outputs: extraction + memo + obligations tracker + citations",
-              "Audit Pack v1: run manifest + hashes + approvals log",
-              "Shared in-region cloud"
-            ],
-            "cta": {
-              "label": "Talk to sales",
-              "href": "/support"
-            }
-          },
-          {
-            "id": "firm",
-            "name": "Zohal Firm",
-            "price": "SAR 30k/year + VAT",
-            "bullets": [
-              "Multi-team collaboration across workspaces",
-              "Up to 5 workspaces",
-              "Queues + assignments + approvals",
-              "Audit Pack v1 + basic retention window",
-              "Shared in-region cloud (dedicated boundary available when required)"
-            ],
-            "cta": {
-              "label": "Talk to sales",
-              "href": "/support"
-            }
-          },
-          {
-            "id": "plus",
-            "name": "Zohal Firm Plus",
-            "price": "SAR 60k/year + VAT",
-            "bullets": [
-              "Enterprise-wide collaboration and governance",
-              "Up to 20 workspaces",
-              "Advanced governance (granular RBAC, export controls)",
-              "Higher throughput + stronger SLA",
-              "Dedicated tenant boundary included by default (in-region)"
-            ],
-            "cta": {
-              "label": "Talk to sales",
-              "href": "/support"
-            }
-          }
-        ],
+        "enterprise": [],
         "usageMeter": {
-          "title": "Usage model",
-          "body": "Usage is measured in pages processed per year. Example allowances: Starter 50k, Firm 150k, Plus 400k. Overage packs available."
+          "title": "Billing note",
+          "body": "Annual billing. 14-day free trial. Contact us if you need multi-team rollout or higher-volume matters."
         }
       },
       "insights": {
         "id": "insights",
-        "title": "Notes from the field.",
-        "subhead": "Methods, playbooks, and reliability patterns for regulated document work.",
+        "title": "What firms use Zohal for.",
+        "subhead": "The common review jobs where proof matters more than another generic summary.",
         "items": [
           {
-            "id": "schema-first",
-            "tag": "Templates",
-            "title": "Schema-first workflows: variables, checks, outputs",
-            "excerpt": "How to design templates that stay predictable under uncertainty — and scale across teams.",
-            "date": "2026-01-20",
+            "id": "lease-review",
+            "tag": "Contracts",
+            "title": "Lease reviews with conflicting renewal dates",
+            "excerpt": "Catch date conflicts across the main agreement and later amendments before the memo is sent.",
+            "date": "2026-02-10",
+            "readTime": "2 min",
+            "href": "#decision-pack"
+          },
+          {
+            "id": "bilingual-check",
+            "tag": "Bilingual",
+            "title": "Arabic/English contract checks before signature",
+            "excerpt": "Compare both language versions and surface translation differences with linked evidence.",
+            "date": "2026-01-28",
             "readTime": "3 min",
-            "href": "#insights"
+            "href": "#product"
           },
           {
-            "id": "gen-verifier",
-            "tag": "Reliability",
-            "title": "Generator + Verifier: reducing review without guessing",
-            "excerpt": "Why every claim must be supported by spans + visual grounding — and how exceptions keep teams safe.",
-            "date": "2026-01-13",
-            "readTime": "4 min",
-            "href": "#insights"
-          },
-          {
-            "id": "gcc-docs",
-            "tag": "GCC Documents",
-            "title": "Handling Arabic/English scans, stamps, and mixed layouts",
-            "excerpt": "Practical patterns for OCR, layout parsing, and evidence-first extraction in real-world document bundles.",
-            "date": "2025-12-03",
-            "readTime": "4 min",
-            "href": "#insights"
+            "id": "amendment-pack",
+            "tag": "Amendments",
+            "title": "Fast first-pass review for amendment stacks",
+            "excerpt": "Turn a messy bundle into a short, reviewable pack that highlights only what changed.",
+            "date": "2026-01-14",
+            "readTime": "3 min",
+            "href": "#playbooks"
           }
         ],
         "cta": {
-          "label": "Discover more",
+          "label": "Talk to us about your workflow",
           "href": "/support"
         }
       },
       "faq": {
         "title": "Frequently asked questions",
-        "intro": "Don’t see your question? Contact us.",
+        "intro": "If your question is not here, contact us and we will reply within one business day.",
         "items": [
           {
-            "id": "defensible",
-            "q": "How does Zohal keep outputs defensible?",
-            "a": "Zohal produces Verification Objects: structured claims with citations, visual grounding, confidence, and a Provisional → Finalized review lifecycle. Unsupported claims become “Not found / unsupported” and route to exceptions."
+            "id": "proof",
+            "q": "How does Zohal keep findings trustworthy?",
+            "a": "Each finding stays tied to the source page and clause. If evidence is weak, missing, or contradictory, Zohal marks it for review instead of presenting it as settled."
           },
           {
             "id": "conflicts",
-            "q": "What happens when documents conflict?",
-            "a": "Conflicts are surfaced as explicit discrepancy records (e.g., amendment vs master). Reviewers resolve intentionally — conflicts are never buried in prose."
+            "q": "What happens when the contract and amendment conflict?",
+            "a": "Zohal flags the contradiction as a review item and points to both locations so your team can resolve it intentionally before exporting the memo."
           },
           {
             "id": "bilingual",
-            "q": "Does Zohal support Arabic and English?",
-            "a": "Yes — ingestion, OCR, and layout understanding are designed for bilingual documents and real-world scans."
+            "q": "Does it support Arabic and English contracts together?",
+            "a": "Yes. The review flow is designed for bilingual documents, including mixed layouts, scans, annexes, and stamped pages."
           },
           {
-            "id": "approvals",
-            "q": "Can we control review and approvals?",
-            "a": "Yes — assignments, checkpoints, approvals, and version history are built into workflows, so teams can ship reliably."
+            "id": "exports",
+            "q": "What do we actually send to the client?",
+            "a": "You export a structured decision pack with verified facts, flagged conflicts, and linked evidence in a format that is easy to review internally or share externally."
           },
           {
-            "id": "isolation",
-            "q": "How does enterprise tenant isolation work?",
-            "a": "Enterprise deployments use dedicated tenant boundaries with separate storage/database/function scopes and per-tenant audit logs."
+            "id": "security",
+            "q": "Do you use our client files to train models?",
+            "a": "No. Zohal follows a zero-training policy for client documents."
           }
         ],
         "contactRow": {
-          "note": "If your questions weren’t addressed, reach out — we’ll respond within 1 business day.",
+          "note": "Need a sample pack for your practice area? Contact us and we will tailor one.",
           "ctas": [
             {
               "type": "secondary",
@@ -1486,19 +1426,19 @@
             },
             {
               "type": "primary",
-              "label": "Start free",
+              "label": "Start 14-Day Free Trial",
               "href": "/auth/signup"
             }
           ]
         }
       },
       "finalCta": {
-        "title": "Turn document chaos into verified work.",
-        "subhead": "Generate decision packs you can forward — with evidence.",
+        "title": "Review faster. Miss less. Send with proof.",
+        "subhead": "Upload the contract, review the conflicts, and export a decision pack your client can trust.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start free",
+            "label": "Start 14-Day Free Trial",
             "href": "/auth/signup"
           },
           {
@@ -1518,11 +1458,11 @@
                 "href": "#product"
               },
               {
-                "label": "Verification Objects",
+                "label": "Verified Facts",
                 "href": "#product"
               },
               {
-                "label": "Templates",
+                "label": "Conflict Radar",
                 "href": "#playbooks"
               },
               {
@@ -1532,19 +1472,19 @@
             ]
           },
           {
-            "title": "Solutions",
+            "title": "Use Cases",
             "links": [
               {
-                "label": "Contracts",
+                "label": "Contract Review",
                 "href": "#product"
               },
               {
-                "label": "AP / Invoices",
+                "label": "Bilingual Contracts",
                 "href": "#product"
               },
               {
-                "label": "Compliance & Governance",
-                "href": "#security"
+                "label": "Amendments",
+                "href": "#playbooks"
               }
             ]
           },
@@ -1579,59 +1519,67 @@
             ]
           }
         ],
-        "legalNote": "Watd Information Technology Company provides workflow assistance and evidence-backed outputs. Data locality is supported with in-region deployment defaults. Teams remain responsible for review and approvals."
+        "legalNote": "Watd Information Technology Company provides evidence-backed workflow assistance. Your team remains responsible for legal review and final approvals."
       },
       "ui": {
-        "mentalModelLine": "Inputs → Verified Variables → Checks + Exceptions → Decision Pack → Forward",
-        "beforeLabel": "Before",
-        "afterLabel": "After",
+        "mentalModelLine": "Upload Contract -> Review Conflicts -> Export Memo",
+        "beforeLabel": "Without Zohal",
+        "afterLabel": "With Zohal",
         "modal": {
-          "demoTitle": "60s demo",
-          "demoPlaceholderBody": "Demo video placeholder. Replace this panel with your hosted demo video when ready.",
-          "demoShowsLabel": "Shows:",
-          "demoShowsBody": "citations + visual grounding, provisional → finalized, and decision pack export.",
+          "demoTitle": "Sample Pack",
+          "demoPlaceholderBody": "Sample pack preview placeholder.",
+          "demoShowsLabel": "Includes:",
+          "demoShowsBody": "verified facts, flagged conflicts, and export-ready formatting.",
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Decision Pack",
-          "samplePackTitle": "Sample Review Pack",
-          "provisional": "Provisional",
-          "finalized": "Finalized",
+          "decisionPackLabel": "Sample Decision Pack",
+          "samplePackTitle": "Lease Review - Arabic/English",
+          "provisional": "Needs review",
+          "finalized": "Verified",
+          "verifiedStatus": "Verified",
+          "reviewStatus": "Check amendment",
+          "sampleGoverningLawLabel": "Governing Law",
+          "sampleGoverningLawValue": "Kingdom of Saudi Arabia 🇸🇦",
+          "samplePartyALabel": "Party A",
           "samplePartyAValue": "Al Noor Trading Co.",
+          "sampleEffectiveDateLabel": "Effective Date",
           "sampleEffectiveDateValue": "2026-01-15",
-          "sampleTermMonthsValue": "24",
-          "documentViewer": "Document Viewer",
-          "verifiedVariables": "Verified Variables",
-          "exports": "Exports",
+          "sampleTermLabel": "Term",
+          "sampleTermMonthsValue": "24 months",
+          "documentViewer": "Source Contract",
+          "verifiedVariables": "Verified Facts",
+          "exports": "Decision Pack Exports",
           "showEvidence": "Show evidence",
           "hideEvidence": "Hide evidence",
           "evidence": "Evidence",
           "pageLabel": "Page {page}",
-          "highlightSnippet": "“Governing law: Kingdom of Saudi Arabia”",
-          "verificationObjectFilename": "verification_object.json",
-          "uiMockLabel": "UI mock",
-          "exceptionsQueueTitle": "Exceptions queue",
-          "exceptionsQueueBody": "Not found / unsupported routes to review with clear next actions.",
+          "highlightSnippet": "Highlighted clause: Governing law is the Kingdom of Saudi Arabia",
+          "verificationObjectFilename": "",
+          "uiMockLabel": "Conflict Preview",
+          "exceptionsQueueTitle": "Conflict Detected",
+          "exceptionsQueueBody": "Page 4 says \"30 days\" but Page 12 says \"60 days\".",
+          "fieldEvidenceLabel": "Linked evidence",
           "claimKey": "claim",
           "statusKey": "status",
           "confidenceKey": "confidence",
           "citationsKey": "citations"
         },
         "decisionPackPreview": {
-          "deliverablesLabel": "Deliverables",
+          "deliverablesLabel": "Included",
           "deliverables": [
-            "Citation-backed memo",
-            "Tracker (CSV/JSON)",
-            "Evidence map",
-            "Finalized snapshot"
+            "Client-ready memo",
+            "Conflict list",
+            "Verified facts",
+            "Evidence links"
           ],
-          "deliverablesBody": "Structured output designed to survive scrutiny."
+          "deliverablesBody": "Ready for internal review or direct client delivery."
         },
         "security": {
-          "buyersCareTitle": "What buyers care about"
+          "buyersCareTitle": "What firm partners ask first"
         },
         "finalCta": {
-          "previewLabel": "Preview"
+          "previewLabel": "Pack preview"
         }
       }
     }

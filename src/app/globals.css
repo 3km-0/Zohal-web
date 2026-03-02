@@ -124,14 +124,6 @@ body {
   background-size: 20px 20px;
 }
 
-/* Marketing page grid background (non-fixed) */
-.marketing-grid-bg {
-  background-color: var(--bg);
-  background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
 /* Focus Ring */
 @layer base {
   *:focus-visible {
