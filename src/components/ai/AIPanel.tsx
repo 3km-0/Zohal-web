@@ -2,19 +2,17 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
-  X,
-  Sparkles,
-  MessageSquare,
-  FileText,
-  Send,
-  Bookmark,
   Clock,
+  FileText,
+  MessageSquare,
+  Send,
+  Sparkles,
   Star,
-  ChevronRight,
-  Plus,
+  X,
 } from 'lucide-react';
-import { Button, Spinner, Badge, ScholarTabs, type ScholarTab } from '@/components/ui';
+import { Button, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -31,14 +29,10 @@ interface AIPanelProps {
   onOpenAnalysis?: () => void;
 }
 
-// Tab types matching iOS RightPanelView
-type Tab = 'chat' | 'conversations' | 'notes';
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
-  isPinned?: boolean;
 }
 
 interface ConversationSummary {
@@ -63,44 +57,18 @@ export function AIPanel({
   // effects and constantly reset chat state.
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const t = useTranslations('aiPane');
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [loading, setLoading] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [pinnedNotes, setPinnedNotes] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatSeqRef = useRef(0);
-
-  // Load pinned notes (from explanations table where they're saved as notes)
-  const loadPinnedNotes = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('document_id', documentId)
-        .eq('note_type', 'ai_saved')
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (!error && data) {
-        setPinnedNotes(
-          data.map((note) => ({
-            role: 'assistant' as const,
-            content: note.note_text || '',
-            timestamp: note.created_at,
-            isPinned: true,
-          }))
-        );
-      }
-    } catch (err) {
-      console.error('Failed to load pinned notes:', err);
-    }
-  }, [supabase, documentId]);
 
   // Load conversation history
   const loadConversationHistory = useCallback(async () => {
@@ -123,7 +91,7 @@ export function AIPanel({
           if (!conversationsMap.has(item.conversation_id)) {
             conversationsMap.set(item.conversation_id, {
               id: item.conversation_id,
-              preview: item.input_text || item.response_text?.slice(0, 100) || 'Conversation',
+              preview: item.input_text || item.response_text?.slice(0, 100) || t('conversationFallback'),
               timestamp: item.created_at,
               messageCount: 1,
             });
@@ -138,7 +106,7 @@ export function AIPanel({
     } catch (err) {
       console.error('Failed to load conversation history:', err);
     }
-  }, [supabase, documentId]);
+  }, [supabase, documentId, t]);
 
   // Initialize on mount and when the document changes.
   // (Do NOT tie this to callbacks that might change every render.)
@@ -154,9 +122,9 @@ export function AIPanel({
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
 
-    loadPinnedNotes();
     loadConversationHistory();
-  }, [documentId, loadPinnedNotes, loadConversationHistory]);
+    setShowHistoryOverlay(false);
+  }, [documentId, loadConversationHistory]);
 
   const goToContractAnalysis = useCallback(() => {
     if (onOpenAnalysis) {
@@ -165,6 +133,16 @@ export function AIPanel({
     }
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
   }, [onOpenAnalysis, router, workspaceId, documentId]);
+
+  const supportsAnalysis = useMemo(
+    () =>
+      documentType === 'contract' ||
+      documentType === 'legal_filing' ||
+      documentType === 'financial_report' ||
+      documentType === 'invoice' ||
+      documentType === 'meeting_notes',
+    [documentType]
+  );
 
   const buildChatContext = useCallback(async () => {
     const contextParts: string[] = [];
@@ -384,21 +362,20 @@ export function AIPanel({
         if (!session) return;
 
         // Save as a note
-        await supabase.from('notes').insert({
+        const { error } = await supabase.from('notes').insert({
           user_id: session.user.id,
           document_id: documentId,
           workspace_id: workspaceId,
           note_type: 'ai_saved',
           note_text: message.content,
         });
-
-        // Refresh pinned notes
-        loadPinnedNotes();
+        if (error) throw error;
+        toast.showSuccess(t('savedToNotesTitle'), t('savedToNotesBody'));
       } catch (err) {
         console.error('Failed to pin message:', err);
       }
     },
-    [supabase, documentId, workspaceId, loadPinnedNotes]
+    [supabase, documentId, workspaceId, toast, t]
   );
 
   const loadConversation = useCallback(
@@ -454,7 +431,7 @@ export function AIPanel({
 
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
-          setActiveTab('chat');
+          setShowHistoryOverlay(false);
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
@@ -473,13 +450,13 @@ export function AIPanel({
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
 
-    setActiveTab('chat');
     setChatHistory([]);
     setCurrentConversationId(null);
     setError(null);
     setLoading(false);
     setLoadingConversation(false);
     setChatInput('');
+    setShowHistoryOverlay(false);
   }, []);
 
   return (
@@ -488,261 +465,230 @@ export function AIPanel({
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-accent" />
-          <span className="font-semibold text-text">AI Assistant</span>
+          <span className="font-semibold text-text">{t('title')}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={startNewConversation}
-            className="p-1.5 rounded-lg hover:bg-accent/10 transition-colors"
-            title="New conversation"
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowHistoryOverlay(true)}
+            title={t('history')}
           >
-            <Plus className="w-5 h-5 text-accent" />
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
-          >
-            <X className="w-5 h-5 text-text-soft" />
-          </button>
+            <Clock className="w-4 h-4" />
+            {t('history')}
+          </Button>
+          {supportsAnalysis && (
+            <Button variant="ghost" size="sm" onClick={goToContractAnalysis}>
+              <FileText className="w-4 h-4" />
+              {t('documentAnalysis')}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+            {t('close')}
+          </Button>
         </div>
-      </div>
-
-      {/* Tabs - Scholar theme */}
-      <div className="border-b border-border px-4 py-3">
-        <ScholarTabs
-          tabs={
-            [
-              { id: 'chat', label: 'Chat', icon: <Sparkles className="w-4 h-4" /> },
-              {
-                id: 'conversations',
-                label: 'Conversations',
-                icon: <Clock className="w-4 h-4" />,
-                count: conversationHistory.length,
-              },
-              {
-                id: 'notes',
-                label: 'Notes',
-                icon: <Bookmark className="w-4 h-4" />,
-                count: pinnedNotes.length,
-              },
-            ] satisfies ScholarTab[]
-          }
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as Tab)}
-        />
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {activeTab === 'chat' && (
-          <div className="flex flex-col h-full">
-            {/* Quick actions when no chat */}
-            {chatHistory.length === 0 && (
-              <div className="p-4 space-y-4">
-                {/* Selected text display */}
-                {selectedText && (
-                  <div className="p-3 bg-accent/5 border border-accent/20 rounded-scholar">
-                    <p className="text-xs text-accent font-medium mb-1">Selected Text</p>
-                    <p className="text-sm text-text line-clamp-3">{selectedText}</p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() =>
-                          handleChat(
-                            `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
-                          )
-                        }
-                        disabled={loading || loadingConversation}
-                        title="Explain selected text"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Explain
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={goToContractAnalysis}
-                        title="Go to document analysis"
-                      >
-                        <ChevronRight className="w-4 h-4 rtl-flip" />
-                        Analysis
-                      </Button>
-                    </div>
+      <div className="relative flex-1 min-h-0">
+        <div className="flex flex-col h-full">
+          {/* Quick actions when no chat */}
+          {chatHistory.length === 0 && (
+            <div className="p-4 space-y-4">
+              {/* Selected text display */}
+              {selectedText && (
+                <div className="p-3 bg-accent/5 border border-accent/20 rounded-scholar">
+                  <p className="text-xs text-accent font-medium mb-1">{t('selectedText')}</p>
+                  <p className="text-sm text-text line-clamp-3">{selectedText}</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        handleChat(
+                          `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
+                        )
+                      }
+                      disabled={loading || loadingConversation}
+                      title={t('explainSelected')}
+                    >
+                      <FileText className="w-4 h-4" />
+                      {t('explain')}
+                    </Button>
                   </div>
-                )}
-
-                {/* Empty state */}
-                {!selectedText && (
-                  <div className="text-center py-8">
-                    <MessageSquare className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                    <p className="text-text-soft">
-                      Ask questions about this document or select text to explain
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Loading */}
-            {loading && chatHistory.length === 0 && (
-              <div className="flex items-center justify-center py-8 px-4">
-                <Spinner size="lg" />
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="p-4">
-                <div className="p-3 bg-error/10 border border-error/20 rounded-scholar">
-                  <p className="text-sm text-error">{error}</p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Chat messages */}
-            {chatHistory.length > 0 && (
-              <div className="flex-1 overflow-auto p-4 space-y-4">
-                {chatHistory.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'p-3 rounded-scholar max-w-[85%] group relative',
-                      msg.role === 'user'
-                        ? 'bg-accent text-white ml-auto'
-                        : 'bg-surface-alt border border-border'
-                    )}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    {msg.role === 'assistant' && (
-                      <button
-                        onClick={() => pinMessage(msg)}
-                        className="absolute -top-2 -right-2 p-1 bg-surface rounded-full border border-border opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-alt"
-                      >
-                        <Star className="w-3 h-3 text-text-soft" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {(loading || loadingConversation) && (
-                  <div className="flex items-center gap-2 p-3">
-                    <Spinner size="sm" />
-                    <span className="text-sm text-text-soft">
-                      {loadingConversation ? 'Loading conversation...' : 'Thinking...'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Chat input - always visible */}
-            <div className="p-4 border-t border-border">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleChat(chatInput)}
-                  placeholder="Ask a question..."
-                  className="flex-1 px-4 py-2.5 bg-surface-alt border border-border rounded-scholar text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
-                />
-                <Button
-                  onClick={() => handleChat(chatInput)}
-                  disabled={!chatInput.trim() || loading || loadingConversation}
-                  size="md"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'notes' && (
-          <div className="p-4 space-y-4">
-            {pinnedNotes.length === 0 ? (
-              <div className="text-center py-8">
-                <Bookmark className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                <p className="text-text-soft">No saved notes yet</p>
-                <p className="text-sm text-text-soft mt-1">
-                  Star AI responses to save them here
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-text-soft">
-                  {pinnedNotes.length} saved note{pinnedNotes.length !== 1 ? 's' : ''}
-                </p>
-                {pinnedNotes.map((note, i) => (
-                  <div
-                    key={i}
-                    className="p-4 bg-surface-alt border border-border rounded-scholar"
-                  >
-                    <div className="flex items-start gap-2">
-                      <Star className="w-4 h-4 text-accentAlt flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text line-clamp-4">{note.content}</p>
-                        {note.timestamp && (
-                          <p className="text-xs text-text-soft mt-2">
-                            {formatRelativeTime(note.timestamp)}
-                          </p>
-                        )}
+              {supportsAnalysis && (
+                <div className="p-4 bg-surface-alt border border-border rounded-scholar">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-full bg-accent/10 p-2">
+                      <FileText className="w-4 h-4 text-accent" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-text">{t('analysisCardTitle')}</p>
+                      <p className="mt-1 text-sm text-text-soft">{t('analysisCardBody')}</p>
+                      <div className="mt-3">
+                        <Button variant="secondary" size="sm" onClick={goToContractAnalysis}>
+                          {t('openAnalysis')}
+                        </Button>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              )}
 
-        {activeTab === 'conversations' && (
-          <div className="p-4 space-y-4">
-            {conversationHistory.length === 0 ? (
-              <div className="text-center py-8">
-                <Clock className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                <p className="text-text-soft">No conversations yet</p>
-                <p className="text-sm text-text-soft mt-1">
-                  Your past conversations will appear here
-                </p>
+              {/* Empty state */}
+              {!selectedText && (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-10 h-10 text-text-soft mx-auto mb-3" />
+                  <p className="text-text-soft">{t('emptyState')}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loading */}
+          {loading && chatHistory.length === 0 && (
+            <div className="flex items-center justify-center py-8 px-4">
+              <Spinner size="lg" />
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="p-4">
+              <div className="p-3 bg-error/10 border border-error/20 rounded-scholar">
+                <p className="text-sm text-error">{error}</p>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {conversationHistory.map((conv) => (
-                  (() => {
-                    const isActive = conv.id === currentConversationId;
-                    return (
-                  <button
-                    key={conv.id}
-                    onClick={() => loadConversation(conv.id)}
-                    className={cn(
-                      "w-full p-3 border rounded-scholar transition-colors text-left group",
-                      isActive
-                        ? "bg-accent/5 border-accent/40"
-                        : "bg-surface-alt border-border hover:border-accent/50"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-text font-medium truncate flex-1">
-                        {conv.preview}
-                      </p>
-                      <ChevronRight className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0 rtl-flip" />
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-text-soft">
-                        {conv.messageCount} message{conv.messageCount !== 1 ? 's' : ''}
-                      </span>
-                      <span className="text-xs text-text-soft">•</span>
-                      <span className="text-xs text-text-soft">
-                        {formatRelativeTime(conv.timestamp)}
-                      </span>
-                    </div>
-                  </button>
-                    );
-                  })()
-                ))}
+            </div>
+          )}
+
+          {/* Chat messages */}
+          {chatHistory.length > 0 && (
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              {chatHistory.map((msg, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'p-3 rounded-scholar max-w-[85%] group relative',
+                    msg.role === 'user'
+                      ? 'bg-accent text-white ml-auto'
+                      : 'bg-surface-alt border border-border'
+                  )}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.role === 'assistant' && (
+                    <button
+                      onClick={() => pinMessage(msg)}
+                      className="absolute -top-2 -right-2 p-1 bg-surface rounded-full border border-border opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-alt"
+                      title={t('saveToNotes')}
+                    >
+                      <Star className="w-3 h-3 text-text-soft" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {(loading || loadingConversation) && (
+                <div className="flex items-center gap-2 p-3">
+                  <Spinner size="sm" />
+                  <span className="text-sm text-text-soft">
+                    {loadingConversation ? t('loadingConversation') : t('thinking')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Chat input - always visible */}
+          <div className="p-4 border-t border-border">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleChat(chatInput)}
+                placeholder={t('inputPlaceholder')}
+                className="flex-1 px-4 py-2.5 bg-surface-alt border border-border rounded-scholar text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <Button
+                onClick={() => handleChat(chatInput)}
+                disabled={!chatInput.trim() || loading || loadingConversation}
+                size="md"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {showHistoryOverlay && (
+          <div className="absolute inset-0 z-10 border-t border-border bg-surface flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-accent" />
+                <span className="font-semibold text-text">{t('history')}</span>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={startNewConversation}
+                >
+                  {t('newConversation')}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowHistoryOverlay(false)}>
+                  <X className="w-4 h-4" />
+                  {t('close')}
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 space-y-4 overflow-auto min-h-0 flex-1">
+              {conversationHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="w-10 h-10 text-text-soft mx-auto mb-3" />
+                  <p className="text-text-soft">{t('noConversations')}</p>
+                  <p className="text-sm text-text-soft mt-1">{t('historyEmpty')}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {conversationHistory.map((conv) => (
+                    (() => {
+                      const isActive = conv.id === currentConversationId;
+                      return (
+                        <button
+                          key={conv.id}
+                          onClick={() => loadConversation(conv.id)}
+                          className={cn(
+                            'w-full p-3 border rounded-scholar transition-colors text-left group',
+                            isActive
+                              ? 'bg-accent/5 border-accent/40'
+                              : 'bg-surface-alt border-border hover:border-accent/50'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-text font-medium truncate flex-1">
+                              {conv.preview}
+                            </p>
+                            <Clock className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0" />
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-text-soft">
+                              {t('messageCount', { count: conv.messageCount })}
+                            </span>
+                            <span className="text-xs text-text-soft">•</span>
+                            <span className="text-xs text-text-soft">
+                              {formatRelativeTime(conv.timestamp)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })()
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

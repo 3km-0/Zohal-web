@@ -97,10 +97,9 @@ function toRejectedSet(value: unknown): Set<string> {
 
 interface ContractAnalysisPaneProps {
   embedded?: boolean;
-  onSwitchToChat?: () => void;
 }
 
-export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: ContractAnalysisPaneProps = {}) {
+export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneProps = {}) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2079,11 +2078,6 @@ export function ContractAnalysisPane({ embedded = false, onSwitchToChat }: Contr
                   }}
                 >
                   {t('runs.newRun')}
-                </Button>
-              )}
-              {embedded && onSwitchToChat && (
-                <Button variant="ghost" size="sm" onClick={onSwitchToChat}>
-                  {t('runs.chat')}
                 </Button>
               )}
             </div>
