@@ -22,3 +22,5 @@ See `package.json` scripts. The important ones:
 - The root `/` route redirects (307) to `/auth/login` via middleware for unauthenticated users — this is expected behavior, not an error.
 - CI runs `npm run build -- --no-lint` (lint runs separately on changed files only). The baseline `npm run lint` produces a single warning that is non-blocking.
 - `next lint` is deprecated in Next.js 16; the repo still uses it via `npm run lint`. The deprecation notice is cosmetic.
+- Supabase auth requires email verification for new signups. To test authenticated flows end-to-end, you need a pre-verified test account or access to the Supabase dashboard to confirm users manually.
+- If port 3000 is occupied, Next.js silently falls back to 3001. Check terminal output for the actual port.
