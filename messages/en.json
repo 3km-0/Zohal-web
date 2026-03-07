@@ -1115,7 +1115,7 @@
       },
       "hero": {
         "headline": "Document analysis that stands up to review.",
-        "subhead": "Zohal turns contracts, invoices, and multi-file document sets into verified findings, surfaced conflicts, and decision-ready outputs, with page-level evidence behind every important claim.",
+        "subhead": "Zohal turns contracts, invoices, and multi-file document sets into verified findings and surfaced conflicts. Every important claim stays tied to page-level evidence, so the final output is ready for review and sharing.",
         "ctas": [
           {
             "type": "primary",
@@ -1124,7 +1124,7 @@
           },
           {
             "type": "secondary",
-            "label": "See a Sample Pack",
+            "label": "See sample output",
             "href": "#decision-pack"
           }
         ],
@@ -1450,8 +1450,8 @@
           }
         ],
         "usageMeter": {
-          "title": "Billing note",
-          "body": "Team includes a 14-day trial with card setup through Moyasar. Trial usage is capped to Pro limits until billing begins. Enterprise pricing is custom."
+          "title": "For first live team rollouts",
+          "body": "Team includes a 14-day trial with card setup through Moyasar. Trial usage is capped to Pro limits until billing begins, so you can test the workflow before full team billing starts. Enterprise pricing is custom."
         }
       },
       "insights": {
@@ -1494,7 +1494,7 @@
       },
       "faq": {
         "title": "Frequently asked questions",
-        "intro": "If your question is not here, contact us and we will reply within one business day.",
+        "intro": "A few practical questions teams ask before they start.",
         "items": [
           {
             "id": "proof",
@@ -1514,7 +1514,7 @@
           {
             "id": "exports",
             "q": "What do we actually send at the end?",
-            "a": "You export a structured decision pack with verified facts, flagged conflicts, and linked evidence in a format that is easy to review internally or share externally."
+            "a": "You export a clean review output with verified facts, surfaced conflicts, and linked evidence, so the work can move from first review to internal sign-off or external sharing without being rebuilt by hand."
           },
           {
             "id": "security",
@@ -1523,7 +1523,7 @@
           }
         ],
         "contactRow": {
-          "note": "Need a sample pack for your workflow? Contact us and we will tailor one.",
+          "note": "Want to see how this would look in your workflow? Contact us and we will tailor a sample review output.",
           "ctas": [
             {
               "type": "secondary",
@@ -1636,11 +1636,11 @@
           "demoTitle": "See Zohal in action",
           "demoPlaceholderBody": "Sample pack preview placeholder.",
           "demoShowsLabel": "In this demo",
-          "demoShowsBody": "see how Zohal grounds findings in the source, flags conflicts, and turns the result into a forwardable decision pack.",
+          "demoShowsBody": "see how Zohal grounds findings in the source, flags conflicts, and turns the result into a shareable review output.",
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Sample Decision Pack",
+          "decisionPackLabel": "Sample review output",
           "samplePackTitle": "Lease Review - Arabic/English",
           "provisional": "Needs review",
           "finalized": "Verified",
@@ -1656,7 +1656,7 @@
           "sampleTermMonthsValue": "24 months",
           "documentViewer": "Source Contract",
           "verifiedVariables": "Verified Facts",
-          "exports": "Decision Pack Exports",
+          "exports": "Review Output Exports",
           "showEvidence": "Show evidence",
           "hideEvidence": "Hide evidence",
           "evidence": "Evidence",
