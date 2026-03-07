@@ -1397,7 +1397,7 @@
           {
             "id": "pro",
             "name": "Pro",
-            "price": "SAR 56.25 / month",
+            "price": "SAR 199 / month",
             "bullets": [
               "For individual professionals who need more daily throughput",
               "100 documents and 10 workspaces",
@@ -1413,7 +1413,7 @@
           {
             "id": "max",
             "name": "Max",
-            "price": "SAR 150 / month",
+            "price": "SAR 599 / month",
             "bullets": [
               "For power users who want the individual top tier",
               "Unlimited documents, workspaces, searches, and asks",
