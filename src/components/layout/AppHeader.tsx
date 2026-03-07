@@ -1,12 +1,13 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Search, User } from 'lucide-react';
+import { Menu, Search, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useAppShell } from './AppShellContext';
 
 interface AppHeaderProps {
   title?: string;
@@ -20,6 +21,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
   const tCommon = useTranslations('common');
   const tNav = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
+  const { openMobileSidebar } = useAppShell();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -37,18 +39,28 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
   return (
     <header
       className={cn(
-        'flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md border-b border-border',
+        'flex flex-wrap items-start gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-md md:flex-nowrap md:items-center md:justify-between md:px-6 md:py-4',
         className
       )}
     >
       {/* Left: Title */}
-      <div>
-        {title && <h1 className="text-xl font-semibold text-text">{title}</h1>}
-        {subtitle && <p className="text-sm text-text-soft">{subtitle}</p>}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <button
+          type="button"
+          onClick={openMobileSidebar}
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-scholar-sm border border-border text-text-soft transition-colors hover:bg-surface-alt md:hidden"
+          aria-label={tSidebar('openMenu')}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="min-w-0">
+          {title && <h1 className="truncate text-xl font-semibold text-text">{title}</h1>}
+          {subtitle && <p className="truncate text-sm text-text-soft">{subtitle}</p>}
+        </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-4">
+      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-4">
         {actions}
 
         {/* Global Search */}
@@ -67,6 +79,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
         {/* User Menu */}
         <div className="relative" ref={menuRef}>
           <button
+            type="button"
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 p-1.5 rounded-scholar-sm hover:bg-surface-alt transition-colors"
           >

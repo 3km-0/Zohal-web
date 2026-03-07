@@ -645,7 +645,6 @@ interface DocumentCardProps {
 }
 
 function DocumentThumbnail({ document: doc }: { document: Document }) {
-  const supabase = useMemo(() => createClient(), []);
   const containerRef = useRef<HTMLDivElement>(null);
   const [thumbnail, setThumbnail] = useState<string | null>(
     () => documentThumbnailCache.get(doc.id) || null
@@ -691,15 +690,11 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
 
       setLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('document-download-url', {
-          body: { document_id: doc.id },
+        loadingTask = pdfjs.getDocument({
+          url: `/api/documents/${doc.id}/file`,
+          disableRange: true,
+          disableStream: true,
         });
-
-        if (error || !data?.download_url) {
-          throw error || new Error('Missing download url');
-        }
-
-        loadingTask = pdfjs.getDocument(data.download_url as string);
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const baseViewport = page.getViewport({ scale: 1 });
@@ -737,7 +732,7 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
       cancelled = true;
       loadingTask?.destroy();
     };
-  }, [doc.id, doc.storage_path, doc.privacy_mode, isVisible, supabase]);
+  }, [doc.id, doc.storage_path, doc.privacy_mode, isVisible]);
 
   return (
     <div

@@ -328,7 +328,9 @@
     "subscription": "الاشتراك",
     "logOut": "تسجيل الخروج",
     "expandSidebar": "توسيع الشريط الجانبي",
-    "collapseSidebar": "طي الشريط الجانبي"
+    "collapseSidebar": "طي الشريط الجانبي",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة"
   },
   "workspaceTabs": {
     "documents": "المستندات",

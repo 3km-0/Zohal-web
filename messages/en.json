@@ -328,7 +328,9 @@
     "subscription": "Subscription",
     "logOut": "Log Out",
     "expandSidebar": "Expand sidebar",
-    "collapseSidebar": "Collapse sidebar"
+    "collapseSidebar": "Collapse sidebar",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "workspaceTabs": {
     "documents": "Documents",

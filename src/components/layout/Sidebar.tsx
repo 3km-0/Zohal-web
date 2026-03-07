@@ -14,21 +14,28 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface SidebarProps {
   className?: string;
+  mobileOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function Sidebar({ className }: SidebarProps) {
+export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const tCommon = useTranslations('common');
   const t = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
   const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    onClose?.();
+  }, [pathname, onClose]);
 
   // NOTE: Tasks removed from sidebar as we now use Apple Reminders integration on iOS.
   // Web users can still access /tasks page if needed, but it's hidden from main nav.
@@ -53,39 +60,49 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen bg-surface/80 backdrop-blur-md border-r border-border transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64',
+        'fixed inset-y-0 left-0 z-40 flex h-screen w-[18rem] max-w-[85vw] flex-col border-r border-border bg-surface/95 backdrop-blur-md transition-transform duration-300 md:static md:z-auto md:max-w-none md:bg-surface/80',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        collapsed ? 'md:w-16' : 'md:w-64',
         className
       )}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
-        {!collapsed && (
-          <Link href="/workspaces" className="flex items-center gap-2">
-            <Image
-              src="/icon.png"
-              alt="Zohal"
-              width={32}
-              height={32}
-              className="w-8 h-8 rounded-scholar-sm"
-            />
-            <span className="text-xl font-bold text-accent">{tCommon('appName')}</span>
-          </Link>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            'p-1.5 rounded-scholar-sm hover:bg-surface-alt transition-colors',
-            collapsed && 'mx-auto'
-          )}
-          aria-label={collapsed ? tSidebar('expandSidebar') : tSidebar('collapseSidebar')}
-        >
-          {collapsed ? (
-            <ChevronRight className="w-5 h-5 text-text-soft rtl-flip" />
-          ) : (
-            <ChevronLeft className="w-5 h-5 text-text-soft rtl-flip" />
-          )}
-        </button>
+        <Link href="/workspaces" className="flex min-w-0 items-center gap-2">
+          <Image
+            src="/icon.png"
+            alt="Zohal"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-scholar-sm"
+          />
+          <span className={cn('truncate text-xl font-bold text-accent', collapsed && 'md:hidden')}>
+            {tCommon('appName')}
+          </span>
+        </Link>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onClose}
+            className="rounded-scholar-sm p-1.5 hover:bg-surface-alt transition-colors md:hidden"
+            aria-label={tSidebar('closeMenu')}
+          >
+            <X className="h-5 w-5 text-text-soft" />
+          </button>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={cn(
+              'hidden rounded-scholar-sm p-1.5 hover:bg-surface-alt transition-colors md:inline-flex',
+              collapsed && 'md:mx-auto'
+            )}
+            aria-label={collapsed ? tSidebar('expandSidebar') : tSidebar('collapseSidebar')}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-5 w-5 text-text-soft rtl-flip" />
+            ) : (
+              <ChevronLeft className="h-5 w-5 text-text-soft rtl-flip" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Main Navigation */}
@@ -96,6 +113,7 @@ export function Sidebar({ className }: SidebarProps) {
             {...item}
             active={isActive(item.href)}
             collapsed={collapsed}
+            onNavigate={onClose}
           />
         ))}
       </nav>
@@ -108,10 +126,14 @@ export function Sidebar({ className }: SidebarProps) {
             {...item}
             active={isActive(item.href)}
             collapsed={collapsed}
+            onNavigate={onClose}
           />
         ))}
         <button
-          onClick={() => signOut()}
+          onClick={() => {
+            onClose?.();
+            signOut();
+          }}
           className={cn(
             'w-full flex items-center gap-3 px-3 py-2.5 rounded-scholar transition-colors',
             'text-text-soft hover:text-error hover:bg-error/10',
@@ -132,12 +154,14 @@ interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
   active?: boolean;
   collapsed?: boolean;
+  onNavigate?: () => void;
 }
 
-function NavItem({ href, label, icon: Icon, active, collapsed }: NavItemProps) {
+function NavItem({ href, label, icon: Icon, active, collapsed, onNavigate }: NavItemProps) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-scholar transition-colors',
         active

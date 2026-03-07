@@ -1,10 +1,12 @@
 'use client';
 
+import { useCallback, useMemo, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { TourManager } from '@/components/tour';
+import { AppShellProvider } from './AppShellContext';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,6 +15,18 @@ interface AppShellProps {
 
 export function AppShell({ children, className }: AppShellProps) {
   const router = useRouter();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const openMobileSidebar = useCallback(() => setMobileSidebarOpen(true), []);
+  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
+
+  const appShellValue = useMemo(
+    () => ({
+      openMobileSidebar,
+      closeMobileSidebar,
+      mobileSidebarOpen,
+    }),
+    [closeMobileSidebar, mobileSidebarOpen, openMobileSidebar]
+  );
 
   const handleErrorAction = (action: 'retry' | 'sign-in' | 'upgrade' | 'dismiss' | undefined) => {
     switch (action) {
@@ -29,15 +43,24 @@ export function AppShell({ children, className }: AppShellProps) {
   return (
     <div className="relative h-screen bg-background overflow-hidden">
       <div className="grid-bg" aria-hidden="true" />
-      <div className="relative z-10 flex h-full">
-        <Sidebar />
-        <main className={cn('flex-1 flex flex-col overflow-hidden', className)}>
-          {children}
-        </main>
-        <TourManager />
-        <Toast onAction={handleErrorAction} />
-      </div>
+      <AppShellProvider value={appShellValue}>
+        <div className="relative z-10 flex h-full min-w-0">
+          <div
+            className={cn(
+              'fixed inset-0 z-30 bg-black/40 transition-opacity md:hidden',
+              mobileSidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+            )}
+            onClick={closeMobileSidebar}
+            aria-hidden="true"
+          />
+          <Sidebar mobileOpen={mobileSidebarOpen} onClose={closeMobileSidebar} />
+          <main className={cn('flex min-w-0 flex-1 flex-col overflow-hidden', className)}>
+            {children}
+          </main>
+          <TourManager />
+          <Toast onAction={handleErrorAction} />
+        </div>
+      </AppShellProvider>
     </div>
   );
 }
-

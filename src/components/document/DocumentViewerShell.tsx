@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Scale, CircleHelp } from 'lucide-react';
+import { ArrowLeft, Scale, CircleHelp, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Spinner, Badge, Card, CardContent } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { mapHttpError, notFound } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { getAnalysisLabelKey } from '@/lib/document-analysis';
+import { useAppShell } from '@/components/layout/AppShellContext';
 
 interface DocumentViewerShellProps {
   initialMode?: RightPaneMode;
@@ -35,6 +36,8 @@ export default function DocumentViewerShell({
   const { show, showSuccess, showError } = useToast();
   const tTypes = useTranslations('documents.types');
   const tAnalysisLabels = useTranslations('documents.analysisLabels');
+  const tSidebar = useTranslations('sidebar');
+  const { openMobileSidebar } = useAppShell();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -172,20 +175,9 @@ export default function DocumentViewerShell({
         else if (docData.processing_status === 'processing' || docData.processing_status === 'pending') {
           setPdfUrl(null);
         }
-        // Get signed URL for PDF from GCS gateway
+        // Proxy through same-origin to avoid browser CORS failures on signed GCS URLs.
         else if (docData.storage_path && docData.storage_path !== 'local') {
-          const { data: urlData, error: urlError } = await supabase.functions.invoke(
-            'document-download-url',
-            {
-              body: { document_id: documentId },
-            }
-          );
-
-          if (urlError) {
-            show(notFound('document file'));
-          } else if (urlData?.download_url) {
-            setPdfUrl(urlData.download_url);
-          }
+          setPdfUrl(`/api/documents/${documentId}/file`);
         } else {
           // Document only exists locally on iOS device - show friendly error
           show(notFound('document file'));
@@ -306,17 +298,25 @@ export default function DocumentViewerShell({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-2 bg-surface border-b border-border">
-        <div className="flex items-center gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 flex-1 items-start gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={openMobileSidebar}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border text-text-soft transition-colors hover:bg-surface-alt md:hidden"
+            aria-label={tSidebar('openMenu')}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <Link
             href={`/workspaces/${workspaceId}`}
-            className="p-2 rounded-lg hover:bg-surface-alt transition-colors"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg transition-colors hover:bg-surface-alt"
           >
             <ArrowLeft className="w-5 h-5 text-text-soft" />
           </Link>
-          <div>
-            <h1 className="font-semibold text-text truncate max-w-md">{document.title}</h1>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="max-w-full truncate font-semibold text-text sm:max-w-md">{document.title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
               {document.document_type && (
                 <Badge size="sm">{getDocumentTypeLabel(document.document_type)}</Badge>
               )}
@@ -332,7 +332,7 @@ export default function DocumentViewerShell({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
           <Button
             variant="ghost"
             size="sm"
@@ -368,10 +368,10 @@ export default function DocumentViewerShell({
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* PDF Viewer */}
         <div
-          className={cn('flex-1 overflow-hidden', showRightPane && 'border-r border-border')}
+          className={cn('min-w-0 flex-1 overflow-hidden', showRightPane && 'md:border-r md:border-border')}
           data-tour="viewer-pdf"
         >
           {pdfUrl ? (
@@ -382,7 +382,7 @@ export default function DocumentViewerShell({
               tapToProof={tapToProof}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex h-full items-center justify-center p-4">
               {document.privacy_mode ? (
                 <Card className="max-w-xl w-full">
                   <CardContent className="p-6">

@@ -6,12 +6,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Sidebar,
-  Download,
-  Maximize,
 } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface PDFToolbarProps {
   currentPage: number;
@@ -34,6 +31,12 @@ export function PDFToolbar({
 }: PDFToolbarProps) {
   const [pageInput, setPageInput] = useState(currentPage.toString());
 
+  useEffect(() => {
+    if (document.activeElement?.tagName !== 'INPUT') {
+      setPageInput(currentPage.toString());
+    }
+  }, [currentPage]);
+
   const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPageInput(e.target.value);
   };
@@ -53,21 +56,17 @@ export function PDFToolbar({
     }
   };
 
-  // Update input when page changes externally
-  if (pageInput !== currentPage.toString() && document.activeElement?.tagName !== 'INPUT') {
-    setPageInput(currentPage.toString());
-  }
-
   const zoomPercentage = Math.round(scale * 100);
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-surface border-b border-border">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 sm:px-4">
       {/* Left: Thumbnails toggle & Page navigation */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
+          type="button"
           onClick={onToggleThumbnails}
           className={cn(
-            'p-2 rounded-lg transition-colors',
+            'hidden rounded-lg p-2 transition-colors md:inline-flex',
             showThumbnails
               ? 'bg-accent/10 text-accent'
               : 'hover:bg-surface-alt text-text-soft'
@@ -80,6 +79,7 @@ export function PDFToolbar({
         <div className="h-6 w-px bg-border mx-1" />
 
         <button
+          type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
           className="p-2 rounded-lg hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -95,12 +95,14 @@ export function PDFToolbar({
             onChange={handlePageInputChange}
             onBlur={handlePageInputBlur}
             onKeyDown={handlePageInputKeyDown}
-            className="w-12 px-2 py-1 text-center text-sm bg-surface-alt border border-border rounded-scholar-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            inputMode="numeric"
+            className="w-12 rounded-scholar-sm border border-border bg-surface-alt px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
           <span className="text-sm text-text-soft">of {totalPages}</span>
         </div>
 
         <button
+          type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
           className="p-2 rounded-lg hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -113,6 +115,7 @@ export function PDFToolbar({
       {/* Center: Zoom controls */}
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={() => onZoomChange(scale - 0.25)}
           disabled={scale <= 0.5}
           className="p-2 rounded-lg hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -124,6 +127,7 @@ export function PDFToolbar({
         <span className="w-16 text-center text-sm text-text-soft">{zoomPercentage}%</span>
 
         <button
+          type="button"
           onClick={() => onZoomChange(scale + 0.25)}
           disabled={scale >= 3}
           className="p-2 rounded-lg hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -134,8 +138,9 @@ export function PDFToolbar({
       </div>
 
       {/* Right: Additional actions */}
-      <div className="flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1">
         <button
+          type="button"
           onClick={() => onZoomChange(1)}
           className="px-3 py-1.5 text-sm rounded-lg hover:bg-surface-alt text-text-soft transition-colors"
         >
@@ -145,4 +150,3 @@ export function PDFToolbar({
     </div>
   );
 }
-

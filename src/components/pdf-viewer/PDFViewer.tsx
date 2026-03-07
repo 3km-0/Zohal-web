@@ -47,7 +47,11 @@ export function PDFViewer({
         setLoading(true);
         setError(null);
 
-        loadingTask = pdfjs.getDocument(url);
+        loadingTask = pdfjs.getDocument({
+          url,
+          disableRange: true,
+          disableStream: true,
+        });
         const pdfDoc = await loadingTask.promise;
 
         if (cancelled) {
@@ -301,7 +305,7 @@ export function PDFViewer({
         {/* Main PDF View */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-auto p-4"
+          className="flex-1 overflow-auto p-2 sm:p-4"
           onScroll={(e) => {
             // Update current page based on scroll position
             const container = e.currentTarget;
@@ -353,10 +357,25 @@ interface PDFPageProps {
 }
 
 function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
+  const pageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
   const [status, setStatus] = useState<'loading' | 'rendered' | 'error'>('loading');
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [displayWidth, setDisplayWidth] = useState(0);
+
+  useEffect(() => {
+    const node = pageRef.current;
+    if (!node) return;
+
+    const updateWidth = () => setDisplayWidth(node.clientWidth);
+    updateWidth();
+
+    const observer = new ResizeObserver(() => updateWidth());
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -437,12 +456,16 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
     };
   }, [pdf, pageNumber, scale]);
 
+  const displayScale =
+    dimensions.width > 0 && displayWidth > 0 ? Math.min(1, displayWidth / dimensions.width) : 1;
+
   return (
     <div
+      ref={pageRef}
       id={`pdf-page-${pageNumber}`}
-      className="relative bg-white shadow-scholar rounded-scholar overflow-hidden"
+      className="relative w-full overflow-hidden rounded-scholar bg-white shadow-scholar"
       style={{
-        minWidth: dimensions.width || 200,
+        maxWidth: dimensions.width || undefined,
         minHeight: dimensions.height || 280,
       }}
     >
@@ -450,16 +473,16 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
         <div
           className="absolute z-10 border-2 border-yellow-400 bg-yellow-300/50 rounded-scholar-sm pointer-events-none"
           style={{
-            left: highlightRect.left,
-            top: highlightRect.top,
-            width: highlightRect.width,
-            height: highlightRect.height,
+            left: highlightRect.left * displayScale,
+            top: highlightRect.top * displayScale,
+            width: highlightRect.width * displayScale,
+            height: highlightRect.height * displayScale,
           }}
         />
       )}
       <canvas 
         ref={canvasRef} 
-        className="block"
+        className="block h-auto w-full"
         style={{ display: status === 'rendered' ? 'block' : 'none' }}
       />
       {status === 'loading' && (
@@ -484,4 +507,3 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
     </div>
   );
 }
-

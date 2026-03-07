@@ -32,7 +32,7 @@ export function DocumentRightPane({
   const t = useTranslations('aiPane');
 
   return (
-    <aside className="w-[32rem] max-w-[52vw] min-w-[26rem] border-l border-border bg-surface flex flex-col h-full">
+    <aside className="fixed inset-0 z-20 flex h-full w-full flex-col bg-surface md:static md:z-auto md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className={mode === 'chat' ? 'h-full' : 'hidden h-full'}>
           <AIPanel

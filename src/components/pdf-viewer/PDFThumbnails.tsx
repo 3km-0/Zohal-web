@@ -49,7 +49,7 @@ export function PDFThumbnails({ pdf, currentPage, onPageSelect }: PDFThumbnailsP
   }, [pdf]);
 
   return (
-    <div className="w-48 border-r border-border bg-surface overflow-auto p-3">
+    <div className="hidden w-48 overflow-auto border-r border-border bg-surface p-3 md:block">
       <div className="space-y-3">
         {Array.from({ length: pdf.numPages }, (_, i) => i + 1).map((pageNum) => (
           <button
@@ -90,4 +90,3 @@ export function PDFThumbnails({ pdf, currentPage, onPageSelect }: PDFThumbnailsP
     </div>
   );
 }
-
