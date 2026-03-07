@@ -20,6 +20,7 @@ export default function SubscriptionSuccessPage() {
 
   const [tier, setTier] = useState<string>('pro');
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('active');
   const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function SubscriptionSuccessPage() {
               if (response.ok && result.tier) {
                 setTier(result.tier);
                 setExpiresAt(result.expires_at || null);
+                setStatus(searchParams.get('trial') === '1' ? 'trialing' : 'active');
                 sessionStorage.removeItem(CHECKOUT_STATE_STORAGE_KEY);
                 setVerifying(false);
                 return;
@@ -71,13 +73,14 @@ export default function SubscriptionSuccessPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('subscription_tier, subscription_expires_at')
+        .select('subscription_tier, subscription_expires_at, subscription_status')
         .eq('id', user.id)
         .single();
 
       if (profile) {
         setTier(profile.subscription_tier || 'free');
         setExpiresAt(profile.subscription_expires_at);
+        setStatus(profile.subscription_status || 'active');
       }
 
       setVerifying(false);
@@ -89,6 +92,7 @@ export default function SubscriptionSuccessPage() {
   const tierColors: Record<string, { bg: string; text: string }> = {
     pro: { bg: 'bg-blue-500/10', text: 'text-blue-500' },
     premium: { bg: 'bg-purple-500/10', text: 'text-purple-500' },
+    team: { bg: 'bg-accent/10', text: 'text-accent' },
   };
 
   const colors = tierColors[tier] || tierColors.pro;
@@ -124,11 +128,20 @@ export default function SubscriptionSuccessPage() {
           </div>
 
           <h2 className="text-2xl font-bold text-text mb-2">
-            {t('welcomeTo', { tier: tier.charAt(0).toUpperCase() + tier.slice(1) })}
+            {t('welcomeTo', {
+              tier:
+                tier === 'premium'
+                  ? 'Max'
+                  : tier === 'team'
+                    ? 'Team'
+                    : tier.charAt(0).toUpperCase() + tier.slice(1),
+            })}
           </h2>
 
           <p className="text-text-soft mb-6">
-            {t('subscriptionActive', { tier })}
+            {status === 'trialing'
+              ? t('trialActive')
+              : t('subscriptionActive', { tier: tier === 'premium' ? 'Max' : tier })}
           </p>
 
           <div className="p-4 bg-surface-alt rounded-scholar mb-6 text-left">
@@ -137,18 +150,21 @@ export default function SubscriptionSuccessPage() {
               <BenefitItem>{t('unlimitedAi')}</BenefitItem>
               <BenefitItem>{t('allPlugins')}</BenefitItem>
               <BenefitItem>{t('priorityProcessing')}</BenefitItem>
-              {tier === 'premium' && (
+              {(tier === 'premium' || tier === 'team') && (
                 <>
                   <BenefitItem>{t('driveSync')}</BenefitItem>
                   <BenefitItem>{t('prioritySupport')}</BenefitItem>
                 </>
               )}
+              {tier === 'team' && <BenefitItem>{t('teamCollaboration')}</BenefitItem>}
             </ul>
           </div>
 
           {expiresAt && (
             <p className="text-sm text-text-soft mb-6">
-              {t('renewsOn', { date: new Date(expiresAt).toLocaleDateString() })}
+              {status === 'trialing'
+                ? t('trialEndsOn', { date: new Date(expiresAt).toLocaleDateString() })
+                : t('renewsOn', { date: new Date(expiresAt).toLocaleDateString() })}
             </p>
           )}
 

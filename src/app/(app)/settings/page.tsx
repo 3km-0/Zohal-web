@@ -308,21 +308,29 @@ export default function SettingsPage() {
                   {profile?.subscription_tier === 'free'
                     ? tSettings('freePlan')
                     : profile?.subscription_tier === 'pro'
-                    ? tSettings('proPlan')
-                    : tSettings('premiumPlan')}
+                      ? tSettings('proPlan')
+                      : profile?.subscription_tier === 'team'
+                        ? tSettings('teamPlan')
+                        : tSettings('premiumPlan')}
                 </p>
                 <p className="text-sm text-text-soft">
                   {profile?.subscription_tier === 'free'
                     ? tSettings('freePlanDesc')
                     : profile?.subscription_tier === 'pro'
-                    ? tSettings('proPlanDesc')
-                    : tSettings('premiumPlanDesc')}
+                      ? tSettings('proPlanDesc')
+                      : profile?.subscription_tier === 'team'
+                        ? tSettings('teamPlanDesc')
+                        : tSettings('premiumPlanDesc')}
                 </p>
               </div>
               <Badge
                 variant={profile?.subscription_tier === 'free' ? 'default' : 'success'}
               >
-                {profile?.subscription_tier?.toUpperCase()}
+                {profile?.subscription_tier === 'premium'
+                  ? 'MAX'
+                  : profile?.subscription_tier === 'team'
+                    ? 'TEAM'
+                    : profile?.subscription_tier?.toUpperCase()}
               </Badge>
             </div>
 

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   FileText,
   Languages,
+  PlayCircle,
   Scale,
   ShieldCheck,
   TriangleAlert,
@@ -130,6 +131,7 @@ type Content = {
     beforeLabel: string;
     afterLabel: string;
     modal: {
+      openDemoLabel: string;
       demoTitle: string;
       demoPlaceholderBody: string;
       demoShowsLabel: string;
@@ -186,18 +188,6 @@ type Content = {
 function useMarketingHomeContent(): Content {
   const t = useTranslations('marketingHome');
   return t.raw('content') as Content;
-}
-
-function splitHeroHeadline(headline: string, locale: string) {
-  const accent = locale === 'ar' ? 'المكاتب القانونية السعودية.' : 'Saudi Firms.';
-  if (!headline.endsWith(accent)) {
-    return { lead: headline, accent: '' };
-  }
-
-  return {
-    lead: headline.slice(0, -accent.length).trimEnd(),
-    accent,
-  };
 }
 
 function splitProofLine(line: string) {
@@ -323,6 +313,35 @@ function PrimaryLinkButton({
   );
 }
 
+function SecondaryButton({
+  children,
+  className,
+  onClick,
+  type = 'button',
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  type?: 'button' | 'submit';
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
+        'bg-transparent border border-border text-text font-semibold px-5 py-2.5',
+        'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+        'hover:border-highlight hover:text-highlight',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 function TertiaryLink({
   href,
   children,
@@ -384,6 +403,85 @@ function LanguageToggle({
         {leftLabel} <span className="text-text-soft">|</span> {rightLabel}
       </span>
     </button>
+  );
+}
+
+function MarketingModal({
+  isOpen,
+  title,
+  closeAriaLabel,
+  onClose,
+  children,
+}: {
+  isOpen: boolean;
+  title: string;
+  closeAriaLabel: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const titleId = useId();
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      restoreFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className={cn(
+          'relative w-full max-w-[1080px]',
+          'rounded-[28px] border border-border bg-surface shadow-[var(--shadowMd)]',
+          'p-5 sm:p-6'
+        )}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <h2 id={titleId} className="text-lg sm:text-xl font-semibold text-text">
+            {title}
+          </h2>
+          <button
+            ref={closeButtonRef}
+            onClick={onClose}
+            className={cn(
+              'min-h-[44px] min-w-[44px] rounded-[var(--rSm)] border border-border bg-transparent',
+              'text-text-soft hover:text-text hover:border-highlight transition-colors duration-200',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+            )}
+            aria-label={closeAriaLabel}
+          >
+            ✕
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
   );
 }
 
@@ -962,20 +1060,60 @@ function CapabilityPreviewCard() {
   );
 }
 
+function extractYouTubeId(input: string | undefined) {
+  const value = (input || '').trim();
+  if (!value) return '';
+
+  try {
+    const url = new URL(value);
+    if (url.hostname.includes('youtu.be')) {
+      return url.pathname.replace(/^\/+/, '').trim();
+    }
+
+    if (url.hostname.includes('youtube.com')) {
+      if (url.pathname.startsWith('/watch')) {
+        return url.searchParams.get('v') || '';
+      }
+
+      const segments = url.pathname.split('/').filter(Boolean);
+      const embedIndex = segments.findIndex((segment) => segment === 'embed' || segment === 'shorts');
+      if (embedIndex >= 0) {
+        return segments[embedIndex + 1] || '';
+      }
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
 export function Homepage() {
-  const locale = useLocale();
   const content = useMarketingHomeContent();
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
+  const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
 
   const capability = useMemo(
     () => content.capabilities.tabs.find((t) => t.id === activeCapability) ?? content.capabilities.tabs[0],
     [activeCapability, content.capabilities.tabs]
   );
-  const heroHeadline = useMemo(
-    () => splitHeroHeadline(content.hero.headline, locale),
-    [content.hero.headline, locale]
-  );
   const proofItems = useMemo(() => splitProofLine(content.hero.proofLine), [content.hero.proofLine]);
+  const demoVideoId = useMemo(
+    () => extractYouTubeId(process.env.NEXT_PUBLIC_MARKETING_DEMO_URL),
+    []
+  );
+  const demoEmbedUrl = demoVideoId
+    ? `https://www.youtube-nocookie.com/embed/${demoVideoId}?autoplay=1&rel=0&modestbranding=1`
+    : '';
+  const pricingTabs = useMemo(
+    () => [
+      { id: 'professional', label: content.pricing.toggleLabels[0] },
+      { id: 'enterprise', label: content.pricing.toggleLabels[1] },
+    ],
+    [content.pricing.toggleLabels]
+  );
+  const pricingCards = pricingLane === 'professional' ? content.pricing.professional : content.pricing.enterprise;
   const spotlightCards = useMemo(() => {
     const defs = [
       {
@@ -1021,13 +1159,7 @@ export function Homepage() {
                 {content.ui.mentalModelLine}
               </div>
               <h1 className="mt-5 max-w-[15ch] text-5xl sm:text-6xl lg:text-7xl leading-[1.02] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
-                {heroHeadline.lead}
-                {heroHeadline.accent ? (
-                  <>
-                    {' '}
-                    <span className="text-accent whitespace-nowrap">{heroHeadline.accent}</span>
-                  </>
-                ) : null}
+                {content.hero.headline}
               </h1>
               <p className="mt-7 text-lg sm:text-[1.35rem] text-text-soft leading-relaxed max-w-[32ch]">
                 {content.hero.subhead}
@@ -1040,20 +1172,31 @@ export function Homepage() {
                 >
                   {content.hero.ctas.find((c) => c.type === 'primary')?.label}
                 </PrimaryLinkButton>
-                <Link
-                  href={content.hero.ctas.find((c) => c.type === 'secondary')?.href ?? '#decision-pack'}
-                  onClick={() => trackMarketingEvent('cta_watch_demo_click')}
-                  className={cn(
-                    'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
-                    'bg-transparent border border-border text-text font-semibold px-5 py-2.5',
-                    'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                    'hover:border-highlight hover:text-highlight',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                  )}
-                >
-                  {content.hero.ctas.find((c) => c.type === 'secondary')?.label}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                {demoVideoId ? (
+                  <SecondaryButton
+                    onClick={() => {
+                      trackMarketingEvent('cta_watch_demo_click');
+                      setIsDemoOpen(true);
+                    }}
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    {content.ui.modal.openDemoLabel}
+                  </SecondaryButton>
+                ) : (
+                  <Link
+                    href={content.hero.ctas.find((c) => c.type === 'secondary')?.href ?? '#decision-pack'}
+                    className={cn(
+                      'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
+                      'bg-transparent border border-border text-text font-semibold px-5 py-2.5',
+                      'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                      'hover:border-highlight hover:text-highlight',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                    )}
+                  >
+                    {content.hero.ctas.find((c) => c.type === 'secondary')?.label}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
 
               <div className="mt-10 border-t border-border pt-6">
@@ -1079,30 +1222,6 @@ export function Homepage() {
               </div>
             </Reveal>
           </div>
-        </Section>
-
-        {/* Credibility strip */}
-        <Section className="py-10 sm:py-12 lg:py-14">
-          <Reveal>
-            <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-6 sm:p-7">
-              <div className="text-xs tracking-[0.16em] uppercase text-text-soft">
-                {content.credibilityStrip.label}
-              </div>
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {content.credibilityStrip.items.map((item) => (
-                  <div
-                    key={item}
-                    className={cn(
-                      'rounded-[18px] border border-border bg-[rgba(255,255,255,0.02)] px-4 py-3',
-                      'text-sm text-text-soft hover:bg-surface-alt transition-colors duration-200'
-                    )}
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
         </Section>
 
         {/* Problem */}
@@ -1203,7 +1322,7 @@ export function Homepage() {
         {/* Stats */}
         <Section>
           <div className="grid gap-4 lg:grid-cols-3">
-            {spotlightCards.map((item, idx) => {
+            {spotlightCards.slice(0, 3).map((item, idx) => {
               const Icon = item.icon;
               return (
                 <Reveal key={item.id} delayMs={idx * 90}>
@@ -1267,39 +1386,6 @@ export function Homepage() {
             <Reveal delayMs={180}>
               <CapabilityPreviewCard />
             </Reveal>
-          </div>
-        </Section>
-
-        {/* Applications grid */}
-        <Section>
-          <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-              {content.applications.title}
-            </h2>
-          </Reveal>
-          <div className="mt-10 grid gap-4 lg:grid-cols-2">
-            {content.applications.cards.map((c, idx) => (
-              <Reveal key={c.id} delayMs={idx * 90}>
-                <Card
-                  brandLabel={content.brand.name}
-                  title={c.title}
-                  subtitle={c.subtitle}
-                  bullets={c.bullets}
-                  footer={
-                    <TertiaryLink
-                      href={c.cta.href}
-                      className="text-highlight"
-                    >
-                      {c.cta.label} →
-                    </TertiaryLink>
-                  }
-                  onClick={() => {
-                    trackMarketingEvent('application_card_click', { application_id: c.id });
-                    window.location.hash = c.cta.href.startsWith('#') ? c.cta.href : '#product';
-                  }}
-                />
-              </Reveal>
-            ))}
           </div>
         </Section>
 
@@ -1394,15 +1480,31 @@ export function Homepage() {
           </Reveal>
 
           <Reveal className="mt-8" delayMs={90}>
-            <div className="text-sm text-text-soft">{content.pricing.toggleLabels[0]}</div>
+            <PillTabs
+              tabs={pricingTabs}
+              activeId={pricingLane}
+              onChange={(id) => {
+                setPricingLane(id as 'professional' | 'enterprise');
+                trackMarketingEvent('pricing_toggle_change', { pricing_lane: id });
+              }}
+            />
           </Reveal>
 
-          <div className="mt-8 max-w-[460px] mx-auto">
-            {content.pricing.professional.slice(0, 1).map((p) => (
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {pricingCards.map((p, index) => (
               <Reveal key={p.id}>
-                <div className="rounded-[34px] border border-[color:rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(22,35,28,0.96),rgba(16,27,21,0.98))] shadow-[var(--shadowMd)] p-7">
+                <div
+                  className={cn(
+                    'h-full rounded-[34px] border shadow-[var(--shadowMd)] p-7',
+                    index === 0
+                      ? 'border-[color:rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(22,35,28,0.96),rgba(16,27,21,0.98))]'
+                      : 'border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))]'
+                  )}
+                >
                   <div className="text-xs tracking-[0.16em] uppercase text-accent">
-                    {content.pricing.toggleLabels[0]}
+                    {pricingLane === 'professional'
+                      ? content.pricing.toggleLabels[0]
+                      : content.pricing.toggleLabels[1]}
                   </div>
                   <div className="mt-4 flex items-baseline justify-between gap-4">
                     <div className="text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
@@ -1432,51 +1534,11 @@ export function Homepage() {
             ))}
           </div>
 
-          <Reveal className="mt-6 max-w-[460px] mx-auto" delayMs={120}>
+          <Reveal className="mt-6" delayMs={120}>
             <div className="rounded-[24px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
               <div className="text-sm font-semibold text-text">{content.pricing.usageMeter.title}</div>
               <div className="mt-2 text-sm text-text-soft">{content.pricing.usageMeter.body}</div>
             </div>
-          </Reveal>
-        </Section>
-
-        {/* Insights */}
-        <Section id={content.insights.id}>
-          <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-              {content.insights.title}
-            </h2>
-            <p className="mt-4 text-text-soft text-base sm:text-lg max-w-[72ch]">
-              {content.insights.subhead}
-            </p>
-          </Reveal>
-
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
-            {content.insights.items.map((i, idx) => (
-              <Reveal key={i.id} delayMs={idx * 90}>
-                <Link
-                  href={i.href}
-                  className={cn(
-                    'block rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-6',
-                    'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                  )}
-                >
-                  <div className="text-xs tracking-[0.14em] uppercase text-text-soft">{i.tag}</div>
-                  <div className="mt-3 text-xl font-[family:var(--font-source-serif)] font-semibold text-text">
-                    {i.title}
-                  </div>
-                  <div className="mt-2 text-text-soft">{i.excerpt}</div>
-                  <div className="mt-4 text-sm text-text-soft">
-                    {i.date} • {i.readTime}
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal className="mt-8" delayMs={120}>
-            <TertiaryLink href={content.insights.cta.href}>{content.insights.cta.label} →</TertiaryLink>
           </Reveal>
         </Section>
 
@@ -1616,7 +1678,50 @@ export function Homepage() {
           </div>
         </footer>
       </main>
-
+      {demoVideoId ? (
+        <MarketingModal
+          isOpen={isDemoOpen}
+          title={content.ui.modal.demoTitle}
+          closeAriaLabel={content.ui.modal.close}
+          onClose={() => setIsDemoOpen(false)}
+        >
+          <div className="grid gap-6 lg:grid-cols-[1.45fr,0.55fr]">
+            <div className="overflow-hidden rounded-[24px] border border-border bg-black shadow-[var(--shadowSm)]">
+              {isDemoOpen ? (
+                <div className="aspect-video">
+                  <iframe
+                    src={demoEmbedUrl}
+                    title={content.ui.modal.demoTitle}
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                  />
+                </div>
+              ) : null}
+            </div>
+            <div className="rounded-[24px] border border-border bg-[rgba(255,255,255,0.02)] p-5">
+              <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
+                {content.ui.modal.demoShowsLabel}
+              </div>
+              <div className="mt-3 text-base leading-relaxed text-text-soft">
+                {content.ui.modal.demoShowsBody}
+              </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <PrimaryLinkButton
+                  href={content.nav.actions.primaryCta.href}
+                  onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'demo_modal' })}
+                >
+                  {content.nav.actions.primaryCta.label}
+                </PrimaryLinkButton>
+                <SecondaryButton onClick={() => setIsDemoOpen(false)}>
+                  {content.ui.modal.close}
+                </SecondaryButton>
+              </div>
+            </div>
+          </div>
+        </MarketingModal>
+      ) : null}
     </div>
   );
 }

@@ -209,9 +209,10 @@ export default function SupportPage() {
             question="How do subscriptions work?"
             answer={
               <>
-                Zohal offers both free and premium tiers (Pro and Premium). Subscriptions are managed
-                through the App Store and can be cancelled anytime in your Apple ID settings.
-                You&apos;ll retain access until the end of your billing period. See our{' '}
+                Zohal offers free and paid tiers for individuals and teams, including Pro, Max, and
+                Team. App Store subscriptions can be cancelled anytime in your Apple ID settings,
+                and web billing is managed through Moyasar for eligible plans. You&apos;ll retain access
+                until the end of your billing period. See our{' '}
                 <Link href="/terms" className="text-accent hover:opacity-80">
                   Terms of Use
                 </Link>{' '}

@@ -90,7 +90,7 @@ export default function TermsPage() {
 
         <Section icon="🔄" title="3. Subscription Terms">
           <p>
-            Zohal offers auto-renewable subscription plans that provide access to premium features:
+            Zohal offers auto-renewable subscription plans that provide access to paid features:
           </p>
           <ul className="list-disc pl-6 my-4 space-y-2">
             <li>
@@ -98,8 +98,12 @@ export default function TermsPage() {
               documents, 5GB storage, all plugin tools
             </li>
             <li>
-              <strong className="text-text">Zohal Premium:</strong> Everything in Pro plus unlimited
+              <strong className="text-text">Zohal Max:</strong> Everything in Pro plus unlimited
               documents, 50GB storage, two-way Google Drive sync
+            </li>
+            <li>
+              <strong className="text-text">Zohal Team:</strong> Shared workspaces, collaboration
+              controls, and business billing. Team may include a 14-day trial before billing starts.
             </li>
           </ul>
           <p>
@@ -259,4 +263,3 @@ export default function TermsPage() {
     </div>
   );
 }
-

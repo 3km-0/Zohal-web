@@ -1,23 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
-  Crown,
-  Check,
-  Sparkles,
-  Zap,
-  Shield,
-  CreditCard,
   ArrowRight,
-  X,
   Building2,
+  Check,
   CheckCircle,
+  CreditCard,
+  Crown,
+  Sparkles,
+  Users,
+  X,
+  Zap,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Badge, Spinner, Input } from '@/components/ui';
 import { MoyasarPaymentForm } from '@/components/payment/MoyasarPaymentForm';
+import {
+  MoyasarTrialSetupForm,
+  PENDING_TRIAL_SETUP_STORAGE_KEY,
+} from '@/components/payment/MoyasarTrialSetupForm';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -34,33 +38,59 @@ interface SubscriptionPlan {
   price_yearly_sar: number | null;
   limits: Record<string, number>;
   features: Record<string, boolean>;
-  badge_text?: string;
+  badge_text?: string | null;
+  display_order?: number | null;
+}
+
+interface BillingProfile {
+  subscription_tier: string | null;
+  subscription_expires_at: string | null;
+  payment_source: string | null;
+  subscription_status: string | null;
+  subscription_trial_consumed_at?: string | null;
 }
 
 type BillingPeriod = 'monthly' | 'yearly';
 type Currency = 'SAR' | 'USD';
+type BillingSegment = 'individuals' | 'business';
+
+const TIER_RANK: Record<string, number> = {
+  free: 0,
+  pro: 1,
+  premium: 2,
+  team: 3,
+};
+
+function sortPlans(plans: SubscriptionPlan[]) {
+  return [...plans].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+}
 
 export default function SubscriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const { user } = useAuth();
   const t = useTranslations('subscriptionPage');
   const tFeatures = useTranslations('subscriptionPage.features');
   const tEnterprise = useTranslations('subscriptionPage.enterprise');
+  const subscriptionFlags = getWebSubscriptionFlags();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTier, setCurrentTier] = useState<string>('free');
+  const [currentStatus, setCurrentStatus] = useState<string>('active');
   const [subscriptionExpires, setSubscriptionExpires] = useState<string | null>(null);
   const [paymentSource, setPaymentSource] = useState<string>('apple');
+  const [trialConsumedAt, setTrialConsumedAt] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [currency, setCurrency] = useState<Currency>('SAR');
+  const [billingSegment, setBillingSegment] = useState<BillingSegment>('individuals');
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
-  const subscriptionFlags = getWebSubscriptionFlags();
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [handledTrialCallback, setHandledTrialCallback] = useState(false);
 
-  // Enterprise contact form state
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
   const [enterpriseForm, setEnterpriseForm] = useState({
     name: '',
@@ -74,42 +104,145 @@ export default function SubscriptionPage() {
   const [enterpriseSuccess, setEnterpriseSuccess] = useState(false);
   const [enterpriseError, setEnterpriseError] = useState<string | null>(null);
 
-  // Fetch plans and current subscription
+  const individualPlans = useMemo(
+    () => sortPlans(plans.filter((plan) => ['pro', 'premium'].includes(plan.tier))),
+    [plans]
+  );
+  const businessPlans = useMemo(
+    () => sortPlans(plans.filter((plan) => plan.tier === 'team')),
+    [plans]
+  );
+  const visiblePlans = billingSegment === 'individuals' ? individualPlans : businessPlans;
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const profile = data as BillingProfile | null;
+
+    if (profile) {
+      setCurrentTier(profile.subscription_tier || 'free');
+      setSubscriptionExpires(profile.subscription_expires_at);
+      setPaymentSource(profile.payment_source || 'apple');
+      setCurrentStatus(profile.subscription_status || 'active');
+      setTrialConsumedAt(profile.subscription_trial_consumed_at || null);
+      if (profile.subscription_tier === 'team') {
+        setBillingSegment('business');
+      }
+    }
+  }, [supabase, user]);
+
+  const startTrial = useCallback(async (tokenId: string, period: BillingPeriod) => {
+    if (!user) return;
+    setProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error(t('notAuthenticated'));
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/start-subscription-trial`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            tier: 'team',
+            period,
+            token_id: tokenId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || t('trialError'));
+      }
+
+      sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+      await refreshProfile();
+      setShowPaymentModal(false);
+      setSelectedPlan(null);
+      router.replace('/subscription/success?trial=1');
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : t('trialError'));
+      router.replace('/subscription');
+    } finally {
+      setProcessingPayment(false);
+    }
+  }, [refreshProfile, router, supabase, t, user]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab === 'business' || requestedTab === 'individuals') {
+      setBillingSegment(requestedTab);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     async function fetchData() {
       if (!user) return;
 
       setLoading(true);
 
-      // Fetch subscription plans
       const { data: plansData } = await supabase
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
+        .in('tier', ['free', 'pro', 'premium', 'team'])
         .order('display_order');
 
       if (plansData) {
         setPlans(plansData);
       }
 
-      // Fetch user's current subscription
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_tier, subscription_expires_at, payment_source')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        setCurrentTier(profile.subscription_tier || 'free');
-        setSubscriptionExpires(profile.subscription_expires_at);
-        setPaymentSource(profile.payment_source || 'apple');
-      }
-
+      await refreshProfile();
       setLoading(false);
     }
 
     fetchData();
-  }, [supabase, user]);
+  }, [refreshProfile, supabase, user]);
+
+  useEffect(() => {
+    const shouldResumeTrial =
+      user && !handledTrialCallback && searchParams.get('trial_callback') === '1';
+
+    if (!shouldResumeTrial) return;
+
+    const rawState =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem(PENDING_TRIAL_SETUP_STORAGE_KEY)
+        : null;
+    if (!rawState) {
+      setHandledTrialCallback(true);
+      return;
+    }
+
+    let parsedState: { tokenId?: string; tier?: string; period?: BillingPeriod } | null = null;
+    try {
+      parsedState = JSON.parse(rawState) as { tokenId?: string; tier?: string; period?: BillingPeriod };
+    } catch {
+      sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+      setHandledTrialCallback(true);
+      return;
+    }
+
+    if (!parsedState?.tokenId || parsedState.tier !== 'team') {
+      sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+      setHandledTrialCallback(true);
+      return;
+    }
+
+    setHandledTrialCallback(true);
+    void startTrial(parsedState.tokenId, parsedState.period || billingPeriod);
+  }, [billingPeriod, handledTrialCallback, searchParams, startTrial, user]);
 
   const getPrice = (plan: SubscriptionPlan): number | null => {
     if (currency === 'SAR') {
@@ -118,7 +251,8 @@ export default function SubscriptionPage() {
     return billingPeriod === 'monthly' ? plan.price_monthly_usd : plan.price_yearly_usd;
   };
 
-  const formatPrice = (price: number | null): string => {
+  const formatPrice = (price: number | null, tier: string): string => {
+    if (tier === 'enterprise') return tEnterprise('customPricing');
     if (price === null) return t('free');
     const symbol = currency === 'SAR' ? 'SAR' : '$';
     return `${symbol}${price.toFixed(2)}`;
@@ -127,43 +261,21 @@ export default function SubscriptionPage() {
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     if (plan.tier === 'free' || plan.tier === currentTier) return;
     setSelectedPlan(plan);
+    setPaymentError(null);
     setShowPaymentModal(true);
-  };
-
-  const handlePaymentComplete = async (payment: { id: string; status: string }) => {
-    console.log('Payment completed:', payment);
-    setProcessingPayment(true);
-
-    // Wait a moment for webhook to process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Refresh subscription status
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier, subscription_expires_at')
-      .eq('id', user?.id)
-      .single();
-
-    if (profile) {
-      setCurrentTier(profile.subscription_tier || 'free');
-      setSubscriptionExpires(profile.subscription_expires_at);
-    }
-
-    setShowPaymentModal(false);
-    setSelectedPlan(null);
-    setProcessingPayment(false);
-
-    // Show success or redirect
-    router.push('/subscription/success');
   };
 
   const startHostedCheckout = async (plan: SubscriptionPlan) => {
     if (!user) return;
     setProcessingPayment(true);
+    setPaymentError(null);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Not authenticated');
+        throw new Error(t('notAuthenticated'));
       }
 
       const response = await fetch(
@@ -178,20 +290,47 @@ export default function SubscriptionPage() {
             tier: plan.tier,
             period: billingPeriod,
           }),
-        },
+        }
       );
 
       const data = await response.json();
       if (!response.ok || !data?.payment_url || !data?.checkout_state) {
-        throw new Error(data?.error || 'Unable to start checkout');
+        throw new Error(data?.error || t('checkoutError'));
       }
 
       sessionStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, data.checkout_state);
       window.location.href = data.payment_url as string;
     } catch (error) {
-      console.error('Hosted checkout error:', error);
+      setPaymentError(error instanceof Error ? error.message : t('checkoutError'));
       setProcessingPayment(false);
     }
+  };
+
+  const handlePaymentComplete = async () => {
+    setProcessingPayment(true);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await refreshProfile();
+    setShowPaymentModal(false);
+    setSelectedPlan(null);
+    setProcessingPayment(false);
+    router.push('/subscription/success');
+  };
+
+  const isTrialEligible = (plan: SubscriptionPlan) =>
+    plan.tier === 'team' && currentTier === 'free' && !trialConsumedAt;
+
+  const tierIcons: Record<string, typeof Crown> = {
+    free: Zap,
+    pro: Sparkles,
+    premium: Crown,
+    team: Users,
+  };
+
+  const tierColors: Record<string, string> = {
+    free: 'text-text-soft',
+    pro: 'text-blue-500',
+    premium: 'text-purple-500',
+    team: 'text-accent',
   };
 
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
@@ -213,7 +352,6 @@ export default function SubscriptionPage() {
       if (error) throw error;
 
       setEnterpriseSuccess(true);
-      // Reset form after success
       setEnterpriseForm({
         name: '',
         email: '',
@@ -222,8 +360,7 @@ export default function SubscriptionPage() {
         phone: '',
         message: '',
       });
-    } catch (err) {
-      console.error('Enterprise inquiry error:', err);
+    } catch {
       setEnterpriseError(tEnterprise('errorMessage'));
     } finally {
       setEnterpriseSubmitting(false);
@@ -232,23 +369,10 @@ export default function SubscriptionPage() {
 
   const handleCloseEnterpriseModal = () => {
     setShowEnterpriseModal(false);
-    // Reset state after a delay to avoid UI flash
     setTimeout(() => {
       setEnterpriseSuccess(false);
       setEnterpriseError(null);
     }, 300);
-  };
-
-  const tierIcons: Record<string, typeof Crown> = {
-    free: Zap,
-    pro: Sparkles,
-    premium: Crown,
-  };
-
-  const tierColors: Record<string, string> = {
-    free: 'text-text-soft',
-    pro: 'text-blue-500',
-    premium: 'text-purple-500',
   };
 
   if (loading) {
@@ -264,129 +388,136 @@ export default function SubscriptionPage() {
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
 
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-6xl mx-auto">
-          {/* Current Plan Banner */}
-          {currentTier !== 'free' && (
-            <Card className="mb-8 bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
-              <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-soft">{t('currentPlan')}</p>
-                <p className="text-xl font-bold text-text capitalize">{currentTier}</p>
-                {subscriptionExpires && (
-                  <p className="text-sm text-text-soft mt-1">
-                    {paymentSource === 'apple' ? t('managedByAppStore') : t('renewsOn', { date: new Date(subscriptionExpires).toLocaleDateString() })}
+        <div className="mx-auto max-w-6xl">
+          {currentTier !== 'free' ? (
+            <Card className="mb-8 border-accent/20 bg-gradient-to-r from-accent/10 to-accent/5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-text-soft">{t('currentPlan')}</p>
+                    {currentStatus === 'trialing' ? <Badge variant="accent">{t('trialBadge')}</Badge> : null}
+                  </div>
+                  <p className="text-xl font-bold text-text">
+                    {currentTier === 'pro'
+                      ? t('proPlan')
+                      : currentTier === 'premium'
+                        ? t('premiumPlan')
+                        : currentTier === 'team'
+                          ? t('teamPlan')
+                          : currentTier}
                   </p>
-                )}
-              </div>
-              {paymentSource === 'moyasar' && (
-                <Button variant="secondary" onClick={() => router.push('/settings/payment-methods')}>
-                  <CreditCard className="w-4 h-4" />
-                  {t('managePayment')}
-                </Button>
-              )}
+                  {subscriptionExpires ? (
+                    <p className="mt-1 text-sm text-text-soft">
+                      {currentStatus === 'trialing'
+                        ? t('trialEndsOn', { date: new Date(subscriptionExpires).toLocaleDateString() })
+                        : paymentSource === 'apple'
+                          ? t('managedByAppStore')
+                          : t('renewsOn', { date: new Date(subscriptionExpires).toLocaleDateString() })}
+                    </p>
+                  ) : null}
+                </div>
+                {paymentSource === 'moyasar' ? (
+                  <Button variant="secondary" onClick={() => router.push('/settings/payment-methods')}>
+                    <CreditCard className="h-4 w-4" />
+                    {t('managePayment')}
+                  </Button>
+                ) : null}
               </div>
             </Card>
-          )}
+          ) : null}
 
-          {/* Billing Period Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <button
-              onClick={() => setBillingPeriod('monthly')}
-              className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                billingPeriod === 'monthly'
-                  ? 'bg-accent text-white'
-                  : 'bg-surface border border-border text-text-soft hover:border-accent'
-              )}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingPeriod('yearly')}
-              className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                billingPeriod === 'yearly'
-                  ? 'bg-accent text-white'
-                  : 'bg-surface border border-border text-text-soft hover:border-accent'
-              )}
-            >
-              Yearly
-              <Badge size="sm" variant="success" className="ml-2">
-                Save 17%
-              </Badge>
-            </button>
+          <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
+            <div className="flex items-center rounded-full border border-border bg-surface p-1">
+              {(['monthly', 'yearly'] as BillingPeriod[]).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setBillingPeriod(period)}
+                  className={cn(
+                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    billingPeriod === period
+                      ? 'bg-accent text-white'
+                      : 'text-text-soft hover:text-text'
+                  )}
+                >
+                  {period === 'monthly' ? t('monthly') : t('yearly')}
+                </button>
+              ))}
+            </div>
 
-            <div className="w-px h-6 bg-border mx-2" />
+            <div className="flex items-center rounded-full border border-border bg-surface p-1">
+              {(['individuals', 'business'] as BillingSegment[]).map((segment) => (
+                <button
+                  key={segment}
+                  onClick={() => setBillingSegment(segment)}
+                  className={cn(
+                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    billingSegment === segment
+                      ? 'bg-accent text-white'
+                      : 'text-text-soft hover:text-text'
+                  )}
+                >
+                  {segment === 'individuals' ? t('individualsTab') : t('businessTab')}
+                </button>
+              ))}
+            </div>
 
             <button
               onClick={() => setCurrency(currency === 'SAR' ? 'USD' : 'SAR')}
-              className="px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-text-soft hover:border-accent transition-colors"
+              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-text-soft transition-colors hover:border-accent"
             >
               {currency}
             </button>
           </div>
 
-          {/* Plans Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => {
+          <div className={cn('grid gap-6', billingSegment === 'business' ? 'lg:grid-cols-2' : 'md:grid-cols-2')}>
+            {visiblePlans.map((plan) => {
               const Icon = tierIcons[plan.tier] || Zap;
               const price = getPrice(plan);
               const isCurrentPlan = plan.tier === currentTier;
-              const isUpgrade = plans.findIndex((p) => p.tier === plan.tier) > plans.findIndex((p) => p.tier === currentTier);
+              const isUpgrade = (TIER_RANK[plan.tier] || 0) > (TIER_RANK[currentTier] || 0);
 
               return (
                 <Card
                   key={plan.tier}
                   className={cn(
-                    'relative flex flex-col transition-all',
+                    'relative flex h-full flex-col transition-all',
                     isCurrentPlan && 'border-accent ring-2 ring-accent/20',
                     plan.badge_text && 'border-accent'
                   )}
                   padding="lg"
                 >
-                  {/* Badge */}
-                  {plan.badge_text && (
+                  {plan.badge_text ? (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge variant="accent">{plan.badge_text}</Badge>
                     </div>
-                  )}
+                  ) : null}
 
-                  {/* Plan Header */}
-                  <div className="text-center mb-6">
+                  <div className="mb-6 text-center">
                     <div
                       className={cn(
-                        'w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3',
-                        `bg-${tierColors[plan.tier]?.replace('text-', '')}/10`
+                        'mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full',
+                        plan.tier === 'team' ? 'bg-accent/10' : 'bg-surface-alt'
                       )}
                     >
-                      <Icon className={cn('w-6 h-6', tierColors[plan.tier])} />
+                      <Icon className={cn('h-6 w-6', tierColors[plan.tier])} />
                     </div>
-                    <h3 className="text-lg font-bold text-text">{plan.name}</h3>
-                    <p className="text-sm text-text-soft mt-1">{plan.description}</p>
+                    <h3 className="text-lg font-bold text-text">
+                      {plan.tier === 'premium' ? t('premiumPlan') : plan.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-text-soft">{plan.description}</p>
                   </div>
 
-                  {/* Price */}
-                  <div className="text-center mb-6">
-                    <div className="text-3xl font-bold text-text">
-                      {formatPrice(price)}
-                    </div>
-                    {price !== null && (
+                  <div className="mb-6 text-center">
+                    <div className="text-3xl font-bold text-text">{formatPrice(price, plan.tier)}</div>
+                    {price !== null ? (
                       <p className="text-sm text-text-soft">
                         {billingPeriod === 'monthly' ? t('perMonth') : t('perYear')}
                       </p>
-                    )}
+                    ) : null}
                   </div>
 
-                  {/* Features */}
-                  <ul className="space-y-3 mb-6 flex-1">
-                    {plan.tier === 'free' && (
-                      <>
-                        <FeatureItem>{tFeatures('documents10')}</FeatureItem>
-                        <FeatureItem>{tFeatures('aiExplanations2PerDay')}</FeatureItem>
-                        <FeatureItem>{tFeatures('workspace1')}</FeatureItem>
-                      </>
-                    )}
-                    {plan.tier === 'pro' && (
+                  <ul className="mb-6 flex-1 space-y-3">
+                    {plan.tier === 'pro' ? (
                       <>
                         <FeatureItem>{tFeatures('documents100')}</FeatureItem>
                         <FeatureItem>{tFeatures('unlimitedAi')}</FeatureItem>
@@ -394,8 +525,8 @@ export default function SubscriptionPage() {
                         <FeatureItem>{tFeatures('allPlugins')}</FeatureItem>
                         <FeatureItem>{tFeatures('calendarSync')}</FeatureItem>
                       </>
-                    )}
-                    {plan.tier === 'premium' && (
+                    ) : null}
+                    {plan.tier === 'premium' ? (
                       <>
                         <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
                         <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
@@ -405,24 +536,32 @@ export default function SubscriptionPage() {
                         <FeatureItem>{tFeatures('driveSync')}</FeatureItem>
                         <FeatureItem>{tFeatures('prioritySupport')}</FeatureItem>
                       </>
-                    )}
+                    ) : null}
+                    {plan.tier === 'team' ? (
+                      <>
+                        <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
+                        <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
+                        <FeatureItem>{tFeatures('teamManagement')}</FeatureItem>
+                        <FeatureItem>{tFeatures('customLimits')}</FeatureItem>
+                        <FeatureItem>{t('teamTrialFeature')}</FeatureItem>
+                      </>
+                    ) : null}
                   </ul>
 
-                  {/* Action Button */}
                   <Button
                     variant={isCurrentPlan ? 'secondary' : isUpgrade ? 'primary' : 'secondary'}
                     className="w-full"
-                    disabled={isCurrentPlan || (plan.tier === 'free' && !isCurrentPlan)}
+                    disabled={isCurrentPlan}
                     onClick={() => handleSelectPlan(plan)}
                   >
                     {isCurrentPlan ? (
-                      t('currentPlanBadge')
-                    ) : plan.tier === 'free' ? (
-                      t('free')
+                      currentStatus === 'trialing' ? t('currentTrial') : t('currentPlanBadge')
+                    ) : isTrialEligible(plan) ? (
+                      t('startTrial')
                     ) : isUpgrade ? (
                       <>
                         {t('upgrade')}
-                        <ArrowRight className="w-4 h-4 ml-1" />
+                        <ArrowRight className="ml-1 h-4 w-4" />
                       </>
                     ) : (
                       t('downgrade')
@@ -432,55 +571,49 @@ export default function SubscriptionPage() {
               );
             })}
 
-            {/* Enterprise Card */}
-            <Card
-              className="relative flex flex-col transition-all border-accent/50 bg-gradient-to-br from-surface to-accent/5"
-              padding="lg"
-            >
-              {/* Plan Header */}
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 bg-accent/10">
-                  <Building2 className="w-6 h-6 text-accent" />
-                </div>
-                <h3 className="text-lg font-bold text-text">{tEnterprise('title')}</h3>
-                <p className="text-sm text-text-soft mt-1">{tEnterprise('description')}</p>
-              </div>
-
-              {/* Price */}
-              <div className="text-center mb-6">
-                <div className="text-3xl font-bold text-text">
-                  {tEnterprise('customPricing')}
-                </div>
-                <p className="text-sm text-text-soft">
-                  {tEnterprise('contactUs')}
-                </p>
-              </div>
-
-              {/* Features */}
-              <ul className="space-y-3 mb-6 flex-1">
-                <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
-                <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
-                <FeatureItem>{tFeatures('customLimits')}</FeatureItem>
-                <FeatureItem>{tFeatures('teamManagement')}</FeatureItem>
-                <FeatureItem>{tFeatures('slaSupport')}</FeatureItem>
-                <FeatureItem>{tFeatures('dedicatedManager')}</FeatureItem>
-                <FeatureItem>{tFeatures('customIntegrations')}</FeatureItem>
-                <FeatureItem>{tFeatures('onboarding')}</FeatureItem>
-              </ul>
-
-              {/* Action Button */}
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => setShowEnterpriseModal(true)}
+            {billingSegment === 'business' ? (
+              <Card
+                className="relative flex h-full flex-col border-accent/50 bg-gradient-to-br from-surface to-accent/5 transition-all"
+                padding="lg"
               >
-                {tEnterprise('contactUs')}
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Card>
+                <div className="mb-6 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+                    <Building2 className="h-6 w-6 text-accent" />
+                  </div>
+                  <h3 className="text-lg font-bold text-text">{tEnterprise('title')}</h3>
+                  <p className="mt-1 text-sm text-text-soft">{tEnterprise('description')}</p>
+                </div>
+
+                <div className="mb-6 text-center">
+                  <div className="text-3xl font-bold text-text">{tEnterprise('customPricing')}</div>
+                  <p className="text-sm text-text-soft">{tEnterprise('contactUs')}</p>
+                </div>
+
+                <ul className="mb-6 flex-1 space-y-3">
+                  <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
+                  <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
+                  <FeatureItem>{tFeatures('customLimits')}</FeatureItem>
+                  <FeatureItem>{tFeatures('teamManagement')}</FeatureItem>
+                  <FeatureItem>{tFeatures('slaSupport')}</FeatureItem>
+                  <FeatureItem>{tFeatures('dedicatedManager')}</FeatureItem>
+                  <FeatureItem>{tFeatures('customIntegrations')}</FeatureItem>
+                  <FeatureItem>{tFeatures('onboarding')}</FeatureItem>
+                </ul>
+
+                <Button variant="primary" className="w-full" onClick={() => setShowEnterpriseModal(true)}>
+                  {tEnterprise('contactUs')}
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Card>
+            ) : null}
           </div>
 
-          {/* FAQ or Additional Info */}
+          {paymentError ? (
+            <div className="mx-auto mt-6 max-w-2xl rounded-scholar border border-error/30 bg-error/10 p-4 text-sm text-error">
+              {paymentError}
+            </div>
+          ) : null}
+
           <div className="mt-12 text-center">
             <p className="text-sm text-text-soft">
               {t('questionsAboutPricing')}{' '}
@@ -492,139 +625,132 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Payment Modal */}
-      {showPaymentModal && selectedPlan && (
+      {showPaymentModal && selectedPlan ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => !processingPayment && setShowPaymentModal(false)}
           />
 
-          <Card className="relative w-full max-w-md z-10 animate-slide-up" padding="none">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
+          <Card className="relative z-10 w-full max-w-md animate-slide-up" padding="none">
+            <div className="flex items-center justify-between border-b border-border p-5">
               <div>
                 <h2 className="text-lg font-semibold text-text">
-                  {t('upgradeTo', { plan: selectedPlan.name })}
+                  {selectedPlan.tier === 'team' && isTrialEligible(selectedPlan)
+                    ? t('teamTrialTitle')
+                    : t('upgradeTo', {
+                        plan: selectedPlan.tier === 'premium' ? t('premiumPlan') : selectedPlan.name,
+                      })}
                 </h2>
                 <p className="text-sm text-text-soft">
-                  {billingPeriod === 'monthly' ? t('monthlySubscription') : t('yearlySubscription')}
+                  {selectedPlan.tier === 'team' && isTrialEligible(selectedPlan)
+                    ? t('teamTrialSubtitle')
+                    : billingPeriod === 'monthly'
+                      ? t('monthlySubscription')
+                      : t('yearlySubscription')}
                 </p>
               </div>
               <button
                 onClick={() => !processingPayment && setShowPaymentModal(false)}
-                className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
+                className="rounded-lg p-1.5 transition-colors hover:bg-surface-alt"
                 disabled={processingPayment}
               >
-                <X className="w-5 h-5 text-text-soft" />
+                <X className="h-5 w-5 text-text-soft" />
               </button>
             </div>
 
-            {/* Payment Form */}
             <div className="p-5">
               {processingPayment ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <Spinner size="lg" />
-                  <p className="mt-4 text-text-soft">{t('processingPayment')}</p>
+                  <p className="mt-4 text-text-soft">
+                    {selectedPlan.tier === 'team' && isTrialEligible(selectedPlan)
+                      ? t('processingTrial')
+                      : t('processingPayment')}
+                  </p>
+                </div>
+              ) : selectedPlan.tier === 'team' && isTrialEligible(selectedPlan) ? (
+                <MoyasarTrialSetupForm
+                  tier="team"
+                  period={billingPeriod}
+                  callbackUrl={`${window.location.origin}/subscription?trial_callback=1`}
+                  onTokenReady={(tokenId) => startTrial(tokenId, billingPeriod)}
+                />
+              ) : subscriptionFlags.v2Enabled ? (
+                <div className="space-y-4">
+                  <div className="rounded-scholar bg-surface-alt p-4 text-sm text-text-soft">
+                    {t('hostedCheckoutNote')}
+                  </div>
+                  <Button className="w-full" onClick={() => startHostedCheckout(selectedPlan)}>
+                    {t('continueToCheckout')}
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
                 </div>
               ) : (
-                subscriptionFlags.v2Enabled ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-surface-alt rounded-scholar text-sm text-text-soft">
-                      {t('hostedCheckoutNote')}
-                    </div>
-                    <Button className="w-full" onClick={() => startHostedCheckout(selectedPlan)}>
-                      {t('continueToCheckout')}
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                ) : (
-                  <MoyasarPaymentForm
-                    amount={Math.round((getPrice(selectedPlan) || 0) * 100)}
-                    description={`Zohal ${selectedPlan.name} (${billingPeriod})`}
-                    tier={selectedPlan.tier}
-                    period={billingPeriod}
-                    callbackUrl={`${window.location.origin}/subscription/callback`}
-                    onPaymentComplete={handlePaymentComplete}
-                    onPaymentError={(error) => {
-                      console.error('Payment error:', error);
-                    }}
-                    onPaymentInitiating={() => {
-                      setProcessingPayment(true);
-                    }}
-                  />
-                )
+                <MoyasarPaymentForm
+                  amount={Math.round((getPrice(selectedPlan) || 0) * 100)}
+                  description={`Zohal ${selectedPlan.name} (${billingPeriod})`}
+                  tier={selectedPlan.tier}
+                  period={billingPeriod}
+                  callbackUrl={`${window.location.origin}/subscription/callback`}
+                  onPaymentComplete={handlePaymentComplete}
+                  onPaymentError={(error) => setPaymentError(error.message)}
+                  onPaymentInitiating={() => setProcessingPayment(true)}
+                />
               )}
             </div>
           </Card>
         </div>
-      )}
+      ) : null}
 
-      {/* Enterprise Contact Modal */}
-      {showEnterpriseModal && (
+      {showEnterpriseModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => !enterpriseSubmitting && handleCloseEnterpriseModal()}
           />
 
-          <Card className="relative w-full max-w-lg z-10 animate-slide-up" padding="none">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
+          <Card className="relative z-10 w-full max-w-lg animate-slide-up" padding="none">
+            <div className="flex items-center justify-between border-b border-border p-5">
               <div>
-                <h2 className="text-lg font-semibold text-text">
-                  {tEnterprise('modalTitle')}
-                </h2>
-                <p className="text-sm text-text-soft">
-                  {tEnterprise('modalSubtitle')}
-                </p>
+                <h2 className="text-lg font-semibold text-text">{tEnterprise('modalTitle')}</h2>
+                <p className="text-sm text-text-soft">{tEnterprise('modalSubtitle')}</p>
               </div>
               <button
                 onClick={() => !enterpriseSubmitting && handleCloseEnterpriseModal()}
-                className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors"
+                className="rounded-lg p-1.5 transition-colors hover:bg-surface-alt"
                 disabled={enterpriseSubmitting}
               >
-                <X className="w-5 h-5 text-text-soft" />
+                <X className="h-5 w-5 text-text-soft" />
               </button>
             </div>
 
-            {/* Form Content */}
             <div className="p-5">
               {enterpriseSuccess ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
-                    <CheckCircle className="w-8 h-8 text-success" />
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                    <CheckCircle className="h-8 w-8 text-success" />
                   </div>
-                  <h3 className="text-xl font-semibold text-text mb-2">
-                    {tEnterprise('successTitle')}
-                  </h3>
-                  <p className="text-text-soft max-w-sm">
-                    {tEnterprise('successMessage')}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    className="mt-6"
-                    onClick={handleCloseEnterpriseModal}
-                  >
-                    {t('free') === 'Free' ? 'Close' : 'إغلاق'}
+                  <h3 className="mb-2 text-xl font-semibold text-text">{tEnterprise('successTitle')}</h3>
+                  <p className="max-w-sm text-text-soft">{tEnterprise('successMessage')}</p>
+                  <Button variant="secondary" className="mt-6" onClick={handleCloseEnterpriseModal}>
+                    {t('close')}
                   </Button>
                 </div>
               ) : (
                 <form onSubmit={handleEnterpriseSubmit} className="space-y-4">
-                  {enterpriseError && (
-                    <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm">
+                  {enterpriseError ? (
+                    <div className="rounded-lg border border-error/20 bg-error/10 p-3 text-sm text-error">
                       {enterpriseError}
                     </div>
-                  )}
+                  ) : null}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Input
                       label={tEnterprise('name')}
                       placeholder={tEnterprise('namePlaceholder')}
                       value={enterpriseForm.name}
-                      onChange={(e) =>
-                        setEnterpriseForm({ ...enterpriseForm, name: e.target.value })
-                      }
+                      onChange={(e) => setEnterpriseForm({ ...enterpriseForm, name: e.target.value })}
                       required
                       disabled={enterpriseSubmitting}
                     />
@@ -633,30 +759,23 @@ export default function SubscriptionPage() {
                       type="email"
                       placeholder={tEnterprise('emailPlaceholder')}
                       value={enterpriseForm.email}
-                      onChange={(e) =>
-                        setEnterpriseForm({ ...enterpriseForm, email: e.target.value })
-                      }
+                      onChange={(e) => setEnterpriseForm({ ...enterpriseForm, email: e.target.value })}
                       required
                       disabled={enterpriseSubmitting}
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label={tEnterprise('company')}
                       placeholder={tEnterprise('companyPlaceholder')}
                       value={enterpriseForm.company}
-                      onChange={(e) =>
-                        setEnterpriseForm({ ...enterpriseForm, company: e.target.value })
-                      }
+                      onChange={(e) => setEnterpriseForm({ ...enterpriseForm, company: e.target.value })}
                       disabled={enterpriseSubmitting}
                     />
                     <div className="w-full">
-                      <label className="block text-sm font-medium text-text mb-1.5">
+                      <label className="mb-1.5 block text-sm font-medium text-text">
                         {tEnterprise('companySize')}
                       </label>
                       <select
-                        className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background focus:border-accent"
+                        className="min-h-[44px] w-full rounded-scholar border border-border bg-surface px-4 py-3 text-text"
                         value={enterpriseForm.companySize}
                         onChange={(e) =>
                           setEnterpriseForm({ ...enterpriseForm, companySize: e.target.value })
@@ -664,44 +783,38 @@ export default function SubscriptionPage() {
                         disabled={enterpriseSubmitting}
                       >
                         <option value="">{tEnterprise('companySizePlaceholder')}</option>
-                        <option value="1-10">{tEnterprise('companySizes.1-10')}</option>
-                        <option value="11-50">{tEnterprise('companySizes.11-50')}</option>
-                        <option value="51-200">{tEnterprise('companySizes.51-200')}</option>
-                        <option value="201-500">{tEnterprise('companySizes.201-500')}</option>
-                        <option value="500+">{tEnterprise('companySizes.500+')}</option>
+                        {(['1-10', '11-50', '51-200', '201-500', '500+'] as const).map((size) => (
+                          <option key={size} value={size}>
+                            {tEnterprise(`companySizes.${size}`)}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
 
                   <Input
                     label={tEnterprise('phone')}
-                    type="tel"
                     placeholder={tEnterprise('phonePlaceholder')}
                     value={enterpriseForm.phone}
-                    onChange={(e) =>
-                      setEnterpriseForm({ ...enterpriseForm, phone: e.target.value })
-                    }
+                    onChange={(e) => setEnterpriseForm({ ...enterpriseForm, phone: e.target.value })}
                     disabled={enterpriseSubmitting}
                   />
 
                   <div className="w-full">
-                    <label className="block text-sm font-medium text-text mb-1.5">
+                    <label className="mb-1.5 block text-sm font-medium text-text">
                       {tEnterprise('message')}
                     </label>
                     <textarea
-                      className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text placeholder:text-text-soft transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background focus:border-accent min-h-[100px] resize-y"
+                      className="min-h-[120px] w-full rounded-scholar border border-border bg-surface px-4 py-3 text-text"
                       placeholder={tEnterprise('messagePlaceholder')}
                       value={enterpriseForm.message}
-                      onChange={(e) =>
-                        setEnterpriseForm({ ...enterpriseForm, message: e.target.value })
-                      }
+                      onChange={(e) => setEnterpriseForm({ ...enterpriseForm, message: e.target.value })}
                       disabled={enterpriseSubmitting}
                     />
                   </div>
 
                   <Button
                     type="submit"
-                    variant="primary"
                     className="w-full"
                     isLoading={enterpriseSubmitting}
                     disabled={enterpriseSubmitting || !enterpriseForm.name || !enterpriseForm.email}
@@ -713,15 +826,15 @@ export default function SubscriptionPage() {
             </div>
           </Card>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 function FeatureItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2 text-sm text-text-soft">
-      <Check className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+    <li className="flex items-center gap-2 text-sm text-text-soft">
+      <Check className="h-4 w-4 flex-shrink-0 text-success" />
       <span>{children}</span>
     </li>
   );
