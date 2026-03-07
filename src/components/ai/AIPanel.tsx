@@ -495,9 +495,9 @@ export function AIPanel({
   }, []);
 
   return (
-    <div className="w-full flex flex-col bg-surface h-full">
+    <div className="flex h-full w-full flex-col bg-surface">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-accent" />
           <span className="font-semibold text-text">{t('title')}</span>
@@ -530,7 +530,7 @@ export function AIPanel({
         <div className="flex flex-col h-full">
           {/* Quick actions when no chat */}
           {chatHistory.length === 0 && (
-            <div className="p-4 space-y-4">
+            <div className="space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
               {/* Selected text display */}
               {selectedText && (
                 <div className="p-3 bg-accent/5 border border-accent/20 rounded-scholar">
@@ -602,7 +602,7 @@ export function AIPanel({
 
           {/* Chat messages */}
           {chatHistory.length > 0 && (
-            <div className="flex-1 overflow-auto p-4 space-y-4">
+            <div className="flex-1 overflow-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] space-y-4">
               {chatHistory.map((msg, i) => (
                 <div
                   key={i}
@@ -637,7 +637,7 @@ export function AIPanel({
           )}
 
           {/* Chat input - always visible */}
-          <div className="p-4 border-t border-border">
+          <div className="border-t border-border p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             <div className="mb-2 flex items-center justify-between gap-2">
               <button
                 type="button"

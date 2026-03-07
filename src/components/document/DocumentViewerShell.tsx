@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Scale, CircleHelp, Menu } from 'lucide-react';
 import Link from 'next/link';
-import { Button, Spinner, Badge, Card, CardContent } from '@/components/ui';
+import { Button, Spinner, Badge, Card, CardContent, ScholarActionMenu } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { PDFViewer } from '@/components/pdf-viewer';
 import { DocumentRightPane } from '@/components/document/DocumentRightPane';
@@ -16,6 +16,7 @@ import { mapHttpError, notFound } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { getAnalysisLabelKey } from '@/lib/document-analysis';
 import { useAppShell } from '@/components/layout/AppShellContext';
+import { MoreVertical } from 'lucide-react';
 
 interface DocumentViewerShellProps {
   initialMode?: RightPaneMode;
@@ -334,6 +335,23 @@ export default function DocumentViewerShell({
 
         <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
           <Button
+            variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
+            size="sm"
+            data-tour="viewer-contract-analysis"
+            aria-label={getAnalysisLabel(document.document_type)}
+            title={getAnalysisLabel(document.document_type)}
+            onClick={() => {
+              if (showRightPane && rightPaneMode === 'analysis') {
+                setPaneState(false);
+                return;
+              }
+              setPaneState(true, 'analysis');
+            }}
+          >
+            <Scale className="w-4 h-4" />
+            <span className="hidden md:inline">{getAnalysisLabel(document.document_type)}</span>
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
             onClick={() => {
@@ -345,25 +363,31 @@ export default function DocumentViewerShell({
             }}
             aria-label="Take a tour"
             title="Take a tour"
+            className="hidden md:inline-flex"
           >
             <CircleHelp className="w-4 h-4" />
             Tour
           </Button>
-          <Button
-            variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
-            size="sm"
-            data-tour="viewer-contract-analysis"
-            onClick={() => {
-              if (showRightPane && rightPaneMode === 'analysis') {
-                setPaneState(false);
-                return;
-              }
-              setPaneState(true, 'analysis');
-            }}
-          >
-            <Scale className="w-4 h-4" />
-            {getAnalysisLabel(document.document_type)}
-          </Button>
+          <ScholarActionMenu
+            compact
+            ariaLabel={tSidebar('openMenu')}
+            icon={<MoreVertical className="w-4 h-4" />}
+            label={tSidebar('openMenu')}
+            className="md:hidden"
+            items={[
+              {
+                label: 'Tour',
+                icon: <CircleHelp className="w-4 h-4" />,
+                onClick: () => {
+                  window.dispatchEvent(
+                    new CustomEvent('zohal:start-tour', {
+                      detail: { tourId: 'viewer', force: true },
+                    })
+                  );
+                },
+              },
+            ]}
+          />
         </div>
       </header>
 

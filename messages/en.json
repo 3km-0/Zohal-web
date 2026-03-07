@@ -32,7 +32,8 @@
     "user": "User",
     "zohalUser": "Zohal user",
     "switchToArabic": "Switch to Arabic",
-    "switchToEnglish": "Switch to English"
+    "switchToEnglish": "Switch to English",
+    "moreActions": "More actions"
   },
   "nav": {
     "home": "Home",

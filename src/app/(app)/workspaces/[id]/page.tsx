@@ -22,7 +22,7 @@ import * as pdfjs from 'pdfjs-dist';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card, EmptyState, Spinner, Badge } from '@/components/ui';
+import { Button, Card, EmptyState, Spinner, Badge, ScholarActionMenu } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import type { Workspace, Document, ProcessingStatus, WorkspaceFolder, FolderWithStats } from '@/types/database';
@@ -452,34 +452,72 @@ export default function WorkspaceDetailPage() {
           </Link>
         }
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent('zohal:start-tour', {
-                    detail: { tourId: 'workspace', force: true },
-                  })
-                );
-              }}
-              aria-label="Take a tour"
-              title="Take a tour"
-            >
-              <CircleHelp className="w-4 h-4" />
-              Tour
-            </Button>
-            <div className="flex items-center gap-2 rounded-[18px] border border-border bg-surface-alt/80 p-1">
-              <Button variant="ghost" size="sm" onClick={() => setShowCreateFolderModal(true)}>
-                <FolderPlus className="w-4 h-4" />
-                {tFolders('newFolder')}
+          <>
+            <div className="hidden items-center gap-2 md:flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('zohal:start-tour', {
+                      detail: { tourId: 'workspace', force: true },
+                    })
+                  );
+                }}
+                aria-label="Take a tour"
+                title="Take a tour"
+              >
+                <CircleHelp className="w-4 h-4" />
+                Tour
               </Button>
-              <Button size="sm" onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
-                <Upload className="w-4 h-4" />
-                {t('upload')}
-              </Button>
+              <div className="flex items-center gap-2 rounded-[18px] border border-border bg-surface-alt/80 p-1">
+                <Button variant="ghost" size="sm" onClick={() => setShowCreateFolderModal(true)}>
+                  <FolderPlus className="w-4 h-4" />
+                  {tFolders('newFolder')}
+                </Button>
+                <Button size="sm" onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
+                  <Upload className="w-4 h-4" />
+                  {t('upload')}
+                </Button>
+              </div>
             </div>
-          </div>
+            <div className="flex items-center gap-2 md:hidden">
+              <Button
+                size="sm"
+                onClick={() => setShowUploadModal(true)}
+                data-tour="workspace-upload"
+                aria-label={t('upload')}
+                title={t('upload')}
+                className="min-w-[44px] px-3"
+              >
+                <Upload className="w-4 h-4" />
+              </Button>
+              <ScholarActionMenu
+                compact
+                ariaLabel={tCommon('moreActions')}
+                icon={<MoreVertical className="w-4 h-4" />}
+                label={tCommon('moreActions')}
+                items={[
+                  {
+                    label: 'Tour',
+                    icon: <CircleHelp className="w-4 h-4" />,
+                    onClick: () => {
+                      window.dispatchEvent(
+                        new CustomEvent('zohal:start-tour', {
+                          detail: { tourId: 'workspace', force: true },
+                        })
+                      );
+                    },
+                  },
+                  {
+                    label: tFolders('newFolder'),
+                    icon: <FolderPlus className="w-4 h-4" />,
+                    onClick: () => setShowCreateFolderModal(true),
+                  },
+                ]}
+              />
+            </div>
+          </>
         }
       />
 

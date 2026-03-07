@@ -32,7 +32,8 @@
     "user": "مستخدم",
     "zohalUser": "مستخدم زحل",
     "switchToArabic": "التبديل إلى العربية",
-    "switchToEnglish": "التبديل إلى الإنجليزية"
+    "switchToEnglish": "التبديل إلى الإنجليزية",
+    "moreActions": "إجراءات إضافية"
   },
   "nav": {
     "home": "الرئيسية",

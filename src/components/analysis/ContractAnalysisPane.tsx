@@ -2079,7 +2079,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
       <div
         className={cn(
           'min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
-          embedded ? 'p-3' : 'p-4'
+          embedded ? 'p-3 pb-[calc(env(safe-area-inset-bottom)+7rem)]' : 'p-4'
         )}
       >
         <div className="mb-3 p-3 border border-border rounded-scholar bg-surface-alt">

@@ -68,7 +68,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         {/* Global Search */}
         <Link
           href="/search"
-          className="p-2 rounded-scholar-sm hover:bg-surface-alt transition-colors"
+          className="hidden rounded-scholar-sm p-2 transition-colors hover:bg-surface-alt md:inline-flex"
           aria-label={tCommon('search')}
           data-tour="global-search"
         >
@@ -76,7 +76,9 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         </Link>
 
         {/* Language Switcher */}
-        <LanguageSwitcher />
+        <div className="hidden md:block">
+          <LanguageSwitcher />
+        </div>
 
         {/* User Menu */}
         <div className="relative" ref={menuRef}>

@@ -38,6 +38,8 @@ export interface ScholarActionMenuProps {
   items: ScholarActionMenuItem[];
   className?: string;
   isLoading?: boolean;
+  compact?: boolean;
+  ariaLabel?: string;
   /** Tour target attribute */
   dataTour?: string;
 }
@@ -48,6 +50,8 @@ export function ScholarActionMenu({
   items,
   className,
   isLoading,
+  compact = false,
+  ariaLabel,
   dataTour,
 }: ScholarActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,14 +91,14 @@ export function ScholarActionMenu({
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}
+        aria-label={ariaLabel ?? label}
         className={cn(
-          'inline-flex items-center gap-2 px-3 py-1.5 rounded-full',
-          'bg-surface-alt border border-border',
-          'text-sm font-semibold text-text',
+          'inline-flex items-center rounded-full border border-border bg-surface-alt text-sm font-semibold text-text',
           'transition-all duration-200',
           'hover:border-accent/50 hover:bg-surface',
           isOpen && 'border-accent bg-surface',
-          isLoading && 'opacity-60 cursor-not-allowed'
+          isLoading && 'opacity-60 cursor-not-allowed',
+          compact ? 'min-h-[44px] min-w-[44px] justify-center px-0' : 'gap-2 px-3 py-1.5'
         )}
       >
         {isLoading ? (
@@ -102,13 +106,15 @@ export function ScholarActionMenu({
         ) : (
           icon && <span className="text-accent-alt">{icon}</span>
         )}
-        <span>{label}</span>
-        <ChevronDown
-          className={cn(
-            'w-3 h-3 text-text-soft transition-transform duration-200',
-            isOpen && 'rotate-180'
-          )}
-        />
+        {!compact && <span>{label}</span>}
+        {!compact && (
+          <ChevronDown
+            className={cn(
+              'w-3 h-3 text-text-soft transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
+          />
+        )}
       </button>
 
       {/* Dropdown Menu */}

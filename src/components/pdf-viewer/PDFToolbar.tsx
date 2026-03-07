@@ -76,7 +76,7 @@ export function PDFToolbar({
           <Sidebar className="w-5 h-5" />
         </button>
 
-        <div className="h-6 w-px bg-border mx-1" />
+        <div className="mx-1 hidden h-6 w-px bg-border md:block" />
 
         <button
           type="button"

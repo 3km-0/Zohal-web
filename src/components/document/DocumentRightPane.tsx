@@ -30,9 +30,10 @@ export function DocumentRightPane({
   onClose,
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
+  const tCommon = useTranslations('common');
 
   return (
-    <aside className="fixed inset-0 z-20 flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
+    <aside className="fixed inset-0 z-20 flex h-[100svh] min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className={mode === 'chat' ? 'h-full' : 'hidden h-full'}>
           <AIPanel
@@ -48,13 +49,13 @@ export function DocumentRightPane({
         {mode === 'analysis' && (
           <div className="flex h-full min-h-0 flex-col">
             <div className="border-b border-border px-4 py-3 flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')}>
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 <ArrowLeft className="w-4 h-4 rtl-flip" />
-                {t('backToAI')}
+                {tCommon('back')}
               </Button>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                {t('close')}
+              <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')} className="hidden md:inline-flex">
+                {t('title')}
               </Button>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden">
