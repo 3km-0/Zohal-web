@@ -406,7 +406,18 @@
     "trialError": "Unable to activate the Team trial.",
     "notAuthenticated": "Not authenticated",
     "teamTrialFeature": "14-day trial with Pro-capped usage",
+    "promoCodeLabel": "Promotional code",
+    "promoCodePlaceholder": "Enter code",
+    "promoCheckoutHint": "If valid, the discount will be applied in Moyasar checkout for Max and Team web subscriptions.",
+    "promoTrialHint": "If valid, the discount will be saved now and applied when Team billing starts after the trial.",
     "close": "Close",
+    "promoErrors": {
+      "invalid": "That promotional code is not valid.",
+      "notStarted": "That promotional code is not active yet.",
+      "expired": "That promotional code has expired.",
+      "planMismatch": "That promotional code does not apply to this plan.",
+      "periodMismatch": "That promotional code does not apply to this billing period."
+    },
     "trial": {
       "intro": "Set up a card with Moyasar to start the Team trial. Zohal will not charge the card until the trial ends.",
       "holderName": "Cardholder name",

@@ -10,6 +10,7 @@ interface MoyasarTrialSetupFormProps {
   tier: string;
   period: 'monthly' | 'yearly';
   callbackUrl: string;
+  promoCode?: string;
   onTokenReady: (tokenId: string) => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export function MoyasarTrialSetupForm({
   tier,
   period,
   callbackUrl,
+  promoCode,
   onTokenReady,
 }: MoyasarTrialSetupFormProps) {
   const t = useTranslations('subscriptionPage.trial');
@@ -84,6 +86,7 @@ export function MoyasarTrialSetupForm({
           tokenId,
           tier,
           period,
+          promoCode: promoCode?.trim() || undefined,
           callbackUrl,
         })
       );

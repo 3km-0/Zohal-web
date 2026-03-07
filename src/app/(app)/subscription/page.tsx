@@ -90,6 +90,7 @@ export default function SubscriptionPage() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [handledTrialCallback, setHandledTrialCallback] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
 
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
   const [enterpriseForm, setEnterpriseForm] = useState({
@@ -132,7 +133,27 @@ export default function SubscriptionPage() {
     }
   }, [supabase, user]);
 
-  const startTrial = useCallback(async (tokenId: string, period: BillingPeriod) => {
+  const mapCheckoutError = useCallback(
+    (code: string | undefined, fallback: string) => {
+      switch (code) {
+        case 'invalid_promo':
+          return t('promoErrors.invalid');
+        case 'promo_not_started':
+          return t('promoErrors.notStarted');
+        case 'promo_expired':
+          return t('promoErrors.expired');
+        case 'promo_ineligible_tier':
+          return t('promoErrors.planMismatch');
+        case 'promo_ineligible_period':
+          return t('promoErrors.periodMismatch');
+        default:
+          return fallback;
+      }
+    },
+    [t]
+  );
+
+  const startTrial = useCallback(async (tokenId: string, period: BillingPeriod, promoCodeValue?: string) => {
     if (!user) return;
     setProcessingPayment(true);
     setPaymentError(null);
@@ -157,13 +178,14 @@ export default function SubscriptionPage() {
             tier: 'team',
             period,
             token_id: tokenId,
+            promo_code: promoCodeValue?.trim() || undefined,
           }),
         }
       );
 
       const data = await response.json();
       if (!response.ok || !data?.success) {
-        throw new Error(data?.error || t('trialError'));
+        throw new Error(mapCheckoutError(data?.code, data?.error || t('trialError')));
       }
 
       sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
@@ -177,7 +199,7 @@ export default function SubscriptionPage() {
     } finally {
       setProcessingPayment(false);
     }
-  }, [refreshProfile, router, supabase, t, user]);
+  }, [mapCheckoutError, refreshProfile, router, supabase, t, user]);
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
@@ -225,9 +247,16 @@ export default function SubscriptionPage() {
       return;
     }
 
-    let parsedState: { tokenId?: string; tier?: string; period?: BillingPeriod } | null = null;
+    let parsedState:
+      | { tokenId?: string; tier?: string; period?: BillingPeriod; promoCode?: string }
+      | null = null;
     try {
-      parsedState = JSON.parse(rawState) as { tokenId?: string; tier?: string; period?: BillingPeriod };
+      parsedState = JSON.parse(rawState) as {
+        tokenId?: string;
+        tier?: string;
+        period?: BillingPeriod;
+        promoCode?: string;
+      };
     } catch {
       sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
       setHandledTrialCallback(true);
@@ -241,7 +270,7 @@ export default function SubscriptionPage() {
     }
 
     setHandledTrialCallback(true);
-    void startTrial(parsedState.tokenId, parsedState.period || billingPeriod);
+    void startTrial(parsedState.tokenId, parsedState.period || billingPeriod, parsedState.promoCode);
   }, [billingPeriod, handledTrialCallback, searchParams, startTrial, user]);
 
   const getPrice = (plan: SubscriptionPlan): number | null => {
@@ -289,13 +318,14 @@ export default function SubscriptionPage() {
           body: JSON.stringify({
             tier: plan.tier,
             period: billingPeriod,
+            promo_code: promoCode.trim() || undefined,
           }),
         }
       );
 
       const data = await response.json();
       if (!response.ok || !data?.payment_url || !data?.checkout_state) {
-        throw new Error(data?.error || t('checkoutError'));
+        throw new Error(mapCheckoutError(data?.code, data?.error || t('checkoutError')));
       }
 
       sessionStorage.setItem(CHECKOUT_STATE_STORAGE_KEY, data.checkout_state);
@@ -318,6 +348,9 @@ export default function SubscriptionPage() {
 
   const isTrialEligible = (plan: SubscriptionPlan) =>
     plan.tier === 'team' && currentTier === 'free' && !trialConsumedAt;
+  const canApplyPromo = (plan: SubscriptionPlan) =>
+    ['premium', 'team'].includes(plan.tier) &&
+    (plan.tier === 'team' ? isTrialEligible(plan) || subscriptionFlags.v2Enabled : subscriptionFlags.v2Enabled);
 
   const tierIcons: Record<string, typeof Crown> = {
     free: Zap,
@@ -670,14 +703,49 @@ export default function SubscriptionPage() {
                   </p>
                 </div>
               ) : selectedPlan.tier === 'team' && isTrialEligible(selectedPlan) ? (
-                <MoyasarTrialSetupForm
-                  tier="team"
-                  period={billingPeriod}
-                  callbackUrl={`${window.location.origin}/subscription?trial_callback=1`}
-                  onTokenReady={(tokenId) => startTrial(tokenId, billingPeriod)}
-                />
+                <div className="space-y-4">
+                  {canApplyPromo(selectedPlan) ? (
+                    <div className="space-y-2">
+                      <Input
+                        label={t('promoCodeLabel')}
+                        placeholder={t('promoCodePlaceholder')}
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                        maxLength={32}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        disabled={processingPayment}
+                      />
+                      <p className="text-xs text-text-soft">{t('promoTrialHint')}</p>
+                    </div>
+                  ) : null}
+                  <MoyasarTrialSetupForm
+                    tier="team"
+                    period={billingPeriod}
+                    callbackUrl={`${window.location.origin}/subscription?trial_callback=1`}
+                    promoCode={promoCode}
+                    onTokenReady={(tokenId) => startTrial(tokenId, billingPeriod, promoCode)}
+                  />
+                </div>
               ) : subscriptionFlags.v2Enabled ? (
                 <div className="space-y-4">
+                  {canApplyPromo(selectedPlan) ? (
+                    <div className="space-y-2">
+                      <Input
+                        label={t('promoCodeLabel')}
+                        placeholder={t('promoCodePlaceholder')}
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                        maxLength={32}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        disabled={processingPayment}
+                      />
+                      <p className="text-xs text-text-soft">{t('promoCheckoutHint')}</p>
+                    </div>
+                  ) : null}
                   <div className="rounded-scholar bg-surface-alt p-4 text-sm text-text-soft">
                     {t('hostedCheckoutNote')}
                   </div>
