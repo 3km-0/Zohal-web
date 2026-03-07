@@ -32,7 +32,7 @@ export function DocumentRightPane({
   const t = useTranslations('aiPane');
 
   return (
-    <aside className="fixed inset-0 z-20 flex h-full w-full flex-col bg-surface md:static md:z-auto md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
+    <aside className="fixed inset-0 z-20 flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className={mode === 'chat' ? 'h-full' : 'hidden h-full'}>
           <AIPanel
@@ -46,7 +46,7 @@ export function DocumentRightPane({
           />
         </div>
         {mode === 'analysis' && (
-          <div className="h-full flex flex-col">
+          <div className="flex h-full min-h-0 flex-col">
             <div className="border-b border-border px-4 py-3 flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')}>
                 <ArrowLeft className="w-4 h-4 rtl-flip" />

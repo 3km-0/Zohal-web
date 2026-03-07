@@ -12,11 +12,12 @@ import { useAppShell } from './AppShellContext';
 interface AppHeaderProps {
   title?: string;
   subtitle?: string;
+  leading?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 }
 
-export function AppHeader({ title, subtitle, actions, className }: AppHeaderProps) {
+export function AppHeader({ title, subtitle, leading, actions, className }: AppHeaderProps) {
   const { user, signOut } = useAuth();
   const tCommon = useTranslations('common');
   const tNav = useTranslations('nav');
@@ -53,6 +54,7 @@ export function AppHeader({ title, subtitle, actions, className }: AppHeaderProp
         >
           <Menu className="h-5 w-5" />
         </button>
+        {leading ? <div className="shrink-0">{leading}</div> : null}
         <div className="min-w-0">
           {title && <h1 className="truncate text-xl font-semibold text-text">{title}</h1>}
           {subtitle && <p className="truncate text-sm text-text-soft">{subtitle}</p>}

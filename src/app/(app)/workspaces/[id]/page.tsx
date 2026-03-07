@@ -443,8 +443,16 @@ export default function WorkspaceDetailPage() {
       <AppHeader
         title={workspace?.name || 'Loading...'}
         subtitle={workspace?.description || undefined}
+        leading={
+          <Link href="/workspaces">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="w-4 h-4" />
+              {tCommon('back')}
+            </Button>
+          </Link>
+        }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -461,20 +469,16 @@ export default function WorkspaceDetailPage() {
               <CircleHelp className="w-4 h-4" />
               Tour
             </Button>
-            <Link href="/workspaces">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4" />
-                {tCommon('back')}
+            <div className="flex items-center gap-2 rounded-[18px] border border-border bg-surface-alt/80 p-1">
+              <Button variant="ghost" size="sm" onClick={() => setShowCreateFolderModal(true)}>
+                <FolderPlus className="w-4 h-4" />
+                {tFolders('newFolder')}
               </Button>
-            </Link>
-            <Button variant="secondary" onClick={() => setShowCreateFolderModal(true)}>
-              <FolderPlus className="w-4 h-4" />
-              {tFolders('newFolder')}
-            </Button>
-            <Button onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
-              <Upload className="w-4 h-4" />
-              {t('upload')}
-            </Button>
+              <Button size="sm" onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
+                <Upload className="w-4 h-4" />
+                {t('upload')}
+              </Button>
+            </div>
           </div>
         }
       />
@@ -483,17 +487,17 @@ export default function WorkspaceDetailPage() {
 
       {/* Breadcrumb */}
       {folderPath.length > 0 && (
-        <div className="px-6 py-2 border-b border-border bg-surface-alt/30">
-          <div className="flex items-center gap-1 text-sm">
+        <div className="border-b border-border bg-surface-alt/50 px-4 py-2 md:px-6">
+          <div className="flex items-center gap-1 overflow-x-auto text-sm">
             <button
               onClick={() => navigateToPathFolder(null)}
-              className="flex items-center gap-1 text-text-soft hover:text-text transition-colors"
+              className="flex shrink-0 items-center gap-1 text-text-soft transition-colors hover:text-text"
             >
               <Home className="w-4 h-4" />
               <span>{workspace?.name}</span>
             </button>
             {folderPath.map((folder, index) => (
-              <div key={folder.id} className="flex items-center gap-1">
+              <div key={folder.id} className="flex shrink-0 items-center gap-1">
                 <ChevronRight className="w-4 h-4 text-text-soft rtl-flip" />
                 <button
                   onClick={() => navigateToPathFolder(folder.id)}
@@ -512,7 +516,7 @@ export default function WorkspaceDetailPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Spinner size="lg" />

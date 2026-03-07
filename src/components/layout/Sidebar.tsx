@@ -60,7 +60,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-40 flex h-screen w-[18rem] max-w-[85vw] flex-col border-r border-border bg-surface/95 backdrop-blur-md transition-transform duration-300 md:static md:z-auto md:max-w-none md:bg-surface/80',
+        'fixed inset-y-0 left-0 z-40 flex h-dvh w-[18rem] max-w-[85vw] flex-col border-r border-border bg-surface shadow-[var(--shadowMd)] transition-transform duration-300 md:static md:z-auto md:max-w-none md:shadow-none',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         collapsed ? 'md:w-16' : 'md:w-64',
         className
