@@ -184,6 +184,23 @@
       "invoice": "Invoice",
       "legal_filing": "Legal Filing",
       "other": "Other"
+    },
+    "analysisLabels": {
+      "document": "Document Analysis",
+      "contract": "Contract Analysis",
+      "legalFiling": "Legal Filing Analysis",
+      "financialReport": "Financial Report Analysis",
+      "invoice": "Invoice Analysis",
+      "meetingNotes": "Meeting Notes Analysis",
+      "textbook": "Textbook Analysis",
+      "lectureNotes": "Lecture Notes Analysis",
+      "problemSet": "Problem Set Analysis",
+      "paper": "Paper Analysis",
+      "personalNotes": "Personal Notes Analysis",
+      "budget": "Budget Analysis",
+      "research": "Research Analysis",
+      "sop": "SOP Analysis",
+      "onboarding": "Onboarding Document Analysis"
     }
   },
   "notes": {
@@ -215,7 +232,24 @@
     "saveToNotes": "Save to Notes",
     "savedToNotesTitle": "Saved to Notes",
     "savedToNotesBody": "This response is now available in workspace Notes.",
-    "conversationFallback": "Conversation"
+    "conversationFallback": "Conversation",
+    "modelPicker": {
+      "title": "Choose a model",
+      "subtitle": "Pick the model that matches the work. Your current choice stays selected until you change it.",
+      "search": "Search models…",
+      "openSource": "Open source",
+      "customModel": "Custom model",
+      "featureLabels": {
+        "balancedDrafting": "Balanced drafting",
+        "deepReasoning": "Deep reasoning",
+        "longContext": "Long context",
+        "toolWorkflows": "Tool workflows",
+        "fastEverydayChat": "Fast everyday chat",
+        "openSourceAlternative": "Open-source alternative",
+        "codeAndStructure": "Code and structure",
+        "multilingualReasoning": "Multilingual reasoning"
+      }
+    }
   },
   "search": {
     "title": "Search",
@@ -876,9 +910,9 @@
     },
     "playbook": {
       "label": "Template",
-      "default": "Renewal Pack",
+      "default": "Automatic",
       "helperSelected": "Uses the selected template to gate variables/modules.",
-      "helperDefault": "Runs the default contract template."
+      "helperDefault": "Uses the recommended Zohal template for this document."
     }
   },
   "contractAnalysis": {
@@ -897,7 +931,7 @@
       "optional": "Template (optional)",
       "manage": "Manage",
       "label": "Template",
-      "defaultRenewalPack": "Renewal Pack",
+      "defaultRenewalPack": "Automatic",
       "zohalTemplates": "Zohal Templates",
       "yourTemplates": "Your Templates",
       "loadingTemplates": "Loading templates...",

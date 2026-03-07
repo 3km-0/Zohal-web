@@ -14,6 +14,7 @@ import type { RightPaneMode } from '@/types/analysis-runs';
 import { cn } from '@/lib/utils';
 import { mapHttpError, notFound } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
+import { getAnalysisLabelKey } from '@/lib/document-analysis';
 
 interface DocumentViewerShellProps {
   initialMode?: RightPaneMode;
@@ -33,6 +34,7 @@ export default function DocumentViewerShell({
   const supabase = useMemo(() => createClient(), []);
   const { show, showSuccess, showError } = useToast();
   const tTypes = useTranslations('documents.types');
+  const tAnalysisLabels = useTranslations('documents.analysisLabels');
 
   const [document, setDocument] = useState<Document | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -63,22 +65,10 @@ export default function DocumentViewerShell({
     }
   }, [tTypes]);
 
-  const getAnalysisLabel = useCallback((documentType?: string | null) => {
-    switch (documentType) {
-      case 'contract':
-        return 'Contract Analysis';
-      case 'legal_filing':
-        return 'Legal Filing Analysis';
-      case 'financial_report':
-        return 'Financial Report Analysis';
-      case 'invoice':
-        return 'Invoice Analysis';
-      case 'meeting_notes':
-        return 'Meeting Notes Analysis';
-      default:
-        return 'Document Analysis';
-    }
-  }, []);
+  const getAnalysisLabel = useCallback(
+    (documentType?: string | null) => tAnalysisLabels(getAnalysisLabelKey(documentType)),
+    [tAnalysisLabels]
+  );
   
   const tapToProof = useMemo(() => {
     const pageStr = searchParams.get('page');

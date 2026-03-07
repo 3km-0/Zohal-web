@@ -7,6 +7,7 @@ import { X, Play, Layers, FileText, CheckCircle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { selectRecommendedPlaybook } from '@/lib/document-analysis';
 
 type PlaybookScope = 'single' | 'bundle' | 'either';
 type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
@@ -54,6 +55,8 @@ export function RunAnalysisModal(props: {
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateFilter, setTemplateFilter] = useState<TemplateFilter>('all');
+  const [didInitializeRecommendedPlaybook, setDidInitializeRecommendedPlaybook] = useState(false);
+  const [documentMetadata, setDocumentMetadata] = useState<{ title: string | null; original_filename: string | null; document_type: string | null } | null>(null);
 
   const [scope, setScope] = useState<Scope>('single');
   const [bundles, setBundles] = useState<DocumentBundleRow[]>([]);
@@ -101,9 +104,40 @@ export function RunAnalysisModal(props: {
     setCreatingBundle(false);
     setTemplateSearch('');
     setTemplateFilter('all');
+    setSelectedPlaybookId('');
+    setSelectedPlaybookVersionId('');
+    setDidInitializeRecommendedPlaybook(false);
     void loadPlaybooks();
     void loadBundles();
-  }, [open, loadPlaybooks, loadBundles]);
+
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('documents')
+          .select('title, original_filename, document_type')
+          .eq('id', documentId)
+          .maybeSingle();
+        setDocumentMetadata((data || null) as typeof documentMetadata);
+      } catch {
+        setDocumentMetadata(null);
+      }
+    })();
+  }, [open, loadPlaybooks, loadBundles, supabase, documentId]);
+
+  useEffect(() => {
+    if (!open || didInitializeRecommendedPlaybook || selectedPlaybookId || playbooks.length === 0) return;
+
+    const recommendedPlaybook = selectRecommendedPlaybook(playbooks, {
+      documentType: documentMetadata?.document_type || documentType,
+      title: documentMetadata?.title,
+      originalFilename: documentMetadata?.original_filename,
+    });
+    if (recommendedPlaybook) {
+      setSelectedPlaybookId(recommendedPlaybook.id);
+      setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
+    }
+    setDidInitializeRecommendedPlaybook(true);
+  }, [didInitializeRecommendedPlaybook, documentMetadata, documentType, open, playbooks, selectedPlaybookId]);
 
   const selectedPlaybook = useMemo(() => {
     if (!selectedPlaybookId) return null;

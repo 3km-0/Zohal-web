@@ -184,6 +184,23 @@
       "invoice": "فاتورة",
       "legal_filing": "مستند قانوني",
       "other": "أخرى"
+    },
+    "analysisLabels": {
+      "document": "تحليل المستند",
+      "contract": "تحليل العقد",
+      "legalFiling": "تحليل المستند القانوني",
+      "financialReport": "تحليل التقرير المالي",
+      "invoice": "تحليل الفاتورة",
+      "meetingNotes": "تحليل ملاحظات الاجتماع",
+      "textbook": "تحليل الكتاب الدراسي",
+      "lectureNotes": "تحليل ملاحظات المحاضرة",
+      "problemSet": "تحليل مجموعة المسائل",
+      "paper": "تحليل الورقة البحثية",
+      "personalNotes": "تحليل الملاحظات الشخصية",
+      "budget": "تحليل الميزانية",
+      "research": "تحليل البحث",
+      "sop": "تحليل الإجراء التشغيلي",
+      "onboarding": "تحليل مستند التعريف"
     }
   },
   "notes": {
@@ -215,7 +232,24 @@
     "saveToNotes": "حفظ في الملاحظات",
     "savedToNotesTitle": "تم الحفظ في الملاحظات",
     "savedToNotesBody": "أصبحت هذه الإجابة متاحة الآن في ملاحظات مساحة العمل.",
-    "conversationFallback": "محادثة"
+    "conversationFallback": "محادثة",
+    "modelPicker": {
+      "title": "اختر النموذج",
+      "subtitle": "اختر النموذج المناسب للعمل. سيبقى اختيارك الحالي مفعلاً حتى تغيّره.",
+      "search": "ابحث في النماذج…",
+      "openSource": "مفتوح المصدر",
+      "customModel": "نموذج مخصص",
+      "featureLabels": {
+        "balancedDrafting": "صياغة متوازنة",
+        "deepReasoning": "استدلال عميق",
+        "longContext": "سياق طويل",
+        "toolWorkflows": "سير العمل بالأدوات",
+        "fastEverydayChat": "محادثة سريعة للاستخدام اليومي",
+        "openSourceAlternative": "بديل مفتوح المصدر",
+        "codeAndStructure": "البرمجة والمخرجات المنظمة",
+        "multilingualReasoning": "استدلال متعدد اللغات"
+      }
+    }
   },
   "search": {
     "title": "البحث",
@@ -876,9 +910,9 @@
     },
     "playbook": {
       "label": "القالب",
-      "default": "حزمة التجديد",
+      "default": "تلقائي",
       "helperSelected": "يستخدم القالب المحدد للتحكم في المتغيرات/الوحدات.",
-      "helperDefault": "يشغّل قالب العقود الافتراضي."
+      "helperDefault": "يستخدم قالب زحل الموصى به لهذا المستند."
     }
   },
   "contractAnalysis": {
@@ -897,7 +931,7 @@
       "optional": "القالب (اختياري)",
       "manage": "إدارة القوالب",
       "label": "القالب",
-      "defaultRenewalPack": "حزمة التجديد",
+      "defaultRenewalPack": "تلقائي",
       "zohalTemplates": "قوالب زحل",
       "yourTemplates": "قوالبك",
       "loadingTemplates": "جارٍ تحميل القوالب…",

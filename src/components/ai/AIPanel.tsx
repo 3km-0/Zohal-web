@@ -4,13 +4,23 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
+  Brain,
+  CheckCircle2,
+  ChevronDown,
+  Code2,
   Clock,
   FileText,
+  Globe2,
+  Hammer,
+  Layers3,
+  LockOpen,
   MessageSquare,
   Send,
   Sparkles,
   Star,
+  Type,
   X,
+  Zap,
 } from 'lucide-react';
 import { Button, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -18,6 +28,8 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import type { DocumentType } from '@/types/database';
+import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
+import { supportsStructuredAnalysis } from '@/lib/document-analysis';
 
 interface AIPanelProps {
   documentId: string;
@@ -67,8 +79,24 @@ export function AIPanel({
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatSeqRef = useRef(0);
+  const [selectedModelId, setSelectedModelId] = useState<string>(() => {
+    if (typeof window === 'undefined') return DEFAULT_CHAT_MODEL_ID;
+    return window.localStorage.getItem('zohal.chat.modelId') || DEFAULT_CHAT_MODEL_ID;
+  });
+
+  const selectedModel = useMemo(() => findChatModelOption(selectedModelId), [selectedModelId]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('zohal.chat.modelId', selectedModelId);
+    } catch {
+      // ignore
+    }
+  }, [selectedModelId]);
 
   // Load conversation history
   const loadConversationHistory = useCallback(async () => {
@@ -134,15 +162,20 @@ export function AIPanel({
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
   }, [onOpenAnalysis, router, workspaceId, documentId]);
 
-  const supportsAnalysis = useMemo(
-    () =>
-      documentType === 'contract' ||
-      documentType === 'legal_filing' ||
-      documentType === 'financial_report' ||
-      documentType === 'invoice' ||
-      documentType === 'meeting_notes',
-    [documentType]
-  );
+  const supportsAnalysis = useMemo(() => supportsStructuredAnalysis(documentType), [documentType]);
+
+  const filteredModelOptions = useMemo(() => {
+    const query = modelSearch.trim().toLowerCase();
+    if (!query) return CHAT_MODEL_OPTIONS;
+    return CHAT_MODEL_OPTIONS.filter((option) => {
+      return (
+        option.title.toLowerCase().includes(query) ||
+        option.id.toLowerCase().includes(query) ||
+        option.provider.toLowerCase().includes(query) ||
+        t(`modelPicker.featureLabels.${option.featureKey}`).toLowerCase().includes(query)
+      );
+    });
+  }, [modelSearch, t]);
 
   const buildChatContext = useCallback(async () => {
     const contextParts: string[] = [];
@@ -301,6 +334,7 @@ export function AIPanel({
               message,
               context,
               request_type: 'chat',
+              model: selectedModelId,
             }),
           }
         );
@@ -349,6 +383,7 @@ export function AIPanel({
       loading,
       loadConversationHistory,
       buildChatContext,
+      selectedModelId,
     ]
   );
 
@@ -603,6 +638,31 @@ export function AIPanel({
 
           {/* Chat input - always visible */}
           <div className="p-4 border-t border-border">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setShowModelPicker(true)}
+                className="inline-flex max-w-full items-center gap-2 rounded-scholar border border-border bg-surface-alt px-3 py-2 text-left transition-colors hover:border-accent/40 hover:text-text"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
+                  {selectedModel?.providerMark || 'M'}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-text">
+                    {selectedModel?.title || t('modelPicker.customModel')}
+                  </span>
+                  <span className="block truncate text-xs text-text-soft">
+                    {selectedModel ? t(`modelPicker.featureLabels.${selectedModel.featureKey}`) : selectedModelId}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-text-soft" />
+              </button>
+              {selectedModel?.isOpenSource ? (
+                <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent">
+                  {t('modelPicker.openSource')}
+                </span>
+              ) : null}
+            </div>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -691,7 +751,106 @@ export function AIPanel({
             </div>
           </div>
         )}
+
+        {showModelPicker && (
+          <div className="absolute inset-0 z-20 bg-black/40 p-4">
+            <div className="mx-auto flex h-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div>
+                  <div className="text-base font-semibold text-text">{t('modelPicker.title')}</div>
+                  <div className="text-sm text-text-soft">{t('modelPicker.subtitle')}</div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowModelPicker(false)}>
+                  <X className="w-4 h-4" />
+                  {t('close')}
+                </Button>
+              </div>
+
+              <div className="border-b border-border px-4 py-3">
+                <input
+                  type="text"
+                  value={modelSearch}
+                  onChange={(e) => setModelSearch(e.target.value)}
+                  placeholder={t('modelPicker.search')}
+                  className="w-full rounded-scholar border border-border bg-surface-alt px-4 py-2.5 text-sm text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-auto p-4 space-y-3">
+                {filteredModelOptions.map((option) => {
+                  const isSelected = selectedModelId === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModelId(option.id);
+                        setShowModelPicker(false);
+                      }}
+                      className={cn(
+                        'w-full rounded-2xl border p-4 text-left transition-colors',
+                        isSelected
+                          ? 'border-accent bg-accent/5'
+                          : 'border-border bg-surface-alt hover:border-accent/40'
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-bold text-accent">
+                          {option.providerMark}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-text">{option.title}</span>
+                            <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-soft">
+                              {option.provider}
+                            </span>
+                            {option.isOpenSource ? (
+                              <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                                {t('modelPicker.openSource')}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2 text-sm text-text-soft">
+                            {modelFeatureIcon(option)}
+                            <span>{t(`modelPicker.featureLabels.${option.featureKey}`)}</span>
+                          </div>
+                          <div className="mt-2 text-xs text-text-soft">{option.id}</div>
+                        </div>
+                        <CheckCircle2
+                          className={cn('mt-0.5 h-5 w-5 shrink-0', isSelected ? 'text-accent' : 'text-transparent')}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
+
+  function modelFeatureIcon(option: ChatModelOption) {
+    const className = 'h-4 w-4 shrink-0';
+    switch (option.icon) {
+      case 'brain':
+        return <Brain className={className} />;
+      case 'context':
+        return <Layers3 className={className} />;
+      case 'tools':
+        return <Hammer className={className} />;
+      case 'fast':
+        return <Zap className={className} />;
+      case 'open':
+        return <LockOpen className={className} />;
+      case 'code':
+        return <Code2 className={className} />;
+      case 'globe':
+        return <Globe2 className={className} />;
+      case 'text':
+      default:
+        return <Type className={className} />;
+    }
+  }
 }

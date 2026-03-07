@@ -33,6 +33,7 @@ import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
 import type { AnalysisRunSummary } from '@/types/analysis-runs';
 import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, toAnalysisRunSummary } from '@/lib/analysis/runs';
+import { selectRecommendedPlaybook } from '@/lib/document-analysis';
 
 type Tab = string;
 
@@ -171,7 +172,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isExportingAuditPack, setIsExportingAuditPack] = useState(false);
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
-  const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata'> | null>(null);
+  const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata' | 'title' | 'original_filename' | 'document_type'> | null>(null);
   const [bundleDocuments, setBundleDocuments] = useState<Array<{ id: string; title: string; role?: string }>>([]);
   const [isRunningCompliance, setIsRunningCompliance] = useState(false);
   const [isGeneratingKnowledgePack, setIsGeneratingKnowledgePack] = useState(false);
@@ -187,6 +188,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateFilter, setTemplateFilter] = useState<TemplateFilter>('all');
+  const [didInitializeRecommendedPlaybook, setDidInitializeRecommendedPlaybook] = useState(false);
 
   // DocSet/run setup state.
   const [scope, setScope] = useState<RunScope>('single');
@@ -865,7 +867,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
       // Fetch document row for Privacy Mode UI + redaction report (safe metadata only).
       const { data: docData, error: docErr } = await supabase
         .from('documents')
-        .select('privacy_mode, source_metadata')
+        .select('privacy_mode, source_metadata, title, original_filename, document_type')
         .eq('id', documentId)
         .maybeSingle();
       if (!docErr) setDocumentRow((docData || null) as any);
@@ -963,18 +965,38 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
         const pbs = data.playbooks as PlaybookRecord[];
         setPlaybooks(pbs);
         
-        // Auto-select template if none selected
-        if (!selectedPlaybookId && pbs.length > 0) {
-          // Prefer "General Contract Analysis" as the product default.
-          const defaultPb = pbs.find((p) => p.name === 'General Contract Analysis') || pbs[0];
-          setSelectedPlaybookId(defaultPb.id);
-          setSelectedPlaybookVersionId(defaultPb.current_version?.id || '');
+        if (!didInitializeRecommendedPlaybook && !selectedPlaybookId && pbs.length > 0) {
+          const recommendedPlaybook = selectRecommendedPlaybook(pbs, {
+            documentType: documentRow?.document_type || 'contract',
+            title: documentRow?.title,
+            originalFilename: documentRow?.original_filename,
+          });
+          if (recommendedPlaybook) {
+            setSelectedPlaybookId(recommendedPlaybook.id);
+            setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
+          }
+          setDidInitializeRecommendedPlaybook(true);
         }
       }
     } catch {
       // Best-effort: ignore and fall back to default analysis
     }
   }
+
+  useEffect(() => {
+    if (!documentRow || playbooks.length === 0 || didInitializeRecommendedPlaybook || selectedPlaybookId) return;
+
+    const recommendedPlaybook = selectRecommendedPlaybook(playbooks, {
+      documentType: documentRow.document_type || 'contract',
+      title: documentRow.title,
+      originalFilename: documentRow.original_filename,
+    });
+    if (recommendedPlaybook) {
+      setSelectedPlaybookId(recommendedPlaybook.id);
+      setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
+    }
+    setDidInitializeRecommendedPlaybook(true);
+  }, [didInitializeRecommendedPlaybook, documentRow, playbooks, selectedPlaybookId]);
 
   async function loadBundlePacks() {
     try {
