@@ -59,7 +59,7 @@ export function PDFToolbar({
   const zoomPercentage = Math.round(scale * 100);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 sm:px-4">
+    <div className="hidden flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 sm:px-4 md:flex">
       {/* Left: Thumbnails toggle & Page navigation */}
       <div className="flex flex-wrap items-center gap-2">
         <button

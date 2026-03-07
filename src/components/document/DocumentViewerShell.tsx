@@ -299,8 +299,8 @@ export default function DocumentViewerShell({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface px-3 py-2 sm:px-4">
-        <div className="flex min-w-0 flex-1 items-start gap-2 sm:gap-3">
+      <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={openMobileSidebar}
@@ -316,8 +316,8 @@ export default function DocumentViewerShell({
             <ArrowLeft className="w-5 h-5 text-text-soft" />
           </Link>
           <div className="min-w-0">
-            <h1 className="max-w-full truncate font-semibold text-text sm:max-w-md">{document.title}</h1>
-            <div className="flex flex-wrap items-center gap-2">
+            <h1 className="max-w-full truncate text-xl font-semibold leading-none text-text sm:max-w-md">{document.title}</h1>
+            <div className="mt-1 hidden flex-wrap items-center gap-2 md:flex">
               {document.document_type && (
                 <Badge size="sm">{getDocumentTypeLabel(document.document_type)}</Badge>
               )}
@@ -333,7 +333,7 @@ export default function DocumentViewerShell({
           </div>
         </div>
 
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+        <div className="flex shrink-0 items-center justify-end gap-2">
           <Button
             variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
             size="sm"
@@ -349,7 +349,7 @@ export default function DocumentViewerShell({
             }}
           >
             <Scale className="w-4 h-4" />
-            <span className="hidden md:inline">{getAnalysisLabel(document.document_type)}</span>
+            <span className="hidden lg:inline">{getAnalysisLabel(document.document_type)}</span>
           </Button>
           <Button
             variant="ghost"

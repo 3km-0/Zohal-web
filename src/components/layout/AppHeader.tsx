@@ -40,12 +40,12 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
   return (
     <header
       className={cn(
-        'flex flex-wrap items-start gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-md md:flex-nowrap md:items-center md:justify-between md:px-6 md:py-4',
+        'flex items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-md md:px-6 md:py-4',
         className
       )}
     >
       {/* Left: Title */}
-      <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
           onClick={openMobileSidebar}
@@ -56,13 +56,13 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         </button>
         {leading ? <div className="shrink-0">{leading}</div> : null}
         <div className="min-w-0">
-          {title && <h1 className="truncate text-xl font-semibold text-text">{title}</h1>}
-          {subtitle && <p className="truncate text-sm text-text-soft">{subtitle}</p>}
+          {title && <h1 className="truncate text-xl font-semibold leading-none text-text">{title}</h1>}
+          {subtitle && <p className="mt-1 hidden truncate text-sm text-text-soft md:block">{subtitle}</p>}
         </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-4">
+      <div className="ml-auto flex shrink-0 items-center justify-end gap-2 sm:gap-4">
         {actions}
 
         {/* Global Search */}
