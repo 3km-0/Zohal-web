@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import React, { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import * as pdfjs from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
@@ -10,6 +10,7 @@ import { Spinner } from '@/components/ui';
 
 // Set worker path for PDF.js - use unpkg which has all versions
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+const PDF_RENDER_SURFACE_DIR = 'ltr';
 
 interface PDFViewerProps {
   url: string;
@@ -308,6 +309,8 @@ export function PDFViewer({
         {/* Main PDF View */}
         <div
           ref={containerRef}
+          dir={PDF_RENDER_SURFACE_DIR}
+          data-testid="pdf-render-surface"
           className="flex-1 overflow-auto p-2 sm:p-4"
           onScroll={(e) => {
             // Update current page based on scroll position
@@ -415,6 +418,10 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
           return;
         }
 
+        // Canvas text rendering inherits document direction by default.
+        // Keep PDF.js painting LTR even when the surrounding app shell is RTL.
+        context.direction = PDF_RENDER_SURFACE_DIR;
+
         // Set canvas dimensions directly (no DPI scaling to keep it simple)
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -466,6 +473,7 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
     <div
       ref={pageRef}
       id={`pdf-page-${pageNumber}`}
+      dir={PDF_RENDER_SURFACE_DIR}
       className="relative w-full overflow-hidden rounded-scholar bg-white shadow-scholar"
       style={{
         maxWidth: dimensions.width || undefined,
@@ -485,6 +493,8 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
       )}
       <canvas 
         ref={canvasRef} 
+        dir={PDF_RENDER_SURFACE_DIR}
+        data-testid={`pdf-canvas-${pageNumber}`}
         className="block h-auto w-full"
         style={{ display: status === 'rendered' ? 'block' : 'none' }}
       />
