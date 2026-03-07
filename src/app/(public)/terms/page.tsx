@@ -1,11 +1,15 @@
+import { absoluteUrl } from '@/lib/seo';
 import { Badge } from '@/components/ui';
 import Link from 'next/link';
 
 export async function generateMetadata() {
   return {
-    title: 'Terms of Use (EULA) - Zohal',
+    title: 'Terms of Use',
     description:
-      'End User License Agreement for Zohal - Please read these terms carefully before using the app.',
+      'Read the terms that govern use of Zohal, including subscriptions, billing, account responsibilities, and service limits.',
+    alternates: {
+      canonical: absoluteUrl('/terms'),
+    },
   };
 }
 

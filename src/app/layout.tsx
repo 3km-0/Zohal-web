@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { MsalProvider } from '@/components/providers/MsalProvider';
 import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
+import { absoluteUrl } from '@/lib/seo';
 import './globals.css';
 
 const sourceSerif = Source_Serif_4({
@@ -25,30 +26,57 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://zohal.ai'),
-  title: 'Zohal - AI STEM Notebook',
+  metadataBase: new URL(absoluteUrl('/')),
+  title: {
+    default: 'Zohal',
+    template: '%s | Zohal',
+  },
   description:
-    'The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.',
-  keywords: ['AI', 'STEM', 'notebook', 'PDF', 'education', 'math', 'science'],
+    'Zohal helps teams review contracts, invoices, and document sets with verified findings, surfaced conflicts, and page-level evidence.',
+  applicationName: 'Zohal',
+  keywords: [
+    'document analysis',
+    'document verification',
+    'contract analysis',
+    'evidence-based review',
+    'Arabic English document review',
+    'invoice verification',
+  ],
   authors: [{ name: 'Zohal' }],
   icons: {
     icon: '/icon.png',
     apple: '/apple-icon.png',
   },
+  alternates: {
+    canonical: absoluteUrl('/home'),
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
-    title: 'Zohal - AI STEM Notebook',
+    title: 'Zohal',
     description:
-      'The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.',
-    url: 'https://zohal.ai',
+      'Verified document analysis with page-level evidence for teams that need work that stands up to review.',
+    url: absoluteUrl('/home'),
     siteName: 'Zohal',
     locale: 'en_US',
     type: 'website',
+    images: [
+      {
+        url: absoluteUrl('/icon.png'),
+        width: 512,
+        height: 512,
+        alt: 'Zohal',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Zohal - AI STEM Notebook',
+    title: 'Zohal',
     description:
-      'The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.',
+      'Verified document analysis with page-level evidence for teams that need work that stands up to review.',
+    images: [absoluteUrl('/icon.png')],
   },
 };
 
@@ -80,4 +108,3 @@ export default async function RootLayout({
     </html>
   );
 }
-

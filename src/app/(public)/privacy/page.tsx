@@ -1,10 +1,14 @@
-import { getTranslations } from 'next-intl/server';
-import { Badge, IconBox } from '@/components/ui';
+import { absoluteUrl } from '@/lib/seo';
+import { Badge } from '@/components/ui';
 
 export async function generateMetadata() {
   return {
-    title: 'Privacy Policy - Zohal',
-    description: 'Your privacy matters to us. Learn how we protect and handle your information.',
+    title: 'Privacy Policy',
+    description:
+      'Learn what Zohal collects, how document and AI processing works, and which service providers process your data.',
+    alternates: {
+      canonical: absoluteUrl('/privacy'),
+    },
   };
 }
 
@@ -52,121 +56,180 @@ function BulletList({ items }: { items: Array<{ title: string; description: stri
 export default function PrivacyPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 pt-24 pb-12">
-      {/* Header */}
       <header className="text-center pt-16 pb-12">
         <Badge variant="success" dot className="mb-6">
-          Last updated: December 2025
+          Last updated: March 2026
         </Badge>
         <h1 className="text-4xl md:text-5xl font-bold text-text tracking-tight mb-4">
           Privacy Policy
         </h1>
-        <p className="text-xl text-text-soft max-w-lg mx-auto">
-          Your privacy matters to us. Here&apos;s how we protect and handle your information.
+        <p className="text-xl text-text-soft max-w-2xl mx-auto">
+          This policy explains what data Zohal collects, how document and AI processing works, and
+          which service providers process data on our behalf.
         </p>
       </header>
 
-      {/* Content */}
       <main>
         <Section icon="🔒" title="Our Commitment to Privacy">
           <p>
-            Welcome to <strong className="text-text">Zohal</strong>. We believe your personal data
-            belongs to you. This Privacy Policy explains our practices regarding the collection,
-            use, and protection of your information when you use our application.
+            Welcome to <strong className="text-text">Zohal</strong>. We believe your data belongs
+            to you. We collect and process information only as needed to provide document analysis,
+            retrieval, collaboration, billing, security, and support.
           </p>
           <HighlightBox>
             <p className="text-sm">
-              <strong className="text-text">In short:</strong> We collect only what&apos;s necessary
-              to provide you with a great experience, and we never sell your personal data to third
-              parties.
+              <strong className="text-text">In short:</strong> We do not sell personal data. We
+              ask for in-app permission before the first standard-mode cloud AI request, and users
+              can use Privacy Mode for sanitized processing paths.
             </p>
           </HighlightBox>
         </Section>
 
         <Section icon="📊" title="Information We Collect">
-          <p>To provide and improve Zohal, we may collect the following types of information:</p>
           <BulletList
             items={[
               {
                 title: 'Account Information',
                 description:
-                  'When you create an account, we collect your email address and any profile information you choose to provide.',
+                  'Email address, profile details you provide, subscription state, and authentication records.',
               },
               {
-                title: 'Usage Data',
+                title: 'Document Content',
                 description:
-                  'We collect anonymous data about how you interact with the app, including features used and session duration, to improve your experience.',
+                  'Documents, notes, prompts, selected excerpts, evidence anchors, workspace records, and related metadata you upload or create.',
               },
               {
-                title: 'Device Information',
+                title: 'AI Request Data',
                 description:
-                  'Basic device details like operating system version and device type help us optimize the app for your device.',
+                  'Prompts, selected text, nearby context, retrieved excerpts, and image regions needed to answer an AI or OCR request.',
               },
               {
-                title: 'User Content',
+                title: 'Usage and Device Information',
                 description:
-                  'Documents, notes, and other content you create or upload within the app is stored securely to provide our services.',
+                  'Basic device details, app version, diagnostic events, and feature usage needed to secure, operate, and improve the service.',
               },
             ]}
           />
         </Section>
 
         <Section icon="⚙️" title="How We Use Your Information">
-          <p>Your information helps us deliver and improve the Zohal experience:</p>
           <BulletList
             items={[
               {
                 title: 'Provide Services',
                 description:
-                  'To operate, maintain, and deliver the features you use, including AI-powered explanations and document analysis.',
+                  'To operate document storage, retrieval, AI chat, explanations, OCR, evidence-grade analysis, account access, and workspace features.',
               },
               {
                 title: 'Personalization',
-                description: 'To customize your experience and remember your preferences.',
+                description: 'To remember preferences and tailor your experience.',
               },
               {
-                title: 'Communication',
+                title: 'Support and Communication',
                 description:
-                  'To send important updates, respond to inquiries, and provide customer support.',
+                  'To send service notices, respond to support requests, and communicate about your account.',
               },
               {
-                title: 'Improvement',
-                description: 'To analyze usage patterns and continuously enhance the app.',
+                title: 'AI Processing',
+                description:
+                  'To generate explanations, chat responses, OCR results, and document-analysis outputs that you explicitly request.',
               },
               {
-                title: 'Security',
-                description: 'To detect and prevent fraud, abuse, and security incidents.',
+                title: 'Security and Reliability',
+                description: 'To prevent abuse, secure the service, and troubleshoot issues.',
               },
             ]}
           />
         </Section>
 
-        <Section icon="🤝" title="Data Sharing & Third Parties">
-          <p>We take your trust seriously. Here&apos;s when and how we might share information:</p>
+        <Section icon="🤖" title="AI Processing, Privacy Mode, and Consent">
+          <p>
+            Zohal offers standard processing and Privacy Mode. In standard processing, some AI
+            features may send relevant document data to cloud AI processors after you give in-app
+            permission. In Privacy Mode, the original PDF stays on your device and supported cloud
+            features use sanitized content instead.
+          </p>
           <BulletList
             items={[
               {
-                title: 'We Never Sell Your Data',
-                description: 'Your personal information is not for sale. Period.',
+                title: 'What may be sent',
+                description:
+                  'Selected text, nearby context, prompts, retrieved excerpts, document text required for a requested analysis, and image regions required for OCR.',
               },
               {
-                title: 'Service Providers',
+                title: 'When it is sent',
                 description:
-                  "We work with trusted partners who help us operate (hosting, analytics, AI services, and Google services when you connect your Google account). They're bound by strict confidentiality agreements.",
+                  'Only when you choose AI-assisted features such as chat, Explain, OCR, or contract analysis.',
               },
               {
-                title: 'AI Processing',
+                title: 'Permission',
                 description:
-                  'Document content may be processed by AI services to provide explanations and analysis. This data is not used to train AI models.',
+                  'We ask for one-time in-app permission before the first standard-mode cloud AI request, and you can withdraw that permission later in Settings.',
+              },
+              {
+                title: 'Model training',
+                description:
+                  'Client documents and AI request content are not used by Zohal to train third-party AI models.',
+              },
+            ]}
+          />
+        </Section>
+
+        <Section icon="🤝" title="Data Sharing and Service Providers">
+          <p>We share data only as needed to provide the service, comply with law, or with your direction.</p>
+          <BulletList
+            items={[
+              {
+                title: 'Core Infrastructure',
+                description:
+                  'We use Supabase for authentication, database services, access controls, and operational backend services, and Google Cloud infrastructure for storage and compute operations.',
+              },
+              {
+                title: 'AI and OCR Processors',
+                description:
+                  'We use Google Cloud Vertex AI, OpenAI, and Mathpix to power specific AI and OCR features. Depending on the selected model or workspace configuration, Vertex AI may process requests using Google-hosted or supported third-party publisher models available through Vertex AI.',
+              },
+              {
+                title: 'Connected Services',
+                description:
+                  'If you connect Google Drive, Google Sign-In, Microsoft OneDrive, or other integrations, we process the data needed to provide that connection at your request.',
               },
               {
                 title: 'Legal Requirements',
                 description:
-                  'We may disclose information if required by law or to protect rights and safety.',
+                  'We may disclose information if required by law or to protect rights, safety, or the integrity of the service.',
               },
               {
-                title: 'With Your Consent',
+                title: 'With Your Direction',
                 description:
-                  "We'll share information for any other purpose only with your explicit permission.",
+                  'We process or share data with other services only when you trigger those actions or otherwise authorize them.',
+              },
+            ]}
+          />
+        </Section>
+
+        <Section icon="🗂️" title="Third-Party Processor Summary">
+          <BulletList
+            items={[
+              {
+                title: 'Google Cloud Vertex AI',
+                description:
+                  'Processes AI prompts, selected text, retrieved excerpts, and document-analysis inputs for supported features.',
+              },
+              {
+                title: 'OpenAI',
+                description:
+                  'Processes AI prompts, selected text, retrieved excerpts, and document-analysis inputs for supported features.',
+              },
+              {
+                title: 'Mathpix',
+                description:
+                  'Processes image regions or handwriting inputs when you use OCR or handwriting-recognition features.',
+              },
+              {
+                title: 'Google Drive and Microsoft OneDrive',
+                description:
+                  'Process authentication and file-import actions only when you connect those services and choose files to import.',
               },
             ]}
           />
@@ -174,20 +237,25 @@ export default function PrivacyPage() {
 
         <Section icon="🧩" title="Google API Services">
           <p>
-            Zohal uses Google API Services to provide certain features. When you connect your Google
-            account, we may access the following:
+            Zohal uses Google API Services to provide sign-in and optional file import features.
+            When you connect your Google account, we may access the following:
           </p>
           <BulletList
             items={[
               {
                 title: 'Google Sign-In',
                 description:
-                  'Basic profile information (name, email address, profile picture) used solely for authentication and account creation.',
+                  'Basic profile information such as name, email address, and profile image for authentication and account creation.',
+              },
+              {
+                title: 'Google Drive',
+                description:
+                  'The files or folders you choose to import into Zohal. We do not access unrelated files in your Drive.',
               },
               {
                 title: 'Google Calendar',
                 description:
-                  'Permission to create calendar events on your behalf. We only add events you explicitly request through the app, and we do not read, store, or access your existing calendar events.',
+                  'Permission to create calendar events on your behalf only when you explicitly ask us to create them.',
               },
             ]}
           />
@@ -205,30 +273,14 @@ export default function PrivacyPage() {
               , including the Limited Use requirements.
             </p>
           </HighlightBox>
-          <p className="text-sm">
-            You can revoke Zohal&apos;s access to your Google data at any time by visiting your{' '}
-            <a
-              href="https://myaccount.google.com/permissions"
-              target="_blank"
-              rel="noreferrer"
-              className="text-accent hover:opacity-80"
-            >
-              Google Account permissions
-            </a>
-            .
-          </p>
         </Section>
 
         <Section icon="🛡️" title="Data Security">
-          <p>
-            Protecting your data is a top priority. We implement industry-standard security measures
-            including:
-          </p>
           <ul className="space-y-2 my-4">
             {[
-              'Encryption of data in transit (TLS) and at rest',
-              'Secure cloud infrastructure with regular security audits',
-              'Secure authentication practices including Apple Sign In',
+              'Encryption of data in transit and at rest where supported by the underlying service',
+              'Authenticated access controls and role-based restrictions',
+              'Operational logging and security reviews',
               'Limited access to personal data on a need-to-know basis',
             ].map((item, i) => (
               <li key={i} className="relative pl-6">
@@ -238,15 +290,12 @@ export default function PrivacyPage() {
             ))}
           </ul>
           <p>
-            While no system is 100% secure, we work hard to protect your information and continuously
-            improve our security practices.
+            No system is perfectly secure, but we work to maintain appropriate technical and
+            organizational safeguards.
           </p>
         </Section>
 
-        <Section icon="✨" title="Your Rights & Choices">
-          <p>
-            You have control over your data. Depending on your location, you may have the right to:
-          </p>
+        <Section icon="✨" title="Your Rights and Choices">
           <BulletList
             items={[
               { title: 'Access', description: 'Request a copy of your personal data.' },
@@ -256,54 +305,51 @@ export default function PrivacyPage() {
                 description:
                   'Delete your account and data through Settings > Delete Account in the app.',
               },
-              { title: 'Portability', description: 'Export your documents and data.' },
               {
-                title: 'Opt-Out',
+                title: 'AI Consent',
+                description:
+                  'Grant or withdraw standard-mode cloud AI processing permission in the app settings.',
+              },
+              { title: 'Portability', description: 'Export your documents and data where available.' },
+              {
+                title: 'Marketing Opt-Out',
                 description: 'Unsubscribe from marketing communications at any time.',
               },
             ]}
           />
-          <p>To exercise these rights, use the in-app settings or contact us at the email below.</p>
         </Section>
 
-        <Section icon="👶" title="Children's Privacy">
+        <Section icon="👶" title="Children&apos;s Privacy">
           <p>
-            Zohal is not intended for children under 13 years of age. We do not knowingly collect
-            personal information from children under 13. If you believe we have inadvertently
-            collected such information, please contact us immediately and we will take steps to
-            delete it.
+            Zohal is not intended for children under 13 years of age, and we do not knowingly
+            collect personal information from children under 13.
           </p>
         </Section>
 
         <Section icon="📝" title="Changes to This Policy">
           <p>
-            We may update this Privacy Policy from time to time to reflect changes in our practices
-            or for legal reasons. When we make significant changes, we&apos;ll notify you through
-            the app or via email. We encourage you to review this policy periodically.
+            We may update this Privacy Policy from time to time. If changes are material, we may
+            provide notice through the app, email, or other appropriate means before the updated
+            policy becomes effective.
           </p>
         </Section>
 
         <Section icon="💬" title="Contact Us">
-          <p>
-            Have questions about this Privacy Policy or how we handle your data? We&apos;re here to
-            help.
-          </p>
+          <p>If you have questions about this Privacy Policy or our data practices, contact us:</p>
           <HighlightBox>
             <p className="text-sm">
-              📧 Email us at:{' '}
+              📧{' '}
               <a href="mailto:support@zohal.app" className="text-accent hover:opacity-80">
                 support@zohal.app
-              </a>
-              {' '}or{' '}
+              </a>{' '}
+              or{' '}
               <a href="mailto:abdullah@watd.co" className="text-accent hover:opacity-80">
                 abdullah@watd.co
               </a>
             </p>
           </HighlightBox>
-          <p>We typically respond within 24-48 hours.</p>
         </Section>
       </main>
     </div>
   );
 }
-
