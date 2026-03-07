@@ -33,8 +33,8 @@ export function DocumentRightPane({
   const tCommon = useTranslations('common');
 
   return (
-    <aside className="fixed inset-0 z-20 flex h-[100svh] min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
-      <div className="min-h-0 flex-1 overflow-hidden">
+    <aside className="fixed inset-0 z-20 flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
+      <div className="flex min-h-0 flex-1 flex-col md:overflow-hidden">
         <div className={mode === 'chat' ? 'h-full' : 'hidden h-full'}>
           <AIPanel
             documentId={documentId}
@@ -47,8 +47,9 @@ export function DocumentRightPane({
           />
         </div>
         {mode === 'analysis' && (
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="border-b border-border px-4 py-3 flex items-center gap-2">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
+              <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <ArrowLeft className="w-4 h-4 rtl-flip" />
                 {tCommon('back')}
@@ -57,8 +58,9 @@ export function DocumentRightPane({
               <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')} className="hidden md:inline-flex">
                 {t('title')}
               </Button>
+              </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <ContractAnalysisPane embedded />
             </div>
           </div>

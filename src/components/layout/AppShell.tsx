@@ -41,7 +41,7 @@ export function AppShell({ children, className }: AppShellProps) {
   };
 
   return (
-    <div className="relative h-[100svh] min-h-[100svh] bg-background overflow-hidden">
+    <div className="relative h-[100dvh] min-h-[100dvh] bg-background overflow-hidden">
       <div className="grid-bg" aria-hidden="true" />
       <AppShellProvider value={appShellValue}>
         <div className="relative z-10 flex h-full min-w-0">

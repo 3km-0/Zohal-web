@@ -1978,7 +1978,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
   }, [documentId]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', embedded && 'h-full')}>
       {/* Header */}
       {!embedded && (
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface px-4 py-2">
@@ -2078,8 +2078,8 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
       {/* Body */}
       <div
         className={cn(
-          'min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
-          embedded ? 'p-3 pb-[calc(env(safe-area-inset-bottom)+7rem)]' : 'p-4'
+          'min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-y]',
+          embedded ? 'p-3 pb-[calc(env(safe-area-inset-bottom)+12rem)]' : 'p-4'
         )}
       >
         <div className="mb-3 p-3 border border-border rounded-scholar bg-surface-alt">
