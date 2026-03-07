@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import {
   ZoomIn,
   ZoomOut,
@@ -18,6 +19,7 @@ interface PDFToolbarProps {
   onPageChange: (page: number) => void;
   onZoomChange: (scale: number) => void;
   onToggleThumbnails: () => void;
+  mobileActions?: ReactNode;
 }
 
 export function PDFToolbar({
@@ -28,6 +30,7 @@ export function PDFToolbar({
   onPageChange,
   onZoomChange,
   onToggleThumbnails,
+  mobileActions,
 }: PDFToolbarProps) {
   const [pageInput, setPageInput] = useState(currentPage.toString());
 
@@ -60,39 +63,47 @@ export function PDFToolbar({
 
   return (
     <>
-      <div className="flex items-center justify-center gap-2 border-b border-border bg-surface px-3 py-2 md:hidden">
-        <button
-          type="button"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-          className="rounded-lg p-2 transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-50"
-          title="Previous page"
-        >
-          <ChevronLeft className="h-5 w-5 text-text-soft rtl-flip" />
-        </button>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border bg-surface px-3 py-2 md:hidden">
+        <div />
 
-        <div className="flex min-w-[132px] items-center justify-center gap-2 rounded-full border border-border bg-surface-alt px-3 py-1.5">
-          <input
-            type="text"
-            value={pageInput}
-            onChange={handlePageInputChange}
-            onBlur={handlePageInputBlur}
-            onKeyDown={handlePageInputKeyDown}
-            inputMode="numeric"
-            className="w-9 bg-transparent text-center text-sm font-semibold text-text focus:outline-none"
-          />
-          <span className="text-sm text-text-soft">of {totalPages}</span>
+        <div className="flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="rounded-lg p-2 transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-50"
+            title="Previous page"
+          >
+            <ChevronLeft className="h-5 w-5 text-text-soft rtl-flip" />
+          </button>
+
+          <div className="flex min-w-[132px] items-center justify-center gap-2 rounded-full border border-border bg-surface-alt px-3 py-1.5">
+            <input
+              type="text"
+              value={pageInput}
+              onChange={handlePageInputChange}
+              onBlur={handlePageInputBlur}
+              onKeyDown={handlePageInputKeyDown}
+              inputMode="numeric"
+              className="w-9 bg-transparent text-center text-sm font-semibold text-text focus:outline-none"
+            />
+            <span className="text-sm text-text-soft">of {totalPages}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="rounded-lg p-2 transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-50"
+            title="Next page"
+          >
+            <ChevronRight className="h-5 w-5 text-text-soft rtl-flip" />
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className="rounded-lg p-2 transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-50"
-          title="Next page"
-        >
-          <ChevronRight className="h-5 w-5 text-text-soft rtl-flip" />
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          {mobileActions}
+        </div>
       </div>
 
       <div className="hidden flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 sm:px-4 md:flex">

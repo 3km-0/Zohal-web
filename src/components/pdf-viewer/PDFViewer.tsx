@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import * as pdfjs from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
@@ -17,6 +17,7 @@ interface PDFViewerProps {
   onPageChange?: (pageNumber: number) => void;
   tapToProof?: { page: number; quote?: string; bbox?: { x: number; y: number; width: number; height: number } };
   className?: string;
+  mobileToolbarActions?: ReactNode;
 }
 
 export function PDFViewer({
@@ -25,6 +26,7 @@ export function PDFViewer({
   onPageChange,
   tapToProof,
   className,
+  mobileToolbarActions,
 }: PDFViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -290,6 +292,7 @@ export function PDFViewer({
         onPageChange={goToPage}
         onZoomChange={handleZoom}
         onToggleThumbnails={() => setShowThumbnails(!showThumbnails)}
+        mobileActions={mobileToolbarActions}
       />
 
       <div className="flex-1 flex overflow-hidden">

@@ -369,44 +369,6 @@ export default function DocumentViewerShell({
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-end gap-2 md:hidden">
-          <Button
-            variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
-            size="sm"
-            data-tour="viewer-contract-analysis"
-            aria-label={getAnalysisLabel(document.document_type)}
-            title={getAnalysisLabel(document.document_type)}
-            onClick={() => {
-              if (showRightPane && rightPaneMode === 'analysis') {
-                setPaneState(false);
-                return;
-              }
-              setPaneState(true, 'analysis');
-            }}
-          >
-            <Scale className="w-4 h-4" />
-            {getAnalysisLabel(document.document_type)}
-          </Button>
-          <ScholarActionMenu
-            compact
-            ariaLabel={tSidebar('openMenu')}
-            icon={<MoreVertical className="w-4 h-4" />}
-            label={tSidebar('openMenu')}
-            items={[
-              {
-                label: 'Tour',
-                icon: <CircleHelp className="w-4 h-4" />,
-                onClick: () => {
-                  window.dispatchEvent(
-                    new CustomEvent('zohal:start-tour', {
-                      detail: { tourId: 'viewer', force: true },
-                    })
-                  );
-                },
-              },
-            ]}
-          />
-        </div>
       </header>
 
       {/* Main Content */}
@@ -422,6 +384,47 @@ export default function DocumentViewerShell({
               onTextSelect={handleTextSelect}
               onPageChange={setCurrentPage}
               tapToProof={tapToProof}
+              mobileToolbarActions={
+                <>
+                  <Button
+                    variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
+                    size="sm"
+                    data-tour="viewer-contract-analysis"
+                    aria-label={getAnalysisLabel(document.document_type)}
+                    title={getAnalysisLabel(document.document_type)}
+                    onClick={() => {
+                      if (showRightPane && rightPaneMode === 'analysis') {
+                        setPaneState(false);
+                        return;
+                      }
+                      setPaneState(true, 'analysis');
+                    }}
+                    className="min-h-[44px]"
+                  >
+                    <Scale className="w-4 h-4" />
+                    {getAnalysisLabel(document.document_type)}
+                  </Button>
+                  <ScholarActionMenu
+                    compact
+                    ariaLabel={tSidebar('openMenu')}
+                    icon={<MoreVertical className="w-4 h-4" />}
+                    label={tSidebar('openMenu')}
+                    items={[
+                      {
+                        label: 'Tour',
+                        icon: <CircleHelp className="w-4 h-4" />,
+                        onClick: () => {
+                          window.dispatchEvent(
+                            new CustomEvent('zohal:start-tour', {
+                              detail: { tourId: 'viewer', force: true },
+                            })
+                          );
+                        },
+                      },
+                    ]}
+                  />
+                </>
+              }
             />
           ) : (
             <div className="flex h-full items-center justify-center p-4">
