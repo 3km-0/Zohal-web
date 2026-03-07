@@ -422,9 +422,15 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
         // Keep PDF.js painting LTR even when the surrounding app shell is RTL.
         context.direction = PDF_RENDER_SURFACE_DIR;
 
-        // Set canvas dimensions directly (no DPI scaling to keep it simple)
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        // Render into a higher-resolution backing canvas so PDFs stay sharp on
+        // retina / high-DPI screens while preserving the same on-page size.
+        const outputScale =
+          typeof window === 'undefined'
+            ? 1
+            : Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
 
         // Clear canvas
         context.fillStyle = 'white';
@@ -433,7 +439,8 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
         // Create render task
         const renderContext = {
           canvasContext: context,
-          viewport: viewport,
+          viewport,
+          transform: outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0],
           background: 'white',
         };
 
