@@ -1060,13 +1060,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Verified document analysis you can ship",
-      "description": "Turn contracts, invoices, and document bundles into verified findings, flagged conflicts, and forwardable decision packs with exact evidence."
+      "title": "Zohal — Document analysis that stands up to review",
+      "description": "Turn contracts, invoices, and document sets into verified findings, surfaced conflicts, and decision-ready outputs with exact evidence."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Verified document analysis you can ship.",
+        "tagline": "Document analysis that stands up to review.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -1114,8 +1114,8 @@
         }
       },
       "hero": {
-        "headline": "Verified document analysis for teams that need proof.",
-        "subhead": "Zohal turns contracts, invoices, and messy document bundles into verified findings your team can review, trust, and ship. Every key claim stays tied to the page and source text.",
+        "headline": "Document analysis that stands up to review.",
+        "subhead": "Zohal turns contracts, invoices, and multi-file document sets into verified findings, surfaced conflicts, and decision-ready outputs, with page-level evidence behind every important claim.",
         "ctas": [
           {
             "type": "primary",
