@@ -642,7 +642,7 @@
         "scopeRoles": "Scope & Roles"
       },
       "configuration": {
-        "description": "Advanced settings control policy, role scope, and structured records used by analysis and reports.",
+        "description": "Advanced settings control policy checks and run scope for this template.",
         "rulesHint": "Validation and policy checks",
         "scopeHint": "Run scope and bundle roles",
         "recordsHint": "Structured findings in reports"
