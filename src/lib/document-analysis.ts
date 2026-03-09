@@ -1,9 +1,9 @@
 import type { DocumentType } from '@/types/database';
+import { playbookMatchesName, sortSystemPlaybooks, type TemplateLibraryPlaybookLike } from '@/lib/template-library';
 
-type PlaybookLike = {
+type PlaybookLike = TemplateLibraryPlaybookLike & {
   id: string;
-  name: string;
-  is_system_preset?: boolean;
+  current_version_id?: string | null;
 };
 
 type DocumentMetadata = {
@@ -11,15 +11,6 @@ type DocumentMetadata = {
   title?: string | null;
   originalFilename?: string | null;
 };
-
-const PLAYBOOK_ALIASES = {
-  general: ['General Contract Analysis'],
-  renewal: ['Renewal Pack', 'Default (Renewal Pack)'],
-  vendor: ['Vendor / SaaS Contract Review'],
-  ksa: ['KSA Contract Checklist (Contract-Only)'],
-  lease: ['Lease Review'],
-  compliance: ['Policy & Regulatory Compliance Review'],
-} as const;
 
 function normalizedDocumentText(metadata: DocumentMetadata): string {
   return [metadata.title, metadata.originalFilename]
@@ -69,7 +60,13 @@ export function getAnalysisLabelKey(documentType?: string | null) {
 
 export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): string[] {
   const { documentType } = metadata;
-  if (documentType !== 'contract' && documentType !== 'legal_filing' && documentType !== 'policy') {
+  if (
+    documentType !== 'contract' &&
+    documentType !== 'legal_filing' &&
+    documentType !== 'policy' &&
+    documentType !== 'invoice' &&
+    documentType !== 'onboarding_doc'
+  ) {
     return [];
   }
 
@@ -77,34 +74,57 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   const leaseKeywords = ['lease', 'tenant', 'landlord', 'rent', 'rental', 'property', 'real estate', 'tenancy', 'premises', 'sublease'];
   const vendorKeywords = ['vendor', 'supplier', 'procurement', 'software', 'saas', 'cloud', 'subscription', 'license', 'licensing', 'service agreement', 'services agreement', 'master service', 'msa', 'sow', 'statement of work', 'dpa', 'sla', 'implementation'];
   const renewalKeywords = ['renewal', 'renew', 'auto renew', 'auto-renew', 'expiration', 'expiry', 'notice period', 'non-renewal', 'extension'];
+  const amendmentKeywords = ['amendment', 'amended', 'addendum', 'addenda', 'side letter', 'side-letter', 'amended and restated', 'supplement'];
+  const obligationKeywords = ['obligation', 'obligations', 'deliverable', 'deliverables', 'milestone', 'service level', 'reporting', 'covenant', 'deadline', 'notice'];
   const complianceKeywords = ['policy', 'policies', 'regulation', 'regulatory', 'compliance', 'controls', 'framework', 'guideline', 'standard', 'procedure'];
+  const employmentKeywords = ['employment', 'employee', 'employer', 'offer letter', 'probation', 'termination', 'salary', 'compensation', 'leave'];
+  const insuranceKeywords = ['insurance', 'claim', 'claims', 'coverage', 'endorsement', 'deductible', 'insurer', 'policy number'];
+  const onboardingKeywords = ['vendor onboarding', 'supplier onboarding', 'trade license', 'registration', 'vat certificate', 'iban', 'bank details', 'compliance certificate'];
   const ksaKeywords = ['ksa', 'saudi', 'saudi arabia', 'riyadh', 'jeddah', 'sar', 'المملكة', 'السعودية', 'وزارة', 'هيئة'];
 
+  if (documentType === 'invoice') {
+    return ['Vendor Invoice Exceptions', 'General Contract Analysis'];
+  }
+  if (documentType === 'onboarding_doc' || containsAny(searchableText, onboardingKeywords)) {
+    return ['Vendor Onboarding Review', 'General Contract Analysis'];
+  }
   if (documentType === 'policy' || containsAny(searchableText, complianceKeywords)) {
-    return [...PLAYBOOK_ALIASES.compliance, ...PLAYBOOK_ALIASES.general];
+    return ['Playbook / Compliance Review', 'Policy & Regulatory Compliance Review', 'General Contract Analysis'];
   }
-  if (containsAny(searchableText, leaseKeywords)) {
-    return [...PLAYBOOK_ALIASES.lease, ...PLAYBOOK_ALIASES.general];
-  }
-  if (containsAny(searchableText, vendorKeywords)) {
-    return [...PLAYBOOK_ALIASES.vendor, ...PLAYBOOK_ALIASES.general];
+  if (containsAny(searchableText, amendmentKeywords)) {
+    return ['Amendment Conflict Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, renewalKeywords)) {
-    return [...PLAYBOOK_ALIASES.renewal, ...PLAYBOOK_ALIASES.general];
+    return ['Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)', 'General Contract Analysis'];
+  }
+  if (containsAny(searchableText, obligationKeywords)) {
+    return ['Obligations Tracker', 'General Contract Analysis'];
+  }
+  if (containsAny(searchableText, leaseKeywords)) {
+    return ['Commercial Lease Review', 'Lease Review', 'General Contract Analysis'];
+  }
+  if (containsAny(searchableText, employmentKeywords)) {
+    return ['Employment Document Review', 'General Contract Analysis'];
+  }
+  if (containsAny(searchableText, insuranceKeywords)) {
+    return ['Insurance Claims & Policy Review', 'General Contract Analysis'];
+  }
+  if (containsAny(searchableText, vendorKeywords)) {
+    return ['General Contract Analysis', 'Vendor / SaaS Contract Review'];
   }
   if (documentType === 'legal_filing' || containsAny(searchableText, ksaKeywords)) {
-    return [...PLAYBOOK_ALIASES.ksa, ...PLAYBOOK_ALIASES.general];
+    return ['KSA Contract Checklist (Contract-Only)', 'General Contract Analysis'];
   }
 
-  return [...PLAYBOOK_ALIASES.general, ...PLAYBOOK_ALIASES.renewal];
+  return ['General Contract Analysis', 'Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)'];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {
-  const systemPlaybooks = playbooks.filter((playbook) => playbook.is_system_preset);
+  const systemPlaybooks = sortSystemPlaybooks(playbooks.filter((playbook) => playbook.is_system_preset));
   const preferredNames = recommendedSystemPlaybookNames(metadata);
 
   for (const name of preferredNames) {
-    const match = systemPlaybooks.find((playbook) => playbook.name === name);
+    const match = systemPlaybooks.find((playbook) => playbookMatchesName(playbook, name));
     if (match) return match;
   }
 
@@ -114,9 +134,11 @@ export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[]
 export function supportsStructuredAnalysis(documentType?: DocumentType | string | null): boolean {
   return (
     documentType === 'contract' ||
+    documentType === 'policy' ||
     documentType === 'legal_filing' ||
     documentType === 'financial_report' ||
     documentType === 'invoice' ||
-    documentType === 'meeting_notes'
+    documentType === 'meeting_notes' ||
+    documentType === 'onboarding_doc'
   );
 }
