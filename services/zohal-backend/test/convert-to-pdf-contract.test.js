@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildConvertError,
   buildConvertSuccess,
+  getServiceRoleKey,
 } from "../src/handlers/convert-to-pdf.js";
 
 test("convert-to-pdf success payload preserves legacy fields with additive metadata", () => {
@@ -34,4 +35,13 @@ test("convert-to-pdf error payload stays backward compatible with additive metad
     request_id: "req-456",
     execution_plane: "gcp",
   });
+});
+
+test("service client key resolution only uses Supabase service role key", () => {
+  const key = getServiceRoleKey({
+    INTERNAL_SERVICE_ROLE_KEY: "internal-only-token",
+    SUPABASE_SERVICE_ROLE_KEY: "supabase-service-role",
+  });
+
+  assert.equal(key, "supabase-service-role");
 });

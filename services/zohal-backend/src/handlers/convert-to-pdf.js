@@ -9,13 +9,13 @@ import {
 import { requireInternalCaller } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 
+export function getServiceRoleKey(env = process.env) {
+  return String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+}
+
 function createServiceClient() {
   const supabaseUrl = String(process.env.SUPABASE_URL || "").trim();
-  const supabaseKey = String(
-    process.env.INTERNAL_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      "",
-  ).trim();
+  const supabaseKey = getServiceRoleKey();
   if (!supabaseUrl || !supabaseKey) {
     throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured");
   }
