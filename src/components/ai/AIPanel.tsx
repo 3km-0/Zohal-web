@@ -28,8 +28,16 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import type { DocumentType } from '@/types/database';
-import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
+import {
+  CHAT_MODEL_OPTIONS,
+  DEFAULT_CHAT_MODEL_ID,
+  findChatModelOption,
+  inferChatModelProviderOverride,
+  type ChatModelOption,
+} from '@/lib/chat-models';
 import { supportsStructuredAnalysis } from '@/lib/document-analysis';
+import type { AnalysisRunSummary } from '@/types/analysis-runs';
+import { normalizeAnalysisRunStatus, toAnalysisRunSummary } from '@/lib/analysis/runs';
 
 interface AIPanelProps {
   documentId: string;
@@ -38,7 +46,10 @@ interface AIPanelProps {
   currentPage?: number;
   onClose: () => void;
   documentType?: DocumentType;
-  onOpenAnalysis?: () => void;
+  onOpenAnalysis?: (runId?: string) => void;
+  showHeader?: boolean;
+  historyOverlayOpen?: boolean;
+  onHistoryOverlayChange?: (open: boolean) => void;
 }
 
 interface ChatMessage {
@@ -63,6 +74,9 @@ export function AIPanel({
   onClose,
   documentType,
   onOpenAnalysis,
+  showHeader = true,
+  historyOverlayOpen,
+  onHistoryOverlayChange,
 }: AIPanelProps) {
   // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
   // any callbacks depending on it will change every render, which can re-trigger
@@ -77,6 +91,7 @@ export function AIPanel({
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
+  const [analysisRuns, setAnalysisRuns] = useState<AnalysisRunSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
@@ -89,6 +104,10 @@ export function AIPanel({
   });
 
   const selectedModel = useMemo(() => findChatModelOption(selectedModelId), [selectedModelId]);
+  const selectedModelProviderOverride = useMemo(
+    () => inferChatModelProviderOverride(selectedModelId),
+    [selectedModelId]
+  );
 
   useEffect(() => {
     try {
@@ -97,6 +116,18 @@ export function AIPanel({
       // ignore
     }
   }, [selectedModelId]);
+
+  const historyVisible = historyOverlayOpen ?? showHistoryOverlay;
+  const setHistoryVisible = useCallback(
+    (open: boolean) => {
+      if (onHistoryOverlayChange) {
+        onHistoryOverlayChange(open);
+        return;
+      }
+      setShowHistoryOverlay(open);
+    },
+    [onHistoryOverlayChange]
+  );
 
   // Load conversation history
   const loadConversationHistory = useCallback(async () => {
@@ -136,6 +167,85 @@ export function AIPanel({
     }
   }, [supabase, documentId, t]);
 
+  const loadAnalysisRuns = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('extraction_runs')
+        .select('id, status, created_at, updated_at, input_config, output_summary')
+        .eq('workspace_id', workspaceId)
+        .eq('document_id', documentId)
+        .eq('extraction_type', 'contract_analysis')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error || !data) {
+        setAnalysisRuns([]);
+        return;
+      }
+
+      const rows = data as Array<Record<string, unknown>>;
+      const actionIds = Array.from(
+        new Set(
+          rows
+            .map((row) => {
+              const input = row.input_config && typeof row.input_config === 'object' ? row.input_config as Record<string, unknown> : {};
+              const actionId = input.action_id || input.actionId;
+              return typeof actionId === 'string' && actionId ? actionId : null;
+            })
+            .filter(Boolean) as string[]
+        )
+      );
+
+      const actionsById = new Map<string, Record<string, unknown>>();
+      if (actionIds.length > 0) {
+        const { data: actionData } = await supabase
+          .from('actions')
+          .select('id, status, updated_at, output_json')
+          .in('id', actionIds);
+        (actionData || []).forEach((action) => {
+          actionsById.set(String(action.id), action as Record<string, unknown>);
+        });
+      }
+
+      const normalized = rows.map((row) => {
+        const input = row.input_config && typeof row.input_config === 'object' ? row.input_config as Record<string, unknown> : {};
+        const actionId = (input.action_id || input.actionId || null) as string | null;
+        const action = actionId ? actionsById.get(String(actionId)) ?? null : null;
+        const summary = toAnalysisRunSummary(
+          {
+            ...row,
+            input_config: row.input_config ?? null,
+            output_summary: row.output_summary ?? null,
+            extraction_type: 'contract_analysis',
+            document_id: documentId,
+            workspace_id: workspaceId,
+            user_id: '',
+            completed_at: null,
+            error: null,
+            id: String(row.id),
+            model: 'unknown',
+            prompt_version: 'unknown',
+            started_at: null,
+            status: String(row.status || ''),
+            created_at: String(row.created_at),
+            updated_at: String(row.updated_at || row.created_at),
+          } as any,
+          action as any
+        );
+
+        return {
+          ...summary,
+          status: normalizeAnalysisRunStatus(summary.status, (action?.status as string | null | undefined) ?? null),
+        } satisfies AnalysisRunSummary;
+      });
+
+      setAnalysisRuns(normalized);
+    } catch (err) {
+      console.error('Failed to load analysis runs:', err);
+      setAnalysisRuns([]);
+    }
+  }, [documentId, supabase, workspaceId]);
+
   // Initialize on mount and when the document changes.
   // (Do NOT tie this to callbacks that might change every render.)
   useEffect(() => {
@@ -151,8 +261,11 @@ export function AIPanel({
     chatAbortRef.current = null;
 
     loadConversationHistory();
-    setShowHistoryOverlay(false);
-  }, [documentId, loadConversationHistory]);
+    loadAnalysisRuns();
+    if (historyOverlayOpen === undefined) {
+      setShowHistoryOverlay(false);
+    }
+  }, [documentId, historyOverlayOpen, loadAnalysisRuns, loadConversationHistory]);
 
   const goToContractAnalysis = useCallback(() => {
     if (onOpenAnalysis) {
@@ -335,6 +448,7 @@ export function AIPanel({
               context,
               request_type: 'chat',
               model: selectedModelId,
+              provider_override: selectedModelProviderOverride ?? undefined,
             }),
           }
         );
@@ -366,6 +480,7 @@ export function AIPanel({
         setChatHistory((prev) => [...prev, assistantMessage]);
         // Keep Conversations list in sync (otherwise "+" feels like it does nothing).
         loadConversationHistory();
+        loadAnalysisRuns();
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -381,9 +496,11 @@ export function AIPanel({
       currentConversationId,
       toast,
       loading,
+      loadAnalysisRuns,
       loadConversationHistory,
       buildChatContext,
       selectedModelId,
+      selectedModelProviderOverride,
     ]
   );
 
@@ -466,7 +583,7 @@ export function AIPanel({
 
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
-          setShowHistoryOverlay(false);
+          setHistoryVisible(false);
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
@@ -476,7 +593,7 @@ export function AIPanel({
         setLoadingConversation(false);
       }
     },
-    [supabase, toast]
+    [setHistoryVisible, supabase, toast]
   );
 
   const startNewConversation = useCallback(() => {
@@ -491,39 +608,40 @@ export function AIPanel({
     setLoading(false);
     setLoadingConversation(false);
     setChatInput('');
-    setShowHistoryOverlay(false);
-  }, []);
+    setHistoryVisible(false);
+  }, [setHistoryVisible]);
 
   return (
     <div className="flex h-full w-full flex-col bg-surface">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-accent" />
-          <span className="font-semibold text-text">{t('title')}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowHistoryOverlay(true)}
-            title={t('history')}
-          >
-            <Clock className="w-4 h-4" />
-            {t('history')}
-          </Button>
-          {supportsAnalysis && (
-            <Button variant="ghost" size="sm" onClick={goToContractAnalysis}>
-              <FileText className="w-4 h-4" />
-              {t('documentAnalysis')}
+      {showHeader && (
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-accent" />
+            <span className="font-semibold text-text">{t('title')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHistoryVisible(true)}
+              title={t('history')}
+            >
+              <Clock className="h-4 w-4" />
+              {t('history')}
             </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="w-4 h-4" />
-            {t('close')}
-          </Button>
+            {supportsAnalysis && (
+              <Button variant="ghost" size="sm" onClick={goToContractAnalysis}>
+                <FileText className="h-4 w-4" />
+                {t('run')}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+              {t('close')}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="relative flex-1 min-h-0">
@@ -566,7 +684,7 @@ export function AIPanel({
                       <p className="mt-1 text-sm text-text-soft">{t('analysisCardBody')}</p>
                       <div className="mt-3">
                         <Button variant="secondary" size="sm" onClick={goToContractAnalysis}>
-                          {t('openAnalysis')}
+                          {t('run')}
                         </Button>
                       </div>
                     </div>
@@ -683,7 +801,7 @@ export function AIPanel({
           </div>
         </div>
 
-        {showHistoryOverlay && (
+        {historyVisible && (
           <div className="absolute inset-0 z-10 border-t border-border bg-surface flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2">
@@ -698,54 +816,105 @@ export function AIPanel({
                 >
                   {t('newConversation')}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowHistoryOverlay(false)}>
+                <Button variant="ghost" size="sm" onClick={() => setHistoryVisible(false)}>
                   <X className="w-4 h-4" />
                   {t('close')}
                 </Button>
               </div>
             </div>
             <div className="p-4 space-y-4 overflow-auto min-h-0 flex-1">
-              {conversationHistory.length === 0 ? (
+              {conversationHistory.length === 0 && analysisRuns.length === 0 ? (
                 <div className="text-center py-8">
                   <Clock className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                  <p className="text-text-soft">{t('noConversations')}</p>
+                  <p className="text-text-soft">{t('noActivity')}</p>
                   <p className="text-sm text-text-soft mt-1">{t('historyEmpty')}</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {conversationHistory.map((conv) => (
-                    (() => {
-                      const isActive = conv.id === currentConversationId;
-                      return (
+                <div className="space-y-5">
+                  {conversationHistory.length > 0 && (
+                    <section className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-text-soft">
+                        {t('conversationsSection')}
+                      </p>
+                      {conversationHistory.map((conv) => {
+                        const isActive = conv.id === currentConversationId;
+                        return (
+                          <button
+                            key={conv.id}
+                            onClick={() => loadConversation(conv.id)}
+                            className={cn(
+                              'w-full p-3 border rounded-scholar transition-colors text-left group',
+                              isActive
+                                ? 'bg-accent/5 border-accent/40'
+                                : 'bg-surface-alt border-border hover:border-accent/50'
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-text font-medium truncate flex-1">
+                                {conv.preview}
+                              </p>
+                              <Clock className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0" />
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-text-soft">
+                                {t('messageCount', { count: conv.messageCount })}
+                              </span>
+                              <span className="text-xs text-text-soft">•</span>
+                              <span className="text-xs text-text-soft">
+                                {formatRelativeTime(conv.timestamp)}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </section>
+                  )}
+
+                  {analysisRuns.length > 0 && (
+                    <section className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-text-soft">
+                        {t('analysisRunsSection')}
+                      </p>
+                      {analysisRuns.map((run) => (
                         <button
-                          key={conv.id}
-                          onClick={() => loadConversation(conv.id)}
-                          className={cn(
-                            'w-full p-3 border rounded-scholar transition-colors text-left group',
-                            isActive
-                              ? 'bg-accent/5 border-accent/40'
-                              : 'bg-surface-alt border-border hover:border-accent/50'
-                          )}
+                          key={run.runId}
+                          onClick={() => {
+                            setHistoryVisible(false);
+                            if (onOpenAnalysis) {
+                              onOpenAnalysis(run.runId);
+                            } else {
+                              router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
+                            }
+                          }}
+                          className="w-full rounded-scholar border border-border bg-surface-alt p-3 text-left transition-colors hover:border-accent/50"
                         >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-text font-medium truncate flex-1">
-                              {conv.preview}
-                            </p>
-                            <Clock className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0" />
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-text-soft">
-                              {t('messageCount', { count: conv.messageCount })}
-                            </span>
-                            <span className="text-xs text-text-soft">•</span>
-                            <span className="text-xs text-text-soft">
-                              {formatRelativeTime(conv.timestamp)}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-text">
+                                {run.playbookLabel || t('documentAnalysis')}
+                              </p>
+                              <p className="mt-1 text-xs text-text-soft">
+                                {run.scope === 'bundle' ? t('docset') : t('singleDocument')}
+                                {' • '}
+                                {formatRelativeTime(run.createdAt)}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2 py-1 text-[11px] font-semibold',
+                                run.status === 'succeeded' && 'bg-success/10 text-success',
+                                run.status === 'running' && 'bg-accent/10 text-accent',
+                                run.status === 'queued' && 'bg-text-soft/10 text-text-soft',
+                                run.status === 'failed' && 'bg-error/10 text-error'
+                              )}
+                            >
+                              {t(`runStatuses.${run.status}`)}
                             </span>
                           </div>
                         </button>
-                      );
-                    })()
-                  ))}
+                      ))}
+                    </section>
+                  )}
                 </div>
               )}
             </div>

@@ -83,9 +83,9 @@ export function getTourSteps(tourId: TourId): TourStep[] {
         {
           element: '[data-tour="viewer-contract-analysis"]',
           popover: {
-            title: 'Open Document Analysis',
+            title: 'Open Document AI',
             description:
-              'Use this panel for both structured analysis and AI chat. Tap-to-Proof links jump back to the exact PDF evidence.',
+              'Use Document AI to ask questions, reopen prior conversations or runs, and jump back to exact PDF evidence with Tap-to-Proof.',
             side: 'bottom',
             align: 'end',
           },

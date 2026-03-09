@@ -4,6 +4,7 @@ export type ChatModelOption = {
   shortTitle: string;
   provider: string;
   providerMark: string;
+  routingProvider?: ChatModelProviderOverride;
   featureKey:
     | 'balancedDrafting'
     | 'deepReasoning'
@@ -25,15 +26,51 @@ export type ChatModelOption = {
   isOpenSource: boolean;
 };
 
+export type ChatModelProviderOverride = 'openai' | 'vertex';
+
 export const DEFAULT_CHAT_MODEL_ID = 'google/gemini-3.1-pro-preview';
 
 export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
+  {
+    id: 'gpt-5.2-pro',
+    title: 'GPT-5.2 Pro',
+    shortTitle: 'GPT-5.2 Pro',
+    provider: 'OpenAI',
+    providerMark: 'O',
+    routingProvider: 'openai',
+    featureKey: 'deepReasoning',
+    icon: 'brain',
+    isOpenSource: false,
+  },
+  {
+    id: 'gpt-5.2',
+    title: 'GPT-5.2',
+    shortTitle: 'GPT-5.2',
+    provider: 'OpenAI',
+    providerMark: 'O',
+    routingProvider: 'openai',
+    featureKey: 'longContext',
+    icon: 'context',
+    isOpenSource: false,
+  },
+  {
+    id: 'gpt-5-mini',
+    title: 'GPT-5 mini',
+    shortTitle: 'GPT-5 mini',
+    provider: 'OpenAI',
+    providerMark: 'O',
+    routingProvider: 'openai',
+    featureKey: 'fastEverydayChat',
+    icon: 'fast',
+    isOpenSource: false,
+  },
   {
     id: 'claude-sonnet-4-6',
     title: 'Claude Sonnet 4.6',
     shortTitle: 'Sonnet 4.6',
     provider: 'Anthropic',
     providerMark: 'A',
+    routingProvider: 'vertex',
     featureKey: 'balancedDrafting',
     icon: 'text',
     isOpenSource: false,
@@ -44,6 +81,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'Opus 4.6',
     provider: 'Anthropic',
     providerMark: 'A',
+    routingProvider: 'vertex',
     featureKey: 'deepReasoning',
     icon: 'brain',
     isOpenSource: false,
@@ -54,6 +92,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'Gemini Pro',
     provider: 'Google',
     providerMark: 'G',
+    routingProvider: 'vertex',
     featureKey: 'longContext',
     icon: 'context',
     isOpenSource: false,
@@ -64,6 +103,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'Gemini Tools',
     provider: 'Google',
     providerMark: 'G',
+    routingProvider: 'vertex',
     featureKey: 'toolWorkflows',
     icon: 'tools',
     isOpenSource: false,
@@ -74,6 +114,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'Gemini Flash',
     provider: 'Google',
     providerMark: 'G',
+    routingProvider: 'vertex',
     featureKey: 'fastEverydayChat',
     icon: 'fast',
     isOpenSource: false,
@@ -84,6 +125,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'Qwen3 235B',
     provider: 'Qwen',
     providerMark: 'Q',
+    routingProvider: 'vertex',
     featureKey: 'openSourceAlternative',
     icon: 'open',
     isOpenSource: true,
@@ -94,6 +136,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'Qwen Coder',
     provider: 'Qwen',
     providerMark: 'Q',
+    routingProvider: 'vertex',
     featureKey: 'codeAndStructure',
     icon: 'code',
     isOpenSource: true,
@@ -104,6 +147,7 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
     shortTitle: 'GLM-5',
     provider: 'Z.AI',
     providerMark: 'Z',
+    routingProvider: 'vertex',
     featureKey: 'multilingualReasoning',
     icon: 'globe',
     isOpenSource: false,
@@ -113,4 +157,35 @@ export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
 export function findChatModelOption(modelId: string | null | undefined): ChatModelOption | null {
   if (!modelId) return null;
   return CHAT_MODEL_OPTIONS.find((option) => option.id === modelId) ?? null;
+}
+
+export function inferChatModelProviderOverride(
+  modelId: string | null | undefined
+): ChatModelProviderOverride | null {
+  if (!modelId) return null;
+
+  const known = findChatModelOption(modelId);
+  if (known?.routingProvider) return known.routingProvider;
+
+  const normalized = modelId.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (
+    normalized.startsWith('gpt') ||
+    normalized.startsWith('chatgpt') ||
+    /^o\d/.test(normalized)
+  ) {
+    return 'openai';
+  }
+
+  if (
+    normalized.includes('/') ||
+    normalized.includes('-maas') ||
+    normalized.startsWith('claude') ||
+    normalized.startsWith('anthropic/')
+  ) {
+    return 'vertex';
+  }
+
+  return null;
 }

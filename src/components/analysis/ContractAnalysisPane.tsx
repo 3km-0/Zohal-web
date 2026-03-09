@@ -98,9 +98,10 @@ function toRejectedSet(value: unknown): Set<string> {
 
 interface ContractAnalysisPaneProps {
   embedded?: boolean;
+  requestedRunId?: string | null;
 }
 
-export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneProps = {}) {
+export function ContractAnalysisPane({ embedded = false, requestedRunId = null }: ContractAnalysisPaneProps = {}) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -859,6 +860,16 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     // For in-flight runs without version output, keep current snapshot data and refresh contract tables.
     await load();
   }
+
+  useEffect(() => {
+    if (!requestedRunId || runs.length === 0) return;
+    const requested = runs.find((run) => run.runId === requestedRunId);
+    if (!requested || requested.runId === selectedRunId) return;
+    void selectRun(requested);
+    // `selectRun` is intentionally excluded to avoid retriggering on every render.
+    // The effect should only react to an external requested run id and resolved run list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedRunId, runs, selectedRunId]);
 
   async function load() {
     setLoading(true);
