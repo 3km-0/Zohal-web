@@ -47,6 +47,8 @@ export interface OneDriveFolder {
   name: string;
 }
 
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
 // Store the access token in memory
 let cachedAccessToken: string | null = null;
 let tokenExpiresAt: number | null = null;
@@ -302,6 +304,14 @@ export async function getFolderPath(
  */
 export function isPdfFile(file: OneDriveFile): boolean {
   return file.file?.mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
+export function isDocxFile(file: OneDriveFile): boolean {
+  return file.file?.mimeType === DOCX_MIME || file.name.toLowerCase().endsWith('.docx');
+}
+
+export function isImportableDocument(file: OneDriveFile): boolean {
+  return isPdfFile(file) || isDocxFile(file);
 }
 
 /**

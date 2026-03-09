@@ -18,6 +18,8 @@ import {
   listOneDriveFiles,
   getFolderPath,
   isPdfFile,
+  isDocxFile,
+  isImportableDocument,
   isFolder,
   isOneDriveConfigured,
   getAccessToken,
@@ -264,6 +266,7 @@ export function OneDrivePicker({
             <div className="space-y-1">
               {files.map((file) => {
                 const isPdf = isPdfFile(file);
+                const isDocx = isDocxFile(file);
                 const isFolderItem = isFolder(file);
                 const isSelected = selectedFile?.id === file.id;
 
@@ -273,23 +276,28 @@ export function OneDrivePicker({
                     onClick={() => {
                       if (isFolderItem) {
                         navigateToFolder(file.id);
-                      } else if (isPdf) {
+                      } else if (isImportableDocument(file)) {
                         setSelectedFile(isSelected ? null : file);
                       }
                     }}
-                    disabled={!isFolderItem && !isPdf}
+                    disabled={!isFolderItem && !isImportableDocument(file)}
                     className={cn(
                       'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors',
                       isSelected
                         ? 'bg-accent/10 border-2 border-accent'
                         : 'hover:bg-surface-alt border-2 border-transparent',
-                      !isFolderItem && !isPdf && 'opacity-50 cursor-not-allowed'
+                      !isFolderItem && !isImportableDocument(file) && 'opacity-50 cursor-not-allowed'
                     )}
                   >
                     {isFolderItem ? (
                       <Folder className="w-8 h-8 text-blue-500" />
                     ) : (
-                      <FileText className={cn('w-8 h-8', isPdf ? 'text-red-500' : 'text-text-soft')} />
+                      <FileText
+                        className={cn(
+                          'w-8 h-8',
+                          isPdf ? 'text-red-500' : isDocx ? 'text-blue-500' : 'text-text-soft'
+                        )}
+                      />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-text truncate">{file.name}</p>
@@ -315,7 +323,7 @@ export function OneDrivePicker({
         {/* Footer */}
         <div className="p-4 border-t border-border flex items-center justify-between">
           <p className="text-sm text-text-soft">
-            {selectedFile ? `Selected: ${selectedFile.name}` : 'Select a PDF file to import'}
+            {selectedFile ? `Selected: ${selectedFile.name}` : 'Select a PDF or DOCX file to import'}
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>
