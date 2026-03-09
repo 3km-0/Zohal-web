@@ -27,6 +27,8 @@ export interface GoogleDriveFolder {
   name: string;
 }
 
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
 interface TokenResponse {
   access_token: string;
   expires_in: number;
@@ -186,14 +188,18 @@ export async function listDriveFiles(
 }
 
 /**
- * Search for PDF files across all of Google Drive
+ * Search for importable files across all of Google Drive
  */
 export async function searchDriveFiles(
   accessToken: string,
   searchQuery: string = ''
 ): Promise<GoogleDriveFile[]> {
-  // Search for PDFs and folders matching the query
-  let query = "trashed = false and (mimeType = 'application/pdf' or mimeType = 'application/vnd.google-apps.folder')";
+  // Search for PDFs, DOCX files, and folders matching the query
+  let query =
+    `trashed = false and (` +
+    `mimeType = 'application/pdf' or ` +
+    `mimeType = '${DOCX_MIME}' or ` +
+    `mimeType = 'application/vnd.google-apps.folder')`;
   if (searchQuery) {
     query += ` and name contains '${searchQuery.replace(/'/g, "\\'")}'`;
   }
@@ -272,6 +278,14 @@ export async function getFolderPath(
  */
 export function isPdfFile(file: GoogleDriveFile): boolean {
   return file.mimeType === 'application/pdf';
+}
+
+export function isDocxFile(file: GoogleDriveFile): boolean {
+  return file.mimeType === DOCX_MIME || file.name.toLowerCase().endsWith('.docx');
+}
+
+export function isImportableDriveFile(file: GoogleDriveFile): boolean {
+  return isPdfFile(file) || isDocxFile(file);
 }
 
 /**

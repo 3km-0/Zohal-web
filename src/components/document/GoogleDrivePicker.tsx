@@ -26,6 +26,7 @@ type PickedDriveFile = {
   name: string;
   sizeBytes?: number;
   resourceKey?: string;
+  mimeType?: string;
 };
 
 export function GoogleDrivePicker({
@@ -59,7 +60,7 @@ export function GoogleDrivePicker({
   }, [GOOGLE_CLIENT_ID]);
 
   const selectedSummary = useMemo(() => {
-    if (selectedFiles.length === 0) return 'Select PDF files to import';
+    if (selectedFiles.length === 0) return 'Select PDF or DOCX files to import';
     if (selectedFiles.length === 1) return `Selected: ${selectedFiles[0]?.name ?? '1 file'}`;
     return `Selected: ${selectedFiles.length} files`;
   }, [selectedFiles]);
@@ -220,7 +221,9 @@ export function GoogleDrivePicker({
       if (!g?.picker) throw new Error('Google Picker unavailable');
 
       const view = new g.picker.DocsView(g.picker.ViewId.DOCS)
-        .setMimeTypes('application/pdf')
+        .setMimeTypes(
+          'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
         .setIncludeFolders(false)
         .setSelectFolderEnabled(false);
 
@@ -231,16 +234,17 @@ export function GoogleDrivePicker({
         .setOrigin(window.location.origin)
         .addView(view)
         .enableFeature(g.picker.Feature.MULTISELECT_ENABLED)
-        .setTitle('Select PDF files')
+        .setTitle('Select PDF or DOCX files')
         .setCallback((data: any) => {
           if (data?.action === g.picker.Action.PICKED) {
             const docs = Array.isArray(data?.docs) ? data.docs : [];
             const picked: PickedDriveFile[] = docs
               .map((d: any) => ({
                 id: String(d?.id || ''),
-                name: String(d?.name || 'Untitled.pdf'),
+                name: String(d?.name || 'Untitled'),
                 sizeBytes: typeof d?.sizeBytes === 'number' ? d.sizeBytes : undefined,
                 resourceKey: d?.resourceKey ? String(d.resourceKey) : undefined,
+                mimeType: d?.mimeType ? String(d.mimeType) : undefined,
               }))
               .filter((f: PickedDriveFile) => Boolean(f.id));
             setSelectedFiles(picked);
@@ -356,7 +360,7 @@ export function GoogleDrivePicker({
               </Button>
             ) : (
               <Button onClick={openPicker} disabled={connecting || importing}>
-                Choose PDFs…
+                Choose Documents…
               </Button>
             )}
             {selectedFiles.length > 0 && (
@@ -399,7 +403,7 @@ export function GoogleDrivePicker({
               <Cloud className="w-16 h-16 text-text-soft mb-4" />
               <h3 className="text-lg font-semibold text-text mb-2">Connect Google</h3>
               <p className="text-sm text-text-soft mb-4 text-center max-w-sm">
-                Connect your Google account to select PDFs from Drive.
+                Connect your Google account to select PDF or DOCX files from Drive.
               </p>
               <Button onClick={connectGoogle} isLoading={connecting}>
                 Connect Google
@@ -409,7 +413,7 @@ export function GoogleDrivePicker({
             <div className="flex flex-col items-center justify-center h-full">
               <FileText className="w-12 h-12 text-text-soft mb-4" />
               <p className="text-sm text-text-soft text-center max-w-sm">
-                Click <span className="font-medium text-text">Choose PDFs…</span> to select files from Google Drive.
+                Click <span className="font-medium text-text">Choose Documents…</span> to select files from Google Drive.
               </p>
             </div>
           ) : (
