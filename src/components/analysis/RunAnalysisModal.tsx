@@ -7,11 +7,12 @@ import { X, Play, Layers, FileText, CheckCircle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
-import { selectRecommendedPlaybook } from '@/lib/document-analysis';
+import { selectRecommendedPlaybook, supportsStructuredAnalysis } from '@/lib/document-analysis';
+import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplateGroupLabel, groupSystemPlaybooks } from '@/lib/template-library';
 
 type PlaybookScope = 'single' | 'bundle' | 'either';
 type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
-type TemplateFilter = 'all' | 'commercial' | 'employment' | 'property' | 'finance' | 'compliance' | 'custom';
+type TemplateFilter = 'all' | 'contract_operations' | 'finance_operations' | 'adjacent_domains' | 'variants' | 'custom';
 
 type PlaybookRecord = {
   id: string;
@@ -47,7 +48,7 @@ export function RunAnalysisModal(props: {
   const supabase = useMemo(() => createClient(), []);
   const isArabic = locale === 'ar';
 
-  const isContract = documentType === 'contract';
+  const supportsTemplateRun = supportsStructuredAnalysis(documentType);
 
   const [loading, setLoading] = useState(false);
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
@@ -148,13 +149,11 @@ export function RunAnalysisModal(props: {
     (
       key:
         | 'all'
-        | 'commercial'
-        | 'employment'
-        | 'property'
-        | 'finance'
-        | 'compliance'
+        | 'contract_operations'
+        | 'finance_operations'
+        | 'adjacent_domains'
+        | 'variants'
         | 'custom'
-        | 'customTemplates'
         | 'systemLabel'
         | 'search'
         | 'autoDescription'
@@ -163,13 +162,11 @@ export function RunAnalysisModal(props: {
     ) => {
       const ar = {
         all: 'الكل',
-        commercial: 'تجاري',
-        employment: 'وظيفي',
-        property: 'عقاري',
-        finance: 'مالي',
-        compliance: 'امتثال',
+        contract_operations: 'عمليات العقود',
+        finance_operations: 'المالية والعمليات',
+        adjacent_domains: 'مجالات مجاورة',
+        variants: 'النسخ المتخصصة',
         custom: 'مخصص',
-        customTemplates: 'قوالبك',
         systemLabel: 'من زحل',
         search: 'ابحث في القوالب…',
         autoDescription: 'يختار زحل القالب الأنسب لمستندك.',
@@ -177,13 +174,11 @@ export function RunAnalysisModal(props: {
       } as const;
       const en = {
         all: 'All',
-        commercial: 'Commercial',
-        employment: 'Employment',
-        property: 'Property',
-        finance: 'Finance',
-        compliance: 'Compliance',
+        contract_operations: 'Contract Ops',
+        finance_operations: 'Finance Ops',
+        adjacent_domains: 'Adjacent',
+        variants: 'Variants',
         custom: 'Custom',
-        customTemplates: 'Your templates',
         systemLabel: 'System',
         search: 'Search templates…',
         autoDescription: 'Zohal picks the best template for your document.',
@@ -204,16 +199,14 @@ export function RunAnalysisModal(props: {
       switch (category) {
         case 'all':
           return localizedTemplateText('all');
-        case 'commercial':
-          return localizedTemplateText('commercial');
-        case 'employment':
-          return localizedTemplateText('employment');
-        case 'property':
-          return localizedTemplateText('property');
-        case 'finance':
-          return localizedTemplateText('finance');
-        case 'compliance':
-          return localizedTemplateText('compliance');
+        case 'contract_operations':
+          return localizedTemplateText('contract_operations');
+        case 'finance_operations':
+          return localizedTemplateText('finance_operations');
+        case 'adjacent_domains':
+          return localizedTemplateText('adjacent_domains');
+        case 'variants':
+          return localizedTemplateText('variants');
         case 'custom':
           return localizedTemplateText('custom');
       }
@@ -222,50 +215,11 @@ export function RunAnalysisModal(props: {
   );
 
   const templateCategory = useCallback((playbook: PlaybookRecord): TemplateFilter => {
-    if (!playbook.is_system_preset) return 'custom';
-    const name = playbook.name.toLowerCase();
-    if (name.includes('employment') || name.includes('labor') || name.includes('hr')) return 'employment';
-    if (name.includes('real estate') || name.includes('lease') || name.includes('rent') || name.includes('property')) {
-      return 'property';
-    }
-    if (
-      name.includes('loan') ||
-      name.includes('credit') ||
-      name.includes('lending') ||
-      name.includes('finance') ||
-      name.includes('financial') ||
-      name.includes('insurance')
-    ) {
-      return 'finance';
-    }
-    if (name.includes('compliance') || name.includes('regulatory')) return 'compliance';
-    return 'commercial';
+    return playbook.is_system_preset ? getTemplateGroup(playbook) : 'custom';
   }, []);
 
   const templateEmoji = useCallback((playbook: PlaybookRecord) => {
-    if (!playbook.is_system_preset) return '📝';
-    const name = playbook.name.toLowerCase();
-    if (name.includes('employment') || name.includes('labor') || name.includes('hr')) return '👔';
-    if (name.includes('real estate') || name.includes('lease') || name.includes('rent') || name.includes('property')) return '🏠';
-    if (name.includes('nda') || name.includes('confidential') || name.includes('non-disclosure')) return '🤐';
-    if (name.includes('service') || name.includes('msa') || name.includes('master')) return '🤝';
-    if (name.includes('construction') || name.includes('epc') || name.includes('build')) return '🏗️';
-    if (name.includes('shareholder') || name.includes('equity') || name.includes('share')) return '📊';
-    if (name.includes('loan') || name.includes('credit') || name.includes('lending')) return '🏦';
-    if (name.includes('finance') || name.includes('financial')) return '💰';
-    if (name.includes('insurance')) return '🛡️';
-    if (name.includes('intellectual') || name.includes('patent')) return '💡';
-    if (name.includes('license') || name.includes('licensing')) return '🔑';
-    if (name.includes('supply') || name.includes('procurement') || name.includes('vendor')) return '📦';
-    if (name.includes('purchase') || name.includes('sale') || name.includes('acquisition')) return '🛒';
-    if (name.includes('franchise')) return '🏪';
-    if (name.includes('partnership') || name.includes('joint venture')) return '🤲';
-    if (name.includes('settlement') || name.includes('dispute')) return '⚖️';
-    if (name.includes('compliance') || name.includes('regulatory')) return '✅';
-    if (name.includes('distribution') || name.includes('logistics')) return '🚚';
-    if (name.includes('software') || name.includes('saas') || name.includes('tech')) return '💻';
-    if (name.includes('consulting') || name.includes('advisory')) return '🎯';
-    return '📋';
+    return getTemplateEmoji(playbook);
   }, []);
 
   const templateDescription = useCallback(
@@ -274,41 +228,7 @@ export function RunAnalysisModal(props: {
         const version = playbook.current_version?.version_number;
         return localizedTemplateText('customTemplate', version);
       }
-      const name = playbook.name.toLowerCase();
-      if (isArabic) {
-        if (name.includes('general contract')) return 'البنود والالتزامات والمخاطر والمتغيرات الأساسية.';
-        if (name.includes('employment') || name.includes('labor')) return 'الأجر والواجبات والإنهاء وبنود الملكية الفكرية.';
-        if (name.includes('real estate') || name.includes('lease') || name.includes('rent')) return 'شروط العقار والإيجار والمدة والتزامات الصيانة.';
-        if (name.includes('nda') || name.includes('non-disclosure')) return 'التزامات السرية والاستثناءات والمدة.';
-        if (name.includes('msa') || name.includes('master service')) return 'نطاق العمل ومستويات الخدمة والدفع والمسؤولية.';
-        if (name.includes('service')) return 'التسليمات والدفع والمسؤولية وشروط الإنهاء.';
-        if (name.includes('construction') || name.includes('epc')) return 'المراحل والضمانات والجزاءات وشروط التسليم.';
-        if (name.includes('shareholder')) return 'الملكية وحقوق التصويت والأرباح وشروط الخروج.';
-        if (name.includes('loan') || name.includes('credit')) return 'الأصل والفائدة والعهود ومسببات التعثر.';
-        if (name.includes('insurance')) return 'التغطية والاستثناءات والأقساط والتزامات المطالبة.';
-        if (name.includes('intellectual')) return 'الملكية ونطاق الترخيص والعوائد والقيود.';
-        if (name.includes('supply') || name.includes('procurement')) return 'التسليم والتسعير والضمانات والتزامات المورد.';
-        if (name.includes('franchise')) return 'النطاق الجغرافي والرسوم والمعايير والتجديد.';
-        if (name.includes('compliance')) return 'المتطلبات التنظيمية والتقارير والتدقيق.';
-        if (name.includes('software') || name.includes('saas')) return 'الترخيص وحدود الاستخدام ومستويات الخدمة ومعالجة البيانات.';
-        return 'استخراج بدرجة دليل لهذا النوع من المستندات.';
-      }
-      if (name.includes('general contract')) return 'Clauses, obligations, risks and key variables.';
-      if (name.includes('employment') || name.includes('labor')) return 'Compensation, duties, termination and IP clauses.';
-      if (name.includes('real estate') || name.includes('lease') || name.includes('rent')) return 'Property terms, rent, duration and maintenance obligations.';
-      if (name.includes('nda') || name.includes('non-disclosure')) return 'Confidentiality obligations, carve-outs and duration.';
-      if (name.includes('msa') || name.includes('master service')) return 'Scope of work, SLAs, payment and liability terms.';
-      if (name.includes('service')) return 'Deliverables, payment, liability and termination terms.';
-      if (name.includes('construction') || name.includes('epc')) return 'Milestones, warranties, penalties and handover terms.';
-      if (name.includes('shareholder')) return 'Equity, voting rights, dividends and exit terms.';
-      if (name.includes('loan') || name.includes('credit')) return 'Principal, interest, covenants and default triggers.';
-      if (name.includes('insurance')) return 'Coverage, exclusions, premiums and claim obligations.';
-      if (name.includes('intellectual')) return 'Ownership, license scope, royalties and restrictions.';
-      if (name.includes('supply') || name.includes('procurement')) return 'Delivery, pricing, warranties and supplier obligations.';
-      if (name.includes('franchise')) return 'Territory, royalties, standards and renewal terms.';
-      if (name.includes('compliance')) return 'Regulatory requirements, reporting and audit obligations.';
-      if (name.includes('software') || name.includes('saas')) return 'License, usage limits, SLAs and data handling.';
-      return 'Evidence-grade extraction for this document type.';
+      return getTemplateDescription(playbook, isArabic ? 'ar' : 'en');
     },
     [isArabic, localizedTemplateText]
   );
@@ -327,6 +247,11 @@ export function RunAnalysisModal(props: {
   const filteredSystemPlaybooks = useMemo(
     () => filteredPlaybooks.filter((playbook) => playbook.is_system_preset),
     [filteredPlaybooks]
+  );
+
+  const groupedSystemPlaybooks = useMemo(
+    () => groupSystemPlaybooks(filteredSystemPlaybooks),
+    [filteredSystemPlaybooks]
   );
 
   const filteredCustomPlaybooks = useMemo(
@@ -384,7 +309,7 @@ export function RunAnalysisModal(props: {
     let cancelled = false;
     async function validateBundle() {
       if (!open) return;
-      if (!isContract) return;
+      if (!supportsTemplateRun) return;
       if (effectiveScope !== 'bundle') {
         setBundleMemberIssues([]);
         return;
@@ -431,7 +356,7 @@ export function RunAnalysisModal(props: {
     return () => {
       cancelled = true;
     };
-  }, [open, supabase, isContract, effectiveScope, selectedBundleId, documentId, bundleSchemaRoles, t]);
+  }, [open, supabase, supportsTemplateRun, effectiveScope, selectedBundleId, documentId, bundleSchemaRoles, t]);
 
   const createBundle = useCallback(async () => {
     setCreatingBundle(true);
@@ -478,7 +403,7 @@ export function RunAnalysisModal(props: {
   }, [supabase, workspaceId, documentId, newBundleName, loadBundles]);
 
   const run = useCallback(async () => {
-    if (!isContract) {
+    if (!supportsTemplateRun) {
       onOpenAITools?.();
       onClose();
       return;
@@ -494,7 +419,7 @@ export function RunAnalysisModal(props: {
     onClose();
     router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis?${params.toString()}`);
   }, [
-    isContract,
+    supportsTemplateRun,
     onOpenAITools,
     onClose,
     router,
@@ -527,7 +452,7 @@ export function RunAnalysisModal(props: {
         </CardHeader>
 
         <CardContent className="space-y-5">
-          {!isContract ? (
+          {!supportsTemplateRun ? (
             <div className="space-y-3">
               <p className="text-sm text-text-soft">
                 {t('templatesComingSoon')}
@@ -559,7 +484,7 @@ export function RunAnalysisModal(props: {
                       placeholder={localizedTemplateText('search')}
                     />
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                      {(['all', 'commercial', 'employment', 'property', 'finance', 'compliance', 'custom'] as TemplateFilter[]).map(
+                      {(['all', 'contract_operations', 'finance_operations', 'adjacent_domains', 'variants', 'custom'] as TemplateFilter[]).map(
                         (filter) => (
                           <button
                             key={filter}
@@ -607,41 +532,45 @@ export function RunAnalysisModal(props: {
                         </div>
                       </button>
 
-                      {filteredSystemPlaybooks.length > 0 && (
+                      {groupedSystemPlaybooks.length > 0 && (
                         <div className="space-y-2">
-                          <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                            {t('playbook.zohalTemplates')}
-                          </div>
-                          {filteredSystemPlaybooks.map((playbook) => (
-                            <button
-                              key={playbook.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedPlaybookId(playbook.id);
-                                setSelectedPlaybookVersionId(playbook.current_version?.id || playbook.current_version_id || '');
-                              }}
-                              className={cn(
-                                'w-full rounded-xl border p-3 text-left transition-colors',
-                                selectedPlaybookId === playbook.id
-                                  ? 'border-accent bg-accent/5'
-                                  : 'border-border bg-surface-alt hover:border-accent/40'
-                              )}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className="text-xl leading-none">{templateEmoji(playbook)}</div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-text">{playbook.name}</span>
-                                    <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
-                                  </div>
-                                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
-                                    {templateCategoryLabel(templateCategory(playbook))}
-                                  </div>
-                                  <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
-                                </div>
-                                {selectedPlaybookId === playbook.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                          {groupedSystemPlaybooks.map(({ group, playbooks }) => (
+                            <div key={group} className="space-y-2">
+                              <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                                {getTemplateGroupLabel(group, isArabic ? 'ar' : 'en')}
                               </div>
-                            </button>
+                              {playbooks.map((playbook) => (
+                                <button
+                                  key={playbook.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPlaybookId(playbook.id);
+                                    setSelectedPlaybookVersionId(playbook.current_version?.id || playbook.current_version_id || '');
+                                  }}
+                                  className={cn(
+                                    'w-full rounded-xl border p-3 text-left transition-colors',
+                                    selectedPlaybookId === playbook.id
+                                      ? 'border-accent bg-accent/5'
+                                      : 'border-border bg-surface-alt hover:border-accent/40'
+                                  )}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="text-xl leading-none">{templateEmoji(playbook)}</div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-text">{playbook.name}</span>
+                                        <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                                      </div>
+                                      <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+                                        {getTemplateGroupLabel(getTemplateGroup(playbook), isArabic ? 'ar' : 'en')}
+                                      </div>
+                                      <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
+                                    </div>
+                                    {selectedPlaybookId === playbook.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
                           ))}
                         </div>
                       )}
@@ -649,7 +578,7 @@ export function RunAnalysisModal(props: {
                       {filteredCustomPlaybooks.length > 0 && (
                         <div className="space-y-2">
                           <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                            {localizedTemplateText('customTemplates')}
+                            {getTemplateGroupLabel('custom', isArabic ? 'ar' : 'en')}
                           </div>
                           {filteredCustomPlaybooks.map((playbook) => (
                             <button
@@ -682,7 +611,7 @@ export function RunAnalysisModal(props: {
                         </div>
                       )}
 
-                      {filteredSystemPlaybooks.length === 0 && filteredCustomPlaybooks.length === 0 && normalizedTemplateSearch ? (
+                      {groupedSystemPlaybooks.length === 0 && filteredCustomPlaybooks.length === 0 && normalizedTemplateSearch ? (
                         <div className="rounded-xl border border-dashed border-border bg-surface-alt px-3 py-5 text-sm text-text-soft">
                           {noTemplateMatchText(templateSearch)}
                         </div>

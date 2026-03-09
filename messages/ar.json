@@ -1689,7 +1689,7 @@
         },
         "mock": {
           "decisionPackLabel": "مثال على المخرج النهائي",
-          "samplePackTitle": "مراجعة عقد إيجار - عربي/إنجليزي",
+          "samplePackTitle": "مراجعة إيجار تجاري - عربي/إنجليزي",
           "provisional": "يحتاج مراجعة",
           "finalized": "موثق",
           "verifiedStatus": "موثق",

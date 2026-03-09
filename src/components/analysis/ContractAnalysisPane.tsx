@@ -34,6 +34,7 @@ import { useToast } from '@/components/ui/Toast';
 import type { AnalysisRunSummary } from '@/types/analysis-runs';
 import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import { selectRecommendedPlaybook } from '@/lib/document-analysis';
+import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplateGroupLabel, groupSystemPlaybooks } from '@/lib/template-library';
 
 type Tab = string;
 
@@ -56,7 +57,7 @@ type PlaybookScope = 'single' | 'bundle' | 'either';
 type RunScope = 'single' | 'bundle';
 type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
 type DocsetMode = 'ephemeral' | 'saved';
-type TemplateFilter = 'all' | 'commercial' | 'employment' | 'property' | 'finance' | 'compliance' | 'custom';
+type TemplateFilter = 'all' | 'contract_operations' | 'finance_operations' | 'adjacent_domains' | 'variants' | 'custom';
 
 type WorkspaceFolder = {
   id: string;
@@ -230,11 +231,10 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     (
       key:
         | 'all'
-        | 'commercial'
-        | 'employment'
-        | 'property'
-        | 'finance'
-        | 'compliance'
+        | 'contract_operations'
+        | 'finance_operations'
+        | 'adjacent_domains'
+        | 'variants'
         | 'custom'
         | 'systemLabel'
         | 'search'
@@ -244,11 +244,10 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     ) => {
       const ar = {
         all: 'الكل',
-        commercial: 'تجاري',
-        employment: 'وظيفي',
-        property: 'عقاري',
-        finance: 'مالي',
-        compliance: 'امتثال',
+        contract_operations: 'عمليات العقود',
+        finance_operations: 'المالية والعمليات',
+        adjacent_domains: 'مجالات مجاورة',
+        variants: 'النسخ المتخصصة',
         custom: 'مخصص',
         systemLabel: 'من زحل',
         search: 'ابحث في القوالب…',
@@ -257,11 +256,10 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
       } as const;
       const en = {
         all: 'All',
-        commercial: 'Commercial',
-        employment: 'Employment',
-        property: 'Property',
-        finance: 'Finance',
-        compliance: 'Compliance',
+        contract_operations: 'Contract Ops',
+        finance_operations: 'Finance Ops',
+        adjacent_domains: 'Adjacent',
+        variants: 'Variants',
         custom: 'Custom',
         systemLabel: 'System',
         search: 'Search templates…',
@@ -283,16 +281,14 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
       switch (category) {
         case 'all':
           return localizedTemplateText('all');
-        case 'commercial':
-          return localizedTemplateText('commercial');
-        case 'employment':
-          return localizedTemplateText('employment');
-        case 'property':
-          return localizedTemplateText('property');
-        case 'finance':
-          return localizedTemplateText('finance');
-        case 'compliance':
-          return localizedTemplateText('compliance');
+        case 'contract_operations':
+          return localizedTemplateText('contract_operations');
+        case 'finance_operations':
+          return localizedTemplateText('finance_operations');
+        case 'adjacent_domains':
+          return localizedTemplateText('adjacent_domains');
+        case 'variants':
+          return localizedTemplateText('variants');
         case 'custom':
           return localizedTemplateText('custom');
       }
@@ -301,50 +297,11 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
   );
 
   const templateCategory = useCallback((playbook: PlaybookRecord): TemplateFilter => {
-    if (!playbook.is_system_preset) return 'custom';
-    const name = playbook.name.toLowerCase();
-    if (name.includes('employment') || name.includes('labor') || name.includes('hr')) return 'employment';
-    if (name.includes('real estate') || name.includes('lease') || name.includes('rent') || name.includes('property')) {
-      return 'property';
-    }
-    if (
-      name.includes('loan') ||
-      name.includes('credit') ||
-      name.includes('lending') ||
-      name.includes('finance') ||
-      name.includes('financial') ||
-      name.includes('insurance')
-    ) {
-      return 'finance';
-    }
-    if (name.includes('compliance') || name.includes('regulatory')) return 'compliance';
-    return 'commercial';
+    return playbook.is_system_preset ? getTemplateGroup(playbook) : 'custom';
   }, []);
 
   const templateEmoji = useCallback((playbook: PlaybookRecord) => {
-    if (!playbook.is_system_preset) return '📝';
-    const name = playbook.name.toLowerCase();
-    if (name.includes('employment') || name.includes('labor') || name.includes('hr')) return '👔';
-    if (name.includes('real estate') || name.includes('lease') || name.includes('rent') || name.includes('property')) return '🏠';
-    if (name.includes('nda') || name.includes('confidential') || name.includes('non-disclosure')) return '🤐';
-    if (name.includes('service') || name.includes('msa') || name.includes('master')) return '🤝';
-    if (name.includes('construction') || name.includes('epc') || name.includes('build')) return '🏗️';
-    if (name.includes('shareholder') || name.includes('equity') || name.includes('share')) return '📊';
-    if (name.includes('loan') || name.includes('credit') || name.includes('lending')) return '🏦';
-    if (name.includes('finance') || name.includes('financial')) return '💰';
-    if (name.includes('insurance')) return '🛡️';
-    if (name.includes('intellectual') || name.includes('patent')) return '💡';
-    if (name.includes('license') || name.includes('licensing')) return '🔑';
-    if (name.includes('supply') || name.includes('procurement') || name.includes('vendor')) return '📦';
-    if (name.includes('purchase') || name.includes('sale') || name.includes('acquisition')) return '🛒';
-    if (name.includes('franchise')) return '🏪';
-    if (name.includes('partnership') || name.includes('joint venture')) return '🤲';
-    if (name.includes('settlement') || name.includes('dispute')) return '⚖️';
-    if (name.includes('compliance') || name.includes('regulatory')) return '✅';
-    if (name.includes('distribution') || name.includes('logistics')) return '🚚';
-    if (name.includes('software') || name.includes('saas') || name.includes('tech')) return '💻';
-    if (name.includes('consulting') || name.includes('advisory')) return '🎯';
-    return '📋';
+    return getTemplateEmoji(playbook);
   }, []);
 
   const templateDescription = useCallback(
@@ -353,41 +310,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
         const version = playbook.current_version?.version_number;
         return localizedTemplateText('customTemplate', version);
       }
-      const name = playbook.name.toLowerCase();
-      if (isArabic) {
-        if (name.includes('general contract')) return 'البنود والالتزامات والمخاطر والمتغيرات الأساسية.';
-        if (name.includes('employment') || name.includes('labor')) return 'الأجر والواجبات والإنهاء وبنود الملكية الفكرية.';
-        if (name.includes('real estate') || name.includes('lease') || name.includes('rent')) return 'شروط العقار والإيجار والمدة والتزامات الصيانة.';
-        if (name.includes('nda') || name.includes('non-disclosure')) return 'التزامات السرية والاستثناءات والمدة.';
-        if (name.includes('msa') || name.includes('master service')) return 'نطاق العمل ومستويات الخدمة والدفع والمسؤولية.';
-        if (name.includes('service')) return 'التسليمات والدفع والمسؤولية وشروط الإنهاء.';
-        if (name.includes('construction') || name.includes('epc')) return 'المراحل والضمانات والجزاءات وشروط التسليم.';
-        if (name.includes('shareholder')) return 'الملكية وحقوق التصويت والأرباح وشروط الخروج.';
-        if (name.includes('loan') || name.includes('credit')) return 'الأصل والفائدة والعهود ومسببات التعثر.';
-        if (name.includes('insurance')) return 'التغطية والاستثناءات والأقساط والتزامات المطالبة.';
-        if (name.includes('intellectual')) return 'الملكية ونطاق الترخيص والعوائد والقيود.';
-        if (name.includes('supply') || name.includes('procurement')) return 'التسليم والتسعير والضمانات والتزامات المورد.';
-        if (name.includes('franchise')) return 'النطاق الجغرافي والرسوم والمعايير والتجديد.';
-        if (name.includes('compliance')) return 'المتطلبات التنظيمية والتقارير والتدقيق.';
-        if (name.includes('software') || name.includes('saas')) return 'الترخيص وحدود الاستخدام ومستويات الخدمة ومعالجة البيانات.';
-        return 'استخراج بدرجة دليل لهذا النوع من المستندات.';
-      }
-      if (name.includes('general contract')) return 'Clauses, obligations, risks and key variables.';
-      if (name.includes('employment') || name.includes('labor')) return 'Compensation, duties, termination and IP clauses.';
-      if (name.includes('real estate') || name.includes('lease') || name.includes('rent')) return 'Property terms, rent, duration and maintenance obligations.';
-      if (name.includes('nda') || name.includes('non-disclosure')) return 'Confidentiality obligations, carve-outs and duration.';
-      if (name.includes('msa') || name.includes('master service')) return 'Scope of work, SLAs, payment and liability terms.';
-      if (name.includes('service')) return 'Deliverables, payment, liability and termination terms.';
-      if (name.includes('construction') || name.includes('epc')) return 'Milestones, warranties, penalties and handover terms.';
-      if (name.includes('shareholder')) return 'Equity, voting rights, dividends and exit terms.';
-      if (name.includes('loan') || name.includes('credit')) return 'Principal, interest, covenants and default triggers.';
-      if (name.includes('insurance')) return 'Coverage, exclusions, premiums and claim obligations.';
-      if (name.includes('intellectual')) return 'Ownership, license scope, royalties and restrictions.';
-      if (name.includes('supply') || name.includes('procurement')) return 'Delivery, pricing, warranties and supplier obligations.';
-      if (name.includes('franchise')) return 'Territory, royalties, standards and renewal terms.';
-      if (name.includes('compliance')) return 'Regulatory requirements, reporting and audit obligations.';
-      if (name.includes('software') || name.includes('saas')) return 'License, usage limits, SLAs and data handling.';
-      return 'Evidence-grade extraction for this document type.';
+      return getTemplateDescription(playbook, isArabic ? 'ar' : 'en');
     },
     [isArabic, localizedTemplateText]
   );
@@ -406,6 +329,11 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
   const filteredSystemPlaybooks = useMemo(
     () => filteredPlaybooks.filter((playbook) => playbook.is_system_preset),
     [filteredPlaybooks]
+  );
+
+  const groupedSystemPlaybooks = useMemo(
+    () => groupSystemPlaybooks(filteredSystemPlaybooks),
+    [filteredSystemPlaybooks]
   );
 
   const filteredCustomPlaybooks = useMemo(
@@ -647,7 +575,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     }
     out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: Puzzle, total: null, attentionCount: 0 })));
     return out;
-  }, [enabledModules, snapshot, clauses, obligations, risks, deadlines, attention, customModules, v3Records, v3Verdicts, v3Exceptions, rejectedSets, t]);
+  }, [enabledModules, snapshot, clauses, obligations, risks, deadlines, attention, customModules, v3Verdicts, v3Exceptions, rejectedSets, t]);
 
   useEffect(() => {
     // If the current tab becomes unavailable due to template module gating, fall back to overview.
@@ -2228,7 +2156,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
                         className="w-full rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none placeholder:text-text-soft"
                       />
                       <div className="flex gap-2 overflow-x-auto pb-1">
-                        {(['all', 'commercial', 'employment', 'property', 'finance', 'compliance', 'custom'] as TemplateFilter[]).map(
+                        {(['all', 'contract_operations', 'finance_operations', 'adjacent_domains', 'variants', 'custom'] as TemplateFilter[]).map(
                           (filter) => (
                             <button
                               key={filter}
@@ -2276,41 +2204,45 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
                           </div>
                         </button>
 
-                        {filteredSystemPlaybooks.length > 0 && (
+                        {groupedSystemPlaybooks.length > 0 && (
                           <div className="space-y-2">
-                            <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                              {t('playbook.zohalTemplates')}
-                            </div>
-                            {filteredSystemPlaybooks.map((pb) => (
-                              <button
-                                key={pb.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedPlaybookId(pb.id);
-                                  setSelectedPlaybookVersionId(pb.current_version?.id || pb.current_version_id || '');
-                                }}
-                                className={cn(
-                                  'w-full rounded-scholar border p-3 text-left transition-colors',
-                                  selectedPlaybookId === pb.id
-                                    ? 'border-accent bg-accent/5'
-                                    : 'border-border bg-surface-alt hover:border-accent/50'
-                                )}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="text-xl leading-none">{templateEmoji(pb)}</div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-text">{pb.name}</span>
-                                      <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
-                                    </div>
-                                    <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                                      {templateCategoryLabel(templateCategory(pb))}
-                                    </div>
-                                    <p className="mt-1 text-sm text-text-soft">{templateDescription(pb)}</p>
-                                  </div>
-                                  {selectedPlaybookId === pb.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                            {groupedSystemPlaybooks.map(({ group, playbooks }) => (
+                              <div key={group} className="space-y-2">
+                                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                                  {getTemplateGroupLabel(group, isArabic ? 'ar' : 'en')}
                                 </div>
-                              </button>
+                                {playbooks.map((pb) => (
+                                  <button
+                                    key={pb.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedPlaybookId(pb.id);
+                                      setSelectedPlaybookVersionId(pb.current_version?.id || pb.current_version_id || '');
+                                    }}
+                                    className={cn(
+                                      'w-full rounded-scholar border p-3 text-left transition-colors',
+                                      selectedPlaybookId === pb.id
+                                        ? 'border-accent bg-accent/5'
+                                        : 'border-border bg-surface-alt hover:border-accent/50'
+                                    )}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <div className="text-xl leading-none">{templateEmoji(pb)}</div>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-semibold text-text">{pb.name}</span>
+                                          <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                                        </div>
+                                        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                                          {getTemplateGroupLabel(getTemplateGroup(pb), isArabic ? 'ar' : 'en')}
+                                        </div>
+                                        <p className="mt-1 text-sm text-text-soft">{templateDescription(pb)}</p>
+                                      </div>
+                                      {selectedPlaybookId === pb.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
                             ))}
                           </div>
                         )}
@@ -2318,7 +2250,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
                         {filteredCustomPlaybooks.length > 0 && (
                           <div className="space-y-2">
                             <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                              {t('playbook.yourTemplates')}
+                              {getTemplateGroupLabel('custom', isArabic ? 'ar' : 'en')}
                             </div>
                             {filteredCustomPlaybooks.map((pb) => (
                               <button
@@ -2351,7 +2283,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
                           </div>
                         )}
 
-                        {filteredSystemPlaybooks.length === 0 && filteredCustomPlaybooks.length === 0 && normalizedTemplateSearch ? (
+                        {groupedSystemPlaybooks.length === 0 && filteredCustomPlaybooks.length === 0 && normalizedTemplateSearch ? (
                           <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-3 py-5 text-sm text-text-soft">
                             {noTemplateMatchText(templateSearch)}
                           </div>

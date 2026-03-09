@@ -1689,7 +1689,7 @@
         },
         "mock": {
           "decisionPackLabel": "Sample review output",
-          "samplePackTitle": "Lease Review - Arabic/English",
+          "samplePackTitle": "Commercial Lease Review - Arabic/English",
           "provisional": "Needs review",
           "finalized": "Verified",
           "verifiedStatus": "Verified",
