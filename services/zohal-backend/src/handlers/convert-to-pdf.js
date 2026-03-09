@@ -22,6 +22,20 @@ function createServiceClient() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+function getHeaderValue(headers, name) {
+  const value = headers[name.toLowerCase()];
+  if (Array.isArray(value)) return String(value[0] || "").trim();
+  return String(value || "").trim();
+}
+
+export function getProxyConversionInputs(headers) {
+  return {
+    cloudConvertKey: getHeaderValue(headers, "x-zohal-cloudconvert-key"),
+    sourceDownloadUrl: getHeaderValue(headers, "x-zohal-source-download-url"),
+    uploadUrl: getHeaderValue(headers, "x-zohal-pdf-upload-url"),
+  };
+}
+
 export function buildConvertSuccess({
   documentId,
   pageCount,
@@ -141,7 +155,9 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
       }));
     }
 
-    const cloudConvertKey = String(process.env.CLOUDCONVERT_API_KEY || "").trim();
+    const proxyInputs = getProxyConversionInputs(req.headers);
+    const cloudConvertKey = proxyInputs.cloudConvertKey ||
+      String(process.env.CLOUDCONVERT_API_KEY || "").trim();
     if (!cloudConvertKey) {
       throw new Error("CLOUDCONVERT_API_KEY not configured");
     }
@@ -177,19 +193,22 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
 
     await markProcessingConversion(supabase, docId, currentMeta, log);
 
-    const routing = await resolveStorageRouting({
-      supabase,
-      workspaceId,
-      storagePath: sourcePath,
-    });
+    let sourceDownloadUrl = proxyInputs.sourceDownloadUrl;
+    if (!sourceDownloadUrl) {
+      const routing = await resolveStorageRouting({
+        supabase,
+        workspaceId,
+        storagePath: sourcePath,
+      });
 
-    const { url: sourceDownloadUrl } = generateSignedDownloadUrl(sourcePath, {
-      expiresInSeconds: 60 * 10,
-      ...(routing.bucketOverride
-        ? { bucketNameOverride: routing.bucketOverride }
-        : {}),
-      ...(routing.effectivePrefix ? { pathPrefix: routing.effectivePrefix } : {}),
-    });
+      sourceDownloadUrl = generateSignedDownloadUrl(sourcePath, {
+        expiresInSeconds: 60 * 10,
+        ...(routing.bucketOverride
+          ? { bucketNameOverride: routing.bucketOverride }
+          : {}),
+        ...(routing.effectivePrefix ? { pathPrefix: routing.effectivePrefix } : {}),
+      }).url;
+    }
 
     log.info("Starting CloudConvert job", { document_id: docId });
 
@@ -278,22 +297,25 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
       ? String(document.storage_path)
       : getDocumentStoragePath(userId, docId);
 
-    const pdfRouting = await resolveStorageRouting({
-      supabase,
-      workspaceId,
-      storagePath,
-    });
+    let uploadUrl = proxyInputs.uploadUrl;
+    if (!uploadUrl) {
+      const pdfRouting = await resolveStorageRouting({
+        supabase,
+        workspaceId,
+        storagePath,
+      });
 
-    const { url: uploadUrl } = generateSignedUploadUrl(storagePath, {
-      contentType: "application/pdf",
-      expiresInSeconds: 15 * 60,
-      ...(pdfRouting.bucketOverride
-        ? { bucketNameOverride: pdfRouting.bucketOverride }
-        : {}),
-      ...(pdfRouting.effectivePrefix
-        ? { pathPrefix: pdfRouting.effectivePrefix }
-        : {}),
-    });
+      uploadUrl = generateSignedUploadUrl(storagePath, {
+        contentType: "application/pdf",
+        expiresInSeconds: 15 * 60,
+        ...(pdfRouting.bucketOverride
+          ? { bucketNameOverride: pdfRouting.bucketOverride }
+          : {}),
+        ...(pdfRouting.effectivePrefix
+          ? { pathPrefix: pdfRouting.effectivePrefix }
+          : {}),
+      }).url;
+    }
 
     const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",

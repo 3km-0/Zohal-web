@@ -16,7 +16,12 @@ const server = createServer(async (req, res) => {
 
     const url = new URL(req.url || "/", "http://localhost");
 
-    if (req.method === "GET" && url.pathname === "/healthz") {
+    if (
+      req.method === "GET" &&
+      (url.pathname === "/healthz" ||
+        url.pathname === "/status" ||
+        url.pathname === "/readyz")
+    ) {
       return sendJson(res, 200, {
         ok: true,
         request_id: requestId,

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildConvertError,
   buildConvertSuccess,
+  getProxyConversionInputs,
 } from "../src/handlers/convert-to-pdf.js";
 
 test("convert-to-pdf success payload preserves legacy fields with additive metadata", () => {
@@ -33,5 +34,19 @@ test("convert-to-pdf error payload stays backward compatible with additive metad
     error: "Missing document_id",
     request_id: "req-456",
     execution_plane: "gcp",
+  });
+});
+
+test("convert-to-pdf accepts forwarded proxy inputs from Supabase", () => {
+  const inputs = getProxyConversionInputs({
+    "x-zohal-cloudconvert-key": "cloudconvert-token",
+    "x-zohal-source-download-url": "https://example.com/source",
+    "x-zohal-pdf-upload-url": "https://example.com/upload",
+  });
+
+  assert.deepEqual(inputs, {
+    cloudConvertKey: "cloudconvert-token",
+    sourceDownloadUrl: "https://example.com/source",
+    uploadUrl: "https://example.com/upload",
   });
 });
