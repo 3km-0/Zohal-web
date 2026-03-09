@@ -80,8 +80,9 @@ describe('PDFViewer RTL isolation', () => {
     };
 
     contextSpy = vi
-      .spyOn(HTMLCanvasElement.prototype, 'getContext')
-      .mockImplementation(() => mockCanvasContext as unknown as CanvasRenderingContext2D);
+      // getContext has overloaded signatures; relax typing for Vitest spy.
+      .spyOn(HTMLCanvasElement.prototype, 'getContext' as any)
+      .mockImplementation((() => mockCanvasContext as unknown as CanvasRenderingContext2D) as any);
   });
 
   afterEach(() => {

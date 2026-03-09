@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { X, Play, Layers, FileText, CheckCircle } from 'lucide-react';
+import { X, Play, Layers, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -57,7 +57,7 @@ export function RunAnalysisModal(props: {
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateFilter, setTemplateFilter] = useState<TemplateFilter>('all');
   const [didInitializeRecommendedPlaybook, setDidInitializeRecommendedPlaybook] = useState(false);
-  const [documentMetadata, setDocumentMetadata] = useState<{ title: string | null; original_filename: string | null; document_type: string | null } | null>(null);
+  const [documentMetadata, setDocumentMetadata] = useState<{ title: string | null; original_filename: string | null; document_type: string | null; source_metadata?: any } | null>(null);
 
   const [scope, setScope] = useState<Scope>('single');
   const [bundles, setBundles] = useState<DocumentBundleRow[]>([]);
@@ -115,7 +115,7 @@ export function RunAnalysisModal(props: {
       try {
         const { data } = await supabase
           .from('documents')
-          .select('title, original_filename, document_type')
+          .select('title, original_filename, document_type, source_metadata')
           .eq('id', documentId)
           .maybeSingle();
         setDocumentMetadata((data || null) as typeof documentMetadata);
@@ -125,10 +125,30 @@ export function RunAnalysisModal(props: {
     })();
   }, [open, loadPlaybooks, loadBundles, supabase, documentId]);
 
+  const playbookTemplateId = useCallback((pb: PlaybookRecord): string | null => {
+    const raw = pb.current_version?.spec_json?.template_id;
+    if (typeof raw !== 'string') return null;
+    const normalized = raw.trim().toLowerCase();
+    return normalized ? normalized : null;
+  }, []);
+
+  const recommendedTemplateIds = useMemo(() => {
+    const raw = (documentMetadata as any)?.source_metadata?.recommended_template_ids;
+    if (!Array.isArray(raw)) return [] as string[];
+    return raw.map((v: any) => String(v || '').trim().toLowerCase()).filter(Boolean);
+  }, [documentMetadata]);
+
+  const primaryRecommendedTemplateId = recommendedTemplateIds[0] || null;
+
+  const recommendedPlaybookFromClassifier = useMemo(() => {
+    if (!primaryRecommendedTemplateId || playbooks.length === 0) return null;
+    return playbooks.find((pb) => playbookTemplateId(pb) === primaryRecommendedTemplateId) || null;
+  }, [playbookTemplateId, playbooks, primaryRecommendedTemplateId]);
+
   useEffect(() => {
     if (!open || didInitializeRecommendedPlaybook || selectedPlaybookId || playbooks.length === 0) return;
 
-    const recommendedPlaybook = selectRecommendedPlaybook(playbooks, {
+    const recommendedPlaybook = recommendedPlaybookFromClassifier || selectRecommendedPlaybook(playbooks, {
       documentType: documentMetadata?.document_type || documentType,
       title: documentMetadata?.title,
       originalFilename: documentMetadata?.original_filename,
@@ -138,7 +158,7 @@ export function RunAnalysisModal(props: {
       setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
     }
     setDidInitializeRecommendedPlaybook(true);
-  }, [didInitializeRecommendedPlaybook, documentMetadata, documentType, open, playbooks, selectedPlaybookId]);
+  }, [didInitializeRecommendedPlaybook, documentMetadata, documentType, open, playbooks, recommendedPlaybookFromClassifier, selectedPlaybookId]);
 
   const selectedPlaybook = useMemo(() => {
     if (!selectedPlaybookId) return null;
@@ -527,6 +547,11 @@ export function RunAnalysisModal(props: {
                               {localizedTemplateText('all')}
                             </div>
                             <p className="mt-1 text-sm text-text-soft">{localizedTemplateText('autoDescription')}</p>
+                            {recommendedPlaybookFromClassifier?.name ? (
+                              <p className="mt-2 text-xs font-semibold text-highlight">
+                                {isArabic ? 'الموصى به:' : 'Recommended:'} {recommendedPlaybookFromClassifier.name}
+                              </p>
+                            ) : null}
                           </div>
                           {selectedPlaybookId === '' && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
                         </div>
@@ -551,7 +576,9 @@ export function RunAnalysisModal(props: {
                                     'w-full rounded-xl border p-3 text-left transition-colors',
                                     selectedPlaybookId === playbook.id
                                       ? 'border-accent bg-accent/5'
-                                      : 'border-border bg-surface-alt hover:border-accent/40'
+                                      : primaryRecommendedTemplateId && playbookTemplateId(playbook) === primaryRecommendedTemplateId
+                                        ? 'border-highlight bg-highlight/5'
+                                        : 'border-border bg-surface-alt hover:border-accent/40'
                                   )}
                                 >
                                   <div className="flex items-start gap-3">
@@ -560,13 +587,36 @@ export function RunAnalysisModal(props: {
                                       <div className="flex items-center gap-2">
                                         <span className="font-semibold text-text">{playbook.name}</span>
                                         <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                                        {primaryRecommendedTemplateId && playbookTemplateId(playbook) === primaryRecommendedTemplateId ? (
+                                          <Badge size="sm" variant="warning">
+                                            {isArabic ? 'موصى به' : 'Recommended'}
+                                          </Badge>
+                                        ) : null}
                                       </div>
                                       <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
                                         {getTemplateGroupLabel(getTemplateGroup(playbook), isArabic ? 'ar' : 'en')}
                                       </div>
                                       <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
                                     </div>
-                                    {selectedPlaybookId === playbook.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                                    <div className="mt-0.5 flex items-center gap-2">
+                                      {primaryRecommendedTemplateId && playbookTemplateId(playbook) !== primaryRecommendedTemplateId ? (
+                                        <span
+                                          title={
+                                            isArabic
+                                              ? 'هذا ليس القالب الموصى به لهذا المستند'
+                                              : 'This is not the recommended template for this document'
+                                          }
+                                        >
+                                          <AlertTriangle
+                                            className="h-4 w-4 text-highlight"
+                                            aria-label={isArabic ? 'قالب غير مناسب للمستند' : 'Not the recommended template'}
+                                          />
+                                        </span>
+                                      ) : null}
+                                      {selectedPlaybookId === playbook.id ? (
+                                        <CheckCircle className="h-4 w-4 text-accent" />
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </button>
                               ))}

@@ -228,6 +228,28 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
     [playbooks, selectedPlaybookId]
   );
 
+  const playbookTemplateId = useCallback((pb: PlaybookRecord): string | null => {
+    const raw = pb.current_version?.spec_json?.template_id;
+    if (typeof raw !== 'string') return null;
+    const normalized = raw.trim().toLowerCase();
+    return normalized ? normalized : null;
+  }, []);
+
+  const recommendedTemplateIds = useMemo(() => {
+    const raw = (documentRow?.source_metadata as any)?.recommended_template_ids;
+    if (!Array.isArray(raw)) return [] as string[];
+    return raw
+      .map((v: any) => String(v || '').trim().toLowerCase())
+      .filter(Boolean);
+  }, [documentRow?.source_metadata]);
+
+  const primaryRecommendedTemplateId = recommendedTemplateIds[0] || null;
+
+  const recommendedPlaybookFromClassifier = useMemo(() => {
+    if (!primaryRecommendedTemplateId || playbooks.length === 0) return null;
+    return playbooks.find((pb) => playbookTemplateId(pb) === primaryRecommendedTemplateId) || null;
+  }, [playbookTemplateId, playbooks, primaryRecommendedTemplateId]);
+
   const localizedTemplateText = useCallback(
     (
       key:
@@ -905,7 +927,10 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
         setPlaybooks(pbs);
         
         if (!didInitializeRecommendedPlaybook && !selectedPlaybookId && pbs.length > 0) {
-          const recommendedPlaybook = selectRecommendedPlaybook(pbs, {
+          const classifierMatch = primaryRecommendedTemplateId
+            ? pbs.find((pb) => playbookTemplateId(pb) === primaryRecommendedTemplateId) || null
+            : null;
+          const recommendedPlaybook = classifierMatch || selectRecommendedPlaybook(pbs, {
             documentType: documentRow?.document_type || 'contract',
             title: documentRow?.title,
             originalFilename: documentRow?.original_filename,
@@ -925,7 +950,7 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
   useEffect(() => {
     if (!documentRow || playbooks.length === 0 || didInitializeRecommendedPlaybook || selectedPlaybookId) return;
 
-    const recommendedPlaybook = selectRecommendedPlaybook(playbooks, {
+    const recommendedPlaybook = recommendedPlaybookFromClassifier || selectRecommendedPlaybook(playbooks, {
       documentType: documentRow.document_type || 'contract',
       title: documentRow.title,
       originalFilename: documentRow.original_filename,
@@ -935,7 +960,7 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
       setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
     }
     setDidInitializeRecommendedPlaybook(true);
-  }, [didInitializeRecommendedPlaybook, documentRow, playbooks, selectedPlaybookId]);
+  }, [didInitializeRecommendedPlaybook, documentRow, playbooks, recommendedPlaybookFromClassifier, selectedPlaybookId]);
 
   async function loadBundlePacks() {
     try {
@@ -2210,6 +2235,11 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
                                 {localizedTemplateText('all')}
                               </div>
                               <p className="mt-1 text-sm text-text-soft">{localizedTemplateText('autoDescription')}</p>
+                              {recommendedPlaybookFromClassifier?.name ? (
+                                <p className="mt-2 text-xs font-semibold text-highlight">
+                                  {isArabic ? 'الموصى به:' : 'Recommended:'} {recommendedPlaybookFromClassifier.name}
+                                </p>
+                              ) : null}
                             </div>
                             {selectedPlaybookId === '' && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
                           </div>
@@ -2234,7 +2264,9 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
                                       'w-full rounded-scholar border p-3 text-left transition-colors',
                                       selectedPlaybookId === pb.id
                                         ? 'border-accent bg-accent/5'
-                                        : 'border-border bg-surface-alt hover:border-accent/50'
+                                        : primaryRecommendedTemplateId && playbookTemplateId(pb) === primaryRecommendedTemplateId
+                                          ? 'border-highlight bg-highlight/5'
+                                          : 'border-border bg-surface-alt hover:border-accent/50'
                                     )}
                                   >
                                     <div className="flex items-start gap-3">
@@ -2243,13 +2275,36 @@ export function ContractAnalysisPane({ embedded = false, requestedRunId = null }
                                         <div className="flex items-center gap-2">
                                           <span className="font-semibold text-text">{pb.name}</span>
                                           <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                                          {primaryRecommendedTemplateId && playbookTemplateId(pb) === primaryRecommendedTemplateId ? (
+                                            <Badge size="sm" variant="warning">
+                                              {isArabic ? 'موصى به' : 'Recommended'}
+                                            </Badge>
+                                          ) : null}
                                         </div>
                                         <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
                                           {getTemplateGroupLabel(getTemplateGroup(pb), isArabic ? 'ar' : 'en')}
                                         </div>
                                         <p className="mt-1 text-sm text-text-soft">{templateDescription(pb)}</p>
                                       </div>
-                                      {selectedPlaybookId === pb.id && <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />}
+                                      <div className="mt-0.5 flex items-center gap-2">
+                                        {primaryRecommendedTemplateId && playbookTemplateId(pb) !== primaryRecommendedTemplateId ? (
+                                          <span
+                                            title={
+                                              isArabic
+                                                ? 'هذا ليس القالب الموصى به لهذا المستند'
+                                                : 'This is not the recommended template for this document'
+                                            }
+                                          >
+                                            <AlertTriangle
+                                              className="h-4 w-4 text-highlight"
+                                              aria-label={isArabic ? 'قالب غير مناسب للمستند' : 'Not the recommended template'}
+                                            />
+                                          </span>
+                                        ) : null}
+                                        {selectedPlaybookId === pb.id ? (
+                                          <CheckCircle className="h-4 w-4 text-accent" />
+                                        ) : null}
+                                      </div>
                                     </div>
                                   </button>
                                 ))}
