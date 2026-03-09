@@ -11,6 +11,7 @@ type LibraryItem = {
   id: string;
   title: string;
   url: string;
+  objectPath?: string | null;
   description?: string | null;
   source?: string | null;
   region?: string | null;
@@ -20,6 +21,54 @@ type LibraryItem = {
 interface ZohalLibraryPickerProps {
   onClose: () => void;
   onSelectFile: (file: File) => void;
+}
+
+function normalizeLibraryObjectPath(value: unknown): string | null {
+  const path = decodeURIComponent(String(value || '').trim()).replace(/^\/+/, '');
+  if (!path) return null;
+  if (path.includes('..')) return null;
+  return path;
+}
+
+function deriveLibraryObjectPathFromUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('gs://')) {
+    const noScheme = trimmed.replace(/^gs:\/\//, '');
+    const slash = noScheme.indexOf('/');
+    if (slash < 0) return null;
+    const path = noScheme.slice(slash + 1).replace(/^\/+/, '');
+    return normalizeLibraryObjectPath(path);
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+
+    if (parsed.hostname.endsWith('.storage.googleapis.com')) {
+      return normalizeLibraryObjectPath(parsed.pathname);
+    }
+
+    if (parsed.hostname === 'storage.googleapis.com') {
+      const parts = decodeURIComponent(parsed.pathname).split('/').filter(Boolean);
+      if (parts.length === 0) return null;
+
+      const oIndex = parts.indexOf('o');
+      if (oIndex >= 0 && oIndex + 1 < parts.length) {
+        return normalizeLibraryObjectPath(parts.slice(oIndex + 1).join('/'));
+      }
+
+      if (parts.length >= 2) {
+        return normalizeLibraryObjectPath(parts.slice(1).join('/'));
+      }
+
+      return normalizeLibraryObjectPath(parts[0]);
+    }
+
+    return normalizeLibraryObjectPath(parsed.pathname);
+  } catch {
+    return null;
+  }
 }
 
 export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPickerProps) {
@@ -53,12 +102,15 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
           id: String(raw?.id || raw?.slug || raw?.key || raw?.title || '').trim(),
           title: String(raw?.title || raw?.name || raw?.id || '').trim(),
           url: String(raw?.url || raw?.download_url || raw?.href || '').trim(),
+          objectPath:
+            normalizeLibraryObjectPath(raw?.object_path) ||
+            deriveLibraryObjectPathFromUrl(String(raw?.url || raw?.download_url || raw?.href || '')),
           description: raw?.description ? String(raw.description) : null,
           source: raw?.source ? String(raw.source) : null,
           region: raw?.region ? String(raw.region) : null,
           tags: Array.isArray(raw?.tags) ? (raw.tags as any[]).map((x) => String(x)) : null,
         }))
-        .filter((it) => !!it.id && !!it.title && !!it.url);
+        .filter((it) => !!it.id && !!it.title && (!!it.url || !!it.objectPath));
 
       setItems(normalized);
     } catch (e) {
@@ -76,9 +128,30 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     setDownloadingId(it.id);
     setError(null);
     try {
-      const res = await fetch(it.url);
-      if (!res.ok) throw new Error(`${t('errors.downloadFailed')} (${res.status})`);
-      const blob = await res.blob();
+      const objectPath = it.objectPath || deriveLibraryObjectPathFromUrl(it.url);
+      if (!objectPath) throw new Error(`${t('errors.downloadFailed')} (library path missing)`);
+
+      const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
+        body: { object_path: objectPath },
+      });
+
+      if (error) {
+        throw error;
+      }
+      if (response && !response.ok) {
+        throw new Error(`${t('errors.downloadFailed')} (${response.status})`);
+      }
+
+      let blob: Blob | null = null;
+      if (data instanceof Blob) {
+        blob = data;
+      } else if (data instanceof ArrayBuffer) {
+        blob = new Blob([data], { type: 'application/pdf' });
+      } else if (response) {
+        blob = await response.blob();
+      }
+      if (!blob) throw new Error(t('errors.downloadFailed'));
+
       const file = new File([blob], `${it.title}.pdf`, { type: 'application/pdf' });
       onSelectFile(file);
       onClose();
@@ -161,4 +234,3 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     </div>
   );
 }
-
