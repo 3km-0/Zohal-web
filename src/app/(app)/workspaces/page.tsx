@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, FolderOpen, MoreVertical, Archive, Trash2, Edit2 } from 'lucide-react';
+import { Plus, FolderOpen, MoreVertical, Archive, Trash2, Edit2, Layers, Briefcase, BookOpen, User, Search, Grid3X3 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, EmptyState, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -11,56 +11,25 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
 
-// Unified blue folder color for all workspace types
-const BLUE_FOLDER = { main: '#2563eb', light: '#3b82f6' };
-const workspacePalette: Record<WorkspaceType, { main: string; light: string }> = {
-  project: BLUE_FOLDER,
-  case: BLUE_FOLDER,
-  course: BLUE_FOLDER,
-  personal: BLUE_FOLDER,
-  archive: BLUE_FOLDER,
-  research: BLUE_FOLDER,
-  client: BLUE_FOLDER,
-  other: BLUE_FOLDER,
-};
-
-function getWorkspacePalette(workspace: Workspace) {
-  if (workspace.color) {
-    return { main: workspace.color, light: workspace.color };
+function workspaceTypeIcon(type: WorkspaceType) {
+  switch (type) {
+    case 'project':
+      return Layers;
+    case 'case':
+    case 'client':
+      return Briefcase;
+    case 'course':
+      return BookOpen;
+    case 'personal':
+      return User;
+    case 'research':
+      return Search;
+    case 'archive':
+      return Archive;
+    case 'other':
+    default:
+      return Grid3X3;
   }
-  return workspacePalette[workspace.workspace_type] || workspacePalette.other;
-}
-
-function StyledFolder({ color, lightColor, className }: { color: string; lightColor: string; className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 64 52"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <path
-        d="M4 8C4 5.79086 5.79086 4 8 4H24L28 10H56C58.2091 10 60 11.7909 60 14V44C60 46.2091 58.2091 48 56 48H8C5.79086 48 4 46.2091 4 44V8Z"
-        fill={color}
-        fillOpacity="0.9"
-      />
-      <path
-        d="M4 16C4 13.7909 5.79086 12 8 12H56C58.2091 12 60 13.7909 60 16V44C60 46.2091 58.2091 48 56 48H8C5.79086 48 4 46.2091 4 44V16Z"
-        fill={lightColor}
-        fillOpacity="0.95"
-      />
-      <path
-        d="M8 12H56C58.2091 12 60 13.7909 60 16V18H4V16C4 13.7909 5.79086 12 8 12Z"
-        fill="white"
-        fillOpacity="0.15"
-      />
-      <path
-        d="M24 4H8C5.79086 4 4 5.79086 4 8V10H26L24 4Z"
-        fill={color}
-        fillOpacity="0.7"
-      />
-    </svg>
-  );
 }
 
 export default function WorkspacesPage() {
@@ -215,42 +184,49 @@ function WorkspaceIcon({ workspace, onEdit, onArchive, onDelete }: WorkspaceCard
   const tCard = useTranslations('workspaceCard');
   const tCommon = useTranslations('common');
   const [showMenu, setShowMenu] = useState(false);
-  const palette = getWorkspacePalette(workspace);
+  const Icon = workspaceTypeIcon(workspace.workspace_type);
+  const hasCustomColor = Boolean(workspace.color);
 
   return (
-    <div className="relative group flex justify-center">
+    <div className="relative group">
       <Link
         href={`/workspaces/${workspace.id}`}
         className={cn(
-          'flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200',
-          'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
-          'w-[160px] focus:outline-none focus:ring-2 focus:ring-accent/50'
+          'relative block overflow-hidden rounded-xl border border-border bg-surface p-4 transition-all duration-200',
+          'hover:bg-surface-alt/60 hover:shadow-md active:scale-[0.99]',
+          'focus:outline-none focus:ring-2 focus:ring-accent/50',
+          'min-h-[116px] mx-auto w-full max-w-[220px]'
         )}
       >
-        <div className="relative drop-shadow-sm">
-          <StyledFolder
-            color={palette.main}
-            lightColor={palette.light}
-            className="w-28 h-24 transition-transform group-hover:scale-105"
-          />
-        </div>
+        {/* Accent rail (workspace color if present, otherwise Scholar accent) */}
+        <div
+          className={cn('absolute inset-y-0 left-0 w-1', hasCustomColor ? '' : 'bg-accent')}
+          style={hasCustomColor ? { backgroundColor: String(workspace.color) } : undefined}
+          aria-hidden="true"
+        />
 
-        <span className="text-sm font-semibold text-text text-center line-clamp-2 leading-snug max-w-full px-1">
-          {workspace.name}
-        </span>
-        <span className="text-xs text-text-soft">
-          {t(workspace.workspace_type)}
-        </span>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface-alt">
+            <Icon className="h-5 w-5 text-text-soft" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold text-text">{workspace.name}</div>
+            <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+              {t(workspace.workspace_type)}
+            </div>
+          </div>
+        </div>
       </Link>
 
       {/* Menu Button */}
-      <div className="absolute top-1 right-1">
+      <div className="absolute top-2 right-2">
         <button
           onClick={(e) => {
             e.preventDefault();
             setShowMenu(!showMenu);
           }}
-          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-surface-alt transition-all"
+          className="rounded-lg p-1.5 opacity-0 transition-all hover:bg-surface-alt group-hover:opacity-100"
         >
           <MoreVertical className="w-4 h-4 text-text-soft" />
         </button>
