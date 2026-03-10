@@ -1012,6 +1012,42 @@
       "verdicts": "Verdicts",
       "exceptions": "Exceptions"
     },
+    "summary": {
+      "genericSubtitle": "A template-level summary built from extracted facts, findings, and source documents.",
+      "renewalSubtitle": "Renewal-focused summary with dates, notice pressure, and follow-up actions.",
+      "invoiceSubtitle": "Invoice-focused summary with vendor details, totals, and exception signals.",
+      "noValue": "No value recorded",
+      "sourceRole": "Source role",
+      "sourceDocument": "Source document",
+      "status": {
+        "finalized": "Finalized",
+        "provisional": "Provisional"
+      },
+      "metrics": {
+        "sources": "Sources",
+        "variables": "Facts",
+        "issues": "Issues",
+        "status": "Status",
+        "endDate": "End date",
+        "noticeDeadline": "Notice deadline",
+        "actions": "Actions",
+        "vendor": "Vendor",
+        "invoice": "Invoice",
+        "total": "Total"
+      },
+      "sections": {
+        "sources": "Sources",
+        "keyFacts": "Key facts",
+        "issues": "Issues",
+        "exceptions": "Exceptions",
+        "risks": "Risks"
+      },
+      "moduleEmptyTitle": "{module} has no findings",
+      "moduleEmptyDescription": "This module ran, but it did not produce any findings for this run.",
+      "moduleMissingDescription": "This module is enabled for the template, but no output was saved for this run.",
+      "missingModuleTitle": "Module unavailable",
+      "missingModuleDescription": "This tab could not be resolved from the current snapshot."
+    },
     "empty": {
       "notAnalyzedTitle": "Not analyzed yet",
       "notAnalyzedDescription": "This contract doesn't have a saved analysis. Run it once, then you can reopen it anytime.",

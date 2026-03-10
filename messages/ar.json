@@ -1012,6 +1012,42 @@
       "verdicts": "الأحكام",
       "exceptions": "الاستثناءات"
     },
+    "summary": {
+      "genericSubtitle": "ملخص عام مبني على الحقائق المستخرجة والملاحظات والمستندات المصدرية.",
+      "renewalSubtitle": "ملخص يركّز على التجديد مع التواريخ ومهلة الإشعار والإجراءات المطلوبة.",
+      "invoiceSubtitle": "ملخص يركّز على الفاتورة مع بيانات المورد والإجمالي وإشارات الاستثناءات.",
+      "noValue": "لا توجد قيمة مسجلة",
+      "sourceRole": "دور المصدر",
+      "sourceDocument": "المستند المصدر",
+      "status": {
+        "finalized": "معتمد",
+        "provisional": "مبدئي"
+      },
+      "metrics": {
+        "sources": "المصادر",
+        "variables": "الحقائق",
+        "issues": "المشكلات",
+        "status": "الحالة",
+        "endDate": "تاريخ الانتهاء",
+        "noticeDeadline": "آخر موعد للإشعار",
+        "actions": "الإجراءات",
+        "vendor": "المورد",
+        "invoice": "رقم الفاتورة",
+        "total": "الإجمالي"
+      },
+      "sections": {
+        "sources": "المصادر",
+        "keyFacts": "الحقائق الأساسية",
+        "issues": "المشكلات",
+        "exceptions": "الاستثناءات",
+        "risks": "المخاطر"
+      },
+      "moduleEmptyTitle": "لا توجد نتائج في {module}",
+      "moduleEmptyDescription": "تم تشغيل هذه الوحدة لكنها لم تُنتج أي نتائج في هذا التشغيل.",
+      "moduleMissingDescription": "هذه الوحدة مفعّلة في القالب، لكن لم يتم حفظ أي مخرجات لها في هذا التشغيل.",
+      "missingModuleTitle": "الوحدة غير متاحة",
+      "missingModuleDescription": "تعذر تحميل هذا التبويب من اللقطة الحالية."
+    },
     "empty": {
       "notAnalyzedTitle": "لم يُحلَّل بعد",
       "notAnalyzedDescription": "لا يوجد تحليل محفوظ لهذا العقد. ابدأ التحليل مرة ويمكنك الرجوع إليه في أي وقت.",

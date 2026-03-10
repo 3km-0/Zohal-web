@@ -1,32 +1,16 @@
 'use client';
 
 import { useState, useMemo, type ReactNode } from 'react';
-import Link from 'next/link';
 import { Puzzle } from 'lucide-react';
-import { EmptyState, Badge } from '@/components/ui';
-import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, type AIConfidence } from './AnalysisRecordCard';
+import { EmptyState } from '@/components/ui';
+import { AnalysisRecordCard, AnalysisSectionHeader } from './AnalysisRecordCard';
 import { getSeverityBorderClass } from './SeverityIndicator';
 import { cn } from '@/lib/utils';
-
-export interface GenericModuleItem {
-  id: string;
-  title: string;
-  subtitle?: string;
-  body?: string;
-  severity?: string;
-  confidence?: AIConfidence;
-  needsAttention?: boolean;
-  attentionLabel?: string;
-  spotCheckSuggested?: boolean;
-  evidence?: { page_number?: number; snippet?: string; document_id?: string };
-  sourceHref?: string | null;
-  sourcePage?: number;
-  metadata?: Record<string, any>;
+import type { FindingCardModel } from '@/lib/analysis/pane';
+export interface GenericModuleItem extends FindingCardModel {
   /** Icon to show in the card; defaults to Puzzle */
   icon?: ReactNode;
   iconColor?: string;
-  /** Tool action for the card */
-  toolAction?: { type: 'calendar' | 'edit' | 'task'; label: string };
   onToolAction?: () => void;
   /** Custom children to render inside the card */
   children?: ReactNode;

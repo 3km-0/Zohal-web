@@ -22,7 +22,28 @@ import {
   ScholarSelect,
   type ScholarTab,
 } from '@/components/ui';
-import { AnalysisRecordCard, AIConfidenceBadge, AnalysisSectionHeader, ExpandableJSON, type AIConfidence, AtAGlanceSummary, OverviewTab, GenericModuleTab, type GenericModuleItem, DeadlinesTab, type DeadlineItem } from '@/components/analysis';
+import {
+  AnalysisRecordCard,
+  AIConfidenceBadge,
+  AnalysisSectionHeader,
+  ExpandableJSON,
+  type AIConfidence,
+  AtAGlanceSummary,
+  OverviewTab,
+  GenericModuleTab,
+  type GenericModuleItem,
+  DeadlinesTab,
+  type DeadlineItem,
+} from '@/components/analysis';
+import {
+  ComplianceDeviationsTab,
+  GenericSummaryTab,
+  InvoiceExceptionsTab,
+  InvoiceSummaryTab,
+  RenewalActionsTab,
+  RenewalSummaryTab,
+  AmendmentConflictTab,
+} from '@/components/analysis/TemplateRunTabs';
 import { BundleManagerModal } from '@/components/document/BundleManagerModal';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
@@ -33,6 +54,18 @@ import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
 import type { AnalysisRunSummary } from '@/types/analysis-runs';
 import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, toAnalysisRunSummary } from '@/lib/analysis/runs';
+import {
+  deriveModuleDescriptors,
+  deriveTabDescriptors,
+  getSnapshotTemplateId,
+  moduleResultToFindingCards,
+  recordsToFindingCards,
+  selectSummaryRenderer,
+  type AnalysisModuleDescriptor,
+  type AnalysisTabDescriptor,
+  type SummaryMetric,
+  type SummarySectionModel,
+} from '@/lib/analysis/pane';
 import { selectRecommendedPlaybook } from '@/lib/document-analysis';
 import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplateGroupLabel, groupSystemPlaybooks } from '@/lib/template-library';
 
@@ -408,7 +441,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     });
   }, [docsetSearch, folderNameById, workspaceDocs]);
 
-  function proofHref(evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) {
+  const proofHref = useCallback((evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) => {
     if (!evidence?.page_number) return null;
     const quote = (evidence.snippet || '').slice(0, 160);
     const bbox = evidence.bbox ? `${evidence.bbox.x},${evidence.bbox.y},${evidence.bbox.width},${evidence.bbox.height}` : null;
@@ -416,7 +449,7 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     const paneParam = embedded ? '&pane=analysis' : '';
     const base = `/workspaces/${workspaceId}/documents/${targetDocId}?page=${evidence.page_number}&quote=${encodeURIComponent(quote)}${paneParam}`;
     return bbox ? `${base}&bbox=${encodeURIComponent(bbox)}` : base;
-  }
+  }, [documentId, embedded, workspaceId]);
 
   const deadlines = useMemo(() => {
     return obligations
@@ -425,27 +458,20 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
       .sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''));
   }, [obligations]);
 
-  const customModules = useMemo(() => {
-    // v2: modules live at snapshot.pack.modules as a map keyed by module id.
+  const currentTemplateId = useMemo(() => getSnapshotTemplateId(snapshot), [snapshot]);
+
+  const packModules = useMemo(() => {
     const pack: any = snapshot?.pack as any;
     const dict = pack?.modules && typeof pack.modules === 'object' && !Array.isArray(pack.modules) ? pack.modules : null;
-    if (!dict) return [];
-    const core = new Set(['variables', 'clauses', 'obligations', 'risks', 'deadlines']);
-    return Object.entries(dict)
-      .map(([id, raw]) => {
-        const m: any = raw && typeof raw === 'object' ? raw : {};
-        return {
-          id: String(m?.id || id || '').trim(),
-          title: String(m?.title || id || '').trim(),
-          status: String(m?.status || ''),
-          error: m?.error ? String(m.error) : null,
-          ai_confidence: m?.ai_confidence ? String(m.ai_confidence) : null,
-          result: m?.result ?? null,
-          evidence: Array.isArray(m?.evidence) ? (m.evidence as any[]) : [],
-        };
-      })
-      .filter((m) => !!m.id && !!m.title && !core.has(m.id));
+    return dict ? (dict as Record<string, any>) : {};
   }, [snapshot]);
+
+  const moduleDescriptors = useMemo(() => deriveModuleDescriptors(snapshot), [snapshot]);
+
+  const moduleDescriptorById = useMemo(
+    () => new Map(moduleDescriptors.map((descriptor) => [descriptor.id, descriptor])),
+    [moduleDescriptors]
+  );
 
   const v3Records = useMemo(() => {
     const arr = (snapshot?.pack as any)?.records;
@@ -530,74 +556,314 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
     };
   }, [obligations, deadlines, rejectedSets]);
 
+  const hydrateFindingItems = useCallback(
+    (items: GenericModuleItem[]): GenericModuleItem[] =>
+      items.map((item) => ({
+        ...item,
+        sourceHref: item.sourceHref ?? proofHref(item.evidence as any),
+        sourcePage: item.sourcePage ?? item.evidence?.page_number ?? undefined,
+      })),
+    [proofHref]
+  );
+
+  const moduleItemsById = useMemo(() => {
+    const entries = new Map<string, GenericModuleItem[]>();
+    for (const descriptor of moduleDescriptors) {
+      const raw = packModules[descriptor.id];
+      const moduleValue = raw && typeof raw === 'object' ? raw : {};
+      const items = hydrateFindingItems(
+        moduleResultToFindingCards({
+          moduleId: descriptor.id,
+          moduleTitle: descriptor.title,
+          result: (moduleValue as any).result,
+          evidence: (moduleValue as any).evidence,
+          moduleConfidence: (moduleValue as any).ai_confidence,
+        }) as GenericModuleItem[]
+      );
+      entries.set(
+        descriptor.id,
+        items.filter((item) => !rejectedSets.modules.has(item.id))
+      );
+    }
+    return entries;
+  }, [hydrateFindingItems, moduleDescriptors, packModules, rejectedSets.modules]);
+
+  const recordItems = useMemo(
+    () =>
+      hydrateFindingItems(
+        recordsToFindingCards(v3Records)
+          .filter((item) => !rejectedSets.records.has(item.id)) as GenericModuleItem[]
+      ),
+    [hydrateFindingItems, rejectedSets.records, v3Records]
+  );
+
+  const coreCounts = useMemo(() => {
+    const visibleVariables = (snapshot?.variables || []).filter((v) => !rejectedSets.variables.has(v.id));
+    const visibleClauses = (snapshot?.clauses?.length
+      ? snapshot.clauses.filter((c: any) => !rejectedSets.clauses.has(String(c?.id || '').trim()))
+      : clauses.filter((c) => !rejectedSets.clauses.has(c.id)));
+    const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
+    const visibleDeadlines = deadlines.filter((o) => !rejectedSets.obligations.has(o.id));
+    const visibleRisks = (snapshot?.risks?.length
+      ? snapshot.risks.filter((r: any) => !rejectedSets.risks.has(String(r?.id || '').trim()))
+      : risks.filter((r) => !rejectedSets.risks.has(r.id)));
+
+    return {
+      variables: visibleVariables.length,
+      clauses: visibleClauses.length,
+      obligations: visibleObligations.length,
+      deadlines: visibleDeadlines.length,
+      risks: visibleRisks.length,
+      variablesAttention: visibleVariables.filter((v) => v.verification_state === 'needs_review').length,
+    };
+  }, [clauses, deadlines, obligations, rejectedSets, risks, snapshot]);
+
+  const visibleVerdicts = useMemo(
+    () =>
+      v3Verdicts.filter(
+        (v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`))
+      ),
+    [rejectedSets.verdicts, v3Verdicts]
+  );
+
+  const visibleExceptions = useMemo(
+    () =>
+      v3Exceptions.filter(
+        (ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`))
+      ),
+    [rejectedSets.exceptions, v3Exceptions]
+  );
+
+  const tabDescriptors = useMemo<AnalysisTabDescriptor[]>(() => {
+    const moduleCounts = Object.fromEntries(
+      moduleDescriptors.map((descriptor) => [descriptor.id, moduleItemsById.get(descriptor.id)?.length ?? 0])
+    );
+    const moduleAttentionCounts = Object.fromEntries(
+      moduleDescriptors.map((descriptor) => [
+        descriptor.id,
+        (moduleItemsById.get(descriptor.id) || []).filter((item) => item.needsAttention).length,
+      ])
+    );
+
+    return deriveTabDescriptors({
+      enabledCoreModules: enabledModules,
+      moduleDescriptors,
+      counts: {
+        variables: coreCounts.variables,
+        clauses: coreCounts.clauses,
+        obligations: coreCounts.obligations,
+        deadlines: coreCounts.deadlines,
+        risks: coreCounts.risks,
+        records: recordItems.length,
+        ...moduleCounts,
+      },
+      attentionCounts: {
+        variables: coreCounts.variablesAttention,
+        clauses: attention.clauses,
+        obligations: attention.obligations,
+        deadlines: attention.deadlines,
+        risks: attention.risks,
+        records: recordItems.filter((item) => item.needsAttention).length,
+        ...moduleAttentionCounts,
+      },
+      hasRecords: recordItems.length > 0,
+      recordCount: recordItems.length,
+      hasVerdicts: !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled || visibleVerdicts.length > 0,
+      verdictCount: visibleVerdicts.length,
+      verdictAttentionCount: visibleVerdicts.filter((v) => String(v?.status || '') !== 'pass').length,
+      hasExceptions: !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled || visibleExceptions.length > 0,
+      exceptionCount: visibleExceptions.length,
+      exceptionAttentionCount: visibleExceptions.length,
+    });
+  }, [attention, coreCounts, enabledModules, moduleDescriptors, moduleItemsById, recordItems, snapshot, visibleExceptions, visibleVerdicts]);
+
   const tabs = useMemo(() => {
-    const out: Array<{ id: string; label: string; icon: any; total: number | null; attentionCount: number }> = [
-      { id: 'overview', label: t('tabs.overview'), icon: FileText, total: null, attentionCount: 0 },
+    const iconForTab = (descriptor: AnalysisTabDescriptor) => {
+      switch (descriptor.id) {
+        case 'overview':
+          return FileText;
+        case 'variables':
+          return Table2;
+        case 'clauses':
+          return ScrollText;
+        case 'obligations':
+          return ClipboardCheck;
+        case 'deadlines':
+          return Calendar;
+        case 'risks':
+          return ShieldAlert;
+        case 'records':
+          return BookOpen;
+        case 'verdicts':
+          return Scale;
+        case 'exceptions':
+          return AlertTriangle;
+        default:
+          return Puzzle;
+      }
+    };
+
+    const labelForTab = (descriptor: AnalysisTabDescriptor) => {
+      switch (descriptor.id) {
+        case 'overview':
+          return t('tabs.overview');
+        case 'variables':
+          return t('tabs.variables');
+        case 'clauses':
+          return t('tabs.clauses');
+        case 'obligations':
+          return t('tabs.obligations');
+        case 'deadlines':
+          return t('tabs.deadlines');
+        case 'risks':
+          return t('tabs.risks');
+        case 'records':
+          return t('tabs.records');
+        case 'verdicts':
+          return t('tabs.verdicts');
+        case 'exceptions':
+          return t('tabs.exceptions');
+        default:
+          return moduleDescriptorById.get(descriptor.moduleId || '')?.title || descriptor.id;
+      }
+    };
+
+    return tabDescriptors.map((descriptor) => ({
+      id: descriptor.id,
+      label: labelForTab(descriptor),
+      icon: iconForTab(descriptor),
+      total: descriptor.count,
+      attentionCount: descriptor.attentionCount,
+    }));
+  }, [moduleDescriptorById, t, tabDescriptors]);
+
+  const templateTitle = useMemo(() => {
+    const playbook = (snapshot?.pack as any)?.playbook;
+    const playbookName =
+      (playbook && typeof playbook.playbook_name === 'string' && playbook.playbook_name.trim()) ||
+      selectedRun?.playbookLabel ||
+      selectedPlaybook?.name;
+    if (playbookName) return playbookName;
+    return currentTemplateId
+      .split(/[_-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }, [currentTemplateId, selectedPlaybook?.name, selectedRun?.playbookLabel, snapshot]);
+
+  const summaryRenderer = useMemo(() => selectSummaryRenderer(currentTemplateId), [currentTemplateId]);
+
+  const genericSummaryMetrics = useMemo<SummaryMetric[]>(() => {
+    const issueCount = coreCounts.risks + visibleExceptions.length;
+    const sourceCount = bundleDocuments.length > 0 ? bundleDocuments.length : 1;
+    return [
+      { label: t('summary.metrics.sources'), value: String(sourceCount) },
+      { label: t('summary.metrics.variables'), value: String(coreCounts.variables + recordItems.length) },
+      {
+        label: t('summary.metrics.issues'),
+        value: String(issueCount),
+        tone: issueCount > 0 ? 'warning' : 'success',
+      },
+      {
+        label: t('summary.metrics.status'),
+        value: verificationObjectState === 'finalized' ? t('summary.status.finalized') : t('summary.status.provisional'),
+      },
     ];
-    let reviewTotal = 0;
-    if (enabledModules.has('variables')) {
-      const visibleVariables = (snapshot?.variables || []).filter((v) => !rejectedSets.variables.has(v.id));
-      reviewTotal += visibleVariables.filter((v) => v.verification_state === 'needs_review').length;
-      out.push({
-        id: 'variables',
-        label: t('tabs.variables'),
-        icon: Table2,
-        total: visibleVariables.length,
-        attentionCount: visibleVariables.filter((v) => v.verification_state === 'needs_review').length,
-      });
-    }
-    if (enabledModules.has('clauses')) {
-      const totalClauses = (snapshot?.clauses?.length
-        ? snapshot.clauses.filter((c: any) => !rejectedSets.clauses.has(String(c?.id || '').trim())).length
-        : clauses.filter((c) => !rejectedSets.clauses.has(c.id)).length);
-      out.push({ id: 'clauses', label: t('tabs.clauses'), icon: ScrollText, total: totalClauses, attentionCount: attention.clauses });
-    }
-    if (enabledModules.has('obligations')) {
-      const visibleObligations = obligations.filter((o) => !rejectedSets.obligations.has(o.id));
-      reviewTotal += attention.obligations;
-      out.push({
-        id: 'obligations',
-        label: t('tabs.obligations'),
-        icon: ClipboardCheck,
-        total: visibleObligations.length,
-        attentionCount: attention.obligations,
-      });
-    }
-    if (enabledModules.has('deadlines')) {
-      const visibleDeadlines = deadlines.filter((o) => !rejectedSets.obligations.has(o.id));
-      reviewTotal += attention.deadlines;
-      out.push({ id: 'deadlines', label: t('tabs.deadlines'), icon: Calendar, total: visibleDeadlines.length, attentionCount: attention.deadlines });
-    }
-    if (enabledModules.has('risks')) {
-      const totalRisks = (snapshot?.risks?.length
-        ? snapshot.risks.filter((r: any) => !rejectedSets.risks.has(String(r?.id || '').trim())).length
-        : risks.filter((r) => !rejectedSets.risks.has(r.id)).length);
-      out.push({ id: 'risks', label: t('tabs.risks'), icon: ShieldAlert, total: totalRisks, attentionCount: attention.risks });
-    }
-    const v3Enabled = !!(snapshot?.pack as any)?.capabilities?.analysis_v3?.enabled;
-    if (v3Enabled || v3Verdicts.length > 0) {
-      const visibleVerdicts = v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)));
-      const attentionCount = visibleVerdicts.filter((v) => String(v?.status || '') !== 'pass').length;
-      reviewTotal += attentionCount;
-      out.push({ id: 'verdicts', label: t('tabs.verdicts'), icon: Scale, total: visibleVerdicts.length, attentionCount });
-    }
-    if (v3Enabled || v3Exceptions.length > 0) {
-      const visibleExceptions = v3Exceptions.filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`)));
-      reviewTotal += visibleExceptions.length;
-      out.push({ id: 'exceptions', label: t('tabs.exceptions'), icon: AlertTriangle, total: visibleExceptions.length, attentionCount: visibleExceptions.length });
-    }
-    if (reviewTotal > 0) {
-      out.splice(1, 0, {
-        id: 'review',
-        label: t('tabs.review'),
-        icon: ShieldAlert,
-        total: reviewTotal,
-        attentionCount: reviewTotal,
-      });
-    }
-    out.push(...customModules.map((m) => ({ id: `custom:${m.id}`, label: m.title, icon: Puzzle, total: null, attentionCount: 0 })));
-    return out;
-  }, [enabledModules, snapshot, clauses, obligations, risks, deadlines, attention, customModules, v3Verdicts, v3Exceptions, rejectedSets, t]);
+  }, [bundleDocuments.length, coreCounts.risks, coreCounts.variables, recordItems.length, t, verificationObjectState, visibleExceptions.length]);
+
+  const summarySections = useMemo<SummarySectionModel[]>(() => {
+    const topVariables = (snapshot?.variables || [])
+      .filter((v) => !rejectedSets.variables.has(v.id))
+      .slice(0, 6)
+      .map((variable) => ({
+        id: variable.id,
+        label: variable.display_name,
+        value: variable.value == null ? t('summary.noValue') : `${String(variable.value)}${variable.unit ? ` ${variable.unit}` : ''}`,
+        href: proofHref(variable.evidence),
+      }));
+
+    const sourceItems = (bundleDocuments.length > 0
+      ? bundleDocuments.map((doc) => ({
+          id: doc.id,
+          label: doc.role ? t('summary.sourceRole') : t('summary.sourceDocument'),
+          value: doc.role ? `${doc.title} · ${doc.role}` : doc.title,
+          href: `/workspaces/${workspaceId}/documents/${doc.id}`,
+        }))
+      : [
+          {
+            id: documentId,
+            label: t('summary.sourceDocument'),
+            value: documentRow?.title || documentId,
+            href: `/workspaces/${workspaceId}/documents/${documentId}`,
+          },
+        ]);
+
+    const issueItems = [
+      ...visibleExceptions.slice(0, 4).map((item, index) => ({
+        id: `ex-${index}`,
+        label: t('summary.sections.exceptions'),
+        value: String(item?.message || item?.kind || item?.type || t('summary.noValue')),
+      })),
+      ...(snapshot?.risks || [])
+        .filter((risk) => !rejectedSets.risks.has(risk.id))
+        .slice(0, 4)
+        .map((risk) => ({
+          id: risk.id,
+          label: t('summary.sections.risks'),
+          value: risk.description,
+          href: proofHref(risk.evidence),
+        })),
+    ];
+
+    return [
+      { id: 'sources', title: t('summary.sections.sources'), items: sourceItems },
+      { id: 'key-facts', title: t('summary.sections.keyFacts'), items: topVariables },
+      { id: 'issues', title: t('summary.sections.issues'), items: issueItems },
+    ];
+  }, [bundleDocuments, documentId, documentRow?.title, proofHref, rejectedSets.risks, rejectedSets.variables, snapshot, t, visibleExceptions, workspaceId]);
+
+  const renewalSummaryMetrics = useMemo<SummaryMetric[]>(() => {
+    const noticeVariable = snapshot?.variables.find((variable) => variable.name === 'notice_deadline');
+    return [
+      {
+        label: t('summary.metrics.endDate'),
+        value: contract?.end_date || t('summary.noValue'),
+      },
+      {
+        label: t('summary.metrics.noticeDeadline'),
+        value: noticeVariable?.value ? String(noticeVariable.value) : t('summary.noValue'),
+        tone: noticeVariable?.value ? 'warning' : 'default',
+      },
+      {
+        label: t('summary.metrics.actions'),
+        value: String(moduleItemsById.get('renewal_actions')?.length || 0),
+      },
+      {
+        label: t('summary.metrics.issues'),
+        value: String(coreCounts.risks + visibleExceptions.length),
+        tone: coreCounts.risks + visibleExceptions.length > 0 ? 'warning' : 'success',
+      },
+    ];
+  }, [contract?.end_date, coreCounts.risks, moduleItemsById, snapshot?.variables, t, visibleExceptions.length]);
+
+  const invoiceSummaryMetrics = useMemo<SummaryMetric[]>(() => {
+    const getVariableValue = (name: string) => {
+      const value = snapshot?.variables.find((variable) => variable.name === name)?.value;
+      return value == null ? t('summary.noValue') : String(value);
+    };
+    return [
+      { label: t('summary.metrics.vendor'), value: getVariableValue('vendor_name') },
+      { label: t('summary.metrics.invoice'), value: getVariableValue('invoice_number') },
+      { label: t('summary.metrics.total'), value: getVariableValue('total_amount') },
+      {
+        label: t('summary.metrics.issues'),
+        value: String(moduleItemsById.get('invoice_exceptions')?.length || visibleExceptions.length || coreCounts.risks),
+        tone: (moduleItemsById.get('invoice_exceptions')?.length || visibleExceptions.length || coreCounts.risks) > 0 ? 'warning' : 'success',
+      },
+    ];
+  }, [coreCounts.risks, moduleItemsById, snapshot?.variables, t, visibleExceptions.length]);
+
+  const renewalNextAction = useMemo(() => moduleItemsById.get('renewal_actions')?.[0]?.title || null, [moduleItemsById]);
 
   useEffect(() => {
     // If the current tab becomes unavailable due to template module gating, fall back to overview.
@@ -2797,86 +3063,59 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
             />
 
             {tab === 'overview' && (
-              <OverviewTab
-                contract={contract}
-                snapshot={snapshot}
-                workspaceId={workspaceId}
-                documentId={documentId}
-                bundleDocuments={bundleDocuments}
-                verificationObjectState={verificationObjectState}
-                onCreatePinnedContext={createPinnedContextSetFromThisDocument}
-                onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
-                onRunCompliance={runComplianceChecks}
-                isGeneratingKnowledgePack={isGeneratingKnowledgePack}
-                isRunningCompliance={isRunningCompliance}
-                proofHref={proofHref}
-              />
-            )}
-
-            {tab === 'review' && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-scholar border border-border bg-surface">
-                  <div className="text-sm font-bold text-text">{t('needsReview.title')}</div>
-                  <p className="text-xs text-text-soft mt-1">{t('needsReview.subtitle')}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => setTab('variables')}>
-                      {t('tabs.variables')}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setTab('obligations')}>
-                      {t('tabs.obligations')}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setTab('deadlines')}>
-                      {t('tabs.deadlines')}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setTab('verdicts')}>
-                      {t('tabs.verdicts')}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setTab('exceptions')}>
-                      {t('tabs.exceptions')}
-                    </Button>
-                  </div>
-                </div>
-
-                <GenericModuleTab
-                  moduleId="review:variables"
-                  moduleTitle={t('tabs.variables')}
-                  emptyTitle={t('empty.noVariablesTitle')}
-                  emptyDescription={t('empty.noVariablesDescription')}
+              summaryRenderer === 'contract' ? (
+                <OverviewTab
+                  contract={contract}
+                  snapshot={snapshot}
                   workspaceId={workspaceId}
                   documentId={documentId}
-                  onReject={(id) => rejectItem('variable', id)}
-                  isPatchingSnapshot={isPatchReadOnly}
-                  items={(snapshot?.variables || [])
-                    .filter((v) => !rejectedSets.variables.has(v.id))
-                    .filter((v) => v.verification_state === 'needs_review')
-                    .map((v) => ({
-                      id: v.id,
-                      title: v.display_name,
-                      subtitle: v.value == null ? '—' : `${String(v.value)}${v.unit ? ` ${v.unit}` : ''}`,
-                      confidence: v.ai_confidence as AIConfidence,
-                      evidence: v.evidence,
-                      sourceHref: proofHref(v.evidence),
-                      sourcePage: v.evidence?.page_number ?? undefined,
-                      icon: <Table2 className="w-4 h-4" />,
-                      toolAction: { type: 'edit' as const, label: 'Edit' },
-                      needsAttention: true,
-                      attentionLabel: 'Needs Review',
-                      children: (v as any).verifier?.status ? (
-                        <div className="text-xs text-text-soft space-y-1">
-                          <div>
-                            Verifier: {String((v as any).verifier.status).toUpperCase()}
-                            {(v as any).verifier?.semantic?.status
-                              ? ` · Semantic: ${String((v as any).verifier.semantic.status).toUpperCase()}`
-                              : ''}
-                            {(v as any).verifier?.judge?.status
-                              ? ` · Judge: ${String((v as any).verifier.judge.status).toUpperCase()}`
-                              : ''}
-                          </div>
-                        </div>
-                      ) : undefined,
-                    }))}
+                  bundleDocuments={bundleDocuments}
+                  verificationObjectState={verificationObjectState}
+                  onCreatePinnedContext={createPinnedContextSetFromThisDocument}
+                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
+                  onRunCompliance={runComplianceChecks}
+                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
+                  isRunningCompliance={isRunningCompliance}
+                  proofHref={proofHref}
                 />
-              </div>
+              ) : summaryRenderer === 'renewal' ? (
+                <RenewalSummaryTab
+                  title={templateTitle}
+                  subtitle={t('summary.renewalSubtitle')}
+                  metrics={renewalSummaryMetrics}
+                  sections={summarySections}
+                  nextAction={renewalNextAction}
+                  onCreatePinnedContext={createPinnedContextSetFromThisDocument}
+                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
+                  onRunCompliance={runComplianceChecks}
+                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
+                  isRunningCompliance={isRunningCompliance}
+                />
+              ) : summaryRenderer === 'invoice' ? (
+                <InvoiceSummaryTab
+                  title={templateTitle}
+                  subtitle={t('summary.invoiceSubtitle')}
+                  metrics={invoiceSummaryMetrics}
+                  sections={summarySections}
+                  onCreatePinnedContext={createPinnedContextSetFromThisDocument}
+                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
+                  onRunCompliance={runComplianceChecks}
+                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
+                  isRunningCompliance={isRunningCompliance}
+                />
+              ) : (
+                <GenericSummaryTab
+                  title={templateTitle}
+                  subtitle={t('summary.genericSubtitle')}
+                  metrics={genericSummaryMetrics}
+                  sections={summarySections}
+                  onCreatePinnedContext={createPinnedContextSetFromThisDocument}
+                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
+                  onRunCompliance={runComplianceChecks}
+                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
+                  isRunningCompliance={isRunningCompliance}
+                />
+              )
             )}
 
             {tab === 'variables' && (
@@ -3184,14 +3423,27 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
               </div>
             )}
 
+            {tab === 'records' && (
+              <GenericModuleTab
+                moduleId="records"
+                moduleTitle={t('tabs.records')}
+                emptyTitle={t('v3.noRecordsTitle')}
+                emptyDescription={t('v3.noRecordsDescription')}
+                workspaceId={workspaceId}
+                documentId={documentId}
+                groupBy="groupKey"
+                onReject={(id) => rejectItem('record', id)}
+                isPatchingSnapshot={isPatchReadOnly}
+                items={recordItems}
+              />
+            )}
+
             {tab === 'verdicts' && (
               <div className="space-y-3">
-                {v3Verdicts.filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`))).length === 0 ? (
+                {visibleVerdicts.length === 0 ? (
                   <EmptyState title={t('v3.noVerdictsTitle')} description={t('v3.noVerdictsDescription')} />
                 ) : (
-                  v3Verdicts
-                    .filter((v, idx) => !rejectedSets.verdicts.has(String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`)))
-                    .map((v, idx) => {
+                  visibleVerdicts.map((v, idx) => {
                     const verdictId = String(v?.id || `${v?.rule_id || 'verdict'}_${idx}`);
                     const status = String(v?.status || 'uncertain').toLowerCase();
                     const evidenceLinks = Array.isArray((v as any)?.evidence)
@@ -3255,12 +3507,10 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
 
             {tab === 'exceptions' && (
               <div className="space-y-3">
-                {v3Exceptions.filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`))).length === 0 ? (
+                {visibleExceptions.length === 0 ? (
                   <EmptyState title={t('v3.noExceptionsTitle')} description={t('v3.noExceptionsDescription')} />
                 ) : (
-                  v3Exceptions
-                    .filter((ex, idx) => !rejectedSets.exceptions.has(String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`)))
-                    .map((ex, idx) => {
+                  visibleExceptions.map((ex, idx) => {
                     const exId = String(ex?.id || `${ex?.kind || ex?.type || 'exception'}_${idx}`);
                     return (
                     <Card key={exId}>
@@ -3290,86 +3540,90 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
               </div>
             )}
 
-            {tab.startsWith('custom:') && (() => {
-              const moduleId = tab.slice('custom:'.length);
-              const m = customModules.find((x) => x.id === moduleId);
-              
-              const customItems: GenericModuleItem[] = [];
-              if (m) {
-                if (Array.isArray(m.result)) {
-                  for (let i = 0; i < m.result.length; i++) {
-                    const item = m.result[i];
-                    const itemObj = typeof item === 'object' && item ? item : {};
-                    const itemEvidenceRaw =
-                      (itemObj as any).evidence && Array.isArray((itemObj as any).evidence) && (itemObj as any).evidence.length > 0
-                        ? (itemObj as any).evidence[0]
-                        : Array.isArray(m.evidence) && m.evidence.length > 0
-                        ? (m.evidence[i] || m.evidence[0])
-                        : null;
-                    const itemPage = itemEvidenceRaw ? Number((itemEvidenceRaw as any).page_number || 0) : 0;
-                    const itemSnippet = itemEvidenceRaw
-                      ? String((itemEvidenceRaw as any).source_quote || (itemEvidenceRaw as any).snippet || '')
-                      : '';
-                    const itemId = `${moduleId}::${i}`;
-                    if (rejectedSets.modules.has(itemId)) continue;
-                    customItems.push({
-                      id: itemId,
-                      title: String(itemObj.title || itemObj.name || `Item ${i + 1}`),
-                      subtitle: itemObj.subtitle || undefined,
-                      body: itemObj.description || itemObj.summary || (typeof item === 'string' ? item : undefined),
-                      severity: itemObj.severity || itemObj.risk_level,
-                      confidence: (itemObj.confidence || itemObj.ai_confidence || m.ai_confidence) as AIConfidence | undefined,
-                      evidence: itemPage
-                        ? {
-                            page_number: itemPage,
-                            snippet: itemSnippet.slice(0, 240) || undefined,
-                          }
-                        : undefined,
-                      sourceHref: itemPage
-                        ? `/workspaces/${workspaceId}/documents/${documentId}?page=${itemPage}&quote=${encodeURIComponent(itemSnippet.slice(0, 160))}${embedded ? '&pane=analysis' : ''}`
-                        : null,
-                      sourcePage: itemPage || undefined,
-                      icon: <Puzzle className="w-4 h-4" />,
-                    });
-                  }
-                } else {
-                  const moduleResultId = `${moduleId}::result`;
-                  const isResultRejected = rejectedSets.modules.has(moduleResultId);
-                  if (!isResultRejected) {
-                  customItems.push({
-                    id: moduleResultId,
-                    title: m.title,
-                    subtitle: m.status || undefined,
-                    confidence: m.ai_confidence as AIConfidence | undefined,
-                    body: m.result == null ? 'null' : typeof m.result === 'string' ? m.result : JSON.stringify(m.result, null, 2),
-                    icon: <Puzzle className="w-4 h-4" />,
-                    evidence: m.evidence?.[0] ? {
-                      page_number: (m.evidence[0] as any)?.page_number,
-                      snippet: (m.evidence[0] as any)?.source_quote || (m.evidence[0] as any)?.snippet,
-                    } : undefined,
-                    sourceHref: m.evidence?.[0] && (m.evidence[0] as any)?.page_number
-                      ? `/workspaces/${workspaceId}/documents/${documentId}?page=${(m.evidence[0] as any).page_number}&quote=${encodeURIComponent(((m.evidence[0] as any)?.source_quote || '').slice(0, 160))}${embedded ? '&pane=analysis' : ''}`
-                      : null,
-                  });
-                  }
-                }
+            {tab.startsWith('module:') && (() => {
+              const moduleId = tab.slice('module:'.length);
+              const descriptor = moduleDescriptorById.get(moduleId);
+              const items = moduleItemsById.get(moduleId) || [];
+              const emptyTitle = t('summary.moduleEmptyTitle', { module: descriptor?.title || moduleId });
+              const emptyDescription = descriptor?.hasOutput
+                ? t('summary.moduleEmptyDescription', { module: descriptor?.title || moduleId })
+                : t('summary.moduleMissingDescription', { module: descriptor?.title || moduleId });
+
+              if (!descriptor) {
+                return (
+                  <EmptyState title={t('summary.missingModuleTitle')} description={t('summary.missingModuleDescription')} />
+                );
               }
 
-              return (
-                <GenericModuleTab
-                  moduleId={moduleId}
-                  moduleTitle={m?.title || moduleId}
-                  workspaceId={workspaceId}
-                  documentId={documentId}
-                  onReject={(itemId) => rejectItem('module', itemId)}
-                  isModuleRejected={rejectedSets.modules.has(moduleId)}
-                  onRestoreModule={() => restoreItem('module', moduleId)}
-                  isPatchingSnapshot={isPatchReadOnly}
-                  emptyTitle="Missing module"
-                  emptyDescription="This custom module was not found in the snapshot."
-                  items={customItems}
-                />
-              );
+              switch (descriptor.renderer) {
+                case 'renewal_actions':
+                  return (
+                    <RenewalActionsTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'amendment_conflicts':
+                  return (
+                    <AmendmentConflictTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'compliance_deviations':
+                  return (
+                    <ComplianceDeviationsTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                      verdictCount={visibleVerdicts.length}
+                      exceptionCount={visibleExceptions.length}
+                    />
+                  );
+                case 'invoice_exceptions':
+                  return (
+                    <InvoiceExceptionsTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                default:
+                  return (
+                    <GenericModuleTab
+                      moduleId={moduleId}
+                      moduleTitle={descriptor.title}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isModuleRejected={rejectedSets.modules.has(moduleId)}
+                      onRestoreModule={() => restoreItem('module', moduleId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      items={items}
+                      groupBy="groupKey"
+                    />
+                  );
+              }
             })()}
           </div>
         )}
