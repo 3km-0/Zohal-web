@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Brain,
@@ -16,29 +15,25 @@ import {
   LockOpen,
   MessageSquare,
   Send,
-  Sparkles,
   Star,
   Type,
   X,
   Zap,
 } from 'lucide-react';
-import { Button, ScholarTabs, Spinner, type ScholarTab } from '@/components/ui';
+import { Button, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
-import type { DocumentType } from '@/types/database';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
-import { supportsStructuredAnalysis } from '@/lib/document-analysis';
 
 interface AIPanelProps {
   documentId: string;
   workspaceId: string;
   selectedText?: string;
   currentPage?: number;
-  onClose: () => void;
-  documentType?: DocumentType;
-  onOpenAnalysis?: (view?: 'results' | 'run') => void;
+  activeTab: 'ask' | 'history';
+  onConversationLoaded?: () => void;
 }
 
 interface ChatMessage {
@@ -54,22 +49,18 @@ interface ConversationSummary {
   messageCount: number;
 }
 
-type AIPanelTab = 'ask' | 'history';
-
 export function AIPanel({
   documentId,
   workspaceId,
   selectedText,
   currentPage,
-  onClose,
-  documentType,
-  onOpenAnalysis,
+  activeTab,
+  onConversationLoaded,
 }: AIPanelProps) {
   // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
   // any callbacks depending on it will change every render, which can re-trigger
   // effects and constantly reset chat state.
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
   const t = useTranslations('aiPane');
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -81,7 +72,6 @@ export function AIPanel({
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<AIPanelTab>('ask');
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatSeqRef = useRef(0);
   const [selectedModelId, setSelectedModelId] = useState<string>(() => {
@@ -152,40 +142,7 @@ export function AIPanel({
     chatAbortRef.current = null;
 
     loadConversationHistory();
-    setActiveTab('ask');
   }, [documentId, loadConversationHistory]);
-
-  const goToContractAnalysis = useCallback((view: 'results' | 'run' = 'run') => {
-    if (onOpenAnalysis) {
-      onOpenAnalysis(view);
-      return;
-    }
-    const search = view === 'run' ? '?view=run' : '';
-    router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis${search}`);
-  }, [onOpenAnalysis, router, workspaceId, documentId]);
-
-  const supportsAnalysis = useMemo(() => supportsStructuredAnalysis(documentType), [documentType]);
-
-  const topTabs = useMemo<ScholarTab[]>(() => {
-    const tabs: ScholarTab[] = [
-      { id: 'ask', label: t('ask'), icon: <MessageSquare className="h-4 w-4" /> },
-      {
-        id: 'history',
-        label: t('history'),
-        icon: <Clock className="h-4 w-4" />,
-        count: conversationHistory.length > 0 ? conversationHistory.length : null,
-      },
-    ];
-
-    if (supportsAnalysis) {
-      tabs.push(
-        { id: 'run', label: t('run'), icon: <FileText className="h-4 w-4" /> },
-        { id: 'actions', label: t('actions'), icon: <Star className="h-4 w-4" /> }
-      );
-    }
-
-    return tabs;
-  }, [conversationHistory.length, supportsAnalysis, t]);
 
   const filteredModelOptions = useMemo(() => {
     const query = modelSearch.trim().toLowerCase();
@@ -235,7 +192,6 @@ export function AIPanel({
     }
 
     if (documentTitle) appendPart(`Document: ${documentTitle}`);
-    if (documentType) appendPart(`Document type: ${documentType}`);
     if (typeof currentPage === 'number') appendPart(`Current page: ${currentPage}`);
     if (selectedText?.trim()) appendPart(`Selected text:\n${selectedText.trim()}`);
 
@@ -304,7 +260,7 @@ export function AIPanel({
     }
 
     return contextParts.join('\n\n') || undefined;
-  }, [supabase, documentId, documentType, currentPage, selectedText]);
+  }, [supabase, documentId, currentPage, selectedText]);
 
   const handleChat = useCallback(
     async (message: string) => {
@@ -489,7 +445,7 @@ export function AIPanel({
 
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
-          setActiveTab('ask');
+          onConversationLoaded?.();
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
@@ -499,7 +455,7 @@ export function AIPanel({
         setLoadingConversation(false);
       }
     },
-    [supabase, toast]
+    [supabase, toast, onConversationLoaded]
   );
 
   const startNewConversation = useCallback(() => {
@@ -514,71 +470,14 @@ export function AIPanel({
     setLoading(false);
     setLoadingConversation(false);
     setChatInput('');
-    setActiveTab('ask');
   }, []);
-
-  useEffect(() => {
-    if (!selectedText?.trim()) return;
-    setActiveTab('ask');
-  }, [selectedText]);
-
-  const handleTopTabChange = useCallback((tabId: string) => {
-    if (tabId === 'ask' || tabId === 'history') {
-      setActiveTab(tabId);
-      return;
-    }
-
-    if (tabId === 'run') {
-      goToContractAnalysis('run');
-      return;
-    }
-
-    if (tabId === 'actions') {
-      goToContractAnalysis('results');
-    }
-  }, [goToContractAnalysis]);
 
   return (
     <div className="flex h-full w-full flex-col bg-surface">
-      <div className="border-b border-border px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-text">{t('title')}</div>
-              <div className="text-xs text-text-soft">{selectedModel?.shortTitle || selectedModel?.title}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={startNewConversation}
-              disabled={chatHistory.length === 0 && !currentConversationId}
-            >
-              {t('newConversation')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-              {t('close')}
-            </Button>
-          </div>
-        </div>
-        <div className="mt-3">
-          <ScholarTabs tabs={topTabs} activeTab={activeTab} onTabChange={handleTopTabChange} />
-        </div>
-      </div>
-
       <div className="relative flex-1 min-h-0">
-        <div className="flex flex-col h-full">
+        <div className="flex h-full flex-col">
           {activeTab === 'history' ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              <div className="border-b border-border bg-surface-alt/60 px-4 py-3">
-                <p className="text-sm font-semibold text-text">{t('history')}</p>
-                <p className="mt-1 text-sm text-text-soft">{t('historyEmpty')}</p>
-              </div>
               <div className="min-h-0 flex-1 overflow-auto p-4">
                 {conversationHistory.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface-alt/50 px-6 text-center">
@@ -644,28 +543,6 @@ export function AIPanel({
                           <FileText className="w-4 h-4" />
                           {t('explain')}
                         </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {supportsAnalysis && (
-                    <div className="rounded-2xl border border-border bg-surface-alt p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 rounded-full bg-accent/10 p-2">
-                          <FileText className="w-4 h-4 text-accent" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-text">{t('analysisCardTitle')}</p>
-                          <p className="mt-1 text-sm leading-6 text-text-soft">{t('analysisCardBody')}</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button variant="secondary" size="sm" onClick={() => goToContractAnalysis('run')}>
-                              {t('run')}
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => goToContractAnalysis('results')}>
-                              {t('actions')}
-                            </Button>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -754,6 +631,14 @@ export function AIPanel({
                       {t('modelPicker.openSource')}
                     </span>
                   ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={startNewConversation}
+                    disabled={chatHistory.length === 0 && !currentConversationId}
+                  >
+                    {t('newConversation')}
+                  </Button>
                 </div>
                 <div className="flex gap-2">
                   <input
