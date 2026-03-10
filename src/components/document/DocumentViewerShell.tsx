@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Scale, CircleHelp, Menu, Sparkles } from 'lucide-react';
+import { ArrowLeft, CircleHelp, Menu, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Spinner, Badge, Card, CardContent, ScholarActionMenu } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -14,7 +14,6 @@ import type { RightPaneMode } from '@/types/analysis-runs';
 import { cn } from '@/lib/utils';
 import { mapHttpError, notFound } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
-import { getAnalysisLabelKey } from '@/lib/document-analysis';
 import { useAppShell } from '@/components/layout/AppShellContext';
 import { MoreVertical } from 'lucide-react';
 
@@ -36,7 +35,6 @@ export default function DocumentViewerShell({
   const supabase = useMemo(() => createClient(), []);
   const { show, showSuccess, showError } = useToast();
   const tTypes = useTranslations('documents.types');
-  const tAnalysisLabels = useTranslations('documents.analysisLabels');
   const tSidebar = useTranslations('sidebar');
   const tAI = useTranslations('aiPane');
   const { openMobileSidebar } = useAppShell();
@@ -70,11 +68,6 @@ export default function DocumentViewerShell({
     }
   }, [tTypes]);
 
-  const getAnalysisLabel = useCallback(
-    (documentType?: string | null) => tAnalysisLabels(getAnalysisLabelKey(documentType)),
-    [tAnalysisLabels]
-  );
-  
   const tapToProof = useMemo(() => {
     const pageStr = searchParams.get('page');
     const page = pageStr ? parseInt(pageStr, 10) : NaN;
@@ -335,10 +328,10 @@ export default function DocumentViewerShell({
 
           <div className="hidden shrink-0 items-center justify-end gap-2 md:flex">
             <Button
-              variant={showRightPane && rightPaneMode === 'chat' ? 'primary' : 'secondary'}
+              variant={showRightPane ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => {
-                if (showRightPane && rightPaneMode === 'chat') {
+                if (showRightPane) {
                   setPaneState(false);
                   return;
                 }
@@ -347,23 +340,6 @@ export default function DocumentViewerShell({
             >
               <Sparkles className="w-4 h-4" />
               <span className="hidden lg:inline">{tAI('title')}</span>
-            </Button>
-            <Button
-              variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
-              size="sm"
-              data-tour="viewer-contract-analysis"
-              aria-label={getAnalysisLabel(document.document_type)}
-              title={getAnalysisLabel(document.document_type)}
-              onClick={() => {
-                if (showRightPane && rightPaneMode === 'analysis') {
-                  setPaneState(false);
-                  return;
-                }
-                setPaneState(true, 'analysis');
-              }}
-            >
-              <Scale className="w-4 h-4" />
-              <span className="hidden lg:inline">{getAnalysisLabel(document.document_type)}</span>
             </Button>
             <Button
               variant="ghost"
@@ -402,10 +378,10 @@ export default function DocumentViewerShell({
               mobileToolbarActions={
                 <>
                   <Button
-                    variant={showRightPane && rightPaneMode === 'chat' ? 'primary' : 'secondary'}
+                    variant={showRightPane ? 'primary' : 'secondary'}
                     size="sm"
                     onClick={() => {
-                      if (showRightPane && rightPaneMode === 'chat') {
+                      if (showRightPane) {
                         setPaneState(false);
                         return;
                       }
@@ -415,24 +391,6 @@ export default function DocumentViewerShell({
                   >
                     <Sparkles className="w-4 h-4" />
                     {tAI('title')}
-                  </Button>
-                  <Button
-                    variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
-                    size="sm"
-                    data-tour="viewer-contract-analysis"
-                    aria-label={getAnalysisLabel(document.document_type)}
-                    title={getAnalysisLabel(document.document_type)}
-                    onClick={() => {
-                      if (showRightPane && rightPaneMode === 'analysis') {
-                        setPaneState(false);
-                        return;
-                      }
-                      setPaneState(true, 'analysis');
-                    }}
-                    className="min-h-[44px]"
-                  >
-                    <Scale className="w-4 h-4" />
-                    {getAnalysisLabel(document.document_type)}
                   </Button>
                   <ScholarActionMenu
                     compact
@@ -474,10 +432,10 @@ export default function DocumentViewerShell({
                         <div className="mt-4 flex flex-wrap gap-2">
                           <Button
                             variant="secondary"
-                            onClick={() => setPaneState(true, 'analysis')}
+                            onClick={() => setPaneState(true, 'chat')}
                           >
-                            <Scale className="w-4 h-4" />
-                            {getAnalysisLabel(document.document_type)}
+                            <Sparkles className="w-4 h-4" />
+                            {tAI('title')}
                           </Button>
                         </div>
                       </div>

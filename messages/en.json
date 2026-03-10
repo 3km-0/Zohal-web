@@ -211,7 +211,7 @@
     "emptyDescription": "Create your first note or let AI generate insights from your documents."
   },
   "aiPane": {
-    "title": "AI",
+    "title": "Document AI",
     "ask": "Ask",
     "history": "History",
     "run": "Run",
