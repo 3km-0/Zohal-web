@@ -49,6 +49,21 @@ export default function DocumentViewerShell({
   const [currentPage, setCurrentPage] = useState(1);
   const [retrying, setRetrying] = useState(false);
   const [pollCount, setPollCount] = useState(0);
+  const [paneWidth, setPaneWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return 512;
+    const stored = window.localStorage.getItem('zohal.aiPane.width');
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    return Number.isFinite(parsed) && parsed >= 280 ? parsed : 512;
+  });
+
+  const handlePaneWidthChange = useCallback((w: number) => {
+    setPaneWidth(w);
+    try {
+      window.localStorage.setItem('zohal.aiPane.width', String(Math.round(w)));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const getDocumentTypeLabel = useCallback((documentType?: string | null) => {
     switch (documentType) {
@@ -517,6 +532,8 @@ export default function DocumentViewerShell({
             mode={rightPaneMode}
             onModeChange={(mode) => setPaneState(true, mode)}
             onClose={() => setPaneState(false)}
+            width={paneWidth}
+            onWidthChange={handlePaneWidthChange}
           />
         )}
       </div>
