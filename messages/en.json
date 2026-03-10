@@ -212,7 +212,10 @@
   },
   "aiPane": {
     "title": "AI",
+    "ask": "Ask",
     "history": "History",
+    "run": "Run",
+    "actions": "Actions",
     "close": "Close",
     "documentAnalysis": "Document Analysis",
     "backToAI": "Back to AI",

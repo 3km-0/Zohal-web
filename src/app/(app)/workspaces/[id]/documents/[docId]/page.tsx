@@ -3,5 +3,5 @@
 import DocumentViewerShell from '@/components/document/DocumentViewerShell';
 
 export default function DocumentViewerPage() {
-  return <DocumentViewerShell initialMode="chat" initialPaneOpen={false} />;
+  return <DocumentViewerShell initialMode="chat" initialPaneOpen />;
 }

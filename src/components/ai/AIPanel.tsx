@@ -22,7 +22,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { Button, Spinner } from '@/components/ui';
+import { Button, ScholarTabs, Spinner, type ScholarTab } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -54,6 +54,7 @@ interface ConversationSummary {
   messageCount: number;
 }
 
+type AIPanelTab = 'ask' | 'history';
 
 export function AIPanel({
   documentId,
@@ -78,9 +79,9 @@ export function AIPanel({
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<AIPanelTab>('ask');
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatSeqRef = useRef(0);
   const [selectedModelId, setSelectedModelId] = useState<string>(() => {
@@ -151,7 +152,7 @@ export function AIPanel({
     chatAbortRef.current = null;
 
     loadConversationHistory();
-    setShowHistoryOverlay(false);
+    setActiveTab('ask');
   }, [documentId, loadConversationHistory]);
 
   const goToContractAnalysis = useCallback((view: 'results' | 'run' = 'run') => {
@@ -164,6 +165,27 @@ export function AIPanel({
   }, [onOpenAnalysis, router, workspaceId, documentId]);
 
   const supportsAnalysis = useMemo(() => supportsStructuredAnalysis(documentType), [documentType]);
+
+  const topTabs = useMemo<ScholarTab[]>(() => {
+    const tabs: ScholarTab[] = [
+      { id: 'ask', label: t('ask'), icon: <MessageSquare className="h-4 w-4" /> },
+      {
+        id: 'history',
+        label: t('history'),
+        icon: <Clock className="h-4 w-4" />,
+        count: conversationHistory.length > 0 ? conversationHistory.length : null,
+      },
+    ];
+
+    if (supportsAnalysis) {
+      tabs.push(
+        { id: 'run', label: t('run'), icon: <FileText className="h-4 w-4" /> },
+        { id: 'actions', label: t('actions'), icon: <Star className="h-4 w-4" /> }
+      );
+    }
+
+    return tabs;
+  }, [conversationHistory.length, supportsAnalysis, t]);
 
   const filteredModelOptions = useMemo(() => {
     const query = modelSearch.trim().toLowerCase();
@@ -467,7 +489,7 @@ export function AIPanel({
 
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
-          setShowHistoryOverlay(false);
+          setActiveTab('ask');
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
@@ -492,270 +514,278 @@ export function AIPanel({
     setLoading(false);
     setLoadingConversation(false);
     setChatInput('');
-    setShowHistoryOverlay(false);
+    setActiveTab('ask');
   }, []);
+
+  useEffect(() => {
+    if (!selectedText?.trim()) return;
+    setActiveTab('ask');
+  }, [selectedText]);
+
+  const handleTopTabChange = useCallback((tabId: string) => {
+    if (tabId === 'ask' || tabId === 'history') {
+      setActiveTab(tabId);
+      return;
+    }
+
+    if (tabId === 'run') {
+      goToContractAnalysis('run');
+      return;
+    }
+
+    if (tabId === 'actions') {
+      goToContractAnalysis('results');
+    }
+  }, [goToContractAnalysis]);
 
   return (
     <div className="flex h-full w-full flex-col bg-surface">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-accent" />
-          <span className="font-semibold text-text">{t('title')}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowHistoryOverlay(true)}
-            title={t('history')}
-          >
-            <Clock className="w-4 h-4" />
-            {t('history')}
-          </Button>
-          {supportsAnalysis && (
-            <Button variant="ghost" size="sm" onClick={() => goToContractAnalysis('run')}>
-              <FileText className="w-4 h-4" />
-              {t('documentAnalysis')}
+      <div className="border-b border-border px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-text">{t('title')}</div>
+              <div className="text-xs text-text-soft">{selectedModel?.shortTitle || selectedModel?.title}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={startNewConversation}
+              disabled={chatHistory.length === 0 && !currentConversationId}
+            >
+              {t('newConversation')}
             </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="w-4 h-4" />
-            {t('close')}
-          </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+              {t('close')}
+            </Button>
+          </div>
+        </div>
+        <div className="mt-3">
+          <ScholarTabs tabs={topTabs} activeTab={activeTab} onTabChange={handleTopTabChange} />
         </div>
       </div>
 
-      {/* Content */}
       <div className="relative flex-1 min-h-0">
         <div className="flex flex-col h-full">
-          {/* Quick actions when no chat */}
-          {chatHistory.length === 0 && (
-            <div className="space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-              {/* Selected text display */}
-              {selectedText && (
-                <div className="p-3 bg-accent/5 border border-accent/20 rounded-scholar">
-                  <p className="text-xs text-accent font-medium mb-1">{t('selectedText')}</p>
-                  <p className="text-sm text-text line-clamp-3">{selectedText}</p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() =>
-                        handleChat(
-                          `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
-                        )
-                      }
-                      disabled={loading || loadingConversation}
-                      title={t('explainSelected')}
-                    >
-                      <FileText className="w-4 h-4" />
-                      {t('explain')}
-                    </Button>
+          {activeTab === 'history' ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="border-b border-border bg-surface-alt/60 px-4 py-3">
+                <p className="text-sm font-semibold text-text">{t('history')}</p>
+                <p className="mt-1 text-sm text-text-soft">{t('historyEmpty')}</p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto p-4">
+                {conversationHistory.length === 0 ? (
+                  <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface-alt/50 px-6 text-center">
+                    <Clock className="mb-3 h-10 w-10 text-text-soft" />
+                    <p className="text-sm font-semibold text-text">{t('noConversations')}</p>
+                    <p className="mt-1 text-sm text-text-soft">{t('historyEmpty')}</p>
                   </div>
-                </div>
-              )}
-
-              {supportsAnalysis && (
-                <div className="p-4 bg-surface-alt border border-border rounded-scholar">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 rounded-full bg-accent/10 p-2">
-                      <FileText className="w-4 h-4 text-accent" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-text">{t('analysisCardTitle')}</p>
-                      <p className="mt-1 text-sm text-text-soft">{t('analysisCardBody')}</p>
-                      <div className="mt-3">
-                        <Button variant="secondary" size="sm" onClick={() => goToContractAnalysis('run')}>
-                          {t('openAnalysis')}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {!selectedText && (
-                <div className="text-center py-8">
-                  <MessageSquare className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                  <p className="text-text-soft">{t('emptyState')}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Loading */}
-          {loading && chatHistory.length === 0 && (
-            <div className="flex items-center justify-center py-8 px-4">
-              <Spinner size="lg" />
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="p-4">
-              <div className="p-3 bg-error/10 border border-error/20 rounded-scholar">
-                <p className="text-sm text-error">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Chat messages */}
-          {chatHistory.length > 0 && (
-            <div className="flex-1 overflow-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] space-y-4">
-              {chatHistory.map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'p-3 rounded-scholar max-w-[85%] group relative',
-                    msg.role === 'user'
-                      ? 'bg-accent text-white ml-auto'
-                      : 'bg-surface-alt border border-border'
-                  )}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  {msg.role === 'assistant' && (
-                    <button
-                      onClick={() => pinMessage(msg)}
-                      className="absolute -top-2 -right-2 p-1 bg-surface rounded-full border border-border opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-alt"
-                      title={t('saveToNotes')}
-                    >
-                      <Star className="w-3 h-3 text-text-soft" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {(loading || loadingConversation) && (
-                <div className="flex items-center gap-2 p-3">
-                  <Spinner size="sm" />
-                  <span className="text-sm text-text-soft">
-                    {loadingConversation ? t('loadingConversation') : t('thinking')}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Chat input - always visible */}
-          <div className="border-t border-border p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setShowModelPicker(true)}
-                className="inline-flex max-w-full items-center gap-2 rounded-scholar border border-border bg-surface-alt px-3 py-2 text-left transition-colors hover:border-accent/40 hover:text-text"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
-                  {selectedModel?.providerMark || 'M'}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-text">
-                    {selectedModel?.title || t('modelPicker.customModel')}
-                  </span>
-                  <span className="block truncate text-xs text-text-soft">
-                    {selectedModel ? t(`modelPicker.featureLabels.${selectedModel.featureKey}`) : selectedModelId}
-                  </span>
-                </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-text-soft" />
-              </button>
-              {selectedModel?.isOpenSource ? (
-                <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent">
-                  {t('modelPicker.openSource')}
-                </span>
-              ) : null}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleChat(chatInput)}
-                placeholder={t('inputPlaceholder')}
-                className="flex-1 px-4 py-2.5 bg-surface-alt border border-border rounded-scholar text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
-              />
-              <Button
-                onClick={() => handleChat(chatInput)}
-                disabled={!chatInput.trim() || loading || loadingConversation}
-                size="md"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {showHistoryOverlay && (
-          <div className="absolute inset-0 z-10 border-t border-border bg-surface flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-accent" />
-                <span className="font-semibold text-text">{t('history')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={startNewConversation}
-                >
-                  {t('newConversation')}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowHistoryOverlay(false)}>
-                  <X className="w-4 h-4" />
-                  {t('close')}
-                </Button>
-              </div>
-            </div>
-            <div className="p-4 space-y-4 overflow-auto min-h-0 flex-1">
-              {conversationHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <Clock className="w-10 h-10 text-text-soft mx-auto mb-3" />
-                  <p className="text-text-soft">{t('noConversations')}</p>
-                  <p className="text-sm text-text-soft mt-1">{t('historyEmpty')}</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {conversationHistory.map((conv) => (
-                    (() => {
+                ) : (
+                  <div className="space-y-3">
+                    {conversationHistory.map((conv) => {
                       const isActive = conv.id === currentConversationId;
                       return (
                         <button
                           key={conv.id}
                           onClick={() => loadConversation(conv.id)}
                           className={cn(
-                            'w-full p-3 border rounded-scholar transition-colors text-left group',
+                            'w-full rounded-2xl border p-4 text-left transition-colors',
                             isActive
-                              ? 'bg-accent/5 border-accent/40'
-                              : 'bg-surface-alt border-border hover:border-accent/50'
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border bg-surface-alt hover:border-accent/40'
                           )}
                         >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-text font-medium truncate flex-1">
-                              {conv.preview}
-                            </p>
-                            <Clock className="w-4 h-4 text-text-soft group-hover:text-accent transition-colors flex-shrink-0" />
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-text-soft">
-                              {t('messageCount', { count: conv.messageCount })}
-                            </span>
-                            <span className="text-xs text-text-soft">•</span>
-                            <span className="text-xs text-text-soft">
-                              {formatRelativeTime(conv.timestamp)}
-                            </span>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-text">{conv.preview}</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-soft">
+                                <span>{t('messageCount', { count: conv.messageCount })}</span>
+                                <span>•</span>
+                                <span>{formatRelativeTime(conv.timestamp)}</span>
+                              </div>
+                            </div>
+                            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-text-soft" />
                           </div>
                         </button>
                       );
-                    })()
-                  ))}
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {chatHistory.length === 0 && (
+                <div className="space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                  {selectedText && (
+                    <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+                        {t('selectedText')}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-text line-clamp-4">{selectedText}</p>
+                      <div className="mt-4 flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            handleChat(
+                              `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
+                            )
+                          }
+                          disabled={loading || loadingConversation}
+                          title={t('explainSelected')}
+                        >
+                          <FileText className="w-4 h-4" />
+                          {t('explain')}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {supportsAnalysis && (
+                    <div className="rounded-2xl border border-border bg-surface-alt p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-full bg-accent/10 p-2">
+                          <FileText className="w-4 h-4 text-accent" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-text">{t('analysisCardTitle')}</p>
+                          <p className="mt-1 text-sm leading-6 text-text-soft">{t('analysisCardBody')}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button variant="secondary" size="sm" onClick={() => goToContractAnalysis('run')}>
+                              {t('run')}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => goToContractAnalysis('results')}>
+                              {t('actions')}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!selectedText && (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface-alt/50 px-6 py-10 text-center">
+                      <MessageSquare className="mb-3 h-10 w-10 text-text-soft" />
+                      <p className="text-sm font-semibold text-text">{t('ask')}</p>
+                      <p className="mt-1 text-sm text-text-soft">{t('emptyState')}</p>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          </div>
-        )}
+
+              {loading && chatHistory.length === 0 && (
+                <div className="flex items-center justify-center px-4 py-8">
+                  <Spinner size="lg" />
+                </div>
+              )}
+
+              {error && (
+                <div className="p-4">
+                  <div className="rounded-2xl border border-error/20 bg-error/10 p-3">
+                    <p className="text-sm text-error">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {chatHistory.length > 0 && (
+                <div className="flex-1 space-y-4 overflow-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                  {chatHistory.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'group relative max-w-[88%] rounded-2xl border p-4 shadow-sm',
+                        msg.role === 'user'
+                          ? 'ml-auto border-accent bg-accent text-white'
+                          : 'border-border bg-surface-alt'
+                      )}
+                    >
+                      <p className="text-sm whitespace-pre-wrap leading-6">{msg.content}</p>
+                      {msg.role === 'assistant' && (
+                        <button
+                          onClick={() => pinMessage(msg)}
+                          className="absolute -top-2 -right-2 rounded-full border border-border bg-surface p-1.5 opacity-0 transition-opacity hover:bg-surface-alt group-hover:opacity-100"
+                          title={t('saveToNotes')}
+                        >
+                          <Star className="h-3 w-3 text-text-soft" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {(loading || loadingConversation) && (
+                    <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface-alt px-4 py-3">
+                      <Spinner size="sm" />
+                      <span className="text-sm text-text-soft">
+                        {loadingConversation ? t('loadingConversation') : t('thinking')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="border-t border-border p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowModelPicker(true)}
+                    className="inline-flex max-w-full items-center gap-2 rounded-scholar border border-border bg-surface-alt px-3 py-2 text-left transition-colors hover:border-accent/40 hover:text-text"
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
+                      {selectedModel?.providerMark || 'M'}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-text">
+                        {selectedModel?.title || t('modelPicker.customModel')}
+                      </span>
+                      <span className="block truncate text-xs text-text-soft">
+                        {selectedModel ? t(`modelPicker.featureLabels.${selectedModel.featureKey}`) : selectedModelId}
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-text-soft" />
+                  </button>
+                  {selectedModel?.isOpenSource ? (
+                    <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent">
+                      {t('modelPicker.openSource')}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleChat(chatInput)}
+                    placeholder={t('inputPlaceholder')}
+                    className="flex-1 rounded-scholar border border-border bg-surface-alt px-4 py-2.5 text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  <Button
+                    onClick={() => handleChat(chatInput)}
+                    disabled={!chatInput.trim() || loading || loadingConversation}
+                    size="md"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {showModelPicker && (
-          <div className="absolute inset-0 z-20 bg-black/40 p-4">
-            <div className="mx-auto flex h-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+          <div className="absolute inset-0 z-20 flex items-end md:items-start md:justify-center">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40 md:hidden"
+              onClick={() => setShowModelPicker(false)}
+              aria-label={t('close')}
+            />
+            <div className="relative flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-surface shadow-2xl md:mx-4 md:mt-4 md:max-h-[32rem] md:max-w-none md:rounded-2xl">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
                   <div className="text-base font-semibold text-text">{t('modelPicker.title')}</div>

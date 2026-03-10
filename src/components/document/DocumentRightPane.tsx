@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft } from 'lucide-react';
+import { FileText, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
@@ -31,7 +31,6 @@ export function DocumentRightPane({
   onClose,
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
-  const tCommon = useTranslations('common');
   const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
 
   return (
@@ -54,15 +53,22 @@ export function DocumentRightPane({
         {mode === 'analysis' && (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
-              <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <ArrowLeft className="w-4 h-4 rtl-flip" />
-                {tCommon('back')}
-              </Button>
-              <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')} className="hidden md:inline-flex">
-                {t('title')}
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-text">{t('documentAnalysis')}</p>
+                  <p className="text-xs text-text-soft">{t('analysisCardBody')}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')}>
+                  <Sparkles className="h-4 w-4" />
+                  {t('backToAI')}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                  {t('close')}
+                </Button>
               </div>
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

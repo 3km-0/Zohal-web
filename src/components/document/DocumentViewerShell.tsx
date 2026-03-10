@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Scale, CircleHelp, Menu } from 'lucide-react';
+import { ArrowLeft, Scale, CircleHelp, Menu, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Spinner, Badge, Card, CardContent, ScholarActionMenu } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -38,6 +38,7 @@ export default function DocumentViewerShell({
   const tTypes = useTranslations('documents.types');
   const tAnalysisLabels = useTranslations('documents.analysisLabels');
   const tSidebar = useTranslations('sidebar');
+  const tAI = useTranslations('aiPane');
   const { openMobileSidebar } = useAppShell();
 
   const [document, setDocument] = useState<Document | null>(null);
@@ -334,6 +335,20 @@ export default function DocumentViewerShell({
 
           <div className="hidden shrink-0 items-center justify-end gap-2 md:flex">
             <Button
+              variant={showRightPane && rightPaneMode === 'chat' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => {
+                if (showRightPane && rightPaneMode === 'chat') {
+                  setPaneState(false);
+                  return;
+                }
+                setPaneState(true, 'chat');
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden lg:inline">{tAI('title')}</span>
+            </Button>
+            <Button
               variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
               size="sm"
               data-tour="viewer-contract-analysis"
@@ -386,6 +401,21 @@ export default function DocumentViewerShell({
               tapToProof={tapToProof}
               mobileToolbarActions={
                 <>
+                  <Button
+                    variant={showRightPane && rightPaneMode === 'chat' ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => {
+                      if (showRightPane && rightPaneMode === 'chat') {
+                        setPaneState(false);
+                        return;
+                      }
+                      setPaneState(true, 'chat');
+                    }}
+                    className="min-h-[44px]"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {tAI('title')}
+                  </Button>
                   <Button
                     variant={showRightPane && rightPaneMode === 'analysis' ? 'primary' : 'secondary'}
                     size="sm"

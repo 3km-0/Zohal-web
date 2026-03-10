@@ -212,7 +212,10 @@
   },
   "aiPane": {
     "title": "الذكاء",
+    "ask": "اسأل",
     "history": "السجل",
+    "run": "التشغيل",
+    "actions": "الإجراءات",
     "close": "إغلاق",
     "documentAnalysis": "تحليل المستند",
     "backToAI": "العودة إلى الذكاء",
