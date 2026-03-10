@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui';
@@ -31,6 +32,7 @@ export function DocumentRightPane({
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
   const tCommon = useTranslations('common');
+  const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
 
   return (
     <aside className="fixed inset-0 z-20 flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
@@ -43,7 +45,10 @@ export function DocumentRightPane({
             currentPage={currentPage}
             onClose={onClose}
             documentType={documentType}
-            onOpenAnalysis={() => onModeChange('analysis')}
+            onOpenAnalysis={(view = 'run') => {
+              setAnalysisInitialView(view);
+              onModeChange('analysis');
+            }}
           />
         </div>
         {mode === 'analysis' && (
@@ -61,7 +66,7 @@ export function DocumentRightPane({
               </div>
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <ContractAnalysisPane embedded />
+              <ContractAnalysisPane embedded initialView={analysisInitialView} />
             </div>
           </div>
         )}

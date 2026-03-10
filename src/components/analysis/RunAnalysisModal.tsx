@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { X, Play, Layers, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, Play, Layers, FileText, CheckCircle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
-import { selectRecommendedPlaybook, supportsStructuredAnalysis } from '@/lib/document-analysis';
+import { resolveRecommendedPlaybook, supportsStructuredAnalysis } from '@/lib/document-analysis';
 import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplateGroupLabel, groupSystemPlaybooks } from '@/lib/template-library';
 
 type PlaybookScope = 'single' | 'bundle' | 'either';
@@ -125,40 +125,32 @@ export function RunAnalysisModal(props: {
     })();
   }, [open, loadPlaybooks, loadBundles, supabase, documentId]);
 
-  const playbookTemplateId = useCallback((pb: PlaybookRecord): string | null => {
-    const raw = pb.current_version?.spec_json?.template_id;
-    if (typeof raw !== 'string') return null;
-    const normalized = raw.trim().toLowerCase();
-    return normalized ? normalized : null;
-  }, []);
-
   const recommendedTemplateIds = useMemo(() => {
     const raw = (documentMetadata as any)?.source_metadata?.recommended_template_ids;
     if (!Array.isArray(raw)) return [] as string[];
     return raw.map((v: any) => String(v || '').trim().toLowerCase()).filter(Boolean);
   }, [documentMetadata]);
 
-  const primaryRecommendedTemplateId = recommendedTemplateIds[0] || null;
-
-  const recommendedPlaybookFromClassifier = useMemo(() => {
-    if (!primaryRecommendedTemplateId || playbooks.length === 0) return null;
-    return playbooks.find((pb) => playbookTemplateId(pb) === primaryRecommendedTemplateId) || null;
-  }, [playbookTemplateId, playbooks, primaryRecommendedTemplateId]);
+  const resolvedRecommendedPlaybook = useMemo(() => {
+    if (playbooks.length === 0) return null;
+    return resolveRecommendedPlaybook(playbooks, {
+      documentType: documentMetadata?.document_type || documentType,
+      title: documentMetadata?.title,
+      originalFilename: documentMetadata?.original_filename,
+      recommendedTemplateIds,
+    });
+  }, [documentMetadata, documentType, playbooks, recommendedTemplateIds]);
 
   useEffect(() => {
     if (!open || didInitializeRecommendedPlaybook || selectedPlaybookId || playbooks.length === 0) return;
 
-    const recommendedPlaybook = recommendedPlaybookFromClassifier || selectRecommendedPlaybook(playbooks, {
-      documentType: documentMetadata?.document_type || documentType,
-      title: documentMetadata?.title,
-      originalFilename: documentMetadata?.original_filename,
-    });
+    const recommendedPlaybook = resolvedRecommendedPlaybook;
     if (recommendedPlaybook) {
       setSelectedPlaybookId(recommendedPlaybook.id);
       setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
     }
     setDidInitializeRecommendedPlaybook(true);
-  }, [didInitializeRecommendedPlaybook, documentMetadata, documentType, open, playbooks, recommendedPlaybookFromClassifier, selectedPlaybookId]);
+  }, [didInitializeRecommendedPlaybook, open, playbooks, resolvedRecommendedPlaybook, selectedPlaybookId]);
 
   const selectedPlaybook = useMemo(() => {
     if (!selectedPlaybookId) return null;
@@ -273,6 +265,21 @@ export function RunAnalysisModal(props: {
     () => groupSystemPlaybooks(filteredSystemPlaybooks),
     [filteredSystemPlaybooks]
   );
+
+  const recommendedSystemPlaybook = useMemo(() => {
+    if (!resolvedRecommendedPlaybook?.is_system_preset) return null;
+    return filteredSystemPlaybooks.find((playbook) => playbook.id === resolvedRecommendedPlaybook.id) || null;
+  }, [filteredSystemPlaybooks, resolvedRecommendedPlaybook]);
+
+  const displayGroupedSystemPlaybooks = useMemo(() => {
+    if (!recommendedSystemPlaybook) return groupedSystemPlaybooks;
+    return groupedSystemPlaybooks
+      .map(({ group, playbooks }) => ({
+        group,
+        playbooks: playbooks.filter((playbook) => playbook.id !== recommendedSystemPlaybook.id),
+      }))
+      .filter(({ playbooks }) => playbooks.length > 0);
+  }, [groupedSystemPlaybooks, recommendedSystemPlaybook]);
 
   const filteredCustomPlaybooks = useMemo(
     () => filteredPlaybooks.filter((playbook) => !playbook.is_system_preset),
@@ -547,9 +554,9 @@ export function RunAnalysisModal(props: {
                               {localizedTemplateText('all')}
                             </div>
                             <p className="mt-1 text-sm text-text-soft">{localizedTemplateText('autoDescription')}</p>
-                            {recommendedPlaybookFromClassifier?.name ? (
+                            {resolvedRecommendedPlaybook?.name ? (
                               <p className="mt-2 text-xs font-semibold text-highlight">
-                                {isArabic ? 'الموصى به:' : 'Recommended:'} {recommendedPlaybookFromClassifier.name}
+                                {isArabic ? 'الموصى به:' : 'Recommended:'} {resolvedRecommendedPlaybook.name}
                               </p>
                             ) : null}
                           </div>
@@ -557,9 +564,54 @@ export function RunAnalysisModal(props: {
                         </div>
                       </button>
 
-                      {groupedSystemPlaybooks.length > 0 && (
+                      {recommendedSystemPlaybook && (
                         <div className="space-y-2">
-                          {groupedSystemPlaybooks.map(({ group, playbooks }) => (
+                          <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                            {isArabic ? 'القالب الموصى به' : 'Recommended'}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlaybookId(recommendedSystemPlaybook.id);
+                              setSelectedPlaybookVersionId(
+                                recommendedSystemPlaybook.current_version?.id ||
+                                  recommendedSystemPlaybook.current_version_id ||
+                                  ''
+                              );
+                            }}
+                            className={cn(
+                              'w-full rounded-xl border p-3 text-left transition-colors',
+                              selectedPlaybookId === recommendedSystemPlaybook.id
+                                ? 'border-accent bg-accent/5'
+                                : 'border-highlight bg-highlight/5 hover:border-accent/40'
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="text-xl leading-none">{templateEmoji(recommendedSystemPlaybook)}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-text">{recommendedSystemPlaybook.name}</span>
+                                  <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
+                                  <Badge size="sm" variant="warning">
+                                    {isArabic ? 'موصى به' : 'Recommended'}
+                                  </Badge>
+                                </div>
+                                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+                                  {getTemplateGroupLabel(getTemplateGroup(recommendedSystemPlaybook), isArabic ? 'ar' : 'en')}
+                                </div>
+                                <p className="mt-1 text-sm text-text-soft">{templateDescription(recommendedSystemPlaybook)}</p>
+                              </div>
+                              {selectedPlaybookId === recommendedSystemPlaybook.id ? (
+                                <CheckCircle className="mt-0.5 h-4 w-4 text-accent" />
+                              ) : null}
+                            </div>
+                          </button>
+                        </div>
+                      )}
+
+                      {displayGroupedSystemPlaybooks.length > 0 && (
+                        <div className="space-y-2">
+                          {displayGroupedSystemPlaybooks.map(({ group, playbooks }) => (
                             <div key={group} className="space-y-2">
                               <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
                                 {getTemplateGroupLabel(group, isArabic ? 'ar' : 'en')}
@@ -576,9 +628,7 @@ export function RunAnalysisModal(props: {
                                     'w-full rounded-xl border p-3 text-left transition-colors',
                                     selectedPlaybookId === playbook.id
                                       ? 'border-accent bg-accent/5'
-                                      : primaryRecommendedTemplateId && playbookTemplateId(playbook) === primaryRecommendedTemplateId
-                                        ? 'border-highlight bg-highlight/5'
-                                        : 'border-border bg-surface-alt hover:border-accent/40'
+                                      : 'border-border bg-surface-alt hover:border-accent/40'
                                   )}
                                 >
                                   <div className="flex items-start gap-3">
@@ -587,36 +637,13 @@ export function RunAnalysisModal(props: {
                                       <div className="flex items-center gap-2">
                                         <span className="font-semibold text-text">{playbook.name}</span>
                                         <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
-                                        {primaryRecommendedTemplateId && playbookTemplateId(playbook) === primaryRecommendedTemplateId ? (
-                                          <Badge size="sm" variant="warning">
-                                            {isArabic ? 'موصى به' : 'Recommended'}
-                                          </Badge>
-                                        ) : null}
                                       </div>
                                       <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
                                         {getTemplateGroupLabel(getTemplateGroup(playbook), isArabic ? 'ar' : 'en')}
                                       </div>
                                       <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
                                     </div>
-                                    <div className="mt-0.5 flex items-center gap-2">
-                                      {primaryRecommendedTemplateId && playbookTemplateId(playbook) !== primaryRecommendedTemplateId ? (
-                                        <span
-                                          title={
-                                            isArabic
-                                              ? 'هذا ليس القالب الموصى به لهذا المستند'
-                                              : 'This is not the recommended template for this document'
-                                          }
-                                        >
-                                          <AlertTriangle
-                                            className="h-4 w-4 text-highlight"
-                                            aria-label={isArabic ? 'قالب غير مناسب للمستند' : 'Not the recommended template'}
-                                          />
-                                        </span>
-                                      ) : null}
-                                      {selectedPlaybookId === playbook.id ? (
-                                        <CheckCircle className="h-4 w-4 text-accent" />
-                                      ) : null}
-                                    </div>
+                                    {selectedPlaybookId === playbook.id ? <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> : null}
                                   </div>
                                 </button>
                               ))}
@@ -661,7 +688,10 @@ export function RunAnalysisModal(props: {
                         </div>
                       )}
 
-                      {groupedSystemPlaybooks.length === 0 && filteredCustomPlaybooks.length === 0 && normalizedTemplateSearch ? (
+                      {recommendedSystemPlaybook === null &&
+                      displayGroupedSystemPlaybooks.length === 0 &&
+                      filteredCustomPlaybooks.length === 0 &&
+                      normalizedTemplateSearch ? (
                         <div className="rounded-xl border border-dashed border-border bg-surface-alt px-3 py-5 text-sm text-text-soft">
                           {noTemplateMatchText(templateSearch)}
                         </div>

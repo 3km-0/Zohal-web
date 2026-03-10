@@ -38,7 +38,7 @@ interface AIPanelProps {
   currentPage?: number;
   onClose: () => void;
   documentType?: DocumentType;
-  onOpenAnalysis?: () => void;
+  onOpenAnalysis?: (view?: 'results' | 'run') => void;
 }
 
 interface ChatMessage {
@@ -154,12 +154,13 @@ export function AIPanel({
     setShowHistoryOverlay(false);
   }, [documentId, loadConversationHistory]);
 
-  const goToContractAnalysis = useCallback(() => {
+  const goToContractAnalysis = useCallback((view: 'results' | 'run' = 'run') => {
     if (onOpenAnalysis) {
-      onOpenAnalysis();
+      onOpenAnalysis(view);
       return;
     }
-    router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
+    const search = view === 'run' ? '?view=run' : '';
+    router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis${search}`);
   }, [onOpenAnalysis, router, workspaceId, documentId]);
 
   const supportsAnalysis = useMemo(() => supportsStructuredAnalysis(documentType), [documentType]);
@@ -513,7 +514,7 @@ export function AIPanel({
             {t('history')}
           </Button>
           {supportsAnalysis && (
-            <Button variant="ghost" size="sm" onClick={goToContractAnalysis}>
+            <Button variant="ghost" size="sm" onClick={() => goToContractAnalysis('run')}>
               <FileText className="w-4 h-4" />
               {t('documentAnalysis')}
             </Button>
@@ -565,7 +566,7 @@ export function AIPanel({
                       <p className="text-sm font-semibold text-text">{t('analysisCardTitle')}</p>
                       <p className="mt-1 text-sm text-text-soft">{t('analysisCardBody')}</p>
                       <div className="mt-3">
-                        <Button variant="secondary" size="sm" onClick={goToContractAnalysis}>
+                        <Button variant="secondary" size="sm" onClick={() => goToContractAnalysis('run')}>
                           {t('openAnalysis')}
                         </Button>
                       </div>

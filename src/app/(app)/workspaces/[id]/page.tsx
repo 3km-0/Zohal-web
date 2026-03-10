@@ -195,7 +195,7 @@ export default function WorkspaceDetailPage() {
       .eq('workspace_id', workspaceId)
       .is('deleted_at', null)
       .neq('storage_path', 'local')
-      .order('updated_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (currentFolderId) {
       query = query.eq('folder_id', currentFolderId);

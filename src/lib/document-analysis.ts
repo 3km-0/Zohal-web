@@ -131,6 +131,30 @@ export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[]
   return systemPlaybooks[0] ?? playbooks[0] ?? null;
 }
 
+function playbookTemplateId(playbook: PlaybookLike | null | undefined): string | null {
+  const raw = playbook?.current_version?.spec_json?.template_id;
+  if (typeof raw !== 'string') return null;
+  const normalized = raw.trim().toLowerCase();
+  return normalized || null;
+}
+
+export function resolveRecommendedPlaybook<T extends PlaybookLike>(
+  playbooks: T[],
+  metadata: DocumentMetadata & { recommendedTemplateIds?: string[] | null }
+): T | null {
+  const normalizedRecommendedIds = (metadata.recommendedTemplateIds || [])
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const recommendedId of normalizedRecommendedIds) {
+    const classifierPlaybook =
+      playbooks.find((playbook) => playbookTemplateId(playbook) === recommendedId) || null;
+    if (classifierPlaybook) return classifierPlaybook;
+  }
+
+  return selectRecommendedPlaybook(playbooks, metadata);
+}
+
 export function supportsStructuredAnalysis(documentType?: DocumentType | string | null): boolean {
   return (
     documentType === 'contract' ||
