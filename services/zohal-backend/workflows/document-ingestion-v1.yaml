@@ -1,0 +1,72 @@
+main:
+  params: [args]
+  steps:
+    - extract_text:
+        call: http.post
+        args:
+          url: ${args.service_base_url + "/ingestion/extract-text"}
+          headers:
+            Content-Type: "application/json"
+            x-request-id: ${args.request_id}
+            x-internal-function-jwt: ${args.internal_token}
+            authorization: ${"Bearer " + args.internal_token}
+            apikey: ${args.internal_token}
+          body:
+            document_id: ${args.document_id}
+            workspace_id: ${args.workspace_id}
+            user_id: ${args.user_id}
+            source: ${default(args.source, "unknown")}
+            workflow_execution_id: ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+        result: extract_text_response
+    - compute_decision:
+        assign:
+          - page_count: ${len(default(extract_text_response.body.pages, []))}
+          - needs_ocr: ${extract_text_response.body.should_fallback_to_ocr == true or page_count == 0}
+    - choose_path:
+        switch:
+          - condition: ${needs_ocr}
+            next: start_ocr
+        next: run_text_pipeline
+    - start_ocr:
+        call: http.post
+        args:
+          url: ${args.service_base_url + "/ingestion/start-ocr"}
+          headers:
+            Content-Type: "application/json"
+            x-request-id: ${args.request_id}
+            x-internal-function-jwt: ${args.internal_token}
+            authorization: ${"Bearer " + args.internal_token}
+            apikey: ${args.internal_token}
+          body:
+            document_id: ${args.document_id}
+            workspace_id: ${args.workspace_id}
+            user_id: ${args.user_id}
+            source: ${default(args.source, "unknown")}
+            workflow_execution_id: ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+        result: ocr_start
+    - ocr_waiting:
+        return:
+          success: true
+          document_id: ${args.document_id}
+          status: "waiting_external"
+          ocr: ${ocr_start.body}
+    - run_text_pipeline:
+        call: http.post
+        args:
+          url: ${args.service_base_url + "/ingestion/run-text-pipeline"}
+          headers:
+            Content-Type: "application/json"
+            x-request-id: ${args.request_id}
+            x-internal-function-jwt: ${args.internal_token}
+            authorization: ${"Bearer " + args.internal_token}
+            apikey: ${args.internal_token}
+          body:
+            document_id: ${args.document_id}
+            workspace_id: ${args.workspace_id}
+            user_id: ${args.user_id}
+            source: ${default(args.source, "unknown")}
+            workflow_execution_id: ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+            pages: ${default(extract_text_response.body.pages, [])}
+        result: text_pipeline
+    - done:
+        return: ${text_pipeline.body}

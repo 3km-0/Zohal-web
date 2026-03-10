@@ -1,5 +1,20 @@
 import { createServer } from "node:http";
 import { handleConvertToPdf } from "./handlers/convert-to-pdf.js";
+import {
+  handleIngestionChunk,
+  handleIngestionClassify,
+  handleIngestionCleanupVectors,
+  handleIngestionDeleteEmbeddings,
+  handleIngestionEmbed,
+  handleIngestionExtractInsights,
+  handleIngestionExtractText,
+  handleIngestionFetchOcr,
+  handleIngestionReconcileStatus,
+  handleIngestionRunTextPipeline,
+  handleIngestionStart,
+  handleIngestionStartOcr,
+  handleIngestionTask,
+} from "./handlers/ingestion.js";
 import { sendJson, sendOptions, getRequestId, readJsonBody } from "./runtime/http.js";
 import { createLogger } from "./runtime/logging.js";
 
@@ -35,6 +50,78 @@ const server = createServer(async (req, res) => {
         log,
         readJsonBody,
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/start") {
+      return await handleIngestionStart(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/extract-text") {
+      return await handleIngestionExtractText(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/run-text-pipeline") {
+      return await handleIngestionRunTextPipeline(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/start-ocr") {
+      return await handleIngestionStartOcr(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/fetch-ocr") {
+      return await handleIngestionFetchOcr(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/chunk") {
+      return await handleIngestionChunk(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/embed") {
+      return await handleIngestionEmbed(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/classify") {
+      return await handleIngestionClassify(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/extract-insights") {
+      return await handleIngestionExtractInsights(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/reconcile-status") {
+      return await handleIngestionReconcileStatus(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/delete-embeddings") {
+      return await handleIngestionDeleteEmbeddings(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/cleanup-vectors") {
+      return await handleIngestionCleanupVectors(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ingestion/tasks") {
+      return await handleIngestionTask(req, res, { requestId, log, readJsonBody });
     }
 
     return sendJson(res, 404, {
