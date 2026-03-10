@@ -38,6 +38,7 @@
   "nav": {
     "home": "Home",
     "dashboard": "Dashboard",
+    "ask": "Ask",
     "workspaces": "Workspaces",
     "documents": "Documents",
     "notes": "Notes",
@@ -269,6 +270,43 @@
     "noResults": "No results found",
     "noResultsDescription": "Try adjusting your search terms or filters."
   },
+  "askAgent": {
+    "navTitle": "Ask",
+    "globalTitle": "Ask across your work",
+    "workspaceTitle": "Ask this workspace",
+    "globalSubtitle": "Search across accessible workspaces, compare sources, and answer from evidence.",
+    "workspaceSubtitleFallback": "Search this workspace and answer from the strongest evidence available.",
+    "globalPlaceholder": "Ask about any of your workspaces…",
+    "workspacePlaceholder": "Ask about this workspace…",
+    "globalScopeHint": "Global ask cites the workspace and document it used.",
+    "workspaceScopeHint": "Workspace ask stays inside this workspace.",
+    "activity": "Activity",
+    "send": "Ask",
+    "cancel": "Cancel",
+    "cancelled": "Cancelled this run.",
+    "thinking": "Working on it…",
+    "you": "You",
+    "agent": "Agent",
+    "page": "Page {page}",
+    "loadingHistory": "Loading conversation…",
+    "workspaceHistory": "Workspace asks",
+    "globalHistory": "Global asks",
+    "historyDescription": "Recent ask conversations appear here.",
+    "noConversations": "No ask conversations yet.",
+    "emptyGlobalTitle": "Start with a global ask",
+    "emptyGlobalDescription": "Ask across all accessible workspaces and follow the sources it opens.",
+    "emptyWorkspaceTitle": "Ask this workspace",
+    "emptyWorkspaceDescription": "Ask about contracts, reports, notes, and evidence inside this workspace.",
+    "errors": {
+      "auth": "Sign in again to use Ask.",
+      "history": "Unable to load that conversation.",
+      "generic": "Ask failed. Try again."
+    },
+    "modes": {
+      "ask": "Ask",
+      "workspaces": "Workspaces"
+    }
+  },
   "tasks": {
     "title": "Tasks",
     "create": "Create Task",
@@ -344,6 +382,7 @@
   },
   "workspaceTabs": {
     "documents": "Documents",
+    "ask": "Ask",
     "notes": "Notes",
     "reports": "Reports",
     "pipelines": "Pipelines",

@@ -38,6 +38,7 @@
   "nav": {
     "home": "الرئيسية",
     "dashboard": "لوحة التحكم",
+    "ask": "اسأل",
     "workspaces": "مساحات العمل",
     "documents": "المستندات",
     "notes": "الملاحظات",
@@ -269,6 +270,43 @@
     "noResults": "لا توجد نتائج",
     "noResultsDescription": "حاول تعديل كلمات البحث أو الفلاتر."
   },
+  "askAgent": {
+    "navTitle": "اسأل",
+    "globalTitle": "اسأل عبر أعمالك",
+    "workspaceTitle": "اسأل هذه المساحة",
+    "globalSubtitle": "ابحث عبر مساحات العمل المتاحة وقارن المصادر وأجب من الدليل.",
+    "workspaceSubtitleFallback": "ابحث داخل هذه المساحة وأجب من أقوى دليل متاح.",
+    "globalPlaceholder": "اسأل عن أي مساحة عمل لديك…",
+    "workspacePlaceholder": "اسأل عن هذه المساحة…",
+    "globalScopeHint": "الأسئلة العامة تذكر مساحة العمل والمستند الذي استُخدم.",
+    "workspaceScopeHint": "الأسئلة داخل المساحة تبقى داخل هذه المساحة.",
+    "activity": "النشاط",
+    "send": "اسأل",
+    "cancel": "إلغاء",
+    "cancelled": "تم إلغاء هذا التشغيل.",
+    "thinking": "جاري العمل…",
+    "you": "أنت",
+    "agent": "الوكيل",
+    "page": "الصفحة {page}",
+    "loadingHistory": "جارٍ تحميل المحادثة…",
+    "workspaceHistory": "أسئلة المساحة",
+    "globalHistory": "الأسئلة العامة",
+    "historyDescription": "ستظهر هنا محادثات Ask الأخيرة.",
+    "noConversations": "لا توجد محادثات Ask بعد.",
+    "emptyGlobalTitle": "ابدأ بسؤال عام",
+    "emptyGlobalDescription": "اسأل عبر جميع مساحات العمل المتاحة وتابع المصادر التي يفتحها.",
+    "emptyWorkspaceTitle": "اسأل هذه المساحة",
+    "emptyWorkspaceDescription": "اسأل عن العقود والتقارير والملاحظات والدليل داخل هذه المساحة.",
+    "errors": {
+      "auth": "سجّل الدخول مرة أخرى لاستخدام Ask.",
+      "history": "تعذّر تحميل هذه المحادثة.",
+      "generic": "فشل Ask. حاول مرة أخرى."
+    },
+    "modes": {
+      "ask": "اسأل",
+      "workspaces": "مساحات العمل"
+    }
+  },
   "tasks": {
     "title": "المهام",
     "create": "إنشاء مهمة",
@@ -344,6 +382,7 @@
   },
   "workspaceTabs": {
     "documents": "المستندات",
+    "ask": "اسأل",
     "notes": "الملاحظات",
     "reports": "التقارير",
     "pipelines": "خطوط المعالجة",

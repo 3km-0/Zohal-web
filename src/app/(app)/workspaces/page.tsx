@@ -10,6 +10,7 @@ import type { Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
+import { AppModeSwitch } from '@/components/ask/AppModeSwitch';
 
 function workspaceTypeIcon(type: WorkspaceType) {
   switch (type) {
@@ -122,6 +123,10 @@ export default function WorkspacesPage() {
           </Button>
         }
       />
+
+      <div className="border-b border-border bg-surface px-4 py-3 md:px-6">
+        <AppModeSwitch active="workspaces" />
+      </div>
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (

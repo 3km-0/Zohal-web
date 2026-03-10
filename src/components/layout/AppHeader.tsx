@@ -67,9 +67,9 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
 
         {/* Global Search */}
         <Link
-          href="/search"
+          href="/ask"
           className="hidden rounded-scholar-sm p-2 transition-colors hover:bg-surface-alt md:inline-flex"
-          aria-label={tCommon('search')}
+          aria-label={tNav('ask')}
           data-tour="global-search"
         >
           <Search className="w-5 h-5 text-text-soft" />

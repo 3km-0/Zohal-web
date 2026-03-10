@@ -9,9 +9,8 @@ export default async function RootPage() {
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect('/workspaces');
+    redirect('/ask');
   } else {
     redirect('/home');
   }
 }
-
