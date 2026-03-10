@@ -663,18 +663,18 @@ export function AIPanel({
         </div>
 
         {showModelPicker && (
-          <div className="absolute inset-0 z-20 flex items-end md:items-start md:justify-center">
+          <div className="absolute inset-x-0 bottom-0 z-20 flex items-end md:inset-x-4 md:bottom-24 md:items-start md:justify-start">
             <button
               type="button"
               className="absolute inset-0 bg-black/40 md:hidden"
               onClick={() => setShowModelPicker(false)}
               aria-label={t('close')}
             />
-            <div className="relative flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-surface shadow-2xl md:mx-4 md:mt-4 md:max-h-[32rem] md:max-w-none md:rounded-2xl">
+            <div className="relative flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-surface shadow-2xl md:w-[24rem] md:max-w-[calc(100%-2rem)] md:rounded-2xl">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
                   <div className="text-base font-semibold text-text">{t('modelPicker.title')}</div>
-                  <div className="text-sm text-text-soft">{t('modelPicker.subtitle')}</div>
+                  <div className="hidden text-sm text-text-soft md:block">{t('modelPicker.subtitle')}</div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowModelPicker(false)}>
                   <X className="w-4 h-4" />
@@ -692,7 +692,7 @@ export function AIPanel({
                 />
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto p-4 space-y-3">
+              <div className="min-h-0 max-h-[min(26rem,calc(100dvh-10rem))] flex-1 overflow-auto p-3 space-y-2.5 md:max-h-[22rem]">
                 {filteredModelOptions.map((option) => {
                   const isSelected = selectedModelId === option.id;
                   return (
@@ -704,19 +704,19 @@ export function AIPanel({
                         setShowModelPicker(false);
                       }}
                       className={cn(
-                        'w-full rounded-2xl border p-4 text-left transition-colors',
+                        'w-full rounded-xl border p-3 text-left transition-colors',
                         isSelected
                           ? 'border-accent bg-accent/5'
                           : 'border-border bg-surface-alt hover:border-accent/40'
                       )}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-bold text-accent">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
                           {option.providerMark}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-text">{option.title}</span>
+                            <span className="text-sm font-semibold text-text">{option.title}</span>
                             <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-soft">
                               {option.provider}
                             </span>
@@ -730,7 +730,7 @@ export function AIPanel({
                             {modelFeatureIcon(option)}
                             <span>{t(`modelPicker.featureLabels.${option.featureKey}`)}</span>
                           </div>
-                          <div className="mt-2 text-xs text-text-soft">{option.id}</div>
+                          <div className="mt-1 text-[11px] text-text-soft">{option.id}</div>
                         </div>
                         <CheckCircle2
                           className={cn('mt-0.5 h-5 w-5 shrink-0', isSelected ? 'text-accent' : 'text-transparent')}
