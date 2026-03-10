@@ -8,7 +8,6 @@ import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
 import type { DocumentType } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
-import { supportsStructuredAnalysis } from '@/lib/document-analysis';
 
 type PaneTab = 'history' | 'ask' | 'run' | 'actions';
 
@@ -34,16 +33,8 @@ export function DocumentRightPane({
   onClose,
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
-  const supportsAnalysis = supportsStructuredAnalysis(documentType);
   const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
   const [paneTab, setPaneTab] = useState<PaneTab>(mode === 'analysis' ? 'run' : 'ask');
-
-  useEffect(() => {
-    if (!supportsAnalysis && (paneTab === 'run' || paneTab === 'actions')) {
-      setPaneTab('ask');
-      if (mode === 'analysis') onModeChange('chat');
-    }
-  }, [mode, onModeChange, paneTab, supportsAnalysis]);
 
   useEffect(() => {
     if (!selectedText.trim()) return;
@@ -51,20 +42,13 @@ export function DocumentRightPane({
   }, [selectedText]);
 
   const tabs = useMemo<ScholarTab[]>(() => {
-    const nextTabs: ScholarTab[] = [
+    return [
       { id: 'history', label: t('history'), icon: <Clock className="h-4 w-4" /> },
       { id: 'ask', label: t('ask'), icon: <Sparkles className="h-4 w-4" /> },
+      { id: 'run', label: t('run'), icon: <FileText className="h-4 w-4" /> },
+      { id: 'actions', label: t('actions'), icon: <Zap className="h-4 w-4" /> },
     ];
-
-    if (supportsAnalysis) {
-      nextTabs.push(
-        { id: 'run', label: t('run'), icon: <FileText className="h-4 w-4" /> },
-        { id: 'actions', label: t('actions'), icon: <Zap className="h-4 w-4" /> }
-      );
-    }
-
-    return nextTabs;
-  }, [supportsAnalysis, t]);
+  }, [t]);
 
   const handleTabChange = (tabId: string) => {
     const nextTab = tabId as PaneTab;
