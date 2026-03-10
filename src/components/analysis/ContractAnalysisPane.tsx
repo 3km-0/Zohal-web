@@ -1086,6 +1086,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   async function selectRun(run: AnalysisRunSummary) {
     setSelectedRunId(run.runId);
     setSelectedRunStatus(run.status);
+    setShowSettings(false);
     if (run.versionId) {
       await loadSnapshotVersion(run.versionId);
       return;
