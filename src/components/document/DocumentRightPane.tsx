@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Clock, FileText, Sparkles, X, Zap } from 'lucide-react';
-import { Button, ScholarTabs, type ScholarTab } from '@/components/ui';
+import { Calendar, CheckCircle, Clock, FileText, RefreshCw, Sparkles, X, Zap } from 'lucide-react';
+import { Button, ScholarActionMenu, ScholarTabs, type ScholarActionMenuItem, type ScholarTab } from '@/components/ui';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
 import type { DocumentType } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
 
-type PaneTab = 'history' | 'ask' | 'run' | 'actions';
+type PaneTab = 'history' | 'ask' | 'run';
 
 interface DocumentRightPaneProps {
   documentId: string;
@@ -27,7 +27,6 @@ export function DocumentRightPane({
   workspaceId,
   selectedText,
   currentPage,
-  documentType,
   mode,
   onModeChange,
   onClose,
@@ -46,7 +45,6 @@ export function DocumentRightPane({
       { id: 'history', label: t('history'), icon: <Clock className="h-4 w-4" /> },
       { id: 'ask', label: t('ask'), icon: <Sparkles className="h-4 w-4" /> },
       { id: 'run', label: t('run'), icon: <FileText className="h-4 w-4" /> },
-      { id: 'actions', label: t('actions'), icon: <Zap className="h-4 w-4" /> },
     ];
   }, [t]);
 
@@ -59,9 +57,49 @@ export function DocumentRightPane({
       return;
     }
 
-    setAnalysisInitialView(nextTab === 'run' ? 'run' : 'results');
+    setAnalysisInitialView('results');
     onModeChange('analysis');
   };
+
+  const triggerAnalysisAction = useCallback(
+    (action: 'new-run' | 'generate-report' | 'export-calendar' | 'finalize') => {
+      setPaneTab('run');
+      setAnalysisInitialView(action === 'new-run' ? 'run' : 'results');
+      onModeChange('analysis');
+
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(`zohal:analysis:${action}`));
+      }, 50);
+    },
+    [onModeChange]
+  );
+
+  const actionItems = useMemo<ScholarActionMenuItem[]>(
+    () => [
+      {
+        label: t('actionItems.newRun'),
+        icon: <RefreshCw className="h-4 w-4" />,
+        onClick: () => triggerAnalysisAction('new-run'),
+      },
+      { type: 'divider' },
+      {
+        label: t('actionItems.generateReport'),
+        icon: <FileText className="h-4 w-4" />,
+        onClick: () => triggerAnalysisAction('generate-report'),
+      },
+      {
+        label: t('actionItems.exportCalendar'),
+        icon: <Calendar className="h-4 w-4" />,
+        onClick: () => triggerAnalysisAction('export-calendar'),
+      },
+      {
+        label: t('actionItems.finalize'),
+        icon: <CheckCircle className="h-4 w-4" />,
+        onClick: () => triggerAnalysisAction('finalize'),
+      },
+    ],
+    [t, triggerAnalysisAction]
+  );
 
   return (
     <aside className="fixed inset-0 z-20 flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-surface md:static md:z-auto md:h-full md:w-[32rem] md:min-w-[26rem] md:max-w-[52vw] md:border-l md:border-border">
@@ -80,7 +118,16 @@ export function DocumentRightPane({
             </Button>
           </div>
           <div className="mt-3">
-            <ScholarTabs tabs={tabs} activeTab={paneTab} onTabChange={handleTabChange} />
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <ScholarTabs tabs={tabs} activeTab={paneTab} onTabChange={handleTabChange} />
+              </div>
+              <ScholarActionMenu
+                icon={<Zap className="h-4 w-4" />}
+                label={t('actions')}
+                items={actionItems}
+              />
+            </div>
           </div>
         </div>
 

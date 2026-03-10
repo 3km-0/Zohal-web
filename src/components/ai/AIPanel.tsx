@@ -72,6 +72,7 @@ export function AIPanel({
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
   const chatSeqRef = useRef(0);
   const [selectedModelId, setSelectedModelId] = useState<string>(() => {
@@ -88,6 +89,18 @@ export function AIPanel({
       // ignore
     }
   }, [selectedModelId]);
+
+  const resizeTextarea = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = '0px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 240 ? 'auto' : 'hidden';
+  }, []);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [activeTab, chatInput, resizeTextarea]);
 
   // Load conversation history
   const loadConversationHistory = useCallback(async () => {
@@ -470,7 +483,8 @@ export function AIPanel({
     setLoading(false);
     setLoadingConversation(false);
     setChatInput('');
-  }, []);
+    resizeTextarea();
+  }, [resizeTextarea]);
 
   return (
     <div className="flex h-full w-full flex-col bg-surface">
@@ -606,56 +620,69 @@ export function AIPanel({
                 </div>
               )}
 
-              <div className="border-t border-border p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowModelPicker(true)}
-                    className="inline-flex max-w-full items-center gap-2 rounded-scholar border border-border bg-surface-alt px-3 py-2 text-left transition-colors hover:border-accent/40 hover:text-text"
-                  >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
-                      {selectedModel?.providerMark || 'M'}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-text">
-                        {selectedModel?.title || t('modelPicker.customModel')}
+              <div className="border-t border-border bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                <div className="rounded-[1.75rem] border border-border bg-surface-alt/90 p-3 shadow-[var(--shadowSm)]">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowModelPicker(true)}
+                      className="inline-flex max-w-[70%] items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1.5 text-left transition-colors hover:border-accent/40 hover:text-text"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[11px] font-bold text-accent">
+                        {selectedModel?.providerMark || 'M'}
                       </span>
-                      <span className="block truncate text-xs text-text-soft">
-                        {selectedModel ? t(`modelPicker.featureLabels.${selectedModel.featureKey}`) : selectedModelId}
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-text">
+                          {selectedModel?.shortTitle || selectedModel?.title || t('modelPicker.customModel')}
+                        </span>
+                        {selectedModel ? (
+                          <span className="block truncate text-[11px] text-text-soft">
+                            {t(`modelPicker.featureLabels.${selectedModel.featureKey}`)}
+                          </span>
+                        ) : null}
                       </span>
-                    </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-text-soft" />
-                  </button>
-                  {selectedModel?.isOpenSource ? (
-                    <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent">
-                      {t('modelPicker.openSource')}
-                    </span>
-                  ) : null}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={startNewConversation}
-                    disabled={chatHistory.length === 0 && !currentConversationId}
-                  >
-                    {t('newConversation')}
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
+                      <ChevronDown className="h-4 w-4 shrink-0 text-text-soft" />
+                    </button>
+                    <div className="flex items-center gap-2 self-start">
+                      {selectedModel?.isOpenSource ? (
+                        <span className="hidden rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-semibold text-accent md:inline-flex">
+                          {t('modelPicker.openSource')}
+                        </span>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={startNewConversation}
+                        disabled={chatHistory.length === 0 && !currentConversationId}
+                      >
+                        {t('newConversation')}
+                      </Button>
+                    </div>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleChat(chatInput)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        void handleChat(chatInput);
+                      }
+                    }}
+                    rows={1}
                     placeholder={t('inputPlaceholder')}
-                    className="flex-1 rounded-scholar border border-border bg-surface-alt px-4 py-2.5 text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="min-h-[140px] w-full resize-none rounded-2xl border border-transparent bg-surface px-4 py-4 text-base leading-7 text-text placeholder:text-text-soft focus:border-accent/30 focus:outline-none"
                   />
-                  <Button
-                    onClick={() => handleChat(chatInput)}
-                    disabled={!chatInput.trim() || loading || loadingConversation}
-                    size="md"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
+                  <div className="mt-3 flex items-center justify-end">
+                    <Button
+                      onClick={() => handleChat(chatInput)}
+                      disabled={!chatInput.trim() || loading || loadingConversation}
+                      size="md"
+                      className="min-w-[3rem]"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>

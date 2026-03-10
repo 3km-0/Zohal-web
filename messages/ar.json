@@ -216,6 +216,12 @@
     "history": "السجل",
     "run": "التشغيل",
     "actions": "الإجراءات",
+    "actionItems": {
+      "newRun": "تشغيل جديد",
+      "generateReport": "إنشاء التقرير",
+      "exportCalendar": "تصدير التقويم",
+      "finalize": "اعتماد نهائي"
+    },
     "close": "إغلاق",
     "documentAnalysis": "تحليل المستند",
     "backToAI": "العودة إلى الذكاء",

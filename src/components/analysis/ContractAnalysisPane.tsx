@@ -1994,6 +1994,42 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     }
   }
 
+  useEffect(() => {
+    const handleNewRun = () => {
+      setShowSettings(true);
+      setTab('overview');
+      progressRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const handleGenerateReport = () => {
+      if (!contract || isGeneratingReport || isHistoricalRunSelected) return;
+      void generateAndSaveReport();
+    };
+
+    const handleExportCalendar = () => {
+      if (!contract || isHistoricalRunSelected) return;
+      exportCalendar();
+    };
+
+    const handleFinalize = () => {
+      if (!verificationObjectId || !contract || verificationObjectState === 'finalized' || isFinalizing || isHistoricalRunSelected) return;
+      void finalizeVerificationObject();
+    };
+
+    window.addEventListener('zohal:analysis:new-run', handleNewRun);
+    window.addEventListener('zohal:analysis:generate-report', handleGenerateReport);
+    window.addEventListener('zohal:analysis:export-calendar', handleExportCalendar);
+    window.addEventListener('zohal:analysis:finalize', handleFinalize);
+
+    return () => {
+      window.removeEventListener('zohal:analysis:new-run', handleNewRun);
+      window.removeEventListener('zohal:analysis:generate-report', handleGenerateReport);
+      window.removeEventListener('zohal:analysis:export-calendar', handleExportCalendar);
+      window.removeEventListener('zohal:analysis:finalize', handleFinalize);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract, isFinalizing, isGeneratingReport, isHistoricalRunSelected, verificationObjectId, verificationObjectState]);
+
   async function downloadAuditPack() {
     if (!verificationObjectId && !currentVersionId) return;
     setError(null);

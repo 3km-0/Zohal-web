@@ -216,6 +216,12 @@
     "history": "History",
     "run": "Run",
     "actions": "Actions",
+    "actionItems": {
+      "newRun": "New Run",
+      "generateReport": "Generate Report",
+      "exportCalendar": "Export Calendar",
+      "finalize": "Finalize"
+    },
     "close": "Close",
     "documentAnalysis": "Document Analysis",
     "backToAI": "Back to AI",
