@@ -46,7 +46,12 @@ export type ModuleRendererKind =
   | 'renewal_actions'
   | 'amendment_conflicts'
   | 'compliance_deviations'
-  | 'invoice_exceptions';
+  | 'invoice_exceptions'
+  | 'obligation_dependencies'
+  | 'vendor_onboarding_checks'
+  | 'lease_conflicts'
+  | 'coverage_gaps'
+  | 'policy_conformance';
 
 export interface AnalysisModuleDescriptor {
   id: string;
@@ -91,6 +96,11 @@ const MODULE_RENDERERS: ModuleRendererRegistry = {
   amendment_conflicts: 'amendment_conflicts',
   compliance_deviations: 'compliance_deviations',
   invoice_exceptions: 'invoice_exceptions',
+  obligation_dependencies: 'obligation_dependencies',
+  vendor_onboarding_checks: 'vendor_onboarding_checks',
+  lease_conflicts: 'lease_conflicts',
+  coverage_gaps: 'coverage_gaps',
+  policy_conformance: 'policy_conformance',
 };
 
 const CORE_MODULE_ORDER = ['variables', 'clauses', 'obligations', 'deadlines', 'risks'] as const;
@@ -130,12 +140,130 @@ function normalizeEvidence(value: unknown): FindingCardModel['evidence'] | undef
   };
 }
 
+function isLeafFindingObject(record: Record<string, unknown>): boolean {
+  return [
+    'title',
+    'name',
+    'label',
+    'summary',
+    'message',
+    'description',
+    'details',
+    'explanation',
+    'rationale',
+    'severity',
+    'risk_level',
+    'status',
+    'type',
+    'kind',
+    'category',
+    'evidence',
+    'confidence',
+    'ai_confidence',
+    'subtitle',
+  ].some((key) => Object.prototype.hasOwnProperty.call(record, key));
+}
+
+function wrapStructuredModuleValue(
+  key: string,
+  value: unknown,
+): Array<{ id: string; raw: unknown }> {
+  const label = titleCaseFromId(key);
+
+  if (Array.isArray(value)) {
+    return value.map((raw, index) => {
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        return {
+          id: `${key}:${index}`,
+          raw: {
+            ...(raw as Record<string, unknown>),
+            __zohal_group: label,
+            __zohal_title:
+              asString((raw as Record<string, unknown>).title) ||
+              asString((raw as Record<string, unknown>).name) ||
+              asString((raw as Record<string, unknown>).label) ||
+              label,
+          },
+        };
+      }
+      return {
+        id: `${key}:${index}`,
+        raw: {
+          __zohal_group: label,
+          __zohal_title: label,
+          description: String(raw ?? ''),
+        },
+      };
+    });
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+
+    if (isLeafFindingObject(record)) {
+      return [{
+        id: key,
+        raw: {
+          ...record,
+          __zohal_group: asString(record.kind) || asString(record.category) || label,
+          __zohal_title:
+            asString(record.title) ||
+            asString(record.name) ||
+            asString(record.label) ||
+            asString(record.summary) ||
+            label,
+        },
+      }];
+    }
+
+    const nestedArrayEntries = Object.entries(record).filter(([, nestedValue]) => Array.isArray(nestedValue));
+    if (nestedArrayEntries.length > 0) {
+      return nestedArrayEntries.flatMap(([nestedKey, nestedValue]) =>
+        wrapStructuredModuleValue(`${key}:${nestedKey}`, nestedValue).map((entry, index) => ({
+          id: `${key}:${index}:${entry.id}`,
+          raw: entry.raw,
+        }))
+      );
+    }
+
+    return [{
+      id: key,
+      raw: {
+        ...record,
+        __zohal_group: label,
+        __zohal_title: label,
+      },
+    }];
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return [{
+      id: key,
+      raw: {
+        __zohal_group: label,
+        __zohal_title: label,
+        description: String(value),
+      },
+    }];
+  }
+
+  return [];
+}
+
 function flattenResultItems(result: unknown): Array<{ id: string; raw: unknown }> {
   if (Array.isArray(result)) {
     return result.map((raw, index) => ({ id: String(index), raw }));
   }
 
   const objectResult = asObject(result);
+  if (Object.keys(objectResult).length === 0) {
+    return [];
+  }
+
+  if (isLeafFindingObject(objectResult)) {
+    return [{ id: '0', raw: objectResult }];
+  }
+
   const arrayEntries = Object.entries(objectResult).filter(([, value]) => Array.isArray(value));
   if (arrayEntries.length === 1) {
     return (arrayEntries[0][1] as unknown[]).map((raw, index) => ({
@@ -150,11 +278,21 @@ function flattenResultItems(result: unknown): Array<{ id: string; raw: unknown }
     );
   }
 
-  if (Object.keys(objectResult).length > 0) {
-    return [{ id: '0', raw: objectResult }];
+  const structuredEntries = Object.entries(objectResult).filter(([, value]) => {
+    if (value == null) return false;
+    return Array.isArray(value) || typeof value === 'object' || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+  });
+
+  if (structuredEntries.length > 1) {
+    return structuredEntries.flatMap(([key, value], index) =>
+      wrapStructuredModuleValue(key, value).map((entry, entryIndex) => ({
+        id: `${index}:${entryIndex}:${entry.id}`,
+        raw: entry.raw,
+      }))
+    );
   }
 
-  return [];
+  return [{ id: '0', raw: objectResult }];
 }
 
 function toMetadata(record: Record<string, unknown>, omit: Set<string>) {
@@ -337,8 +475,10 @@ export function moduleResultToFindingCards(args: {
       asString(record.label) ||
       asString(record.summary) ||
       asString(record.message) ||
+      asString(record.__zohal_title) ||
       fallbackTitle;
     const body =
+      asString(record.__zohal_body) ||
       asString(record.description) ||
       asString(record.details) ||
       asString(record.explanation) ||
@@ -350,6 +490,7 @@ export function moduleResultToFindingCards(args: {
       ? confidenceRaw
       : undefined;
     const groupKey =
+      asString(record.__zohal_group) ||
       asString(record.kind) ||
       asString(record.type) ||
       asString(record.category) ||
@@ -367,6 +508,9 @@ export function moduleResultToFindingCards(args: {
       'label',
       'summary',
       'message',
+      '__zohal_title',
+      '__zohal_group',
+      '__zohal_body',
       'description',
       'details',
       'explanation',

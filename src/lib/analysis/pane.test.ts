@@ -42,6 +42,8 @@ describe('analysis pane helpers', () => {
   it('resolves native module renderers before generic fallback', () => {
     expect(selectModuleRenderer('renewal_pack', 'renewal_actions')).toBe('renewal_actions');
     expect(selectModuleRenderer('playbook_compliance_review', 'compliance_deviations')).toBe('compliance_deviations');
+    expect(selectModuleRenderer('lease_pack', 'lease_conflicts')).toBe('lease_conflicts');
+    expect(selectModuleRenderer('vendor_onboarding_review', 'vendor_onboarding_checks')).toBe('vendor_onboarding_checks');
     expect(selectModuleRenderer('custom_template', 'research_findings')).toBe('generic');
   });
 
@@ -159,6 +161,39 @@ describe('analysis pane helpers', () => {
         needsAttention: true,
         evidence: expect.objectContaining({ page_number: 2 }),
       }),
+    ]);
+  });
+
+  it('splits grouped object-shaped custom modules into multiple findings', () => {
+    const findings = moduleResultToFindingCards({
+      moduleId: 'lease_conflicts',
+      moduleTitle: 'Lease Conflicts',
+      result: {
+        proportionate_share_inconsistency: {
+          original_lease: 'Tenant share is 7.8%.',
+          first_amendment: 'Tenant share changes to 9.58%.',
+        },
+        renewal_conflicts: {
+          original_lease: 'One 5-year renewal at 95% FMV.',
+          first_amendment: 'Two 3-year renewals at 100% FMV.',
+        },
+        rent_economics_conflicts: {
+          original_lease: 'Three months free rent.',
+          side_letter: 'Two additional months free rent.',
+        },
+        termination_conflicts: {
+          original_lease: 'Termination right after month 36.',
+          first_amendment: 'Deletes that right.',
+        },
+      },
+    });
+
+    expect(findings).toHaveLength(4);
+    expect(findings.map((item) => item.title)).toEqual([
+      'Proportionate Share Inconsistency',
+      'Renewal Conflicts',
+      'Rent Economics Conflicts',
+      'Termination Conflicts',
     ]);
   });
 

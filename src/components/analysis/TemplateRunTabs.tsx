@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, CalendarDays, FileSearch, Layers, ListChecks, PackageSearch, ReceiptText } from 'lucide-react';
+import { AlertTriangle, CalendarDays, FileSearch, Layers, ListChecks, ReceiptText, Building2 } from 'lucide-react';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState } from '@/components/ui';
 import { GenericModuleTab, type GenericModuleItem } from './GenericModuleTab';
 import type { SummaryMetric, SummarySectionModel } from '@/lib/analysis/pane';
@@ -161,6 +161,14 @@ export interface NativeModuleTabProps {
   isPatchingSnapshot?: boolean;
 }
 
+type StructuredFindingsTabProps = NativeModuleTabProps & {
+  moduleId: string;
+  moduleTitle: string;
+  badgeLabel: string;
+  subtitle: string;
+  badgeVariant?: 'default' | 'warning' | 'success' | 'error';
+};
+
 function renderEvidenceLink(item: GenericModuleItem) {
   if (!item.sourceHref) return null;
   return (
@@ -243,6 +251,42 @@ export function AmendmentConflictTab(props: NativeModuleTabProps) {
   );
 }
 
+function StructuredFindingsTab({
+  moduleId,
+  moduleTitle,
+  badgeLabel,
+  subtitle,
+  badgeVariant = 'default',
+  ...props
+}: StructuredFindingsTabProps) {
+  const groupCount = new Set(props.items.map((item) => item.groupKey).filter(Boolean)).size;
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+          <Badge size="sm" variant={badgeVariant}>{badgeLabel}</Badge>
+          <Badge size="sm">{props.items.length} findings</Badge>
+          {groupCount > 0 ? <Badge size="sm">{groupCount} groups</Badge> : null}
+          <div className="text-sm text-text-soft">{subtitle}</div>
+        </CardContent>
+      </Card>
+      <GenericModuleTab
+        moduleId={moduleId}
+        moduleTitle={moduleTitle}
+        items={props.items}
+        groupBy="groupKey"
+        emptyTitle={props.emptyTitle}
+        emptyDescription={props.emptyDescription}
+        onReject={props.onReject}
+        isPatchingSnapshot={props.isPatchingSnapshot}
+        workspaceId={props.workspaceId}
+        documentId={props.documentId}
+      />
+    </div>
+  );
+}
+
 export function ComplianceDeviationsTab(
   props: NativeModuleTabProps & { verdictCount: number; exceptionCount: number }
 ) {
@@ -322,6 +366,113 @@ export function InvoiceExceptionsTab(props: NativeModuleTabProps) {
   );
 }
 
+export function ObligationDependenciesTab(props: NativeModuleTabProps) {
+  return (
+    <StructuredFindingsTab
+      {...props}
+      moduleId="obligation_dependencies"
+      moduleTitle="Obligation Dependencies"
+      badgeLabel="Dependency map"
+      subtitle="Prerequisites, recurring steps, and deadline-sensitive follow-up grouped for operational review."
+      badgeVariant="warning"
+    />
+  );
+}
+
+export function VendorOnboardingChecksTab(props: NativeModuleTabProps) {
+  return (
+    <StructuredFindingsTab
+      {...props}
+      moduleId="vendor_onboarding_checks"
+      moduleTitle="Vendor Onboarding Checks"
+      badgeLabel="Checklist"
+      subtitle="Missing documents, mismatches, expiries, and approval blockers organized into review groups."
+      badgeVariant="warning"
+    />
+  );
+}
+
+export function LeaseConflictsTab(props: NativeModuleTabProps) {
+  const groupCount = new Set(props.items.map((item) => item.groupKey).filter(Boolean)).size;
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+          <Badge size="sm" variant="warning">Conflict ledger</Badge>
+          <Badge size="sm">{props.items.length} conflicts</Badge>
+          {groupCount > 0 ? <Badge size="sm">{groupCount} sections</Badge> : null}
+          <div className="text-sm text-text-soft">Lease economics, renewals, notices, and side-letter overrides split into separate conflict findings.</div>
+        </CardContent>
+      </Card>
+      {props.items.length === 0 ? (
+        <EmptyState title={props.emptyTitle} description={props.emptyDescription} icon={<Building2 className="h-5 w-5" />} />
+      ) : (
+        <div className="space-y-3">
+          {props.items.map((item) => (
+            <Card key={item.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-accent" />
+                    {item.title}
+                  </span>
+                  {item.groupKey ? <Badge size="sm" variant="warning">{item.groupKey}</Badge> : null}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {item.body ? <p className="text-sm text-text-soft">{item.body}</p> : null}
+                {item.metadata && Object.keys(item.metadata).length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {Object.entries(item.metadata).map(([key, value]) => (
+                      <div key={key} className="rounded-scholar border border-border bg-surface-alt p-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">{key}</div>
+                        <div className="mt-1 text-sm text-text whitespace-pre-wrap">{String(value ?? '—')}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-3">
+                  <div>{renderEvidenceLink(item)}</div>
+                  <Button size="sm" variant="secondary" disabled={props.isPatchingSnapshot} onClick={() => props.onReject(item.id)}>
+                    Reject
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CoverageGapsTab(props: NativeModuleTabProps) {
+  return (
+    <StructuredFindingsTab
+      {...props}
+      moduleId="coverage_gaps"
+      moduleTitle="Coverage Gaps"
+      badgeLabel="Coverage review"
+      subtitle="Coverage blockers, evidence gaps, and exclusion concerns organized for claim review."
+      badgeVariant="warning"
+    />
+  );
+}
+
+export function PolicyConformanceTab(props: NativeModuleTabProps) {
+  return (
+    <StructuredFindingsTab
+      {...props}
+      moduleId="policy_conformance"
+      moduleTitle="Policy Conformance"
+      badgeLabel="Policy review"
+      subtitle="Policy mismatches, missing acknowledgements, and follow-up items grouped into a cleaner review board."
+      badgeVariant="warning"
+    />
+  );
+}
+
 export function NativeModuleEmptyState({
   title,
   description,
@@ -334,7 +485,7 @@ export function NativeModuleEmptyState({
   const Icon = icon === 'invoice'
     ? ReceiptText
     : icon === 'conflicts'
-      ? PackageSearch
+      ? Building2
       : icon === 'deviations'
         ? AlertTriangle
         : ListChecks;

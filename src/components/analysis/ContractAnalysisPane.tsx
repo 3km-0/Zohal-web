@@ -43,6 +43,11 @@ import {
   RenewalActionsTab,
   RenewalSummaryTab,
   AmendmentConflictTab,
+  ObligationDependenciesTab,
+  VendorOnboardingChecksTab,
+  LeaseConflictsTab,
+  CoverageGapsTab,
+  PolicyConformanceTab,
 } from '@/components/analysis/TemplateRunTabs';
 import { BundleManagerModal } from '@/components/document/BundleManagerModal';
 import { createClient } from '@/lib/supabase/client';
@@ -3597,6 +3602,66 @@ export function ContractAnalysisPane({ embedded = false }: ContractAnalysisPaneP
                 case 'invoice_exceptions':
                   return (
                     <InvoiceExceptionsTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'obligation_dependencies':
+                  return (
+                    <ObligationDependenciesTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'vendor_onboarding_checks':
+                  return (
+                    <VendorOnboardingChecksTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'lease_conflicts':
+                  return (
+                    <LeaseConflictsTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'coverage_gaps':
+                  return (
+                    <CoverageGapsTab
+                      items={items}
+                      emptyTitle={emptyTitle}
+                      emptyDescription={emptyDescription}
+                      workspaceId={workspaceId}
+                      documentId={documentId}
+                      onReject={(itemId) => rejectItem('module', itemId)}
+                      isPatchingSnapshot={isPatchReadOnly}
+                    />
+                  );
+                case 'policy_conformance':
+                  return (
+                    <PolicyConformanceTab
                       items={items}
                       emptyTitle={emptyTitle}
                       emptyDescription={emptyDescription}
