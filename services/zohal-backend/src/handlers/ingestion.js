@@ -1159,6 +1159,30 @@ function parsePayload(body) {
   };
 }
 
+export function buildOcrPollTaskPayload(payload, sourceOverride) {
+  const source = String(sourceOverride || payload.source || "unknown").trim().toLowerCase() ||
+    "unknown";
+  const taskPayload = {
+    kind: "ocr_poll",
+    document_id: normalizeUuid(payload.document_id),
+    workspace_id: normalizeUuid(payload.workspace_id),
+    user_id: normalizeUuid(payload.user_id),
+    source,
+  };
+
+  const workflowExecutionId = String(payload.workflow_execution_id || "").trim();
+  if (workflowExecutionId) {
+    taskPayload.workflow_execution_id = workflowExecutionId;
+  }
+
+  const originalRequestId = String(payload.request_id || "").trim();
+  if (originalRequestId) {
+    taskPayload.request_id = originalRequestId;
+  }
+
+  return taskPayload;
+}
+
 function ensureRequiredFields(payload, fields) {
   for (const field of fields) {
     if (!payload[field]) {
@@ -1319,13 +1343,28 @@ export async function handleIngestionRunTextPipeline(req, res, { requestId, log,
 export async function handleIngestionStartOcr(req, res, { requestId, log, readJsonBody }) {
   return await handleWrappedStep(req, res, {
     readJsonBody,
-    execute: async ({ supabase, payload, requestId }) => {
+    execute: async ({ req, supabase, body, payload, requestId, log }) => {
       ensureRequiredFields(payload, [
         "document_id",
         "workspace_id",
         "user_id",
       ]);
       const result = await performStartOcr({ supabase, payload });
+
+      const status = String(result.status || "").trim().toLowerCase();
+      if (status === "processing" || status === "completed") {
+        await scheduleIngestionTask({
+          req,
+          requestId,
+          payload: buildOcrPollTaskPayload(payload, body.source),
+          delaySeconds: status === "completed" ? 0 : DOCUMENT_INGESTION_OCR_POLL_DELAY_SECONDS,
+        });
+        log.info("Scheduled OCR poll task", {
+          document_id: payload.document_id,
+          status,
+        });
+      }
+
       return buildGcpEnvelope(requestId, result);
     },
   }, { requestId, log });

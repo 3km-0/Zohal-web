@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildOcrPollTaskPayload,
   buildWorkflowLaunchKey,
   normalizeUuid,
   shouldFallbackToOcr,
@@ -49,4 +50,25 @@ test("shouldFallbackToOcr skips OCR for CloudConvert-derived documents", () => {
   });
 
   assert.equal(result.shouldFallback, false);
+});
+
+test("buildOcrPollTaskPayload includes normalized routing fields", () => {
+  const payload = buildOcrPollTaskPayload({
+    document_id: " DOC-1 ",
+    workspace_id: " WORKSPACE-1 ",
+    user_id: " USER-1 ",
+    source: "unknown",
+    request_id: " req-1 ",
+    workflow_execution_id: " wf-1 ",
+  }, "Upload");
+
+  assert.deepEqual(payload, {
+    kind: "ocr_poll",
+    document_id: "doc-1",
+    workspace_id: "workspace-1",
+    user_id: "user-1",
+    source: "upload",
+    request_id: "req-1",
+    workflow_execution_id: "wf-1",
+  });
 });
