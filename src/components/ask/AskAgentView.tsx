@@ -48,6 +48,23 @@ type StreamEvent =
   | { type: 'completed'; conversation_id: string; citations: AskCitation[] }
   | { type: 'error'; message: string };
 
+function sanitizeAskError(message: string | null | undefined, fallback: string): string {
+  const trimmed = `${message ?? ''}`.trim();
+  if (!trimmed) return fallback;
+
+  const lowered = trimmed.toLowerCase();
+  const looksTechnical =
+    trimmed.startsWith('<') ||
+    lowered.includes('invalid schema') ||
+    lowered.includes('function_call') ||
+    lowered.includes('openai') ||
+    lowered.includes('semantic search failed') ||
+    lowered.includes('missing workspace_ids') ||
+    lowered.includes('stack');
+
+  return looksTechnical ? fallback : trimmed;
+}
+
 export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAgentViewProps) {
   const t = useTranslations('askAgent');
   const router = useRouter();
@@ -191,7 +208,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
 
     if (!response.ok || !response.body) {
       const json = await response.json().catch(() => null);
-      setError(json?.error || t('errors.generic'));
+      setError(sanitizeAskError(json?.error, t('errors.generic')));
       setLoading(false);
       return;
     }
@@ -239,7 +256,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
             );
             void loadConversations();
           } else if (event.type === 'error') {
-            setError(event.message);
+            setError(sanitizeAskError(event.message, t('errors.generic')));
           }
         }
       }

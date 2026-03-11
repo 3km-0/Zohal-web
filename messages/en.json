@@ -300,7 +300,7 @@
     "errors": {
       "auth": "Sign in again to use Ask.",
       "history": "Unable to load that conversation.",
-      "generic": "Ask failed. Try again."
+      "generic": "I hit a temporary issue while checking your documents. Please try again."
     },
     "modes": {
       "ask": "Ask",
