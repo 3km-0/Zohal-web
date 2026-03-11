@@ -17,14 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-
-type SidebarWorkspace = {
-  id: string;
-  name: string;
-  icon?: string | null;
-};
+import { useEffect, useState } from 'react';
 
 interface SidebarProps {
   className?: string;
@@ -39,27 +32,10 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const tSidebar = useTranslations('sidebar');
   const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const [workspaces, setWorkspaces] = useState<SidebarWorkspace[]>([]);
-  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     onClose?.();
   }, [pathname, onClose]);
-
-  useEffect(() => {
-    async function loadWorkspaces() {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('list_accessible_workspaces');
-      if (!rpcError && rpcData) {
-        setWorkspaces((rpcData as SidebarWorkspace[]).slice(0, 10));
-        return;
-      }
-
-      const { data } = await supabase.from('workspaces').select('id, name, icon').is('deleted_at', null).order('updated_at', { ascending: false }).limit(10);
-      setWorkspaces((data as SidebarWorkspace[] | null) ?? []);
-    }
-
-    void loadWorkspaces();
-  }, [supabase]);
 
   // NOTE: Tasks removed from sidebar as we now use Apple Reminders integration on iOS.
   // Web users can still access /tasks page if needed, but it's hidden from main nav.
@@ -140,32 +116,6 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
             onNavigate={onClose}
           />
         ))}
-
-        {!collapsed && (
-          <div className="mt-4 rounded-[18px] border border-border bg-surface-alt p-2">
-            <div className="px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-              {t('workspaces')}
-            </div>
-            <div className="space-y-1">
-              {workspaces.map((workspace) => (
-                <Link
-                  key={workspace.id}
-                  href={`/workspaces/${workspace.id}`}
-                  onClick={onClose}
-                  className={cn(
-                    'flex items-center gap-2 rounded-[14px] px-3 py-2 text-sm transition-colors',
-                    pathname.startsWith(`/workspaces/${workspace.id}`)
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-text-soft hover:bg-surface hover:text-text'
-                  )}
-                >
-                  <span className="text-base">{workspace.icon || '•'}</span>
-                  <span className="truncate">{workspace.name}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </nav>
 
       {/* Bottom Navigation */}
