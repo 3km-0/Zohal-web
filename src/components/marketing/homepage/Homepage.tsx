@@ -1086,7 +1086,7 @@ function HeroVisualScene({
   const shimmerClass = reducedMotion ? "" : "homepage-scene-shimmer";
 
   return (
-    <div className={cn("relative mx-auto", isRtl ? "max-w-[840px]" : "max-w-[760px]")}>
+    <div className={cn("relative mx-auto", isRtl ? "max-w-[780px]" : "max-w-[760px]")}>
       <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(30,45,38,0.98),rgba(18,29,24,0.98))] p-5 shadow-[0_28px_90px_rgba(3,10,7,0.3)] sm:p-6 lg:p-7">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_20%,rgba(45,136,120,0.09),transparent_22%),radial-gradient(circle_at_84%_16%,rgba(201,151,62,0.12),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
         <div
@@ -1114,7 +1114,7 @@ function HeroVisualScene({
           className={cn(
             "relative z-10 mt-5 grid gap-4",
             isRtl
-              ? "xl:grid-cols-[minmax(320px,1.06fr),minmax(0,0.94fr)]"
+              ? "2xl:grid-cols-[minmax(0,1fr),minmax(280px,0.86fr)]"
               : "lg:grid-cols-[minmax(0,1.05fr),minmax(250px,0.82fr)]"
           )}
         >
@@ -1139,11 +1139,11 @@ function HeroVisualScene({
               <div
                 className={cn(
                   "relative mt-5 overflow-hidden rounded-[20px] border border-[rgba(201,151,62,0.28)] bg-[rgba(201,151,62,0.08)] p-4",
-                  isRtl && "p-5"
+                  isRtl && "p-4 sm:p-5"
                 )}
               >
                 <div className={cn("absolute inset-y-0 -left-1/3 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(243,207,122,0.18),transparent)]", shimmerClass)} />
-                <div className={cn("relative text-sm leading-7 text-accent", isRtl && "text-base leading-8")}>
+                <div className={cn("relative text-sm leading-7 text-accent", isRtl && "sm:text-[15px] sm:leading-8")}>
                   {content.ui.mock.highlightSnippet}
                 </div>
               </div>
@@ -1173,9 +1173,9 @@ function HeroVisualScene({
             />
           </div>
 
-          <div className="relative space-y-4">
+          <div className="relative space-y-4 min-w-0">
             <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className={cn("flex gap-3", isRtl ? "flex-col items-start sm:flex-row sm:items-center sm:justify-between" : "items-center justify-between")}>
                 <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                   {content.ui.mock.verifiedVariables}
                 </div>
@@ -1190,11 +1190,11 @@ function HeroVisualScene({
                     key={row.label}
                     className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold text-text-soft">{row.label}</div>
+                    <div className={cn("flex gap-2", isRtl ? "flex-col items-start" : "items-center justify-between gap-3")}>
+                      <div className="min-w-0 text-xs font-semibold leading-6 text-text-soft">{row.label}</div>
                       <span
                         className={cn(
-                          "rounded-[var(--rPill)] px-2 py-0.5 text-[10px] font-semibold",
+                          "shrink-0 rounded-[var(--rPill)] px-2 py-0.5 text-[10px] font-semibold",
                           row.tone === "success"
                             ? "border border-[rgba(59,164,106,0.32)] bg-[rgba(59,164,106,0.16)] text-success"
                             : "border border-[rgba(201,151,62,0.26)] bg-[rgba(201,151,62,0.07)] text-accent"
@@ -1225,7 +1225,7 @@ function HeroVisualScene({
           className={cn(
             "relative z-10 mt-4 grid gap-4",
             isRtl
-              ? "xl:grid-cols-[minmax(0,0.86fr),minmax(0,1.14fr)] xl:items-start"
+              ? "2xl:grid-cols-[minmax(260px,0.82fr),minmax(0,1fr)] 2xl:items-start"
               : "lg:grid-cols-[minmax(0,0.78fr),minmax(0,1fr)] lg:items-start"
           )}
         >
