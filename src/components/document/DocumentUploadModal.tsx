@@ -356,6 +356,7 @@ export function DocumentUploadModal({
       {
         body: {
           document_id: documentId,
+          workspace_id: workspaceId,
           content_type: pdfFile.type,
           file_size: pdfFile.size,
         },
@@ -399,48 +400,15 @@ export function DocumentUploadModal({
 
     if (insertError) throw insertError;
 
-    try {
-      const { data: textData, error: textErr, response: textResponse } = await supabase.functions.invoke('extract-pdf-text-layer', {
-        body: { document_id: documentId },
-      });
-      if (textErr) {
-        const json = textResponse ? await textResponse.json().catch(() => null) : null;
-        const uiErr = mapHttpError(textResponse?.status ?? 500, json, 'extract-pdf-text-layer');
-        toast.show(uiErr);
-        throw new Error(uiErr.message);
-      }
-
-      if (textData?.pages && textData.pages.length > 0) {
-        const { error: chunkErr, response: chunkResp } = await supabase.functions.invoke('chunk-document', {
-          body: {
-            document_id: documentId,
-            workspace_id: workspaceId,
-            user_id: user.id,
-            pages: textData.pages,
-          },
-        });
-        if (chunkErr) {
-          const json = chunkResp ? await chunkResp.json().catch(() => null) : null;
-          const uiErr = mapHttpError(chunkResp?.status ?? 500, json, 'chunk-document');
-          toast.show(uiErr);
-          throw new Error(uiErr.message);
-        }
-
-        supabase.functions
-          .invoke('embed-and-store', {
-            body: { document_id: documentId, workspace_id: workspaceId },
-          })
-          .catch(console.warn);
-      }
-
-      await supabase.functions.invoke('classify-document', {
-        body: { document_id: documentId },
-      });
-    } catch (err) {
-      console.error('[Upload] Processing failed:', err);
-      supabase.functions
-        .invoke('enqueue-document-ingestion', { body: { document_id: documentId } })
-        .catch(console.warn);
+    const { error: enqueueError, response: enqueueResponse } = await supabase.functions.invoke(
+      'enqueue-document-ingestion',
+      { body: { document_id: documentId } }
+    );
+    if (enqueueError) {
+      const json = enqueueResponse ? await enqueueResponse.json().catch(() => null) : null;
+      const uiErr = mapHttpError(enqueueResponse?.status ?? 500, json, 'enqueue-document-ingestion');
+      toast.show(uiErr);
+      throw new Error(uiErr.message);
     }
 
     setFiles((prev) =>
