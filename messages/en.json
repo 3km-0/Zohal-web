@@ -477,6 +477,7 @@
     "upgradeTo": "Upgrade to {plan}",
     "perMonth": "per month",
     "perYear": "per year",
+    "contactSales": "Contact sales",
     "questionsAboutPricing": "Questions about pricing?",
     "contactSupport": "Contact support",
     "monthlySubscription": "Monthly subscription",
@@ -517,6 +518,11 @@
       "configurationError": "Payment configuration error. Please contact support.",
       "genericError": "Unable to set up the payment method."
     },
+    "planDescriptions": {
+      "pro": "For regular individual workloads with clear monthly meters.",
+      "premium": "For heavier individual use with sync and priority support.",
+      "team": "For shared rollouts with pooled monthly meters and trial onboarding."
+    },
     "features": {
       "documents10": "10 documents",
       "documents100": "100 documents",
@@ -538,7 +544,13 @@
       "slaSupport": "SLA & dedicated support",
       "dedicatedManager": "Dedicated account manager",
       "customIntegrations": "Custom integrations",
-      "onboarding": "Onboarding & training"
+      "onboarding": "Onboarding & training",
+      "storageGiBStored": "Up to {count} GiB stored",
+      "meteredTokensMonthly": "{count} metered AI tokens / month",
+      "billableOpsMonthly": "{count} billable ops / month",
+      "allTools": "All document tools included",
+      "importsIncluded": "Drive, OneDrive, and WhatsApp import",
+      "sharedWorkspaces": "Shared workspaces for team rollout"
     },
     "enterprise": {
       "title": "Enterprise",
@@ -602,10 +614,10 @@
     "proPlan": "Pro Plan",
     "premiumPlan": "Max Plan",
     "teamPlan": "Team Plan",
-    "freePlanDesc": "10 documents, 2 AI explanations/day",
-    "proPlanDesc": "100 documents, unlimited AI",
-    "premiumPlanDesc": "Unlimited documents, 100GB storage",
-    "teamPlanDesc": "Shared workspaces, collaboration controls, and Team billing",
+    "freePlanDesc": "1 GiB storage, metered AI tokens, and monthly ops",
+    "proPlanDesc": "10 GiB storage with larger monthly token and ops pools",
+    "premiumPlanDesc": "100 GiB storage with higher monthly token and ops pools",
+    "teamPlanDesc": "Pooled meters, shared workspaces, and collaboration controls",
     "upgradeToPro": "Upgrade to Pro",
     "dataLocality": "Data Locality",
     "integrations": "Integrations",
@@ -1518,13 +1530,13 @@
           {
             "id": "pro",
             "name": "Pro",
-            "price": "SAR 199 / month",
+            "price": "SAR 149 / month",
             "bullets": [
-              "For individual professionals who need more daily throughput",
-              "100 documents and 10 workspaces",
-              "Unlimited core AI actions",
-              "100 semantic searches and 100 asks per day",
-              "Calendar sync and core exports"
+              "10 GiB storage, 120M metered AI tokens, and 1,500 billable ops each month",
+              "Built for regular individual workloads with predictable monthly limits",
+              "All core document tools plus calendar sync",
+              "Drive, OneDrive, and WhatsApp import included",
+              "Best fit when you want one paid individual plan with clear meters"
             ],
             "cta": {
               "label": "Start Pro",
@@ -1536,8 +1548,8 @@
             "name": "Max",
             "price": "SAR 599 / month",
             "bullets": [
-              "For power users who want the individual top tier",
-              "Unlimited documents, workspaces, searches, and asks",
+              "100 GiB storage, 500M metered AI tokens, and 6,000 billable ops each month",
+              "For heavier individual use with larger monthly pools",
               "Priority support and Google Drive sync",
               "Full bilingual verification workflows",
               "Best fit when you do not need shared team billing"
@@ -1552,12 +1564,12 @@
           {
             "id": "team",
             "name": "Team",
-            "price": "SAR 1,200 / month",
+            "price": "14-day trial",
             "bullets": [
+              "250 GiB pooled storage, 1.5B metered tokens, and 20,000 pooled billable ops",
               "Shared workspaces and team collaboration controls",
               "14-day trial with card setup through Moyasar",
               "Trial usage is capped to Pro limits until billing begins",
-              "Business-grade verification workflows and audit history",
               "Best fit for the first live team rollout"
             ],
             "cta": {
@@ -1583,7 +1595,7 @@
         ],
         "usageMeter": {
           "title": "For first live team rollouts",
-          "body": "Team includes a 14-day trial with card setup through Moyasar. Trial usage is capped to Pro limits until billing begins, so you can test the workflow before full team billing starts. Enterprise pricing is custom."
+          "body": "Zohal now meters plans through 3 categories only: storage, metered AI tokens, and billable ops. Team includes a 14-day trial with card setup through Moyasar. Trial usage stays capped to Pro limits until billing begins. Enterprise pricing is custom."
         }
       },
       "insights": {

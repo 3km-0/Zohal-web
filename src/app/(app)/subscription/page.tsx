@@ -38,6 +38,8 @@ interface SubscriptionPlan {
   price_yearly_sar: number | null;
   limits: Record<string, number>;
   features: Record<string, boolean>;
+  meter_limits?: Record<string, number>;
+  guardrails?: Record<string, number | Record<string, number>>;
   badge_text?: string | null;
   display_order?: number | null;
 }
@@ -63,6 +65,15 @@ const TIER_RANK: Record<string, number> = {
 
 function sortPlans(plans: SubscriptionPlan[]) {
   return [...plans].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+}
+
+function readNumericValue(
+  source: Record<string, number | Record<string, number>> | Record<string, number> | undefined,
+  key: string
+): number | null {
+  if (!source) return null;
+  const value = source[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 export default function SubscriptionPage() {
@@ -104,6 +115,14 @@ export default function SubscriptionPage() {
   const [enterpriseSubmitting, setEnterpriseSubmitting] = useState(false);
   const [enterpriseSuccess, setEnterpriseSuccess] = useState(false);
   const [enterpriseError, setEnterpriseError] = useState<string | null>(null);
+  const compactNumber = useCallback(
+    (value: number) =>
+      new Intl.NumberFormat(undefined, {
+        notation: value >= 1_000_000 ? 'compact' : 'standard',
+        maximumFractionDigits: value >= 1_000_000 ? 1 : 0,
+      }).format(value),
+    []
+  );
 
   const individualPlans = useMemo(
     () => sortPlans(plans.filter((plan) => ['pro', 'premium'].includes(plan.tier))),
@@ -282,13 +301,17 @@ export default function SubscriptionPage() {
 
   const formatPrice = (price: number | null, tier: string): string => {
     if (tier === 'enterprise') return tEnterprise('customPricing');
-    if (price === null) return t('free');
+    if (price === null) return tier === 'team' ? t('trialBadge') : t('free');
     const symbol = currency === 'SAR' ? 'SAR' : '$';
     return `${symbol}${price.toFixed(2)}`;
   };
 
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     if (plan.tier === 'free' || plan.tier === currentTier) return;
+    if (plan.tier === 'team' && getPrice(plan) === null && !isTrialEligible(plan)) {
+      setShowEnterpriseModal(true);
+      return;
+    }
     setSelectedPlan(plan);
     setPaymentError(null);
     setShowPaymentModal(true);
@@ -365,6 +388,79 @@ export default function SubscriptionPage() {
     premium: 'text-purple-500',
     team: 'text-accent',
   };
+
+  const planDescription = useCallback(
+    (plan: SubscriptionPlan) => {
+      if (plan.tier === 'pro') return t('planDescriptions.pro');
+      if (plan.tier === 'premium') return t('planDescriptions.premium');
+      if (plan.tier === 'team') return t('planDescriptions.team');
+      return plan.description;
+    },
+    [t]
+  );
+
+  const buildPlanBullets = useCallback(
+    (plan: SubscriptionPlan) => {
+      const bullets: string[] = [];
+      const storageGiB =
+        readNumericValue(plan.meter_limits, 'storage_gib') ?? readNumericValue(plan.limits, 'storage_gib');
+      const meteredTokens =
+        readNumericValue(plan.meter_limits, 'metered_tokens_monthly') ??
+        readNumericValue(plan.limits, 'metered_tokens_monthly');
+      const billableOps =
+        readNumericValue(plan.meter_limits, 'billable_ops_monthly') ??
+        readNumericValue(plan.limits, 'billable_ops_monthly');
+      const maxWorkspaces =
+        readNumericValue(plan.guardrails, 'max_workspaces') ?? readNumericValue(plan.limits, 'max_workspaces');
+
+      if (storageGiB && storageGiB > 0) {
+        bullets.push(tFeatures('storageGiBStored', { count: compactNumber(storageGiB) }));
+      }
+      if (meteredTokens && meteredTokens > 0) {
+        bullets.push(tFeatures('meteredTokensMonthly', { count: compactNumber(meteredTokens) }));
+      }
+      if (billableOps && billableOps > 0) {
+        bullets.push(tFeatures('billableOpsMonthly', { count: compactNumber(billableOps) }));
+      }
+
+      if (maxWorkspaces === 1) {
+        bullets.push(tFeatures('workspace1'));
+      } else if (maxWorkspaces === 10) {
+        bullets.push(tFeatures('workspaces10'));
+      } else if (maxWorkspaces && maxWorkspaces >= 999999) {
+        bullets.push(tFeatures('unlimitedWorkspaces'));
+      } else if (maxWorkspaces && maxWorkspaces >= 250) {
+        bullets.push(tFeatures('sharedWorkspaces'));
+      }
+
+      const hasAllCoreTools =
+        plan.features?.stem_check && plan.features?.legal_tools && plan.features?.finance_tools;
+      if (hasAllCoreTools) {
+        bullets.push(tFeatures('allTools'));
+      }
+      if (plan.features?.google_drive_import || plan.features?.onedrive_import || plan.features?.whatsapp_import) {
+        bullets.push(tFeatures('importsIncluded'));
+      }
+      if (plan.features?.google_drive_sync) {
+        bullets.push(tFeatures('driveSync'));
+      }
+      if (plan.features?.calendar_sync) {
+        bullets.push(tFeatures('calendarSync'));
+      }
+      if (plan.features?.priority_support) {
+        bullets.push(tFeatures('prioritySupport'));
+      }
+      if (plan.features?.team_management) {
+        bullets.push(tFeatures('teamManagement'));
+      }
+      if (plan.tier === 'team') {
+        bullets.push(t('teamTrialFeature'));
+      }
+
+      return bullets.slice(0, 7);
+    },
+    [compactNumber, t, tFeatures]
+  );
 
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -537,7 +633,7 @@ export default function SubscriptionPage() {
                     <h3 className="text-lg font-bold text-text">
                       {plan.tier === 'premium' ? t('premiumPlan') : plan.name}
                     </h3>
-                    <p className="mt-1 text-sm text-text-soft">{plan.description}</p>
+                    <p className="mt-1 text-sm text-text-soft">{planDescription(plan)}</p>
                   </div>
 
                   <div className="mb-6 text-center">
@@ -550,35 +646,9 @@ export default function SubscriptionPage() {
                   </div>
 
                   <ul className="mb-6 flex-1 space-y-3">
-                    {plan.tier === 'pro' ? (
-                      <>
-                        <FeatureItem>{tFeatures('documents100')}</FeatureItem>
-                        <FeatureItem>{tFeatures('unlimitedAi')}</FeatureItem>
-                        <FeatureItem>{tFeatures('workspaces10')}</FeatureItem>
-                        <FeatureItem>{tFeatures('allPlugins')}</FeatureItem>
-                        <FeatureItem>{tFeatures('calendarSync')}</FeatureItem>
-                      </>
-                    ) : null}
-                    {plan.tier === 'premium' ? (
-                      <>
-                        <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
-                        <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
-                        <FeatureItem>{tFeatures('storage100gb')}</FeatureItem>
-                        <FeatureItem>{tFeatures('unlimitedWorkspaces')}</FeatureItem>
-                        <FeatureItem>{tFeatures('allPluginsIncluded')}</FeatureItem>
-                        <FeatureItem>{tFeatures('driveSync')}</FeatureItem>
-                        <FeatureItem>{tFeatures('prioritySupport')}</FeatureItem>
-                      </>
-                    ) : null}
-                    {plan.tier === 'team' ? (
-                      <>
-                        <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
-                        <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
-                        <FeatureItem>{tFeatures('teamManagement')}</FeatureItem>
-                        <FeatureItem>{tFeatures('customLimits')}</FeatureItem>
-                        <FeatureItem>{t('teamTrialFeature')}</FeatureItem>
-                      </>
-                    ) : null}
+                    {buildPlanBullets(plan).map((bullet) => (
+                      <FeatureItem key={`${plan.tier}-${bullet}`}>{bullet}</FeatureItem>
+                    ))}
                   </ul>
 
                   <Button

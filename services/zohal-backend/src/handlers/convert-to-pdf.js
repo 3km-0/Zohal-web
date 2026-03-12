@@ -193,6 +193,30 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
 
     await markProcessingConversion(supabase, docId, currentMeta, log);
 
+    const { data: conversionQuota, error: conversionQuotaError } = await supabase
+      .rpc("check_and_charge_billable_op", {
+        p_user_id: userId,
+        p_operation_key: "cloudconvert_job",
+        p_units: 1,
+        p_workspace_id: workspaceId,
+        p_source: "convert-to-pdf",
+        p_metadata: {
+          document_id: docId,
+          source_storage_path: sourcePath,
+        },
+      });
+
+    if (conversionQuotaError) {
+      throw new Error(`Failed to check conversion quota: ${conversionQuotaError.message}`);
+    }
+
+    if (conversionQuota && conversionQuota.allowed === false) {
+      return sendJson(res, 429, buildConvertError({
+        message: "Included conversion usage has been reached for this billing period.",
+        requestId,
+      }));
+    }
+
     let sourceDownloadUrl = proxyInputs.sourceDownloadUrl;
     if (!sourceDownloadUrl) {
       const routing = await resolveStorageRouting({
