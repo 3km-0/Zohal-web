@@ -26,7 +26,7 @@ function Section({
       <div className="w-11 h-11 bg-surface-alt border border-border rounded-scholar-lg flex items-center justify-center text-xl mb-4">
         {icon}
       </div>
-      <h2 className="text-xl font-semibold text-text mb-3">{title}</h2>
+      <h2 className="website-display text-2xl text-text mb-3">{title}</h2>
       <div className="text-text-soft space-y-3">{children}</div>
     </section>
   );
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
         <Badge variant="success" dot className="mb-6">
           Last updated: March 2026
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold text-text tracking-tight mb-4">
+        <h1 className="website-display text-4xl md:text-5xl text-text tracking-tight mb-4">
           Privacy Policy
         </h1>
         <p className="text-xl text-text-soft max-w-2xl mx-auto">

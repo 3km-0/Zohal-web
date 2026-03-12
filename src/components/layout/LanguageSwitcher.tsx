@@ -1,14 +1,13 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export function LanguageSwitcher() {
   const locale = useLocale();
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const pathname = usePathname();
 
   const toggleLanguage = () => {
     const newLocale = locale === 'en' ? 'ar' : 'en';
@@ -23,10 +22,9 @@ export function LanguageSwitcher() {
     <button
       onClick={toggleLanguage}
       className={cn(
-        'px-3 py-1.5 rounded-scholar-sm',
-        'bg-surface-alt border border-border',
+        'min-h-[42px] rounded-[var(--rSm)] border border-border bg-surface-alt px-3',
         'text-sm font-medium text-text-soft',
-        'hover:border-accent hover:text-accent',
+        'hover:border-accent hover:bg-white hover:text-text',
         'transition-colors duration-200'
       )}
       aria-label={locale === 'en' ? tCommon('switchToArabic') : tCommon('switchToEnglish')}
@@ -35,4 +33,3 @@ export function LanguageSwitcher() {
     </button>
   );
 }
-

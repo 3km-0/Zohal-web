@@ -16,16 +16,16 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-border mt-10 pt-12 pb-10">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <div className="text-xl font-semibold text-accent mb-4">{t('common.appName')}</div>
+    <footer className="mt-12 border-t border-border bg-[rgba(255,255,255,0.7)] py-12 backdrop-blur-sm">
+      <div className="mx-auto max-w-5xl px-6 text-center">
+        <div className="website-display mb-4 text-[2rem] text-text">{t('common.appName')}</div>
 
-        <div className="flex flex-wrap justify-center gap-6 mb-6">
+        <div className="mb-6 flex flex-wrap justify-center gap-6">
           {footerLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-text-soft hover:text-text transition-colors"
+              className="text-sm text-text-soft transition-colors hover:text-text"
             >
               {link.label}
             </Link>
@@ -34,14 +34,16 @@ export function Footer() {
             href={ndgpCertificateUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-text-soft hover:text-text transition-colors"
+            className="text-sm text-text-soft transition-colors hover:text-text"
           >
             {t('footer.ndgpCertificate')}
           </a>
         </div>
 
-        <p className="text-text-soft text-xs mb-3">{t('footer.dataLocality')}</p>
-        <p className="text-text-soft text-sm opacity-70">
+        <p className="mb-3 text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+          {t('footer.dataLocality')}
+        </p>
+        <p className="text-sm text-text-soft">
           {t('footer.copyright', { year: currentYear })}
         </p>
       </div>

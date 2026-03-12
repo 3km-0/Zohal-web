@@ -27,7 +27,7 @@ function Section({
       <div className="w-11 h-11 bg-surface-alt border border-border rounded-scholar-lg flex items-center justify-center text-xl mb-4">
         {icon}
       </div>
-      <h2 className="text-xl font-semibold text-text mb-3">{title}</h2>
+      <h2 className="website-display text-2xl text-text mb-3">{title}</h2>
       <div className="text-text-soft space-y-3">{children}</div>
     </section>
   );
@@ -49,7 +49,7 @@ export default function TermsPage() {
         <Badge variant="success" dot className="mb-6">
           Effective: December 2025
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold text-text tracking-tight mb-4">
+        <h1 className="website-display text-4xl md:text-5xl text-text tracking-tight mb-4">
           Terms of Use (EULA)
         </h1>
         <p className="text-xl text-text-soft max-w-lg mx-auto">

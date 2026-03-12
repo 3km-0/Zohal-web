@@ -25,6 +25,8 @@
   /* Font Variables */
   --font-source-serif: 'Source Serif 4', Georgia, serif;
   --font-inter: 'Inter', system-ui, sans-serif;
+  --font-instrument-serif: 'Instrument Serif', Georgia, serif;
+  --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
 
   /* Shared semantic radii + shadows */
@@ -122,6 +124,72 @@
   --nav-border: rgba(255, 255, 255, 0.06);
 }
 
+[data-theme='slate-light'] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #fafaf9;
+
+  --text: #1c1917;
+  --text-soft: #78716c;
+  --text-muted: #a8a29e;
+
+  --border: #e7e5e4;
+
+  --accent: #0d9488;
+  --accent-alt: #0f766e;
+  --highlight: #134e4a;
+  --success: #16a34a;
+  --error: #b91c1c;
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.06);
+  --accent-soft: rgba(13, 148, 136, 0.08);
+  --accent-dim: rgba(13, 148, 136, 0.04);
+  --accent-text: #ffffff;
+  --grid-color: transparent;
+  --grid-opacity: 0;
+  --grid-size: 20px;
+
+  --shadowSm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadowMd: 0 4px 12px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.06);
+
+  --nav-bg-top: rgba(255, 255, 255, 0.78);
+  --nav-bg-scrolled: rgba(255, 255, 255, 0.92);
+  --nav-border: rgba(28, 25, 23, 0.08);
+}
+
+[data-theme='slate-dark'] {
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-alt: #1e1e22;
+
+  --text: #f5f0e6;
+  --text-soft: rgba(245, 240, 230, 0.55);
+  --text-muted: rgba(245, 240, 230, 0.35);
+
+  --border: rgba(255, 255, 255, 0.06);
+
+  --accent: #e2c87e;
+  --accent-alt: #e2c87e;
+  --highlight: #f5f0e6;
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #e2c87e;
+  --warning-soft: rgba(226, 200, 126, 0.12);
+  --accent-soft: rgba(226, 200, 126, 0.15);
+  --accent-dim: rgba(226, 200, 126, 0.08);
+  --accent-text: #1a1a1a;
+  --grid-color: transparent;
+  --grid-opacity: 0;
+  --grid-size: 20px;
+
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36);
+
+  --nav-bg-top: rgba(9, 9, 11, 0.72);
+  --nav-bg-scrolled: rgba(9, 9, 11, 0.88);
+  --nav-border: rgba(255, 255, 255, 0.06);
+}
+
 /* Base Styles */
 html {
   scroll-behavior: smooth;
@@ -135,6 +203,23 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.website-shell {
+  font-family: var(--font-plus-jakarta);
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.website-display {
+  font-family: var(--font-instrument-serif);
+  letter-spacing: -0.03em;
+}
+
+.website-shell ::selection {
+  background: var(--accent-soft, rgba(13, 148, 136, 0.14));
+  color: var(--text);
 }
 
 /* RTL Support */

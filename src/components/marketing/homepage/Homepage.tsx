@@ -327,9 +327,9 @@ function PrimaryLinkButton({
       onClick={onClick}
       className={cn(
         'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
-        'bg-accent text-[#172018] font-semibold px-5 py-2.5',
+        'bg-accent text-[color:var(--accent-text)] font-semibold px-5 py-2.5',
         'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-        'shadow-[0_10px_28px_rgba(201,151,62,0.14)] hover:bg-highlight hover:-translate-y-0.5 active:translate-y-0',
+        'shadow-[0_10px_28px_rgba(226,200,126,0.14)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
         className
       )}
@@ -514,7 +514,7 @@ function MarketingModal({
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
     <div className="rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 shadow-[var(--shadowSm)]">
-      <div className="text-2xl sm:text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+      <div className="text-2xl sm:text-3xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
         {value}
       </div>
       <div className="mt-2 text-sm text-text-soft">{label}</div>
@@ -559,7 +559,7 @@ function Card({
       }
     >
       <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{brandLabel}</div>
-      <h3 className="mt-2 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+      <h3 className="mt-2 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
         {title}
       </h3>
       {subtitle ? <p className="mt-2 text-text-soft">{subtitle}</p> : null}
@@ -698,12 +698,12 @@ function Nav({ content }: { content: Content }) {
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
       style={{ backgroundColor: bg, borderBottom: '1px solid var(--nav-border)' }}
     >
-      <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-[72px] h-[78px] flex items-center justify-between font-[family:var(--font-inter)]">
+      <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-[72px] h-[78px] flex items-center justify-between font-[family:var(--font-plus-jakarta)]">
         <Link
           href="/home"
           className={cn(
-            'text-2xl sm:text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight leading-none text-text',
-            'hover:text-highlight transition-colors duration-200',
+            'text-2xl sm:text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight leading-none text-text',
+            'hover:text-accent transition-colors duration-200',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
           )}
         >
@@ -741,7 +741,7 @@ function Nav({ content }: { content: Content }) {
                 href="/workspaces"
                 className={cn(
                   'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
-                  'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
+                  'text-text-soft transition-colors duration-200 hover:bg-[rgba(255,255,255,0.04)] hover:text-text',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                 )}
               >
@@ -752,7 +752,7 @@ function Nav({ content }: { content: Content }) {
                 onClick={() => signOut()}
                 className={cn(
                   'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
-                  'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
+                  'text-text-soft transition-colors duration-200 hover:bg-[rgba(255,255,255,0.04)] hover:text-text',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                 )}
               >
@@ -765,7 +765,7 @@ function Nav({ content }: { content: Content }) {
                 href={content.nav.actions.login.href}
                 className={cn(
                   'hidden sm:inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] px-3',
-                  'text-text-soft hover:text-text hover:bg-surface/40 transition-colors duration-200',
+                  'text-text-soft transition-colors duration-200 hover:bg-[rgba(255,255,255,0.04)] hover:text-text',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                 )}
               >
@@ -926,17 +926,17 @@ function DecisionPackMock() {
   ] as const;
 
   return (
-    <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(29,44,37,0.98),rgba(18,28,23,0.98))] shadow-[0_28px_90px_rgba(3,10,7,0.34)]">
-      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(243,207,122,0),rgba(243,207,122,0.35),rgba(243,207,122,0))]" />
-      <div className="absolute -right-20 top-10 h-40 w-40 rounded-full bg-[rgba(201,151,62,0.12)] blur-3xl" />
-      <div className="absolute -left-12 bottom-12 h-32 w-32 rounded-full bg-[rgba(45,136,120,0.14)] blur-3xl" />
+    <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98))] shadow-[0_28px_90px_rgba(0,0,0,0.34)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(226,200,126,0),rgba(226,200,126,0.35),rgba(226,200,126,0))]" />
+      <div className="absolute -right-20 top-10 h-40 w-40 rounded-full bg-[rgba(226,200,126,0.12)] blur-3xl" />
+      <div className="absolute -left-12 bottom-12 h-32 w-32 rounded-full bg-[rgba(226,200,126,0.14)] blur-3xl" />
 
       <div className="relative flex items-start justify-between gap-4 border-b border-[rgba(255,255,255,0.06)] px-6 py-5">
         <div>
           <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
             {content.ui.mock.decisionPackLabel}
           </div>
-          <div className="mt-2 max-w-[28ch] text-xl font-[family:var(--font-source-serif)] font-semibold text-text sm:text-2xl">
+          <div className="mt-2 max-w-[28ch] text-xl font-[family:var(--font-instrument-serif)] font-semibold text-text sm:text-2xl">
             {content.ui.mock.samplePackTitle}
           </div>
         </div>
@@ -944,7 +944,7 @@ function DecisionPackMock() {
           <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold text-text-soft">
             {content.ui.mock.reviewStatus}
           </span>
-          <span className="rounded-[var(--rPill)] border border-[rgba(59,164,106,0.34)] bg-[rgba(59,164,106,0.16)] px-3 py-1 text-[11px] font-semibold text-success">
+          <span className="rounded-[var(--rPill)] border border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.16)] px-3 py-1 text-[11px] font-semibold text-success">
             {content.ui.mock.verifiedStatus}
           </span>
         </div>
@@ -961,14 +961,14 @@ function DecisionPackMock() {
                 PDF
               </div>
             </div>
-            <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.06)] bg-[rgba(8,14,11,0.24)] p-5">
+            <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.06)] bg-[rgba(19,19,22,0.24)] p-5">
               <div className="space-y-3">
                 <div className="h-2.5 w-11/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
                 <div className="h-2.5 w-8/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
                 <div className="h-2.5 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
                 <div className="h-2.5 w-7/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
               </div>
-              <div className="mt-5 rounded-[20px] border border-[rgba(201,151,62,0.3)] bg-[rgba(201,151,62,0.08)] p-4 text-sm leading-7 text-accent">
+              <div className="mt-5 rounded-[20px] border border-[rgba(226,200,126,0.3)] bg-[rgba(226,200,126,0.08)] p-4 text-sm leading-7 text-accent">
                 {content.ui.mock.highlightSnippet}
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3">
@@ -979,7 +979,7 @@ function DecisionPackMock() {
                   >
                     <div className="text-xs text-text-soft">{pageLabel(page)}</div>
                     <div className="mt-2 h-12 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
-                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(243,207,122,0.24)]" />
+                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(226,200,126,0.24)]" />
                   </div>
                 ))}
               </div>
@@ -1003,8 +1003,8 @@ function DecisionPackMock() {
                         className={cn(
                           'rounded-[var(--rPill)] px-2.5 py-1 text-[11px] font-semibold',
                           row.accent === 'success'
-                            ? 'border border-[rgba(59,164,106,0.32)] bg-[rgba(59,164,106,0.16)] text-success'
-                            : 'border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.06)] text-accent'
+                            ? 'border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.16)] text-success'
+                            : 'border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.06)] text-accent'
                         )}
                       >
                         {row.status}
@@ -1016,7 +1016,7 @@ function DecisionPackMock() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-[color:var(--accent-alt)] bg-[linear-gradient(180deg,rgba(201,151,62,0.12),rgba(201,151,62,0.05))] p-5">
+            <div className="rounded-[24px] border border-[color:var(--accent-alt)] bg-[linear-gradient(180deg,rgba(226,200,126,0.12),rgba(226,200,126,0.05))] p-5">
               <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
                 {content.ui.mock.exceptionsQueueTitle}
               </div>
@@ -1087,11 +1087,11 @@ function HeroVisualScene({
 
   return (
     <div className={cn("relative mx-auto w-full", isRtl ? "max-w-[780px]" : "max-w-[760px]")}>
-      <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(30,45,38,0.98),rgba(18,29,24,0.98))] p-5 shadow-[0_28px_90px_rgba(3,10,7,0.3)] sm:p-6 lg:p-7">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_20%,rgba(45,136,120,0.09),transparent_22%),radial-gradient(circle_at_84%_16%,rgba(201,151,62,0.12),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
+      <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-6 lg:p-7">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_20%,rgba(226,200,126,0.09),transparent_22%),radial-gradient(circle_at_84%_16%,rgba(226,200,126,0.12),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
         <div
           className={cn(
-            "absolute top-4 h-px w-28 bg-[linear-gradient(90deg,rgba(243,207,122,0),rgba(243,207,122,0.5),rgba(243,207,122,0))]",
+            "absolute top-4 h-px w-28 bg-[linear-gradient(90deg,rgba(226,200,126,0),rgba(226,200,126,0.5),rgba(226,200,126,0))]",
             isRtl ? "left-6" : "right-6"
           )}
         />
@@ -1118,7 +1118,7 @@ function HeroVisualScene({
               : "lg:grid-cols-[minmax(0,1.05fr),minmax(250px,0.82fr)]"
           )}
         >
-          <div className="relative rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(10,16,13,0.26)] p-5">
+          <div className="relative rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(19,19,22,0.26)] p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                 {content.ui.mock.documentViewer}
@@ -1138,11 +1138,11 @@ function HeroVisualScene({
 
               <div
                 className={cn(
-                  "relative mt-5 overflow-hidden rounded-[20px] border border-[rgba(201,151,62,0.28)] bg-[rgba(201,151,62,0.08)] p-4",
+                  "relative mt-5 overflow-hidden rounded-[20px] border border-[rgba(226,200,126,0.28)] bg-[rgba(226,200,126,0.08)] p-4",
                   isRtl && "p-4 sm:p-5"
                 )}
               >
-                <div className={cn("absolute inset-y-0 -left-1/3 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(243,207,122,0.18),transparent)]", shimmerClass)} />
+                <div className={cn("absolute inset-y-0 -left-1/3 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(226,200,126,0.18),transparent)]", shimmerClass)} />
                 <div className={cn("relative text-sm leading-7 text-accent", isRtl && "sm:text-[15px] sm:leading-8")}>
                   {content.ui.mock.highlightSnippet}
                 </div>
@@ -1158,7 +1158,7 @@ function HeroVisualScene({
                       {content.ui.mock.pageLabel.replace("{page}", String(page))}
                     </div>
                     <div className="mt-2 h-12 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
-                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(243,207,122,0.22)]" />
+                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(226,200,126,0.22)]" />
                   </div>
                 ))}
               </div>
@@ -1166,7 +1166,7 @@ function HeroVisualScene({
 
             <div
               className={cn(
-                "pointer-events-none absolute top-[92px] w-16 border-t border-dashed border-[rgba(243,207,122,0.38)]",
+                "pointer-events-none absolute top-[92px] w-16 border-t border-dashed border-[rgba(226,200,126,0.38)]",
                 isRtl ? "left-[-28px]" : "right-[-28px]",
                 dashClass
               )}
@@ -1179,7 +1179,7 @@ function HeroVisualScene({
                 <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                   {content.ui.mock.verifiedVariables}
                 </div>
-                <span className="rounded-[var(--rPill)] border border-[rgba(59,164,106,0.34)] bg-[rgba(59,164,106,0.16)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
+                <span className="rounded-[var(--rPill)] border border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.16)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
                   {content.ui.mock.verifiedStatus}
                 </span>
               </div>
@@ -1196,8 +1196,8 @@ function HeroVisualScene({
                         className={cn(
                           "shrink-0 rounded-[var(--rPill)] px-2 py-0.5 text-[10px] font-semibold",
                           row.tone === "success"
-                            ? "border border-[rgba(59,164,106,0.32)] bg-[rgba(59,164,106,0.16)] text-success"
-                            : "border border-[rgba(201,151,62,0.26)] bg-[rgba(201,151,62,0.07)] text-accent"
+                            ? "border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.16)] text-success"
+                            : "border border-[rgba(226,200,126,0.26)] bg-[rgba(226,200,126,0.07)] text-accent"
                         )}
                       >
                         {row.status}
@@ -1209,7 +1209,7 @@ function HeroVisualScene({
               </div>
             </div>
 
-            <div className="relative rounded-[24px] border border-[rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(201,151,62,0.13),rgba(201,151,62,0.05))] p-4">
+            <div className="relative rounded-[24px] border border-[rgba(226,200,126,0.28)] bg-[linear-gradient(180deg,rgba(226,200,126,0.13),rgba(226,200,126,0.05))] p-4">
               <div className="flex items-center gap-2">
                 <span className={cn("h-2.5 w-2.5 rounded-full bg-accent", pulseClass)} />
                 <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
@@ -1231,7 +1231,7 @@ function HeroVisualScene({
         >
           <div
             className={cn(
-              "rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 shadow-[0_18px_50px_rgba(3,10,7,0.18)]",
+              "rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]",
               floatClass
             )}
           >
@@ -1253,7 +1253,7 @@ function HeroVisualScene({
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(10,16,13,0.22)] p-4">
+          <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(19,19,22,0.22)] p-4">
             <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
               {content.ui.mock.fieldEvidenceLabel}
             </div>
@@ -1313,7 +1313,7 @@ function CapabilityPreviewCard() {
       <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
         {content.ui.mock.uiMockLabel}
       </div>
-      <div className="mt-4 rounded-[22px] border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.06)] p-5">
+      <div className="mt-4 rounded-[22px] border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.06)] p-5">
         <div className="text-xs tracking-[0.14em] uppercase text-accent">
           {content.ui.mock.exceptionsQueueTitle}
         </div>
@@ -1331,7 +1331,7 @@ function CapabilityPreviewCard() {
                 className={cn(
                   'px-2 py-0.5 rounded-[var(--rPill)] text-[11px] font-semibold',
                   row.tone === 'success'
-                    ? 'bg-[rgba(59,164,106,0.18)] text-success'
+                    ? 'bg-[rgba(74,222,128,0.18)] text-success'
                     : 'border border-[color:var(--accent-alt)] text-accent'
                 )}
               >
@@ -1435,27 +1435,26 @@ export function Homepage() {
 
   return (
     <div
-      data-theme="scholar-dark"
-      className="relative isolate min-h-screen overflow-x-hidden bg-[color:var(--bg)] font-[family:var(--font-inter)]"
+      data-theme="slate-dark"
+      className="website-shell relative isolate min-h-screen overflow-x-hidden bg-[color:var(--bg)] font-[family:var(--font-plus-jakarta)]"
     >
-      <div className="grid-bg" />
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
         <Section className="pt-8 sm:pt-12 lg:pt-16">
-          <div className="relative overflow-hidden rounded-[40px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(22,35,28,0.98),rgba(14,23,18,0.98))] px-6 py-8 shadow-[0_28px_90px_rgba(3,10,7,0.3)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+          <div className="relative overflow-hidden rounded-[40px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(19,19,22,0.98),rgba(9,9,11,0.98))] px-6 py-8 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,rgba(7,12,10,0.08),rgba(7,12,10,0.28))]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(45,136,120,0.08),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(201,151,62,0.12),transparent_22%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.04),transparent_24%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,rgba(9,9,11,0.08),rgba(9,9,11,0.28))]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(226,200,126,0.08),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(226,200,126,0.12),transparent_22%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.04),transparent_24%)]" />
               <div
                 className={cn(
-                  'absolute top-[12%] h-[420px] w-[420px] rounded-full bg-[rgba(201,151,62,0.07)] blur-3xl',
+                  'absolute top-[12%] h-[420px] w-[420px] rounded-full bg-[rgba(226,200,126,0.07)] blur-3xl',
                   isRtl ? 'left-[-110px]' : 'right-[-110px]'
                 )}
               />
               <div
                 className={cn(
-                  'absolute bottom-[-120px] h-[320px] w-[320px] rounded-full bg-[rgba(45,136,120,0.1)] blur-3xl',
+                  'absolute bottom-[-120px] h-[320px] w-[320px] rounded-full bg-[rgba(226,200,126,0.1)] blur-3xl',
                   isRtl ? 'right-[-110px]' : 'left-[-110px]'
                 )}
               />
@@ -1472,7 +1471,7 @@ export function Homepage() {
                 <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
                   {content.ui.mentalModelLine}
                 </div>
-                <h1 className="mt-5 max-w-[11ch] text-5xl font-[family:var(--font-source-serif)] font-bold leading-[0.96] tracking-[-0.045em] text-text sm:max-w-[13ch] sm:text-6xl lg:max-w-[10ch] lg:text-[4.6rem] xl:text-[5.2rem]">
+                <h1 className="mt-5 max-w-[11ch] text-5xl font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-[-0.045em] text-text sm:max-w-[13ch] sm:text-6xl lg:max-w-[10ch] lg:text-[4.6rem] xl:text-[5.2rem]">
                   {content.hero.headline}
                 </h1>
                 <p className="mt-6 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg sm:leading-8">
@@ -1578,7 +1577,7 @@ export function Homepage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.78fr),minmax(320px,0.92fr)] lg:items-start">
             <Reveal>
               <div className="max-w-[44rem]">
-                <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                   {content.problem.title}
                 </h2>
                 <div className="mt-5 space-y-4 text-base leading-8 text-text-soft sm:text-lg">
@@ -1600,13 +1599,13 @@ export function Homepage() {
                     <ul className="mt-3 space-y-3 text-sm leading-6 text-text-soft">
                       {content.problem.sideCard.before.map((b) => (
                         <li key={b} className="flex gap-2">
-                          <span className="text-[#d46b55]">•</span>
+                          <span className="text-error">•</span>
                           <span>{b}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-[24px] border border-[rgba(59,164,106,0.28)] bg-[rgba(59,164,106,0.07)] p-5">
+                  <div className="rounded-[24px] border border-[rgba(74,222,128,0.28)] bg-[rgba(74,222,128,0.07)] p-5">
                     <div className="text-sm font-semibold text-text">{content.ui.afterLabel}</div>
                     <ul className="mt-3 space-y-3 text-sm leading-6 text-text-soft">
                       {content.problem.sideCard.after.map((b) => (
@@ -1624,7 +1623,7 @@ export function Homepage() {
 
           <div className="mt-12">
             <Reveal>
-              <h3 className="text-2xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-3xl">
+              <h3 className="text-2xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-3xl">
                 {content.applications.title}
               </h3>
             </Reveal>
@@ -1652,7 +1651,7 @@ export function Homepage() {
         <Section id="how">
           <Reveal>
             <div className="max-w-[44rem]">
-              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                 {content.howItWorks.title}
               </h2>
               <p className="mt-4 text-base leading-8 text-text-soft sm:text-lg">
@@ -1666,12 +1665,12 @@ export function Homepage() {
               <Reveal key={step.title} delayMs={idx * 90}>
                 <div className="group h-full rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-6 shadow-[var(--shadowSm)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-base font-semibold text-accent">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.08)] text-base font-semibold text-accent">
                       {idx + 1}
                     </span>
-                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(243,207,122,0.28),rgba(243,207,122,0))]" />
+                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(226,200,126,0.28),rgba(226,200,126,0))]" />
                   </div>
-                  <h3 className="mt-6 text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                  <h3 className="mt-6 text-2xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
                     {step.title}
                   </h3>
                   <p className="mt-3 text-sm leading-7 text-text-soft sm:text-base">{step.body}</p>
@@ -1700,7 +1699,7 @@ export function Homepage() {
 
         <Section id="playbooks">
           <Reveal>
-            <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+            <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
               {content.capabilities.title}
             </h2>
           </Reveal>
@@ -1717,7 +1716,7 @@ export function Homepage() {
                     <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
                       <Icon className="h-5 w-5" />
                     </span>
-                    <div className="mt-4 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+                    <div className="mt-4 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
                       {item.title}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-text-soft">{item.body}</p>
@@ -1744,7 +1743,7 @@ export function Homepage() {
                 <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                   {capability?.label}
                 </div>
-                <h3 className="mt-3 max-w-[18ch] text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                <h3 className="mt-3 max-w-[18ch] text-3xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
                   {capability?.title}
                 </h3>
                 <ul className="mt-6 space-y-4 text-base leading-8 text-text-soft">
@@ -1768,7 +1767,7 @@ export function Homepage() {
           <div className="grid gap-8 xl:grid-cols-[minmax(0,0.82fr),minmax(320px,0.96fr)] xl:items-start">
             <Reveal>
               <div className="max-w-[42rem]">
-                <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                   {content.decisionPack.title}
                 </h2>
                 <ul className="mt-5 space-y-3 text-base leading-8 text-text-soft sm:text-lg">
@@ -1812,7 +1811,7 @@ export function Homepage() {
                   <div className="text-[11px] tracking-[0.16em] uppercase text-text-soft">
                     {content.ui.decisionPackPreview.deliverablesLabel}
                   </div>
-                  <div className="mt-3 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+                  <div className="mt-3 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
                     {label}
                   </div>
                   <div className="mt-2 text-sm leading-6 text-text-soft">
@@ -1827,7 +1826,7 @@ export function Homepage() {
         <Section id={content.security.id}>
           <Reveal>
             <div className="max-w-[44rem]">
-              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                 {content.security.title}
               </h2>
             </div>
@@ -1853,7 +1852,7 @@ export function Homepage() {
         <Section id={content.pricing.id}>
           <Reveal>
             <div className="max-w-[38rem]">
-              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                 {content.pricing.title}
               </h2>
             </div>
@@ -1877,7 +1876,7 @@ export function Homepage() {
                   className={cn(
                     'flex h-full flex-col rounded-[34px] border p-7 shadow-[var(--shadowMd)]',
                     index === 0
-                      ? 'border-[color:rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(22,35,28,0.97),rgba(16,27,21,0.99))]'
+                      ? 'border-[color:rgba(226,200,126,0.28)] bg-[linear-gradient(180deg,rgba(19,19,22,0.97),rgba(19,19,22,0.99))]'
                       : 'border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))]'
                   )}
                 >
@@ -1887,7 +1886,7 @@ export function Homepage() {
                       : content.pricing.toggleLabels[1]}
                   </div>
                   <div className="mt-4 flex items-baseline justify-between gap-4">
-                    <div className="text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                    <div className="text-2xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
                       {p.name}
                     </div>
                     <div className="text-base text-text-soft">{p.price}</div>
@@ -1925,7 +1924,7 @@ export function Homepage() {
         <Section>
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.72fr),minmax(320px,1fr)] lg:items-start">
             <Reveal>
-              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                 {content.faq.title}
               </h2>
               <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
@@ -1965,10 +1964,10 @@ export function Homepage() {
 
         <Section className="pt-0">
           <Reveal>
-            <div className="rounded-[38px] border border-[color:rgba(201,151,62,0.22)] bg-[radial-gradient(circle_at_top_right,rgba(201,151,62,0.14),transparent_26%),linear-gradient(135deg,rgba(27,43,36,0.97),rgba(16,26,21,0.99))] p-8 shadow-[var(--shadowSm)] sm:p-10 lg:p-14">
+            <div className="rounded-[38px] border border-[color:rgba(226,200,126,0.22)] bg-[radial-gradient(circle_at_top_right,rgba(226,200,126,0.14),transparent_26%),linear-gradient(135deg,rgba(24,24,27,0.97),rgba(19,19,22,0.99))] p-8 shadow-[var(--shadowSm)] sm:p-10 lg:p-14">
               <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr),minmax(280px,0.7fr)] lg:items-center">
                 <div>
-                  <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                  <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                     {content.finalCta.title}
                   </h2>
                   <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
@@ -2006,7 +2005,7 @@ export function Homepage() {
                   <div className="mt-4 space-y-3">
                     <div className="h-10 rounded-[14px] bg-[rgba(255,255,255,0.08)]" />
                     <div className="h-10 rounded-[14px] bg-[rgba(255,255,255,0.08)]" />
-                    <div className="h-10 rounded-[14px] border border-[color:var(--highlight)] bg-[rgba(243,207,122,0.16)]" />
+                    <div className="h-10 rounded-[14px] border border-[color:var(--highlight)] bg-[rgba(226,200,126,0.16)]" />
                   </div>
                 </div>
               </div>
@@ -2019,7 +2018,7 @@ export function Homepage() {
           <div className="max-w-[1280px] mx-auto px-5 sm:px-8 lg:px-[72px] py-14">
             <div className="grid gap-10 lg:grid-cols-[2fr,10fr]">
               <div>
-                <div className="text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                <div className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
                   {content.brand.name}
                 </div>
                 <div className="mt-2 text-text-soft">{content.brand.tagline}</div>

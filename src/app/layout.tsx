@@ -1,5 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { Source_Serif_4, Inter, JetBrains_Mono } from 'next/font/google';
+import {
+  Instrument_Serif,
+  Inter,
+  JetBrains_Mono,
+  Plus_Jakarta_Sans,
+  Source_Serif_4,
+} from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { MsalProvider } from '@/components/providers/MsalProvider';
@@ -16,6 +22,19 @@ const sourceSerif = Source_Serif_4({
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-instrument-serif',
+  display: 'swap',
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta',
   display: 'swap',
 });
 
@@ -100,7 +119,7 @@ export default async function RootLayout({
       lang={locale}
       dir={dir}
       data-theme="dark"
-      className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${plusJakartaSans.variable}`}
       suppressHydrationWarning
     >
       <body>
