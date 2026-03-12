@@ -1255,19 +1255,6 @@ function HeroVisualScene({
         </div>
       </div>
 
-      <div
-        className={cn(
-          "pointer-events-none absolute top-[14%] w-[170px] rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(18,28,23,0.85)] p-4 backdrop-blur-sm shadow-[0_20px_60px_rgba(3,10,7,0.22)]",
-          isRtl ? "-left-4 lg:-left-8" : "-right-4 lg:-right-8",
-          floatClass
-        )}
-        style={reducedMotion ? undefined : { animationDelay: "900ms" }}
-      >
-        <div className="text-[10px] tracking-[0.18em] uppercase text-text-soft">
-          {content.ui.mock.uiMockLabel}
-        </div>
-        <div className="mt-2 text-sm leading-6 text-text">{content.ui.mock.exceptionsQueueBody}</div>
-      </div>
     </div>
   );
 }
