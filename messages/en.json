@@ -1204,13 +1204,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Private AI document analysis for sensitive workflows",
-      "description": "Analyze sensitive documents with AI, verify the result, and export review-ready packs."
+      "title": "Zohal — AI document analysis for important work",
+      "description": "Analyze important documents with AI, verify the result, and export review-ready packs."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Private AI document analysis for sensitive workflows.",
+        "tagline": "AI document analysis for important work.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -1258,7 +1258,7 @@
         }
       },
       "hero": {
-        "headline": "Private AI for sensitive documents.",
+        "headline": "AI for important documents.",
         "subhead": "Analyze with AI. Verify. Export review-ready packs.",
         "ctas": [
           {
@@ -1272,7 +1272,7 @@
             "href": "#decision-pack"
           }
         ],
-        "proofLine": "Private document handling • Arabic + English ready • Second-pass AI checking",
+        "proofLine": "Careful document handling • Arabic + English ready • Second-pass AI checking",
         "mock": {
           "title": "Sample output",
           "panels": [
@@ -1292,7 +1292,7 @@
         ]
       },
       "problem": {
-        "title": "Use AI on sensitive documents without losing control.",
+        "title": "Use AI on important documents without losing control.",
         "body": [
           "Most document AI tools give you a fast answer, but leave open questions about privacy, storage, region, and whether the output is ready to use.",
           "Zohal is built for teams that want AI speed, clearer handling, earlier conflict checks, and outputs people can actually use."
@@ -1411,7 +1411,7 @@
           },
           {
             "id": "review",
-            "label": "Private handling",
+            "label": "Controlled handling",
             "title": "Privacy, locality, and access stay part of the workflow.",
             "bullets": [
               "Regional options cover supported GCP regions including Saudi, UAE, and the US",
@@ -1640,7 +1640,7 @@
         "items": [
           {
             "id": "proof",
-            "q": "How does Zohal use AI on sensitive documents?",
+            "q": "How does Zohal use AI on important documents?",
             "a": "Zohal analyzes the document, then runs a second verification pass so weak or unsupported results stay marked for review."
           },
           {
