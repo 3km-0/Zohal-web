@@ -37,7 +37,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     };
 
     const interactiveStyles = interactive
-      ? 'cursor-pointer transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent'
+      ? 'cursor-pointer transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-[color:var(--accent-dim)]'
       : '';
 
     return (
@@ -73,7 +73,7 @@ const CardTitle = forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn('text-lg font-semibold text-text', className)}
+    className={cn('font-serif text-lg font-normal text-text', className)}
     {...props}
   />
 ));
@@ -106,4 +106,3 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 CardFooter.displayName = 'CardFooter';
 
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };
-

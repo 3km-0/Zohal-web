@@ -20,7 +20,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     const variants = {
       default: 'bg-surface border border-border text-text-soft',
       success: 'bg-success/10 border border-success/20 text-success',
-      warning: 'bg-highlight/10 border border-highlight/20 text-highlight',
+      warning: 'bg-warning/10 border border-warning/20 text-warning',
       error: 'bg-error/10 border border-error/20 text-error',
       accent: 'bg-accent/10 border border-accent/20 text-accent',
     };
@@ -33,7 +33,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     const dotColors = {
       default: 'bg-text-soft',
       success: 'bg-success',
-      warning: 'bg-highlight',
+      warning: 'bg-warning',
       error: 'bg-error',
       accent: 'bg-accent',
     };
@@ -58,4 +58,3 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 Badge.displayName = 'Badge';
 
 export { Badge };
-

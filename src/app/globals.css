@@ -7,24 +7,33 @@
 /* Scholar Design System - CSS Variables */
 :root {
   /* Light Theme (Default) */
-  --bg: #f9f7f4;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-alt: #f5f3f0;
-  --text: #1a2f23;
-  --text-soft: #5d6b64;
-  --border: #e0dcd4;
-  --accent: #2d8878;
-  --accent-alt: #c9973e;
-  --success: #22c55e;
-  --error: #ef4444;
-  --highlight: #c9973e;
-  --grid-color: rgba(0, 0, 0, 0.03);
-  --grid-opacity: 1;
+  --surface-alt: #fafaf9;
+  --text: #1c1917;
+  --text-soft: #78716c;
+  --text-muted: #a8a29e;
+  --border: #e7e5e4;
+  --accent: #0d9488;
+  --accent-alt: #0f766e;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.06);
+  --highlight: #134e4a;
+  --accent-soft: rgba(13, 148, 136, 0.08);
+  --accent-dim: rgba(13, 148, 136, 0.04);
+  --accent-text: #ffffff;
+  --button-primary-bg: #1c1917;
+  --button-primary-bg-hover: #292524;
+  --button-primary-text: #ffffff;
+  --grid-color: transparent;
+  --grid-opacity: 0;
   --grid-size: 20px;
 
   /* Font Variables */
-  --font-source-serif: 'Source Serif 4', Georgia, serif;
-  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-source-serif: 'Instrument Serif', Georgia, serif;
+  --font-inter: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-instrument-serif: 'Instrument Serif', Georgia, serif;
   --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
@@ -34,93 +43,105 @@
   --rMd: 10px;
   --rLg: 16px;
   --rPill: 999px;
-  --shadowSm: 0 4px 24px rgba(0, 0, 0, 0.06);
-  --shadowMd: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadowSm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadowMd: 0 4px 12px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.06);
+  --nav-bg-top: rgba(255, 255, 255, 0.78);
+  --nav-bg-scrolled: rgba(255, 255, 255, 0.92);
+  --nav-border: rgba(28, 25, 23, 0.08);
 }
 
-/* Dark Theme (Default = Scholar Dark — green-black chalkboard) */
+/* Dark Theme (Default app mode) */
 [data-theme='dark'] {
-  --bg: #141f1a;
-  --surface: #1c2b24;
-  --surface-alt: rgba(255, 255, 255, 0.03);
-
-  --text: #e8e4dc;
-  --text-soft: rgba(232, 228, 220, 0.6);
-
-  --border: rgba(255, 255, 255, 0.08);
-
-  --accent: #c9973e;
-  --highlight: #f3cf7a;
-  --accent-alt: #e0d3b5;
-
-  --success: #3ba46a;
-  --error: #d46b55;
-
-  --grid-color: rgba(255, 255, 255, 0.012);
-  --grid-opacity: 0.55;
-  --grid-size: 30px;
-
-  --shadowSm: 0 16px 52px rgba(3, 10, 7, 0.18);
-  --shadowMd: 0 24px 80px rgba(3, 10, 7, 0.28);
-
-  --nav-bg-top: rgba(20, 31, 26, 0.4);
-  --nav-bg-scrolled: rgba(20, 31, 26, 0.82);
-  --nav-border: rgba(255, 255, 255, 0.05);
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-alt: #1e1e22;
+  --text: #f5f0e6;
+  --text-soft: rgba(245, 240, 230, 0.55);
+  --text-muted: rgba(245, 240, 230, 0.35);
+  --border: rgba(255, 255, 255, 0.06);
+  --accent: #e2c87e;
+  --highlight: #f5f0e6;
+  --accent-alt: #e2c87e;
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #e2c87e;
+  --warning-soft: rgba(226, 200, 126, 0.12);
+  --accent-soft: rgba(226, 200, 126, 0.15);
+  --accent-dim: rgba(226, 200, 126, 0.08);
+  --accent-text: #1a1a1a;
+  --button-primary-bg: #e2c87e;
+  --button-primary-bg-hover: #ead79c;
+  --button-primary-text: #1a1a1a;
+  --grid-color: transparent;
+  --grid-opacity: 0;
+  --grid-size: 20px;
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36);
+  --nav-bg-top: rgba(9, 9, 11, 0.72);
+  --nav-bg-scrolled: rgba(9, 9, 11, 0.88);
+  --nav-border: rgba(255, 255, 255, 0.06);
 }
 
 [data-theme='scholar-dark'] {
-  --bg: #141f1a;
-  --surface: #1c2b24;
-  --surface-alt: rgba(255, 255, 255, 0.03);
-
-  --text: #e8e4dc;
-  --text-soft: rgba(232, 228, 220, 0.6);
-
-  --border: rgba(255, 255, 255, 0.08);
-
-  --accent: #c9973e;
-  --highlight: #f3cf7a;
-  --accent-alt: #e0d3b5;
-
-  --success: #3ba46a;
-  --error: #d46b55;
-
-  --grid-color: rgba(255, 255, 255, 0.012);
-  --grid-opacity: 0.55;
-  --grid-size: 30px;
-  --shadowSm: 0 16px 52px rgba(3, 10, 7, 0.18);
-  --shadowMd: 0 24px 80px rgba(3, 10, 7, 0.28);
-
-  --nav-bg-top: rgba(20, 31, 26, 0.4);
-  --nav-bg-scrolled: rgba(20, 31, 26, 0.82);
-  --nav-border: rgba(255, 255, 255, 0.05);
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-alt: #1e1e22;
+  --text: #f5f0e6;
+  --text-soft: rgba(245, 240, 230, 0.55);
+  --text-muted: rgba(245, 240, 230, 0.35);
+  --border: rgba(255, 255, 255, 0.06);
+  --accent: #e2c87e;
+  --highlight: #f5f0e6;
+  --accent-alt: #e2c87e;
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #e2c87e;
+  --warning-soft: rgba(226, 200, 126, 0.12);
+  --accent-soft: rgba(226, 200, 126, 0.15);
+  --accent-dim: rgba(226, 200, 126, 0.08);
+  --accent-text: #1a1a1a;
+  --button-primary-bg: #e2c87e;
+  --button-primary-bg-hover: #ead79c;
+  --button-primary-text: #1a1a1a;
+  --grid-color: transparent;
+  --grid-opacity: 0;
+  --grid-size: 20px;
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36);
+  --nav-bg-top: rgba(9, 9, 11, 0.72);
+  --nav-bg-scrolled: rgba(9, 9, 11, 0.88);
+  --nav-border: rgba(255, 255, 255, 0.06);
 }
 
 /* Scholar Neutral (alias; used by marketing page) */
 [data-theme='scholar-neutral'] {
-  --bg: #18181b;
-  --surface: #27272a;
-  --surface-alt: #303033;
-
-  --text: #e8e4dc;
-  --text-soft: rgba(232, 228, 220, 0.55);
-
-  --border: rgba(255, 255, 255, 0.1);
-
-  --accent: #c9973e;
-  --highlight: #f3cf7a;
-  --accent-alt: #e0d3b5;
-
-  --success: #22c55e;
-  --error: #ef4444;
-
-  --grid-color: rgba(255, 255, 255, 0.03);
-  --grid-opacity: 0.7;
-  --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
-  --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
-
-  --nav-bg-top: rgba(24, 24, 27, 0.55);
-  --nav-bg-scrolled: rgba(24, 24, 27, 0.85);
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-alt: #1e1e22;
+  --text: #f5f0e6;
+  --text-soft: rgba(245, 240, 230, 0.55);
+  --text-muted: rgba(245, 240, 230, 0.35);
+  --border: rgba(255, 255, 255, 0.06);
+  --accent: #e2c87e;
+  --highlight: #f5f0e6;
+  --accent-alt: #e2c87e;
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #e2c87e;
+  --warning-soft: rgba(226, 200, 126, 0.12);
+  --accent-soft: rgba(226, 200, 126, 0.15);
+  --accent-dim: rgba(226, 200, 126, 0.08);
+  --accent-text: #1a1a1a;
+  --button-primary-bg: #e2c87e;
+  --button-primary-bg-hover: #ead79c;
+  --button-primary-text: #1a1a1a;
+  --grid-color: transparent;
+  --grid-opacity: 0;
+  --grid-size: 20px;
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36);
+  --nav-bg-top: rgba(9, 9, 11, 0.72);
+  --nav-bg-scrolled: rgba(9, 9, 11, 0.88);
   --nav-border: rgba(255, 255, 255, 0.06);
 }
 
@@ -196,10 +217,10 @@ html {
 }
 
 body {
-  font-family: var(--font-source-serif);
+  font-family: var(--font-plus-jakarta);
   background-color: var(--bg);
   color: var(--text);
-  line-height: 1.75;
+  line-height: 1.55;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -264,10 +285,16 @@ body {
   /* Button Primary */
   .scholar-btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 
-           bg-accent text-white font-semibold rounded-scholar
+           font-semibold rounded-scholar
            transition-all duration-200
-           hover:opacity-90 hover:-translate-y-0.5
+           hover:-translate-y-0.5
            active:translate-y-0;
+    background: var(--button-primary-bg);
+    color: var(--button-primary-text);
+  }
+
+  .scholar-btn-primary:hover {
+    background: var(--button-primary-bg-hover);
   }
 
   /* Button Secondary */
@@ -275,7 +302,12 @@ body {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 
            bg-surface border border-border text-text font-semibold rounded-scholar
            transition-all duration-200
-           hover:border-accent hover:text-accent;
+           hover:bg-surface-alt;
+    border-color: var(--border);
+  }
+
+  .scholar-btn-secondary:hover {
+    border-color: var(--button-primary-bg);
   }
 
   /* Input */
@@ -283,7 +315,11 @@ body {
     @apply w-full px-4 py-3 bg-surface border border-border rounded-scholar
            text-text placeholder:text-text-soft
            transition-colors duration-200
-           focus:border-accent focus:ring-0;
+           focus:ring-0;
+  }
+
+  .scholar-input:focus {
+    border-color: var(--button-primary-bg);
   }
 
   /* Badge */

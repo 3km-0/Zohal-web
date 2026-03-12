@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import {
   Instrument_Serif,
-  Inter,
   JetBrains_Mono,
   Plus_Jakarta_Sans,
-  Source_Serif_4,
 } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -13,13 +11,14 @@ import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
 import { absoluteUrl } from '@/lib/seo';
 import './globals.css';
 
-const sourceSerif = Source_Serif_4({
+const sourceSerif = Instrument_Serif({
   subsets: ['latin'],
+  weight: '400',
   variable: '--font-source-serif',
   display: 'swap',
 });
 
-const inter = Inter({
+const inter = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',

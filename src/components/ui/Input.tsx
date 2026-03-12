@@ -30,8 +30,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             'w-full min-h-[44px] px-4 py-3 bg-surface border rounded-scholar',
             'text-text placeholder:text-text-soft',
             'transition-colors duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-highlight focus:ring-offset-2 focus:ring-offset-background',
-            error ? 'border-error' : 'border-border focus:border-highlight',
+            'focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)] focus:ring-offset-2 focus:ring-offset-background',
+            error ? 'border-error' : 'border-border focus:border-[color:var(--button-primary-bg)]',
             className
           )}
           {...props}
@@ -48,4 +48,3 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 Input.displayName = 'Input';
 
 export { Input };
-

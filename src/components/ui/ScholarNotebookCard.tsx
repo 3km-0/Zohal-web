@@ -47,7 +47,7 @@ export const ScholarNotebookCard = forwardRef<HTMLDivElement, ScholarNotebookCar
         {hasHeader && (
           <div className="px-4 py-3 bg-surface-alt border-b border-border">
             {header ? (
-              <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
+              <span className="text-[11px] font-semibold text-text-muted uppercase tracking-[1.2px]">
                 {header}
               </span>
             ) : (
@@ -74,7 +74,7 @@ export function ScholarOverline({ children, className, ...props }: ScholarOverli
   return (
     <span
       className={cn(
-        'text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]',
+        'text-[11px] font-semibold text-text-muted uppercase tracking-[1.2px]',
         className
       )}
       {...props}
