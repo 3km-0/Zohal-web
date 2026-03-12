@@ -219,6 +219,23 @@ function useScrolled(thresholdPx = 12) {
   return isScrolled;
 }
 
+function useReducedMotion() {
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(media.matches);
+
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return reducedMotion;
+}
+
 function useInViewOnce<T extends Element>(options?: IntersectionObserverInit) {
   const ref = useRef<T | null>(null);
   const [isInView, setIsInView] = useState(false);
@@ -494,6 +511,83 @@ function MarketingModal({
   );
 }
 
+function HeroAmbient({
+  locale,
+  reducedMotion,
+  statusLabel,
+}: {
+  locale: string;
+  reducedMotion: boolean;
+  statusLabel: string;
+}) {
+  const driftClass = reducedMotion ? '' : 'homepage-ambient-drift';
+  const pulseClass = reducedMotion ? '' : 'homepage-ambient-pulse';
+  const scanClass = reducedMotion ? '' : 'homepage-ambient-scan';
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="homepage-ambient-vignette absolute inset-0" />
+      <div className="homepage-ambient-radial absolute inset-0" />
+      <div
+        className={cn(
+          'absolute top-[10%] h-[420px] w-[420px] rounded-full bg-[rgba(201,151,62,0.09)] blur-3xl',
+          locale === 'ar' ? 'left-[-120px]' : 'right-[-120px]',
+          pulseClass
+        )}
+      />
+      <div
+        className={cn(
+          'absolute bottom-[-120px] h-[360px] w-[360px] rounded-full bg-[rgba(45,136,120,0.12)] blur-3xl',
+          locale === 'ar' ? 'right-[-120px]' : 'left-[-120px]',
+          pulseClass
+        )}
+        style={{ animationDelay: '900ms' }}
+      />
+      <div
+        className={cn(
+          'absolute top-[14%] w-[280px] rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 backdrop-blur-[2px]',
+          locale === 'ar' ? 'right-[7%] rotate-[8deg]' : 'left-[7%] -rotate-[8deg]',
+          driftClass
+        )}
+      >
+        <div className="h-3 w-24 rounded-full bg-[rgba(255,255,255,0.12)]" />
+        <div className="mt-4 space-y-2.5">
+          <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]" />
+          <div className="h-2 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+          <div className="h-2 w-9/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+        </div>
+        <div className="mt-5 rounded-[18px] border border-[rgba(201,151,62,0.26)] bg-[rgba(201,151,62,0.08)] p-3">
+          <div className="h-2 w-8/12 rounded-full bg-[rgba(243,207,122,0.3)]" />
+          <div className="mt-2 h-2 w-6/12 rounded-full bg-[rgba(243,207,122,0.2)]" />
+        </div>
+      </div>
+      <div
+        className={cn(
+          'absolute bottom-[16%] w-[240px] rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(14,21,18,0.55)] p-4 shadow-[0_20px_60px_rgba(2,10,7,0.25)]',
+          locale === 'ar' ? 'left-[10%] -rotate-[10deg]' : 'right-[10%] rotate-[10deg]',
+          driftClass
+        )}
+        style={{ animationDelay: '1400ms' }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-2.5 w-16 rounded-full bg-[rgba(255,255,255,0.12)]" />
+          <div className="rounded-full border border-[rgba(59,164,106,0.35)] bg-[rgba(59,164,106,0.16)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
+            {statusLabel}
+          </div>
+        </div>
+        <div className="mt-4 h-14 rounded-[16px] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]" />
+      </div>
+      <div
+        className={cn(
+          'absolute top-[26%] h-[420px] w-[1px] bg-[linear-gradient(180deg,rgba(243,207,122,0),rgba(243,207,122,0.32),rgba(243,207,122,0))]',
+          locale === 'ar' ? 'right-[32%]' : 'left-[32%]',
+          scanClass
+        )}
+      />
+    </div>
+  );
+}
+
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
     <div className="rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 shadow-[var(--shadowSm)]">
@@ -523,7 +617,7 @@ function Card({
   return (
     <div
       className={cn(
-        'rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]',
+        'flex h-full flex-col rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]',
         onClick &&
           'cursor-pointer transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent'
       )}
@@ -554,7 +648,7 @@ function Card({
           </li>
         ))}
       </ul>
-      {footer ? <div className="mt-5">{footer}</div> : null}
+      {footer ? <div className="mt-auto pt-5">{footer}</div> : null}
     </div>
   );
 }
@@ -909,91 +1003,123 @@ function DecisionPackMock() {
   ] as const;
 
   return (
-    <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] shadow-[var(--shadowMd)] overflow-hidden">
-      <div className="px-6 py-5 border-b border-border flex items-start justify-between gap-4">
+    <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(29,44,37,0.98),rgba(18,28,23,0.98))] shadow-[0_28px_90px_rgba(3,10,7,0.34)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(243,207,122,0),rgba(243,207,122,0.35),rgba(243,207,122,0))]" />
+      <div className="absolute -right-20 top-10 h-40 w-40 rounded-full bg-[rgba(201,151,62,0.12)] blur-3xl" />
+      <div className="absolute -left-12 bottom-12 h-32 w-32 rounded-full bg-[rgba(45,136,120,0.14)] blur-3xl" />
+
+      <div className="relative flex items-start justify-between gap-4 border-b border-[rgba(255,255,255,0.06)] px-6 py-5">
         <div>
-          <div className="text-xs tracking-[0.18em] uppercase text-text-soft">
+          <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
             {content.ui.mock.decisionPackLabel}
           </div>
-          <div className="mt-2 text-xl font-semibold text-text">{content.ui.mock.samplePackTitle}</div>
+          <div className="mt-2 max-w-[28ch] text-xl font-[family:var(--font-source-serif)] font-semibold text-text sm:text-2xl">
+            {content.ui.mock.samplePackTitle}
+          </div>
         </div>
         <div className="hidden sm:flex items-center gap-2">
-          <span className="px-3 py-1 rounded-[var(--rPill)] bg-[rgba(255,255,255,0.06)] text-xs font-semibold text-text-soft">
+          <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold text-text-soft">
             {content.ui.mock.reviewStatus}
           </span>
-          <span className="px-3 py-1 rounded-[var(--rPill)] bg-[rgba(59,164,106,0.18)] text-xs font-semibold text-success">
+          <span className="rounded-[var(--rPill)] border border-[rgba(59,164,106,0.34)] bg-[rgba(59,164,106,0.16)] px-3 py-1 text-[11px] font-semibold text-success">
             {content.ui.mock.verifiedStatus}
           </span>
         </div>
       </div>
 
-      <div className="p-6 grid gap-4">
-        <div className="grid gap-4 xl:grid-cols-[180px,1fr]">
-          <div className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4">
-            <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
-              {content.ui.mock.documentViewer}
+      <div className="relative grid gap-5 p-6">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr),minmax(280px,0.85fr)]">
+          <div className="rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+                {content.ui.mock.documentViewer}
+              </div>
+              <div className="rounded-[var(--rPill)] bg-[rgba(255,255,255,0.04)] px-2.5 py-1 text-[10px] tracking-[0.16em] uppercase text-text-soft">
+                PDF
+              </div>
             </div>
-            <div className="mt-4 space-y-3">
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-11/12" />
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-9/12" />
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-10/12" />
-              <div className="h-3 rounded bg-[rgba(255,255,255,0.06)] w-8/12" />
-              <div className="rounded-[18px] border border-accent bg-[rgba(201,151,62,0.08)] p-3 text-sm leading-7 text-accent">
+            <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.06)] bg-[rgba(8,14,11,0.24)] p-5">
+              <div className="space-y-3">
+                <div className="h-2.5 w-11/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+                <div className="h-2.5 w-8/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+                <div className="h-2.5 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+                <div className="h-2.5 w-7/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+              </div>
+              <div className="mt-5 rounded-[20px] border border-[rgba(201,151,62,0.3)] bg-[rgba(201,151,62,0.08)] p-4 text-sm leading-7 text-accent">
                 {content.ui.mock.highlightSnippet}
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
-              {content.ui.mock.verifiedVariables}
-            </div>
-            {factRows.map((row) => (
-              <div
-                key={row.label}
-                className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-semibold text-text-soft">{row.label}</div>
-                  <span
-                    className={cn(
-                      'px-2.5 py-1 rounded-[var(--rPill)] text-[11px] font-semibold',
-                      row.accent === 'success'
-                        ? 'bg-[rgba(59,164,106,0.18)] text-success'
-                        : 'border border-[color:var(--accent-alt)] text-accent'
-                    )}
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {[4, 12].map((page) => (
+                  <div
+                    key={page}
+                    className="rounded-[18px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] p-3"
                   >
-                    {row.status}
-                  </span>
-                </div>
-                <div className="mt-2 text-base text-text">{row.value}</div>
+                    <div className="text-xs text-text-soft">{pageLabel(page)}</div>
+                    <div className="mt-2 h-12 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
+                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(243,207,122,0.24)]" />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-[24px] border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.06)] p-5">
-          <div className="text-xs tracking-[0.16em] uppercase text-accent">
-            {content.ui.mock.exceptionsQueueTitle}
-          </div>
-          <div className="mt-3 text-xl leading-relaxed text-text">{content.ui.mock.exceptionsQueueBody}</div>
-        </div>
-
-        <div className="border-t border-border pt-4">
-          <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
-            {content.ui.mock.fieldEvidenceLabel}
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {[4, 12].map((page) => (
-              <div
-                key={page}
-                className="rounded-[18px] border border-border bg-[rgba(255,255,255,0.02)] p-3"
-              >
-                <div className="text-xs text-text-soft">{pageLabel(page)}</div>
-                <div className="mt-2 h-14 rounded bg-[rgba(255,255,255,0.06)]" />
-                <div className="mt-2 h-2 rounded bg-[rgba(243,207,122,0.2)] w-10/12" />
+          <div className="space-y-4">
+            <div>
+              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+                {content.ui.mock.verifiedVariables}
               </div>
-            ))}
+              <div className="mt-4 space-y-3">
+                {factRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold text-text-soft">{row.label}</div>
+                      <span
+                        className={cn(
+                          'rounded-[var(--rPill)] px-2.5 py-1 text-[11px] font-semibold',
+                          row.accent === 'success'
+                            ? 'border border-[rgba(59,164,106,0.32)] bg-[rgba(59,164,106,0.16)] text-success'
+                            : 'border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.06)] text-accent'
+                        )}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-base text-text">{row.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[color:var(--accent-alt)] bg-[linear-gradient(180deg,rgba(201,151,62,0.12),rgba(201,151,62,0.05))] p-5">
+              <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
+                {content.ui.mock.exceptionsQueueTitle}
+              </div>
+              <div className="mt-3 text-lg leading-relaxed text-text sm:text-xl">
+                {content.ui.mock.exceptionsQueueBody}
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-5">
+              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+                {content.ui.mock.fieldEvidenceLabel}
+              </div>
+              <div className="mt-4 grid gap-2">
+                {[pageLabel(4), pageLabel(12)].map((label) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between rounded-[18px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3"
+                  >
+                    <span className="text-sm text-text">{label}</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-text-soft">
+                      {content.ui.mock.evidence}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1099,6 +1225,9 @@ function extractYouTubeId(input: string | undefined) {
 
 export function Homepage() {
   const content = useMarketingHomeContent();
+  const locale = useLocale();
+  const isRtl = locale === 'ar';
+  const reducedMotion = useReducedMotion();
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
@@ -1162,93 +1291,125 @@ export function Homepage() {
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
-        {/* Hero */}
-        <Section className="pt-12 sm:pt-16 lg:pt-24">
-          <div className="grid gap-12 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
-            <Reveal>
-              <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
-                {content.ui.mentalModelLine}
-              </div>
-              <h1 className="mt-5 max-w-[18ch] text-5xl sm:text-6xl lg:text-7xl leading-[1.02] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
-                {content.hero.headline}
-              </h1>
-              <p className="mt-7 text-lg sm:text-[1.35rem] text-text-soft leading-relaxed max-w-[32ch]">
-                {content.hero.subhead}
-              </p>
+        <Section className="pt-8 sm:pt-12 lg:pt-16">
+          <div className="relative overflow-hidden rounded-[40px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(22,35,28,0.98),rgba(14,23,18,0.98))] px-6 py-8 shadow-[0_28px_90px_rgba(3,10,7,0.3)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+            <HeroAmbient
+              locale={locale}
+              reducedMotion={reducedMotion}
+              statusLabel={content.ui.mock.verifiedStatus}
+            />
+            <div className="relative z-10 grid gap-10 lg:grid-cols-[minmax(0,0.9fr),minmax(380px,1.1fr)] lg:items-center">
+              <Reveal className={cn(isRtl && 'lg:order-2')}>
+                <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
+                  {content.ui.mentalModelLine}
+                </div>
+                <h1 className="mt-5 max-w-[11ch] text-5xl font-[family:var(--font-source-serif)] font-bold leading-[0.96] tracking-[-0.045em] text-text sm:max-w-[13ch] sm:text-6xl lg:max-w-[10ch] lg:text-[4.6rem] xl:text-[5.2rem]">
+                  {content.hero.headline}
+                </h1>
+                <p className="mt-6 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg sm:leading-8">
+                  {content.hero.subhead}
+                </p>
 
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <PrimaryLinkButton
-                  href={heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href}
-                  onClick={() =>
-                    trackPrimaryCtaClick(
-                      'hero',
-                      heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href
-                    )
-                  }
-                >
-                  {heroPrimaryCta?.label ?? content.nav.actions.primaryCta.label}
-                </PrimaryLinkButton>
-                {demoVideoId ? (
-                  <SecondaryButton
-                    onClick={() => {
-                      trackMarketingEvent('cta_watch_demo_click');
-                      setIsDemoOpen(true);
-                    }}
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <PrimaryLinkButton
+                    href={heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href}
+                    onClick={() =>
+                      trackPrimaryCtaClick(
+                        'hero',
+                        heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href
+                      )
+                    }
                   >
-                    <PlayCircle className="h-4 w-4" />
-                    {content.ui.modal.openDemoLabel}
-                  </SecondaryButton>
-                ) : (
-                  <Link
-                    href={heroSecondaryCta?.href ?? '#decision-pack'}
-                    className={cn(
-                      'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
-                      'bg-transparent border border-border text-text font-semibold px-5 py-2.5',
-                      'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                      'hover:border-highlight hover:text-highlight',
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                    )}
-                  >
-                    {heroSecondaryCta?.label}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                )}
-              </div>
+                    {heroPrimaryCta?.label ?? content.nav.actions.primaryCta.label}
+                  </PrimaryLinkButton>
+                  {demoVideoId ? (
+                    <SecondaryButton
+                      onClick={() => {
+                        trackMarketingEvent('cta_watch_demo_click');
+                        setIsDemoOpen(true);
+                      }}
+                    >
+                      <PlayCircle className="h-4 w-4" />
+                      {content.ui.modal.openDemoLabel}
+                    </SecondaryButton>
+                  ) : (
+                    <Link
+                      href={heroSecondaryCta?.href ?? '#decision-pack'}
+                      className={cn(
+                        'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[var(--rSm)] border border-border px-5 py-2.5 font-semibold text-text transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                        'hover:border-highlight hover:text-highlight',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                      )}
+                    >
+                      {heroSecondaryCta?.label}
+                      <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
+                    </Link>
+                  )}
+                </div>
 
-              <div className="mt-10 border-t border-border pt-6">
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
                   {proofItems.map((item, index) => {
                     const Icon = proofIcons[index] ?? ShieldCheck;
                     return (
-                      <div key={item} className="flex items-center gap-3 text-sm text-text-soft">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-[rgba(255,255,255,0.02)] text-accent">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="max-w-[18ch]">{item}</span>
+                      <div
+                        key={item}
+                        className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="text-sm leading-6 text-text-soft">{item}</span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            </Reveal>
+              </Reveal>
 
-            <Reveal delayMs={90}>
-              <div className="lg:pl-4">
-                <DecisionPackMock />
-              </div>
-            </Reveal>
+              <Reveal delayMs={100} className={cn(isRtl && 'lg:order-1')}>
+                <div className="relative mx-auto max-w-[720px]">
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-[11px] tracking-[0.16em] uppercase text-text-soft">
+                      {content.hero.mock.title}
+                    </span>
+                    {content.hero.mock.panels.map((panel) => (
+                      <span
+                        key={panel}
+                        className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] px-3 py-1.5 text-xs text-text-soft"
+                      >
+                        {panel}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <div className={cn('absolute -top-5 hidden w-44 lg:block', isRtl ? '-left-5' : '-right-5')}>
+                      <div className="rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(18,28,23,0.82)] p-4 shadow-[0_20px_60px_rgba(3,10,7,0.26)] backdrop-blur-sm">
+                        <div className="text-[10px] tracking-[0.18em] uppercase text-text-soft">
+                          {content.ui.mock.uiMockLabel}
+                        </div>
+                        <div className="mt-2 text-sm leading-6 text-text">
+                          {content.ui.mock.exceptionsQueueBody}
+                        </div>
+                      </div>
+                    </div>
+                    <DecisionPackMock />
+                  </div>
+                </div>
+              </Reveal>
+            </div>
           </div>
 
-          <Reveal className="mt-10" delayMs={140}>
-            <div className="rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] px-6 py-5 shadow-[var(--shadowSm)]">
-              <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
+          <Reveal className="mt-6" delayMs={150}>
+            <div className="rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[var(--shadowSm)] sm:px-6">
+              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                 {content.credibilityStrip.label}
               </div>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 {content.credibilityStrip.items.map((item) => (
                   <div
                     key={item}
-                    className="rounded-[var(--rPill)] border border-border bg-[rgba(255,255,255,0.02)] px-4 py-2 text-sm text-text-soft"
+                    className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-4 py-2 text-sm text-text-soft"
                   >
                     {item}
                   </div>
@@ -1258,29 +1419,43 @@ export function Homepage() {
           </Reveal>
         </Section>
 
-        {/* Problem */}
+        <Section>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {content.stats.items.map((item, idx) => (
+              <Reveal key={item.value} delayMs={idx * 70}>
+                <StatCard value={item.value} label={item.label} />
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="mt-4 max-w-[70ch] text-sm text-text-soft" delayMs={140}>
+            {content.stats.footnote}
+          </Reveal>
+        </Section>
+
         <Section id="product">
-          <div className="grid gap-8 lg:grid-cols-[7fr,5fr] lg:items-start">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.78fr),minmax(320px,0.92fr)] lg:items-start">
             <Reveal>
-              <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-                {content.problem.title}
-              </h2>
-              <div className="mt-5 space-y-4 text-text-soft text-base sm:text-lg leading-relaxed">
-                {content.problem.body.map((p) => (
-                  <p key={p}>{p}</p>
-                ))}
+              <div className="max-w-[44rem]">
+                <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                  {content.problem.title}
+                </h2>
+                <div className="mt-5 space-y-4 text-base leading-8 text-text-soft sm:text-lg">
+                  {content.problem.body.map((p) => (
+                    <p key={p}>{p}</p>
+                  ))}
+                </div>
               </div>
             </Reveal>
 
-            <Reveal delayMs={90}>
-              <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] shadow-[var(--shadowSm)] p-6">
-                <div className="text-xs tracking-[0.16em] uppercase text-text-soft">
+            <Reveal delayMs={100}>
+              <div className="rounded-[32px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]">
+                <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                   {content.problem.sideCard.title}
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="rounded-[24px] border border-[rgba(212,107,85,0.3)] bg-[rgba(212,107,85,0.07)] p-5">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-[24px] border border-[rgba(212,107,85,0.28)] bg-[rgba(212,107,85,0.07)] p-5">
                     <div className="text-sm font-semibold text-text">{content.ui.beforeLabel}</div>
-                    <ul className="mt-3 space-y-3 text-sm text-text-soft">
+                    <ul className="mt-3 space-y-3 text-sm leading-6 text-text-soft">
                       {content.problem.sideCard.before.map((b) => (
                         <li key={b} className="flex gap-2">
                           <span className="text-[#d46b55]">•</span>
@@ -1291,7 +1466,7 @@ export function Homepage() {
                   </div>
                   <div className="rounded-[24px] border border-[rgba(59,164,106,0.28)] bg-[rgba(59,164,106,0.07)] p-5">
                     <div className="text-sm font-semibold text-text">{content.ui.afterLabel}</div>
-                    <ul className="mt-3 space-y-3 text-sm text-text-soft">
+                    <ul className="mt-3 space-y-3 text-sm leading-6 text-text-soft">
                       {content.problem.sideCard.after.map((b) => (
                         <li key={b} className="flex gap-2">
                           <span className="text-success">•</span>
@@ -1304,47 +1479,75 @@ export function Homepage() {
               </div>
             </Reveal>
           </div>
+
+          <div className="mt-12">
+            <Reveal>
+              <h3 className="text-2xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-3xl">
+                {content.applications.title}
+              </h3>
+            </Reveal>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {content.applications.cards.map((card, index) => (
+                <Reveal key={card.id} delayMs={index * 80}>
+                  <Card
+                    brandLabel={content.brand.name}
+                    title={card.title}
+                    subtitle={card.subtitle}
+                    bullets={card.bullets}
+                    footer={
+                      <TertiaryLink href={card.cta.href}>
+                        {card.cta.label}
+                        <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
+                      </TertiaryLink>
+                    }
+                  />
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </Section>
 
-        {/* How it works */}
         <Section id="how">
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-              {content.howItWorks.title}
-            </h2>
-            <p className="mt-4 text-text-soft text-base sm:text-lg max-w-[72ch]">
-              {content.howItWorks.subhead}
-            </p>
+            <div className="max-w-[44rem]">
+              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                {content.howItWorks.title}
+              </h2>
+              <p className="mt-4 text-base leading-8 text-text-soft sm:text-lg">
+                {content.howItWorks.subhead}
+              </p>
+            </div>
           </Reveal>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             {content.howItWorks.steps.map((step, idx) => (
               <Reveal key={step.title} delayMs={idx * 90}>
-                <div className="rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-sm font-semibold text-accent">
+                <div className="group h-full rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-6 shadow-[var(--shadowSm)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(201,151,62,0.08)] text-base font-semibold text-accent">
                       {idx + 1}
                     </span>
-                    <div className="text-xs tracking-[0.14em] uppercase text-text-soft">{content.brand.name}</div>
+                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(243,207,122,0.28),rgba(243,207,122,0))]" />
                   </div>
-                  <h3 className="mt-5 text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                  <h3 className="mt-6 text-2xl font-[family:var(--font-source-serif)] font-semibold text-text">
                     {step.title}
                   </h3>
-                  <p className="mt-3 text-text-soft leading-relaxed">{step.body}</p>
+                  <p className="mt-3 text-sm leading-7 text-text-soft sm:text-base">{step.body}</p>
                 </div>
               </Reveal>
             ))}
           </div>
 
-          <Reveal className="mt-8 flex flex-col sm:flex-row gap-3" delayMs={90}>
+          <Reveal className="mt-8 flex flex-col gap-3 sm:flex-row" delayMs={120}>
             <TertiaryLink href={content.howItWorks.ctas[0]?.href ?? '#decision-pack'}>
-              {content.howItWorks.ctas[0]?.label} →
+              {content.howItWorks.ctas[0]?.label}
+              <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
             </TertiaryLink>
             <Link
-              href={content.howItWorks.ctas[1]?.href ?? '#playbooks'}
+              href={content.howItWorks.ctas[1]?.href ?? '#security'}
               className={cn(
-                'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent',
-                'text-text font-semibold px-5 py-2.5 hover:border-highlight hover:text-highlight transition-colors duration-200',
+                'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
+                'hover:border-highlight hover:text-highlight',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
               )}
             >
@@ -1353,38 +1556,35 @@ export function Homepage() {
           </Reveal>
         </Section>
 
-        {/* Stats */}
-        <Section>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {spotlightCards.slice(0, 3).map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <Reveal key={item.id} delayMs={idx * 90}>
-                  <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))] px-6 py-8 shadow-[var(--shadowSm)]">
-                    <span className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-border bg-[rgba(255,255,255,0.02)] text-accent">
-                      <Icon className="h-8 w-8" />
-                    </span>
-                    <h3 className="mt-6 text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
-                      {item.title}
-                    </h3>
-                    <p className="mt-4 text-lg leading-relaxed text-text-soft">{item.body}</p>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-          <Reveal className="mt-4 text-sm text-text-soft" delayMs={120}>
-            {content.stats.footnote}
-          </Reveal>
-        </Section>
-
-        {/* Capabilities tabs */}
         <Section id="playbooks">
-          <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-              {content.capabilities.title}
-            </h2>
-          </Reveal>
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,0.92fr),minmax(320px,0.6fr)] xl:items-end">
+            <Reveal>
+              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                {content.capabilities.title}
+              </h2>
+            </Reveal>
+            <Reveal delayMs={80}>
+              <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+                {spotlightCards.slice(0, 3).map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-4"
+                    >
+                      <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div className="mt-4 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+                        {item.title}
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-text-soft">{item.body}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Reveal>
+          </div>
 
           <Reveal className="mt-8" delayMs={90}>
             <PillTabs
@@ -1397,18 +1597,18 @@ export function Homepage() {
             />
           </Reveal>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[7fr,5fr] lg:items-start">
+          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,0.92fr),minmax(300px,0.74fr)] lg:items-start">
             <Reveal delayMs={90}>
-              <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-7">
-                <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
+              <div className="rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-7 shadow-[var(--shadowSm)]">
+                <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                   {capability?.label}
                 </div>
-                <h3 className="mt-3 text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
+                <h3 className="mt-3 max-w-[18ch] text-3xl font-[family:var(--font-source-serif)] font-semibold text-text">
                   {capability?.title}
                 </h3>
-                <ul className="mt-5 space-y-3 text-text-soft">
+                <ul className="mt-6 space-y-4 text-base leading-8 text-text-soft">
                   {(capability?.bullets ?? []).map((b) => (
-                    <li key={b} className="flex gap-2">
+                    <li key={b} className="flex gap-3">
                       <span className="mt-[2px] text-highlight">•</span>
                       <span>{b}</span>
                     </li>
@@ -1417,77 +1617,81 @@ export function Homepage() {
               </div>
             </Reveal>
 
-            <Reveal delayMs={180}>
+            <Reveal delayMs={160}>
               <CapabilityPreviewCard />
             </Reveal>
           </div>
         </Section>
 
-        {/* Decision pack preview */}
         <Section id={content.decisionPack.id}>
-          <div className="grid gap-10 lg:grid-cols-[7fr,5fr] lg:items-start">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,0.82fr),minmax(320px,0.96fr)] xl:items-start">
             <Reveal>
-              <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-                {content.decisionPack.title}
-              </h2>
-              <ul className="mt-5 space-y-3 text-text-soft text-base sm:text-lg">
-                {content.decisionPack.bullets.map((b) => (
-                  <li key={b} className="flex gap-2">
-                    <span className="mt-[2px] text-highlight">•</span>
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-7 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {content.decisionPack.exportButtons.map((b) => (
-                  <button
-                    key={b}
-                    className={cn(
-                      'min-h-[44px] rounded-[16px] border border-border bg-[rgba(255,255,255,0.02)] px-3 text-sm font-semibold text-text',
-                      'hover:border-highlight hover:text-highlight transition-colors duration-200',
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                    )}
-                    type="button"
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
-            </Reveal>
-
-            <Reveal delayMs={120}>
-              <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[var(--shadowSm)] p-6">
-                <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
-                  {content.ui.decisionPackPreview.deliverablesLabel}
-                </div>
-                <div className="mt-4 space-y-3">
-                  {content.ui.decisionPackPreview.deliverables.map((label) => (
-                    <div
-                      key={label}
-                      className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4"
+              <div className="max-w-[42rem]">
+                <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                  {content.decisionPack.title}
+                </h2>
+                <ul className="mt-5 space-y-3 text-base leading-8 text-text-soft sm:text-lg">
+                  {content.decisionPack.bullets.map((b) => (
+                    <li key={b} className="flex gap-3">
+                      <span className="mt-[2px] text-highlight">•</span>
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {content.decisionPack.exportButtons.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      className={cn(
+                        'min-h-[44px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 text-sm font-semibold text-text',
+                        'hover:border-highlight hover:text-highlight transition-colors duration-200',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                      )}
                     >
-                      <div className="text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
-                        {label}
-                      </div>
-                      <div className="mt-2 text-sm text-text-soft">
-                        {content.ui.decisionPackPreview.deliverablesBody}
-                      </div>
-                    </div>
+                      {b}
+                    </button>
                   ))}
                 </div>
               </div>
             </Reveal>
+
+            <Reveal delayMs={100}>
+              <DecisionPackMock />
+            </Reveal>
           </div>
+
+          <Reveal className="mt-6" delayMs={140}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {content.ui.decisionPackPreview.deliverables.map((label) => (
+                <div
+                  key={label}
+                  className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-5"
+                >
+                  <div className="text-[11px] tracking-[0.16em] uppercase text-text-soft">
+                    {content.ui.decisionPackPreview.deliverablesLabel}
+                  </div>
+                  <div className="mt-3 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+                    {label}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-text-soft">
+                    {content.ui.decisionPackPreview.deliverablesBody}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
         </Section>
 
-        {/* Deployment & Isolation */}
         <Section id={content.security.id}>
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-              {content.security.title}
-            </h2>
+            <div className="max-w-[44rem]">
+              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                {content.security.title}
+              </h2>
+            </div>
           </Reveal>
-          <div className="mt-10 grid gap-4 lg:grid-cols-2">
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
             <Reveal delayMs={90}>
               <Card
                 brandLabel={content.brand.name}
@@ -1495,7 +1699,7 @@ export function Homepage() {
                 bullets={content.security.leftBullets}
               />
             </Reveal>
-            <Reveal delayMs={180}>
+            <Reveal delayMs={160}>
               <Card
                 brandLabel={content.brand.name}
                 title={content.security.rightCard.title}
@@ -1505,12 +1709,13 @@ export function Homepage() {
           </div>
         </Section>
 
-        {/* Pricing */}
         <Section id={content.pricing.id}>
           <Reveal>
-            <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
-              {content.pricing.title}
-            </h2>
+            <div className="max-w-[38rem]">
+              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                {content.pricing.title}
+              </h2>
+            </div>
           </Reveal>
 
           <Reveal className="mt-8" delayMs={90}>
@@ -1526,16 +1731,16 @@ export function Homepage() {
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {pricingCards.map((p, index) => (
-              <Reveal key={p.id}>
+              <Reveal key={p.id} delayMs={index * 80}>
                 <div
                   className={cn(
-                    'h-full rounded-[34px] border shadow-[var(--shadowMd)] p-7',
+                    'flex h-full flex-col rounded-[34px] border p-7 shadow-[var(--shadowMd)]',
                     index === 0
-                      ? 'border-[color:rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(22,35,28,0.96),rgba(16,27,21,0.98))]'
+                      ? 'border-[color:rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(22,35,28,0.97),rgba(16,27,21,0.99))]'
                       : 'border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))]'
                   )}
                 >
-                  <div className="text-xs tracking-[0.16em] uppercase text-accent">
+                  <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
                     {pricingLane === 'professional'
                       ? content.pricing.toggleLabels[0]
                       : content.pricing.toggleLabels[1]}
@@ -1546,7 +1751,7 @@ export function Homepage() {
                     </div>
                     <div className="text-base text-text-soft">{p.price}</div>
                   </div>
-                  <ul className="mt-5 space-y-3 text-sm text-text-soft">
+                  <ul className="mt-5 space-y-3 text-sm leading-6 text-text-soft">
                     {p.bullets.map((b) => (
                       <li key={b} className="flex gap-2">
                         <span className="mt-[2px] text-highlight">•</span>
@@ -1554,7 +1759,7 @@ export function Homepage() {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-6">
+                  <div className="mt-auto pt-6">
                     <PrimaryLinkButton
                       href={p.cta.href}
                       className="w-full"
@@ -1569,36 +1774,37 @@ export function Homepage() {
           </div>
 
           <Reveal className="mt-6" delayMs={120}>
-            <div className="rounded-[24px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
+            <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-6">
               <div className="text-sm font-semibold text-text">{content.pricing.usageMeter.title}</div>
-              <div className="mt-2 text-sm text-text-soft">{content.pricing.usageMeter.body}</div>
+              <div className="mt-2 text-sm leading-7 text-text-soft">{content.pricing.usageMeter.body}</div>
             </div>
           </Reveal>
         </Section>
 
-        {/* FAQ */}
         <Section>
-          <div className="grid gap-10 lg:grid-cols-[7fr,5fr] lg:items-start">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.72fr),minmax(320px,1fr)] lg:items-start">
             <Reveal>
-              <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
+              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                 {content.faq.title}
               </h2>
-              <p className="mt-4 text-text-soft">{content.faq.intro}</p>
+              <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
+                {content.faq.intro}
+              </p>
             </Reveal>
             <Reveal delayMs={90}>
               <Accordion
                 items={content.faq.items}
                 onOpen={(id) => trackMarketingEvent('faq_open', { question_id: id })}
               />
-              <div className="mt-6 rounded-[28px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
+              <div className="mt-6 rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-6">
                 <div className="text-text-soft">{content.faq.contactRow.note}</div>
-                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                   <Link
                     href={content.faq.contactRow.ctas[0]?.href ?? '/support'}
                     onClick={() => trackMarketingEvent('contact_click')}
                     className={cn(
-                      'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent',
-                      'text-text font-semibold px-5 py-2.5 hover:border-highlight hover:text-highlight transition-colors duration-200',
+                      'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
+                      'hover:border-highlight hover:text-highlight',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                     )}
                   >
@@ -1616,23 +1822,18 @@ export function Homepage() {
           </div>
         </Section>
 
-        {/* Final CTA */}
         <Section className="pt-0">
           <Reveal>
-            <div
-              className={cn(
-                'rounded-[36px] border border-[color:rgba(201,151,62,0.22)]',
-                'bg-[radial-gradient(circle_at_top_right,rgba(201,151,62,0.12),transparent_28%),linear-gradient(135deg,rgba(27,43,36,0.96),rgba(16,26,21,0.98))]',
-                'p-8 sm:p-10 lg:p-14 shadow-[var(--shadowSm)]'
-              )}
-            >
-              <div className="grid gap-8 lg:grid-cols-[7fr,5fr] lg:items-center">
+            <div className="rounded-[38px] border border-[color:rgba(201,151,62,0.22)] bg-[radial-gradient(circle_at_top_right,rgba(201,151,62,0.14),transparent_26%),linear-gradient(135deg,rgba(27,43,36,0.97),rgba(16,26,21,0.99))] p-8 shadow-[var(--shadowSm)] sm:p-10 lg:p-14">
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr),minmax(280px,0.7fr)] lg:items-center">
                 <div>
-                  <h2 className="text-3xl sm:text-4xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text">
+                  <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
                     {content.finalCta.title}
                   </h2>
-                  <p className="mt-4 text-text-soft text-base sm:text-lg">{content.finalCta.subhead}</p>
-                  <div className="mt-7 flex flex-col sm:flex-row gap-3">
+                  <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
+                    {content.finalCta.subhead}
+                  </p>
+                  <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                     <PrimaryLinkButton
                       href={content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href}
                       onClick={() =>
@@ -1648,8 +1849,8 @@ export function Homepage() {
                       href={content.finalCta.ctas[1]?.href ?? '/support'}
                       onClick={() => trackMarketingEvent('contact_click')}
                       className={cn(
-                        'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent',
-                        'text-text font-semibold px-5 py-2.5 hover:border-highlight hover:text-highlight transition-colors duration-200',
+                        'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
+                        'hover:border-highlight hover:text-highlight',
                         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                       )}
                     >
@@ -1657,14 +1858,14 @@ export function Homepage() {
                     </Link>
                   </div>
                 </div>
-                <div className="rounded-[28px] border border-border bg-[rgba(255,255,255,0.02)] p-6">
-                  <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
+                <div className="rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-6">
+                  <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
                     {content.ui.finalCta.previewLabel}
                   </div>
                   <div className="mt-4 space-y-3">
-                    <div className="h-10 rounded bg-[rgba(255,255,255,0.08)]" />
-                    <div className="h-10 rounded bg-[rgba(255,255,255,0.08)]" />
-                    <div className="h-10 rounded bg-[rgba(243,207,122,0.16)] border border-[color:var(--highlight)]" />
+                    <div className="h-10 rounded-[14px] bg-[rgba(255,255,255,0.08)]" />
+                    <div className="h-10 rounded-[14px] bg-[rgba(255,255,255,0.08)]" />
+                    <div className="h-10 rounded-[14px] border border-[color:var(--highlight)] bg-[rgba(243,207,122,0.16)]" />
                   </div>
                 </div>
               </div>

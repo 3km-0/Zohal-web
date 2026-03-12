@@ -1205,7 +1205,7 @@
   "marketingHome": {
     "metadata": {
       "title": "Zohal — Private AI document analysis for sensitive workflows",
-      "description": "Analyze contracts, invoices, and document bundles with AI, keep document handling under control, and generate reports, trackers, and calendar-ready outputs."
+      "description": "Analyze contracts, invoices, and document bundles with AI, verify the result, and generate review-ready reports and trackers."
     },
     "content": {
       "brand": {
@@ -1259,7 +1259,7 @@
       },
       "hero": {
         "headline": "Private AI for sensitive documents.",
-        "subhead": "Zohal helps teams analyze documents with AI, keep document handling under control, run a second verification check, and turn the result into reports, trackers, and calendar-ready outputs.",
+        "subhead": "Analyze contracts, invoices, and document bundles with AI, run a second verification pass, and turn the result into review-ready reports, trackers, and calendar items.",
         "ctas": [
           {
             "type": "primary",
@@ -1296,8 +1296,8 @@
       "problem": {
         "title": "Use AI on sensitive documents without losing control.",
         "body": [
-          "Most document AI tools give you a fast answer, but leave open questions about privacy, storage, region, and whether the output is actually usable.",
-          "Zohal is built for teams that want AI speed with clearer handling: analyze contracts, invoices, and document bundles, catch weak or conflicting results earlier, and produce outputs people can review, share, and act on."
+          "Most document AI tools give you a fast answer, but leave open questions about privacy, storage, region, and whether the output is ready to use.",
+          "Zohal is built for teams that want AI speed with clearer handling, earlier conflict checks, and outputs people can review, share, and act on."
         ],
         "sideCard": {
           "title": "Before -> After",
@@ -1315,7 +1315,7 @@
       },
       "howItWorks": {
         "title": "From document to action in a few steps.",
-        "subhead": "Bring in documents from uploads or connected channels, analyze them with AI, run a second check, and export outputs your team can use right away.",
+        "subhead": "Bring in documents, analyze them with AI, run a second check, and export outputs your team can use right away.",
         "steps": [
           {
             "title": "Bring in your documents",
@@ -1486,7 +1486,7 @@
       },
       "decisionPack": {
         "id": "decision-pack",
-        "title": "Reports and outputs your team can actually send.",
+        "title": "Outputs your team can actually send.",
         "bullets": [
           "Share-ready summaries for internal review or stakeholder delivery",
           "Trackers for renewals, obligations, exceptions, and follow-up work",
@@ -1672,7 +1672,7 @@
           }
         ],
         "contactRow": {
-          "note": "Want to see how this would fit your workflow? Contact us and we will tailor a sample output to your use case.",
+          "note": "Want to see how this fits your workflow? Contact us and we will tailor a sample output to your use case.",
           "ctas": [
             {
               "type": "secondary",
@@ -1689,7 +1689,7 @@
       },
       "finalCta": {
         "title": "Use AI on important documents without losing control.",
-        "subhead": "See how Zohal fits your workflow, privacy requirements, and output needs.",
+        "subhead": "See how Zohal fits your workflow, privacy requirements, and review needs.",
         "ctas": [
           {
             "type": "primary",
