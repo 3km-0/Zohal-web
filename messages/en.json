@@ -1205,7 +1205,7 @@
   "marketingHome": {
     "metadata": {
       "title": "Zohal — Private AI document analysis for sensitive workflows",
-      "description": "Analyze contracts, invoices, and document bundles with AI, verify the result, and generate review-ready reports and trackers."
+      "description": "Analyze sensitive documents with AI, verify the result, and export review-ready packs."
     },
     "content": {
       "brand": {
@@ -1259,7 +1259,7 @@
       },
       "hero": {
         "headline": "Private AI for sensitive documents.",
-        "subhead": "Analyze contracts, invoices, and document bundles with AI, run a second verification pass, and turn the result into review-ready reports, trackers, and calendar items.",
+        "subhead": "Analyze with AI. Verify. Export review-ready packs.",
         "ctas": [
           {
             "type": "primary",
@@ -1283,21 +1283,19 @@
         }
       },
       "credibilityStrip": {
-        "label": "What buyers ask first",
+        "label": "Built for real review workflows",
         "items": [
-          "No document uploads required on supported web workflows",
           "Regional processing across supported GCP regions, including Saudi, UAE, and the US",
+          "Arabic + English review in one workflow",
           "Multi-model support, including open-source options",
-          "WhatsApp, Google Drive, and OneDrive integrations",
-          "Customer files are never used to train models",
-          "Reports, trackers, and calendar-ready outputs"
+          "WhatsApp, Google Drive, and OneDrive integrations"
         ]
       },
       "problem": {
         "title": "Use AI on sensitive documents without losing control.",
         "body": [
           "Most document AI tools give you a fast answer, but leave open questions about privacy, storage, region, and whether the output is ready to use.",
-          "Zohal is built for teams that want AI speed with clearer handling, earlier conflict checks, and outputs people can review, share, and act on."
+          "Zohal is built for teams that want AI speed, clearer handling, earlier conflict checks, and outputs people can actually use."
         ],
         "sideCard": {
           "title": "Before -> After",
@@ -1595,7 +1593,7 @@
         ],
         "usageMeter": {
           "title": "For first live team rollouts",
-          "body": "Zohal now meters plans through 3 categories only: storage, metered AI tokens, and billable ops. Team includes a 14-day trial with card setup through Moyasar. Trial usage stays capped to Pro limits until billing begins. Enterprise pricing is custom."
+          "body": "Zohal meters plans through 3 categories only: storage, metered AI tokens, and billable ops. Billable ops are completed analysis or export actions. Team includes a 14-day trial with card setup through Moyasar. Trial usage stays capped to Pro limits until billing begins. Enterprise pricing is custom."
         }
       },
       "insights": {
@@ -1643,36 +1641,36 @@
           {
             "id": "proof",
             "q": "How does Zohal use AI on sensitive documents?",
-            "a": "Zohal uses AI to read and analyze documents, then runs a second verification check so weak or unsupported results can be marked for review instead of treated as final."
+            "a": "Zohal analyzes the document, then runs a second verification pass so weak or unsupported results stay marked for review."
           },
           {
             "id": "locality",
             "q": "Where can our data be processed?",
-            "a": "Zohal supports regional deployment across GCP regions, including Saudi Arabia, the UAE, and the US, so teams can align processing with locality requirements."
+            "a": "Supported deployment regions include Saudi Arabia, the UAE, and the US."
           },
           {
             "id": "storage",
             "q": "Do you have to store our documents?",
-            "a": "Not always. On supported US web workflows, Zohal can process extracted document data without storing the original document on Zohal servers. On iOS private workflows, files can stay on device."
+            "a": "Not always. Supported US web workflows can process extracted data without storing the original file, and iOS private workflows can keep files on device."
           },
           {
             "id": "models",
             "q": "Can we choose which AI models are used?",
-            "a": "Yes. Zohal supports multiple model options, including open-source models, so teams can match model choice to privacy, cost, and policy requirements."
+            "a": "Yes. You can choose from multiple models, including open-source options."
           },
           {
             "id": "bilingual",
             "q": "Does it support Arabic and English documents together?",
-            "a": "Yes. The workflow is designed for Arabic and English documents, including mixed layouts, scans, annexes, and stamped pages."
+            "a": "Yes. Zohal handles Arabic and English documents, including scans, annexes, and stamped pages."
           },
           {
             "id": "outputs",
             "q": "What do we get at the end?",
-            "a": "Zohal can produce share-ready reports, trackers, document search results, and calendar-ready outputs, so the work can move forward without someone rewriting an AI chat answer by hand."
+            "a": "Share-ready reports, trackers, document search results, and calendar-ready dates."
           }
         ],
         "contactRow": {
-          "note": "Want to see how this fits your workflow? Contact us and we will tailor a sample output to your use case.",
+          "note": "Want to see how this fits your workflow? We can tailor a sample output to your use case.",
           "ctas": [
             {
               "type": "secondary",
