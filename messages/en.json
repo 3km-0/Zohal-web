@@ -1204,13 +1204,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Document analysis that stands up to review",
-      "description": "Turn contracts, invoices, and document sets into verified findings, surfaced conflicts, and decision-ready outputs with exact evidence."
+      "title": "Zohal — Private AI document analysis for sensitive workflows",
+      "description": "Analyze contracts, invoices, and document bundles with AI, keep document handling under control, and generate reports, trackers, and calendar-ready outputs."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Document analysis that stands up to review.",
+        "tagline": "Private AI document analysis for sensitive workflows.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -1224,7 +1224,7 @@
             "href": "#how"
           },
           {
-            "label": "Sample Pack",
+            "label": "Sample Output",
             "href": "#decision-pack"
           },
           {
@@ -1232,7 +1232,7 @@
             "href": "#pricing"
           },
           {
-            "label": "Security",
+            "label": "Privacy",
             "href": "#security"
           }
         ],
@@ -1258,13 +1258,13 @@
         }
       },
       "hero": {
-        "headline": "Document analysis that stands up to review.",
-        "subhead": "Zohal turns contracts, invoices, and multi-file document sets into verified findings and surfaced conflicts. Every important claim stays tied to page-level evidence, so the final output is ready for review and sharing.",
+        "headline": "Private AI document analysis for contracts, invoices, and sensitive workflows.",
+        "subhead": "Zohal helps teams analyze documents with AI, keep document handling under control, run a second verification check, and turn the result into reports, trackers, and calendar-ready outputs.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start free",
-            "href": "/auth/signup"
+            "label": "Book a demo",
+            "href": "/support"
           },
           {
             "type": "secondary",
@@ -1272,9 +1272,9 @@
             "href": "#decision-pack"
           }
         ],
-        "proofLine": "No credit card • Arabic + English ready • Exact page evidence for every key finding",
+        "proofLine": "Private document handling • Arabic + English ready • Second-pass AI checking",
         "mock": {
-          "title": "Sample Decision Pack",
+          "title": "Sample output",
           "panels": [
             "Source Contract",
             "Verified Facts",
@@ -1283,67 +1283,67 @@
         }
       },
       "credibilityStrip": {
-        "label": "Built for document review that has to hold up.",
+        "label": "What buyers ask first",
         "items": [
-          "Contracts, invoices, and document bundles",
-          "Conflict Radar for contradictions",
-          "Verified facts with page evidence",
-          "Workspace-based review controls",
-          "Forwardable decision pack exports",
-          "Zero-training on customer files"
+          "No document uploads required on supported web workflows",
+          "Regional processing across supported GCP regions, including Saudi, UAE, and the US",
+          "Multi-model support, including open-source options",
+          "WhatsApp, Google Drive, and OneDrive integrations",
+          "Customer files are never used to train models",
+          "Reports, trackers, and calendar-ready outputs"
         ]
       },
       "problem": {
-        "title": "Speed matters. So does proof.",
+        "title": "Use AI on sensitive documents without losing control.",
         "body": [
-          "Teams handling sensitive documents cannot afford black-box summaries, hidden contradictions, or outputs that fall apart under review.",
-          "Zohal does more than summarize. It verifies each finding against the source, shows the exact page and passage, and flags conflicts before they become business mistakes."
+          "Most document AI tools give you a fast answer, but leave open questions about privacy, storage, region, and whether the output is actually usable.",
+          "Zohal is built for teams that want AI speed with clearer handling: analyze contracts, invoices, and document bundles, catch weak or conflicting results earlier, and produce outputs people can review, share, and act on."
         ],
         "sideCard": {
           "title": "Before -> After",
           "before": [
-            "Manual re-reading",
-            "Contradictions found too late",
-            "Outputs with no proof"
+            "Manual review and copy-paste into unsafe tools",
+            "One-size-fits-all AI with unclear handling",
+            "Chat answers that still need rewriting"
           ],
           "after": [
-            "Source-linked evidence",
-            "Conflict Radar",
-            "Forwardable decision pack"
+            "AI analysis with a second verification check",
+            "More control over storage, region, and model choice",
+            "Reports, trackers, and calendar-ready outputs"
           ]
         }
       },
       "howItWorks": {
-        "title": "From messy documents to verified outputs in minutes.",
-        "subhead": "Upload the file, review the findings and conflicts, then export a clean decision pack with evidence attached.",
+        "title": "From document to action in a few steps.",
+        "subhead": "Bring in documents from uploads or connected channels, analyze them with AI, run a second check, and export outputs your team can use right away.",
         "steps": [
           {
-            "title": "Upload Anything",
-            "body": "Scanned PDFs, photo attachments, spreadsheets, and bilingual document sets all go through the same intake flow."
+            "title": "Bring in your documents",
+            "body": "Upload files or pull them from WhatsApp, Google Drive, OneDrive, and document bundles your team already works with."
           },
           {
-            "title": "Zohal Finds the Facts",
-            "body": "Key facts like dates, parties, amounts, obligations, term, and governing law are extracted and linked back to the source text."
+            "title": "Analyze with AI",
+            "body": "Zohal reads the documents, extracts the important details, and highlights dates, clauses, totals, obligations, and exceptions."
           },
           {
-            "title": "Review the Conflict Radar",
-            "body": "Zohal flags contradictions across agreements, amendments, annexes, translations, and supporting documents before anything is sent."
+            "title": "Run a second check",
+            "body": "A second verification pass helps catch weak answers, missing details, and contradictions before the output is shared."
           },
           {
-            "title": "Export and Send",
-            "body": "Download a decision pack in PDF or Word and share it internally or externally after review."
+            "title": "Export useful outputs",
+            "body": "Generate reports, trackers, document search results, and calendar-ready follow-up items instead of stopping at a chat answer."
           }
         ],
         "ctas": [
           {
             "type": "link",
-            "label": "See a sample Decision Pack",
+            "label": "See sample output",
             "href": "#decision-pack"
           },
           {
             "type": "secondary",
-            "label": "See how verification works",
-            "href": "#playbooks"
+            "label": "See privacy and control",
+            "href": "#security"
           }
         ]
       },
@@ -1366,59 +1366,59 @@
             "label": "Built for real operational workflows"
           }
         ],
-        "footnote": "Final judgment stays with your team. Zohal speeds up review and makes evidence easier to verify."
+        "footnote": "Final judgment stays with your team. Zohal helps you move faster while keeping privacy, reviewability, and operational usefulness in view."
       },
       "capabilities": {
-        "title": "Built around how teams review documents.",
+        "title": "What makes Zohal different.",
         "tabs": [
           {
             "id": "verified-facts",
-            "label": "Verified Facts",
-            "title": "Key document facts in plain language.",
+            "label": "AI extraction",
+            "title": "Important details come out in a format your team can review quickly.",
             "bullets": [
-              "Parties, dates, amounts, obligations, and key terms are presented as review-ready fields",
-              "Each fact stays tied to the page where it was found",
-              "Unclear fields stay marked for review instead of being guessed"
+              "Key details like parties, dates, totals, obligations, and terms are extracted into plain-language fields",
+              "Each key detail stays linked to source evidence",
+              "Unclear or unsupported fields stay marked for review instead of being guessed"
             ]
           },
           {
             "id": "conflicts",
-            "label": "Conflict Radar",
-            "title": "Contradictions are obvious before they reach the next reviewer.",
+            "label": "Second-pass checking",
+            "title": "A second AI check helps catch weak or conflicting answers earlier.",
             "bullets": [
-              "Conflicting source documents are surfaced immediately",
-              "Cross-language differences are shown as review items, not hidden in summaries",
-              "The team reviews exceptions instead of re-reading every page from scratch"
+              "A first pass analyzes the document and a second pass checks the result",
+              "Missing support and contradictions are surfaced before anything is sent",
+              "Reviewers focus on exceptions instead of re-checking every page"
             ]
           },
           {
             "id": "bilingual",
-            "label": "Bilingual Review",
-            "title": "Arabic and English checked in one place.",
+            "label": "Connected sources",
+            "title": "Work across the document channels your team already uses.",
             "bullets": [
-              "Mixed layouts, stamps, tables, and scans are handled in the same review flow",
-              "Arabic and English evidence can be checked side by side",
-              "Translation mistakes are surfaced with source-linked proof"
+              "Bring in files from uploads, WhatsApp, Google Drive, and OneDrive",
+              "Arabic and English documents can be analyzed in the same workflow",
+              "On supported web workflows, Zohal can process extracted document data without storing the original file"
             ]
           },
           {
             "id": "packs",
-            "label": "Decision Packs",
-            "title": "An output you can actually send.",
+            "label": "Useful outputs",
+            "title": "Get more than a chat answer at the end of the workflow.",
             "bullets": [
-              "Verified findings, conflicts, and evidence are packaged into a clean summary",
-              "Exports are designed for internal review or direct stakeholder delivery",
-              "The output looks like reviewed work product, not raw AI output"
+              "Generate share-ready reports and summaries",
+              "Build trackers for renewals, obligations, invoices, and follow-up work",
+              "Turn important dates into calendar-ready outputs"
             ]
           },
           {
             "id": "review",
-            "label": "Review Controls",
-            "title": "Your team stays in control of the final answer.",
+            "label": "Private handling",
+            "title": "Privacy, locality, and access stay part of the workflow.",
             "bullets": [
-              "Review checkpoints keep important findings from shipping unchecked",
-              "History makes it clear what changed and what still needs attention",
-              "Access stays limited to the people working on the matter"
+              "Regional options cover supported GCP regions including Saudi, UAE, and the US",
+              "Customer files are not used to train models",
+              "Access can stay limited to the active team with review history available"
             ]
           }
         ]
@@ -1486,36 +1486,36 @@
       },
       "decisionPack": {
         "id": "decision-pack",
-        "title": "A decision pack you can actually forward.",
+        "title": "Reports and outputs your team can actually send.",
         "bullets": [
-          "Executive summary with verified findings in plain language",
-          "Conflict list with exact page references for faster review",
-          "Key facts table linked to the source text",
-          "Export options built for PDF and Word handoff"
+          "Share-ready summaries for internal review or stakeholder delivery",
+          "Trackers for renewals, obligations, exceptions, and follow-up work",
+          "Key facts and issues linked back to the source",
+          "Export options built for PDF, Word, and operational handoff"
         ],
         "exportButtons": [
           "Export PDF",
           "Export Word",
-          "Share Memo",
-          "Download Evidence"
+          "Share report",
+          "Add dates"
         ]
       },
       "security": {
         "id": "security",
-        "title": "Security built for sensitive document work.",
+        "title": "Built for teams that need AI without unnecessary exposure.",
         "leftBullets": [
-          "Zero-training policy: customer documents are not used to train models",
-          "Each export carries a manifest of what was checked and when",
-          "Workspace-based access and review history for controlled collaboration",
-          "Clear handling when evidence is missing or contradictory"
+          "Customer files are not used to train models",
+          "Regional deployment options cover supported GCP regions, including Saudi, UAE, and the US",
+          "Workspace access and review history support controlled collaboration",
+          "You can choose the model setup that fits your security, cost, and compliance needs"
         ],
         "rightCard": {
-          "title": "Built for confidential work",
+          "title": "Privacy and control in practice",
           "bullets": [
-            "Evidence stays linked to the source inside the workspace",
-            "Review history makes changes easy to audit",
-            "Access can stay limited to the active team",
-            "Exports remain structured for internal review or external delivery"
+            "On supported US web workflows, Zohal can process extracted document data without storing the original file on Zohal servers",
+            "On iOS, files can stay on device for private workflows",
+            "WhatsApp, Google Drive, and OneDrive fit how teams already receive and store files",
+            "Outputs stay structured for review, sharing, and follow-up"
           ]
         }
       },
@@ -1642,32 +1642,37 @@
         "items": [
           {
             "id": "proof",
-            "q": "How does Zohal keep findings trustworthy?",
-            "a": "Each finding stays tied to the source page and clause. If evidence is weak, missing, or contradictory, Zohal marks it for review instead of presenting it as settled."
+            "q": "How does Zohal use AI on sensitive documents?",
+            "a": "Zohal uses AI to read and analyze documents, then runs a second verification check so weak or unsupported results can be marked for review instead of treated as final."
           },
           {
-            "id": "conflicts",
-            "q": "What happens when source documents conflict?",
-            "a": "Zohal flags the contradiction as a review item and points to both locations so your team can resolve it intentionally before exporting the pack."
+            "id": "locality",
+            "q": "Where can our data be processed?",
+            "a": "Zohal supports regional deployment across GCP regions, including Saudi Arabia, the UAE, and the US, so teams can align processing with locality requirements."
+          },
+          {
+            "id": "storage",
+            "q": "Do you have to store our documents?",
+            "a": "Not always. On supported US web workflows, Zohal can process extracted document data without storing the original document on Zohal servers. On iOS private workflows, files can stay on device."
+          },
+          {
+            "id": "models",
+            "q": "Can we choose which AI models are used?",
+            "a": "Yes. Zohal supports multiple model options, including open-source models, so teams can match model choice to privacy, cost, and policy requirements."
           },
           {
             "id": "bilingual",
             "q": "Does it support Arabic and English documents together?",
-            "a": "Yes. The review flow is designed for bilingual documents, including mixed layouts, scans, annexes, and stamped pages."
+            "a": "Yes. The workflow is designed for Arabic and English documents, including mixed layouts, scans, annexes, and stamped pages."
           },
           {
-            "id": "exports",
-            "q": "What do we actually send at the end?",
-            "a": "You export a clean review output with verified facts, surfaced conflicts, and linked evidence, so the work can move from first review to internal sign-off or external sharing without being rebuilt by hand."
-          },
-          {
-            "id": "security",
-            "q": "Do you use our client files to train models?",
-            "a": "No. Zohal follows a zero-training policy for client documents."
+            "id": "outputs",
+            "q": "What do we get at the end?",
+            "a": "Zohal can produce share-ready reports, trackers, document search results, and calendar-ready outputs, so the work can move forward without someone rewriting an AI chat answer by hand."
           }
         ],
         "contactRow": {
-          "note": "Want to see how this would look in your workflow? Contact us and we will tailor a sample review output.",
+          "note": "Want to see how this would fit your workflow? Contact us and we will tailor a sample output to your use case.",
           "ctas": [
             {
               "type": "secondary",
@@ -1683,18 +1688,18 @@
         }
       },
       "finalCta": {
-        "title": "Turn document chaos into verified work.",
-        "subhead": "Generate decision packs your team can forward with evidence attached.",
+        "title": "Use AI on important documents without losing control.",
+        "subhead": "See how Zohal fits your workflow, privacy requirements, and output needs.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start free",
-            "href": "/auth/signup"
+            "label": "Book a demo",
+            "href": "/support"
           },
           {
             "type": "secondary",
-            "label": "Book a demo",
-            "href": "/support"
+            "label": "Start free",
+            "href": "/auth/signup"
           }
         ]
       },
@@ -1772,7 +1777,7 @@
         "legalNote": "Watd Information Technology Company provides evidence-backed workflow assistance. Your team remains responsible for legal review and final approvals."
       },
       "ui": {
-        "mentalModelLine": "Upload documents -> verify findings -> ship outputs",
+        "mentalModelLine": "Bring in documents -> analyze with AI -> check -> export outputs",
         "beforeLabel": "Without Zohal",
         "afterLabel": "With Zohal",
         "modal": {
@@ -1780,11 +1785,11 @@
           "demoTitle": "See Zohal in action",
           "demoPlaceholderBody": "Sample pack preview placeholder.",
           "demoShowsLabel": "In this demo",
-          "demoShowsBody": "see how Zohal grounds findings in the source, flags conflicts, and turns the result into a shareable review output.",
+          "demoShowsBody": "see how Zohal analyzes documents with AI, checks key results against the source, and turns the output into something your team can review and share.",
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Sample review output",
+          "decisionPackLabel": "Sample output",
           "samplePackTitle": "Commercial Lease Review - Arabic/English",
           "provisional": "Needs review",
           "finalized": "Verified",
@@ -1805,10 +1810,10 @@
           "hideEvidence": "Hide evidence",
           "evidence": "Evidence",
           "pageLabel": "Page {page}",
-          "highlightSnippet": "Highlighted clause: governing law and notice terms differ across the document set.",
+          "highlightSnippet": "Highlighted clause: renewal notice terms differ across the document set.",
           "verificationObjectFilename": "",
           "uiMockLabel": "Conflict Preview",
-          "exceptionsQueueTitle": "Conflict Detected",
+          "exceptionsQueueTitle": "Second check flagged a conflict",
           "exceptionsQueueBody": "Page 4 says \"30 days\" but Page 12 says \"60 days\".",
           "fieldEvidenceLabel": "Linked evidence",
           "claimKey": "claim",
@@ -1819,12 +1824,12 @@
         "decisionPackPreview": {
           "deliverablesLabel": "Included",
           "deliverables": [
-            "Client-ready memo",
-            "Conflict list",
-            "Verified facts",
-            "Evidence links"
+            "Share-ready summary",
+            "Follow-up tracker",
+            "Key facts",
+            "Calendar-ready dates"
           ],
-          "deliverablesBody": "Ready for internal review or direct client delivery."
+          "deliverablesBody": "Ready for review, sharing, and operational follow-up."
         },
         "security": {
           "buyersCareTitle": "What buyers ask first"

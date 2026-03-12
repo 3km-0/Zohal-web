@@ -197,6 +197,15 @@ function splitProofLine(line: string) {
     .filter(Boolean);
 }
 
+function trackPrimaryCtaClick(location: string, href: string) {
+  if (href.startsWith('/support')) {
+    trackMarketingEvent('contact_click', { location });
+    return;
+  }
+
+  trackMarketingEvent('cta_start_free_click', { location });
+}
+
 function useScrolled(thresholdPx = 12) {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -1093,6 +1102,8 @@ export function Homepage() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
+  const heroPrimaryCta = content.hero.ctas.find((c) => c.type === 'primary');
+  const heroSecondaryCta = content.hero.ctas.find((c) => c.type === 'secondary');
 
   const capability = useMemo(
     () => content.capabilities.tabs.find((t) => t.id === activeCapability) ?? content.capabilities.tabs[0],
@@ -1167,10 +1178,15 @@ export function Homepage() {
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
                 <PrimaryLinkButton
-                  href={content.nav.actions.primaryCta.href}
-                  onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'hero' })}
+                  href={heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href}
+                  onClick={() =>
+                    trackPrimaryCtaClick(
+                      'hero',
+                      heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href
+                    )
+                  }
                 >
-                  {content.hero.ctas.find((c) => c.type === 'primary')?.label}
+                  {heroPrimaryCta?.label ?? content.nav.actions.primaryCta.label}
                 </PrimaryLinkButton>
                 {demoVideoId ? (
                   <SecondaryButton
@@ -1184,7 +1200,7 @@ export function Homepage() {
                   </SecondaryButton>
                 ) : (
                   <Link
-                    href={content.hero.ctas.find((c) => c.type === 'secondary')?.href ?? '#decision-pack'}
+                    href={heroSecondaryCta?.href ?? '#decision-pack'}
                     className={cn(
                       'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
                       'bg-transparent border border-border text-text font-semibold px-5 py-2.5',
@@ -1193,7 +1209,7 @@ export function Homepage() {
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                     )}
                   >
-                    {content.hero.ctas.find((c) => c.type === 'secondary')?.label}
+                    {heroSecondaryCta?.label}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
@@ -1222,6 +1238,24 @@ export function Homepage() {
               </div>
             </Reveal>
           </div>
+
+          <Reveal className="mt-10" delayMs={140}>
+            <div className="rounded-[28px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] px-6 py-5 shadow-[var(--shadowSm)]">
+              <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
+                {content.credibilityStrip.label}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                {content.credibilityStrip.items.map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-[var(--rPill)] border border-border bg-[rgba(255,255,255,0.02)] px-4 py-2 text-sm text-text-soft"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
         </Section>
 
         {/* Problem */}
@@ -1601,7 +1635,12 @@ export function Homepage() {
                   <div className="mt-7 flex flex-col sm:flex-row gap-3">
                     <PrimaryLinkButton
                       href={content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href}
-                      onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'final' })}
+                      onClick={() =>
+                        trackPrimaryCtaClick(
+                          'final',
+                          content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href
+                        )
+                      }
                     >
                       {content.finalCta.ctas[0]?.label ?? content.nav.actions.primaryCta.label}
                     </PrimaryLinkButton>
