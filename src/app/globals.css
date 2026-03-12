@@ -296,10 +296,82 @@ body {
   animation: fadeInUp 0.2s ease-out forwards;
 }
 
+@keyframes homepageSceneShimmer {
+  0% {
+    transform: translateX(-140%);
+    opacity: 0;
+  }
+  20%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(340%);
+    opacity: 0;
+  }
+}
+
+@keyframes homepageScenePulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes homepageSceneFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes homepageSceneDash {
+  0% {
+    opacity: 0.25;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translateX(6px);
+  }
+  100% {
+    opacity: 0.25;
+    transform: translateX(0);
+  }
+}
+
+.homepage-scene-shimmer {
+  animation: homepageSceneShimmer 4.8s ease-in-out infinite;
+}
+
+.homepage-scene-pulse {
+  animation: homepageScenePulse 2.4s ease-in-out infinite;
+}
+
+.homepage-scene-float {
+  animation: homepageSceneFloat 6.5s ease-in-out infinite;
+}
+
+.homepage-scene-dash {
+  animation: homepageSceneDash 3.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
   .animate-slide-up,
-  .animate-fadeInUp {
+  .animate-fadeInUp,
+  .homepage-scene-shimmer,
+  .homepage-scene-pulse,
+  .homepage-scene-float,
+  .homepage-scene-dash {
     animation: none !important;
   }
 }

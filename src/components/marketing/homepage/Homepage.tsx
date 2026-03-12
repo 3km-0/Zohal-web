@@ -219,6 +219,23 @@ function useScrolled(thresholdPx = 12) {
   return isScrolled;
 }
 
+function useReducedMotion() {
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(media.matches);
+
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return reducedMotion;
+}
+
 function useInViewOnce<T extends Element>(options?: IntersectionObserverInit) {
   const ref = useRef<T | null>(null);
   const [isInView, setIsInView] = useState(false);
@@ -1033,6 +1050,228 @@ function DecisionPackMock() {
   );
 }
 
+function HeroVisualScene({
+  content,
+  isRtl,
+  reducedMotion,
+}: {
+  content: Content;
+  isRtl: boolean;
+  reducedMotion: boolean;
+}) {
+  const factRows = [
+    {
+      label: content.ui.mock.sampleGoverningLawLabel,
+      value: content.ui.mock.sampleGoverningLawValue,
+      tone: "success",
+      status: content.ui.mock.verifiedStatus,
+    },
+    {
+      label: content.ui.mock.samplePartyALabel,
+      value: content.ui.mock.samplePartyAValue,
+      tone: "success",
+      status: content.ui.mock.verifiedStatus,
+    },
+    {
+      label: content.ui.mock.sampleEffectiveDateLabel,
+      value: content.ui.mock.sampleEffectiveDateValue,
+      tone: "warning",
+      status: content.ui.mock.reviewStatus,
+    },
+  ] as const;
+
+  const dashClass = reducedMotion ? "" : "homepage-scene-dash";
+  const pulseClass = reducedMotion ? "" : "homepage-scene-pulse";
+  const floatClass = reducedMotion ? "" : "homepage-scene-float";
+  const shimmerClass = reducedMotion ? "" : "homepage-scene-shimmer";
+
+  return (
+    <div className="relative mx-auto max-w-[760px]">
+      <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(30,45,38,0.98),rgba(18,29,24,0.98))] p-5 shadow-[0_28px_90px_rgba(3,10,7,0.3)] sm:p-6 lg:p-7">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_20%,rgba(45,136,120,0.09),transparent_22%),radial-gradient(circle_at_84%_16%,rgba(201,151,62,0.12),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
+        <div
+          className={cn(
+            "absolute top-4 h-px w-28 bg-[linear-gradient(90deg,rgba(243,207,122,0),rgba(243,207,122,0.5),rgba(243,207,122,0))]",
+            isRtl ? "left-6" : "right-6"
+          )}
+        />
+
+        <div className="relative z-10 flex flex-wrap gap-2">
+          <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-[11px] tracking-[0.16em] uppercase text-text-soft">
+            {content.hero.mock.title}
+          </span>
+          {content.hero.mock.panels.map((panel) => (
+            <span
+              key={panel}
+              className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] px-3 py-1.5 text-xs text-text-soft"
+            >
+              {panel}
+            </span>
+          ))}
+        </div>
+
+        <div className="relative z-10 mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.05fr),minmax(250px,0.82fr)]">
+          <div className="relative rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(10,16,13,0.26)] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+                {content.ui.mock.documentViewer}
+              </div>
+              <div className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-2.5 py-1 text-[10px] tracking-[0.16em] uppercase text-text-soft">
+                PDF
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-5">
+              <div className="space-y-3">
+                <div className="h-2.5 w-11/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+                <div className="h-2.5 w-9/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+                <div className="h-2.5 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+                <div className="h-2.5 w-8/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
+              </div>
+
+              <div className="relative mt-5 overflow-hidden rounded-[20px] border border-[rgba(201,151,62,0.28)] bg-[rgba(201,151,62,0.08)] p-4">
+                <div className={cn("absolute inset-y-0 -left-1/3 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(243,207,122,0.18),transparent)]", shimmerClass)} />
+                <div className="relative text-sm leading-7 text-accent">
+                  {content.ui.mock.highlightSnippet}
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {[4, 12].map((page) => (
+                  <div
+                    key={page}
+                    className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3"
+                  >
+                    <div className="text-xs text-text-soft">
+                      {content.ui.mock.pageLabel.replace("{page}", String(page))}
+                    </div>
+                    <div className="mt-2 h-12 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
+                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(243,207,122,0.22)]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                "pointer-events-none absolute top-[92px] w-16 border-t border-dashed border-[rgba(243,207,122,0.38)]",
+                isRtl ? "left-[-28px]" : "right-[-28px]",
+                dashClass
+              )}
+            />
+          </div>
+
+          <div className="relative space-y-4">
+            <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+                  {content.ui.mock.verifiedVariables}
+                </div>
+                <span className="rounded-[var(--rPill)] border border-[rgba(59,164,106,0.34)] bg-[rgba(59,164,106,0.16)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
+                  {content.ui.mock.verifiedStatus}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {factRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold text-text-soft">{row.label}</div>
+                      <span
+                        className={cn(
+                          "rounded-[var(--rPill)] px-2 py-0.5 text-[10px] font-semibold",
+                          row.tone === "success"
+                            ? "border border-[rgba(59,164,106,0.32)] bg-[rgba(59,164,106,0.16)] text-success"
+                            : "border border-[rgba(201,151,62,0.26)] bg-[rgba(201,151,62,0.07)] text-accent"
+                        )}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-sm text-text">{row.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative rounded-[24px] border border-[rgba(201,151,62,0.28)] bg-[linear-gradient(180deg,rgba(201,151,62,0.13),rgba(201,151,62,0.05))] p-4">
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2.5 w-2.5 rounded-full bg-accent", pulseClass)} />
+                <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
+                  {content.ui.mock.exceptionsQueueTitle}
+                </div>
+              </div>
+              <div className="mt-3 text-sm leading-6 text-text">{content.ui.mock.exceptionsQueueBody}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.78fr),minmax(0,1fr)] lg:items-start">
+          <div
+            className={cn(
+              "rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 shadow-[0_18px_50px_rgba(3,10,7,0.18)]",
+              floatClass
+            )}
+          >
+            <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+              {content.ui.decisionPackPreview.deliverablesLabel}
+            </div>
+            <div className="mt-4 space-y-2.5">
+              {content.ui.decisionPackPreview.deliverables.slice(0, 3).map((label) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3 rounded-[16px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5"
+                >
+                  <span className="text-sm text-text">{label}</span>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-text-soft">
+                    {content.ui.mock.verifiedStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(10,16,13,0.22)] p-4">
+            <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+              {content.ui.mock.fieldEvidenceLabel}
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {[4, 12].map((page) => (
+                <div
+                  key={page}
+                  className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-3 py-3"
+                >
+                  <div className="text-xs text-text-soft">
+                    {content.ui.mock.pageLabel.replace("{page}", String(page))}
+                  </div>
+                  <div className="mt-2 h-10 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "pointer-events-none absolute top-[14%] w-[170px] rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(18,28,23,0.85)] p-4 backdrop-blur-sm shadow-[0_20px_60px_rgba(3,10,7,0.22)]",
+          isRtl ? "-left-4 lg:-left-8" : "-right-4 lg:-right-8",
+          floatClass
+        )}
+        style={reducedMotion ? undefined : { animationDelay: "900ms" }}
+      >
+        <div className="text-[10px] tracking-[0.18em] uppercase text-text-soft">
+          {content.ui.mock.uiMockLabel}
+        </div>
+        <div className="mt-2 text-sm leading-6 text-text">{content.ui.mock.exceptionsQueueBody}</div>
+      </div>
+    </div>
+  );
+}
+
 function CapabilityPreviewCard() {
   const content = useMarketingHomeContent();
 
@@ -1133,6 +1372,7 @@ export function Homepage() {
   const content = useMarketingHomeContent();
   const locale = useLocale();
   const isRtl = locale === 'ar';
+  const reducedMotion = useReducedMotion();
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
@@ -1284,34 +1524,7 @@ export function Homepage() {
               </Reveal>
 
               <Reveal delayMs={100} className={cn(isRtl && 'lg:order-1')}>
-                <div className="relative mx-auto max-w-[720px]">
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-[11px] tracking-[0.16em] uppercase text-text-soft">
-                      {content.hero.mock.title}
-                    </span>
-                    {content.hero.mock.panels.map((panel) => (
-                      <span
-                        key={panel}
-                        className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] px-3 py-1.5 text-xs text-text-soft"
-                      >
-                        {panel}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="relative">
-                    <div className={cn('absolute -top-5 hidden w-44 lg:block', isRtl ? '-left-5' : '-right-5')}>
-                      <div className="rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(18,28,23,0.82)] p-4 shadow-[0_20px_60px_rgba(3,10,7,0.26)] backdrop-blur-sm">
-                        <div className="text-[10px] tracking-[0.18em] uppercase text-text-soft">
-                          {content.ui.mock.uiMockLabel}
-                        </div>
-                        <div className="mt-2 text-sm leading-6 text-text">
-                          {content.ui.mock.exceptionsQueueBody}
-                        </div>
-                      </div>
-                    </div>
-                    <DecisionPackMock />
-                  </div>
-                </div>
+                <HeroVisualScene content={content} isRtl={isRtl} reducedMotion={reducedMotion} />
               </Reveal>
             </div>
           </div>
