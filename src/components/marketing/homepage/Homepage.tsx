@@ -1169,7 +1169,7 @@ export function Homepage() {
               <div className="text-xs tracking-[0.10em] uppercase text-text-soft">
                 {content.ui.mentalModelLine}
               </div>
-              <h1 className="mt-5 max-w-[15ch] text-5xl sm:text-6xl lg:text-7xl leading-[1.02] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
+              <h1 className="mt-5 max-w-[18ch] text-5xl sm:text-6xl lg:text-7xl leading-[1.02] tracking-[-0.03em] font-[family:var(--font-source-serif)] font-bold text-text">
                 {content.hero.headline}
               </h1>
               <p className="mt-7 text-lg sm:text-[1.35rem] text-text-soft leading-relaxed max-w-[32ch]">
