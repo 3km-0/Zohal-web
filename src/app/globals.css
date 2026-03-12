@@ -36,29 +36,34 @@
   --shadowMd: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
-/* Dark Theme (Default = Scholar Neutral) */
+/* Dark Theme (Default = Scholar Dark — green-black chalkboard) */
 [data-theme='dark'] {
-  --bg: #18181b;
-  --surface: #27272a;
-  --surface-alt: #303033;
+  --bg: #141f1a;
+  --surface: #1c2b24;
+  --surface-alt: rgba(255, 255, 255, 0.03);
 
   --text: #e8e4dc;
-  --text-soft: rgba(232, 228, 220, 0.55);
+  --text-soft: rgba(232, 228, 220, 0.6);
 
-  --border: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.08);
 
   --accent: #c9973e;
   --highlight: #f3cf7a;
   --accent-alt: #e0d3b5;
 
-  --success: #22c55e;
-  --error: #ef4444;
+  --success: #3ba46a;
+  --error: #d46b55;
 
-  --grid-color: rgba(255, 255, 255, 0.03);
-  --grid-opacity: 0.7;
+  --grid-color: rgba(255, 255, 255, 0.012);
+  --grid-opacity: 0.55;
+  --grid-size: 30px;
 
-  --shadowSm: 0 1px 0 rgba(0, 0, 0, 0.3);
-  --shadowMd: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadowSm: 0 16px 52px rgba(3, 10, 7, 0.18);
+  --shadowMd: 0 24px 80px rgba(3, 10, 7, 0.28);
+
+  --nav-bg-top: rgba(20, 31, 26, 0.4);
+  --nav-bg-scrolled: rgba(20, 31, 26, 0.82);
+  --nav-border: rgba(255, 255, 255, 0.05);
 }
 
 [data-theme='scholar-dark'] {
