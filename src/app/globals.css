@@ -157,19 +157,6 @@ body {
   background-size: var(--grid-size, 20px) var(--grid-size, 20px);
 }
 
-.homepage-ambient-vignette {
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.06), transparent 28%),
-    linear-gradient(180deg, rgba(7, 12, 10, 0.08), rgba(7, 12, 10, 0.28));
-}
-
-.homepage-ambient-radial {
-  background:
-    radial-gradient(circle at 18% 22%, rgba(45, 136, 120, 0.08), transparent 24%),
-    radial-gradient(circle at 82% 18%, rgba(201, 151, 62, 0.12), transparent 22%),
-    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.04), transparent 24%);
-}
-
 /* Focus Ring */
 @layer base {
   *:focus-visible {
@@ -285,43 +272,6 @@ body {
   }
 }
 
-@keyframes homepageAmbientDrift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(var(--ambient-rotate, 0deg));
-  }
-  50% {
-    transform: translate3d(0, -12px, 0) rotate(calc(var(--ambient-rotate, 0deg) + 1.5deg));
-  }
-}
-
-@keyframes homepageAmbientPulse {
-  0%,
-  100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.06);
-  }
-}
-
-@keyframes homepageAmbientScan {
-  0% {
-    opacity: 0;
-    transform: translateY(-18px);
-  }
-  20%,
-  80% {
-    opacity: 0.75;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(32px);
-  }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
@@ -346,22 +296,7 @@ body {
   animation: fadeInUp 0.2s ease-out forwards;
 }
 
-.homepage-ambient-drift {
-  animation: homepageAmbientDrift 10s ease-in-out infinite;
-}
-
-.homepage-ambient-pulse {
-  animation: homepageAmbientPulse 12s ease-in-out infinite;
-}
-
-.homepage-ambient-scan {
-  animation: homepageAmbientScan 8s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .homepage-ambient-drift,
-  .homepage-ambient-pulse,
-  .homepage-ambient-scan,
   .animate-fade-in,
   .animate-slide-up,
   .animate-fadeInUp {

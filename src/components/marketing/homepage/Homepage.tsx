@@ -219,23 +219,6 @@ function useScrolled(thresholdPx = 12) {
   return isScrolled;
 }
 
-function useReducedMotion() {
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setReducedMotion(media.matches);
-
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-
-  return reducedMotion;
-}
-
 function useInViewOnce<T extends Element>(options?: IntersectionObserverInit) {
   const ref = useRef<T | null>(null);
   const [isInView, setIsInView] = useState(false);
@@ -507,83 +490,6 @@ function MarketingModal({
         </div>
         <div className="mt-4">{children}</div>
       </div>
-    </div>
-  );
-}
-
-function HeroAmbient({
-  locale,
-  reducedMotion,
-  statusLabel,
-}: {
-  locale: string;
-  reducedMotion: boolean;
-  statusLabel: string;
-}) {
-  const driftClass = reducedMotion ? '' : 'homepage-ambient-drift';
-  const pulseClass = reducedMotion ? '' : 'homepage-ambient-pulse';
-  const scanClass = reducedMotion ? '' : 'homepage-ambient-scan';
-
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="homepage-ambient-vignette absolute inset-0" />
-      <div className="homepage-ambient-radial absolute inset-0" />
-      <div
-        className={cn(
-          'absolute top-[10%] h-[420px] w-[420px] rounded-full bg-[rgba(201,151,62,0.09)] blur-3xl',
-          locale === 'ar' ? 'left-[-120px]' : 'right-[-120px]',
-          pulseClass
-        )}
-      />
-      <div
-        className={cn(
-          'absolute bottom-[-120px] h-[360px] w-[360px] rounded-full bg-[rgba(45,136,120,0.12)] blur-3xl',
-          locale === 'ar' ? 'right-[-120px]' : 'left-[-120px]',
-          pulseClass
-        )}
-        style={{ animationDelay: '900ms' }}
-      />
-      <div
-        className={cn(
-          'absolute top-[14%] w-[280px] rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 backdrop-blur-[2px]',
-          locale === 'ar' ? 'right-[7%] rotate-[8deg]' : 'left-[7%] -rotate-[8deg]',
-          driftClass
-        )}
-      >
-        <div className="h-3 w-24 rounded-full bg-[rgba(255,255,255,0.12)]" />
-        <div className="mt-4 space-y-2.5">
-          <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]" />
-          <div className="h-2 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
-          <div className="h-2 w-9/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
-        </div>
-        <div className="mt-5 rounded-[18px] border border-[rgba(201,151,62,0.26)] bg-[rgba(201,151,62,0.08)] p-3">
-          <div className="h-2 w-8/12 rounded-full bg-[rgba(243,207,122,0.3)]" />
-          <div className="mt-2 h-2 w-6/12 rounded-full bg-[rgba(243,207,122,0.2)]" />
-        </div>
-      </div>
-      <div
-        className={cn(
-          'absolute bottom-[16%] w-[240px] rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(14,21,18,0.55)] p-4 shadow-[0_20px_60px_rgba(2,10,7,0.25)]',
-          locale === 'ar' ? 'left-[10%] -rotate-[10deg]' : 'right-[10%] rotate-[10deg]',
-          driftClass
-        )}
-        style={{ animationDelay: '1400ms' }}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="h-2.5 w-16 rounded-full bg-[rgba(255,255,255,0.12)]" />
-          <div className="rounded-full border border-[rgba(59,164,106,0.35)] bg-[rgba(59,164,106,0.16)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
-            {statusLabel}
-          </div>
-        </div>
-        <div className="mt-4 h-14 rounded-[16px] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]" />
-      </div>
-      <div
-        className={cn(
-          'absolute top-[26%] h-[420px] w-[1px] bg-[linear-gradient(180deg,rgba(243,207,122,0),rgba(243,207,122,0.32),rgba(243,207,122,0))]',
-          locale === 'ar' ? 'right-[32%]' : 'left-[32%]',
-          scanClass
-        )}
-      />
     </div>
   );
 }
@@ -1227,7 +1133,6 @@ export function Homepage() {
   const content = useMarketingHomeContent();
   const locale = useLocale();
   const isRtl = locale === 'ar';
-  const reducedMotion = useReducedMotion();
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
@@ -1293,11 +1198,22 @@ export function Homepage() {
       <main className="relative z-10 pt-[78px]">
         <Section className="pt-8 sm:pt-12 lg:pt-16">
           <div className="relative overflow-hidden rounded-[40px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(22,35,28,0.98),rgba(14,23,18,0.98))] px-6 py-8 shadow-[0_28px_90px_rgba(3,10,7,0.3)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
-            <HeroAmbient
-              locale={locale}
-              reducedMotion={reducedMotion}
-              statusLabel={content.ui.mock.verifiedStatus}
-            />
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,rgba(7,12,10,0.08),rgba(7,12,10,0.28))]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(45,136,120,0.08),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(201,151,62,0.12),transparent_22%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.04),transparent_24%)]" />
+              <div
+                className={cn(
+                  'absolute top-[12%] h-[420px] w-[420px] rounded-full bg-[rgba(201,151,62,0.07)] blur-3xl',
+                  isRtl ? 'left-[-110px]' : 'right-[-110px]'
+                )}
+              />
+              <div
+                className={cn(
+                  'absolute bottom-[-120px] h-[320px] w-[320px] rounded-full bg-[rgba(45,136,120,0.1)] blur-3xl',
+                  isRtl ? 'right-[-110px]' : 'left-[-110px]'
+                )}
+              />
+            </div>
             <div className="relative z-10 grid gap-10 lg:grid-cols-[minmax(0,0.9fr),minmax(380px,1.1fr)] lg:items-center">
               <Reveal className={cn(isRtl && 'lg:order-2')}>
                 <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
@@ -1557,34 +1473,33 @@ export function Homepage() {
         </Section>
 
         <Section id="playbooks">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,0.92fr),minmax(320px,0.6fr)] xl:items-end">
-            <Reveal>
-              <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                {content.capabilities.title}
-              </h2>
-            </Reveal>
-            <Reveal delayMs={80}>
-              <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                {spotlightCards.slice(0, 3).map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.id}
-                      className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-4"
-                    >
-                      <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div className="mt-4 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
-                        {item.title}
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-text-soft">{item.body}</p>
+          <Reveal>
+            <h2 className="text-3xl font-[family:var(--font-source-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+              {content.capabilities.title}
+            </h2>
+          </Reveal>
+
+          <Reveal className="mt-6" delayMs={70}>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {spotlightCards.slice(0, 3).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-5"
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="mt-4 text-lg font-[family:var(--font-source-serif)] font-semibold text-text">
+                      {item.title}
                     </div>
-                  );
-                })}
-              </div>
-            </Reveal>
-          </div>
+                    <p className="mt-2 text-sm leading-6 text-text-soft">{item.body}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Reveal>
 
           <Reveal className="mt-8" delayMs={90}>
             <PillTabs
