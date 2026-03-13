@@ -43,6 +43,13 @@ export function DocumentRightPane({
   const [paneTab, setPaneTab] = useState<PaneTab>(mode === 'analysis' ? 'run' : 'ask');
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const paneStyle = useMemo(
+    () =>
+      width !== undefined
+        ? ({ '--zohal-pane-width': `${Math.round(width)}px` } as React.CSSProperties)
+        : undefined,
+    [width]
+  );
 
   const handleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -147,8 +154,8 @@ export function DocumentRightPane({
 
   return (
     <aside
-      className="fixed inset-0 z-20 flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-surface md:relative md:z-auto md:h-full md:min-w-[17.5rem] md:max-w-[75vw] md:border-s md:border-border"
-      style={width !== undefined ? { width: `${width}px` } as React.CSSProperties : undefined}
+      className="fixed inset-0 z-20 flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-surface md:relative md:z-auto md:h-full md:min-w-[17.5rem] md:w-[32rem] md:w-[var(--zohal-pane-width)] md:max-w-[75vw] md:border-s md:border-border"
+      style={paneStyle}
     >
       {/* Drag handle — sits on the inline-start edge; flips automatically in RTL */}
       <div
