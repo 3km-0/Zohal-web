@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Calendar, CheckCircle, Clock, FileText, RefreshCw, Sparkles, X, Zap } from 'lucide-react';
 import { Button, ScholarActionMenu, ScholarTabs, type ScholarActionMenuItem, type ScholarTab } from '@/components/ui';
