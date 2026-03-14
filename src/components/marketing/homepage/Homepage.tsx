@@ -1510,7 +1510,7 @@ export function Homepage() {
                 <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
                   {content.ui.mentalModelLine}
                 </div>
-                <h1 className="mt-5 max-w-[11ch] text-5xl font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-[-0.045em] text-text sm:max-w-[13ch] sm:text-6xl lg:max-w-[10ch] lg:text-[4.6rem] xl:text-[5.2rem]">
+                <h1 className="mt-5 max-w-[9ch] text-[3.8rem] font-[family:var(--font-instrument-serif)] font-bold leading-[0.94] tracking-[-0.04em] text-text sm:max-w-[10ch] sm:text-[4.5rem] lg:max-w-[9ch] lg:text-[4.9rem] xl:text-[5.15rem]">
                   {content.hero.headline}
                 </h1>
                 <p className="mt-6 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg sm:leading-8">
