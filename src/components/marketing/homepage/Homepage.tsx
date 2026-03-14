@@ -3,15 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
-  FileText,
   Languages,
-  PlayCircle,
   Scale,
   ShieldCheck,
-  TriangleAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
@@ -72,6 +69,7 @@ type Content = {
   };
   applications: {
     title: string;
+    subhead?: string;
     cards: Array<{
       id: string;
       title: string;
@@ -353,59 +351,6 @@ function PrimaryLinkButton({
   );
 }
 
-function SecondaryButton({
-  children,
-  className,
-  onClick,
-  type = 'button',
-}: {
-  children: React.ReactNode;
-  className?: string;
-  onClick?: () => void;
-  type?: 'button' | 'submit';
-}) {
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      className={cn(
-        'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
-        'bg-transparent border border-border text-text font-semibold px-5 py-2.5',
-        'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-        'hover:border-highlight hover:text-highlight',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
-        className
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function TertiaryLink({
-  href,
-  children,
-  className,
-}: {
-  href: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'inline-flex items-center gap-2 text-accent font-medium',
-        'hover:underline underline-offset-4',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
-        className
-      )}
-    >
-      {children}
-    </Link>
-  );
-}
-
 function LanguageToggle({
   leftLabel,
   rightLabel,
@@ -443,96 +388,6 @@ function LanguageToggle({
         {leftLabel} <span className="text-text-soft">|</span> {rightLabel}
       </span>
     </button>
-  );
-}
-
-function MarketingModal({
-  isOpen,
-  title,
-  closeAriaLabel,
-  onClose,
-  children,
-}: {
-  isOpen: boolean;
-  title: string;
-  closeAriaLabel: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const titleId = useId();
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    restoreFocusRef.current = document.activeElement as HTMLElement | null;
-    closeButtonRef.current?.focus();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      restoreFocusRef.current?.focus();
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center px-5"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className={cn(
-          'relative w-full max-w-[1080px]',
-          'rounded-[28px] border border-border bg-surface shadow-[var(--shadowMd)]',
-          'p-5 sm:p-6'
-        )}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <h2 id={titleId} className="text-lg sm:text-xl font-semibold text-text">
-            {title}
-          </h2>
-          <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            className={cn(
-              'min-h-[44px] min-w-[44px] rounded-[var(--rSm)] border border-border bg-transparent',
-              'text-text-soft hover:text-text hover:border-highlight transition-colors duration-200',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-            )}
-            aria-label={closeAriaLabel}
-          >
-            ✕
-          </button>
-        </div>
-        <div className="mt-4">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-[22px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 shadow-[var(--shadowSm)]">
-      <div className="text-2xl sm:text-3xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
-        {value}
-      </div>
-      <div className="mt-2 text-sm text-text-soft">{label}</div>
-    </div>
   );
 }
 
@@ -1339,125 +1194,16 @@ function HeroVisualScene({
   );
 }
 
-function CapabilityPreviewCard() {
-  const content = useMarketingHomeContent();
-
-  const rows = [
-    {
-      label: content.ui.mock.sampleGoverningLawLabel,
-      value: content.ui.mock.sampleGoverningLawValue,
-      status: content.ui.mock.verifiedStatus,
-      tone: 'success',
-    },
-    {
-      label: content.ui.mock.samplePartyALabel,
-      value: content.ui.mock.samplePartyAValue,
-      status: content.ui.mock.verifiedStatus,
-      tone: 'success',
-    },
-    {
-      label: content.ui.mock.sampleEffectiveDateLabel,
-      value: content.ui.mock.sampleEffectiveDateValue,
-      status: content.ui.mock.reviewStatus,
-      tone: 'warning',
-    },
-    {
-      label: content.ui.mock.sampleTermLabel,
-      value: content.ui.mock.sampleTermMonthsValue,
-      status: content.ui.mock.verifiedStatus,
-      tone: 'success',
-    },
-  ] as const;
-
-  return (
-    <div className="rounded-[32px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-6 shadow-[var(--shadowSm)]">
-      <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
-        {content.ui.mock.uiMockLabel}
-      </div>
-      <div className="mt-4 rounded-[22px] border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.06)] p-5">
-        <div className="text-xs tracking-[0.14em] uppercase text-accent">
-          {content.ui.mock.exceptionsQueueTitle}
-        </div>
-        <div className="mt-2 text-sm text-text-soft">{content.ui.mock.exceptionsQueueBody}</div>
-      </div>
-      <div className="mt-4 space-y-3">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="rounded-[22px] border border-border bg-[rgba(255,255,255,0.02)] p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs font-semibold text-text-soft">{row.label}</div>
-              <span
-                className={cn(
-                  'px-2 py-0.5 rounded-[var(--rPill)] text-[11px] font-semibold',
-                  row.tone === 'success'
-                    ? 'bg-[rgba(74,222,128,0.18)] text-success'
-                    : 'border border-[color:var(--accent-alt)] text-accent'
-                )}
-              >
-                {row.status}
-              </span>
-            </div>
-            <div className="mt-2 text-sm text-text">{row.value}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function extractYouTubeId(input: string | undefined) {
-  const value = (input || '').trim();
-  if (!value) return '';
-
-  try {
-    const url = new URL(value);
-    if (url.hostname.includes('youtu.be')) {
-      return url.pathname.replace(/^\/+/, '').trim();
-    }
-
-    if (url.hostname.includes('youtube.com')) {
-      if (url.pathname.startsWith('/watch')) {
-        return url.searchParams.get('v') || '';
-      }
-
-      const segments = url.pathname.split('/').filter(Boolean);
-      const embedIndex = segments.findIndex((segment) => segment === 'embed' || segment === 'shorts');
-      if (embedIndex >= 0) {
-        return segments[embedIndex + 1] || '';
-      }
-    }
-  } catch {
-    return '';
-  }
-
-  return '';
-}
-
 export function Homepage() {
   const content = useMarketingHomeContent();
   const locale = useLocale();
   const isRtl = locale === 'ar';
   const reducedMotion = useReducedMotion();
-  const [isDemoOpen, setIsDemoOpen] = useState(false);
-  const [activeCapability, setActiveCapability] = useState(content.capabilities.tabs[0]?.id ?? '');
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
   const heroPrimaryCta = content.hero.ctas.find((c) => c.type === 'primary');
   const heroSecondaryCta = content.hero.ctas.find((c) => c.type === 'secondary');
 
-  const capability = useMemo(
-    () => content.capabilities.tabs.find((t) => t.id === activeCapability) ?? content.capabilities.tabs[0],
-    [activeCapability, content.capabilities.tabs]
-  );
   const proofItems = useMemo(() => splitProofLine(content.hero.proofLine), [content.hero.proofLine]);
-  const demoVideoId = useMemo(
-    () => extractYouTubeId(process.env.NEXT_PUBLIC_MARKETING_DEMO_URL),
-    []
-  );
-  const demoEmbedUrl = demoVideoId
-    ? `https://www.youtube-nocookie.com/embed/${demoVideoId}?autoplay=1&rel=0&modestbranding=1`
-    : '';
   const pricingTabs = useMemo(
     () => [
       { id: 'professional', label: content.pricing.toggleLabels[0] },
@@ -1466,32 +1212,6 @@ export function Homepage() {
     [content.pricing.toggleLabels]
   );
   const pricingCards = pricingLane === 'professional' ? content.pricing.professional : content.pricing.enterprise;
-  const spotlightCards = useMemo(() => {
-    const defs = [
-      {
-        id: 'bilingual',
-        icon: Languages,
-      },
-      {
-        id: 'conflicts',
-        icon: TriangleAlert,
-      },
-      {
-        id: 'packs',
-        icon: FileText,
-      },
-    ];
-
-    return defs.map((def, index) => {
-      const tab = content.capabilities.tabs.find((item) => item.id === def.id);
-      return {
-        id: def.id,
-        icon: def.icon,
-        title: tab?.label ?? content.stats.items[index]?.value ?? '',
-        body: tab?.bullets[0] ?? content.stats.items[index]?.label ?? '',
-      };
-    });
-  }, [content.capabilities.tabs, content.stats.items]);
   const proofIcons = [ShieldCheck, Languages, Scale];
 
   return (
@@ -1551,29 +1271,18 @@ export function Homepage() {
                   >
                     {heroPrimaryCta?.label ?? content.nav.actions.primaryCta.label}
                   </PrimaryLinkButton>
-                  {demoVideoId ? (
-                    <SecondaryButton
-                      onClick={() => {
-                        trackMarketingEvent('cta_watch_demo_click');
-                        setIsDemoOpen(true);
-                      }}
-                    >
-                      <PlayCircle className="h-4 w-4" />
-                      {content.ui.modal.openDemoLabel}
-                    </SecondaryButton>
-                  ) : (
-                    <Link
-                      href={heroSecondaryCta?.href ?? '#decision-pack'}
-                      className={cn(
-                        'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[var(--rSm)] border border-border px-5 py-2.5 font-semibold text-text transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                        'hover:border-highlight hover:text-highlight',
-                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                      )}
-                    >
-                      {heroSecondaryCta?.label}
-                      <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-                    </Link>
-                  )}
+                  <Link
+                    href={heroSecondaryCta?.href ?? '/support'}
+                    onClick={() => trackMarketingEvent('contact_click', { location: 'hero' })}
+                    className={cn(
+                      'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[var(--rSm)] border border-border px-5 py-2.5 font-semibold text-text transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                      'hover:border-highlight hover:text-highlight',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
+                    )}
+                  >
+                    {heroSecondaryCta?.label}
+                    <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
+                  </Link>
                 </div>
 
                 <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -1603,43 +1312,13 @@ export function Homepage() {
           </div>
 
           <Reveal className="mt-6" delayMs={150}>
-            <div className="rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[var(--shadowSm)] sm:px-6">
-              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-                {content.credibilityStrip.label}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2.5">
-                {content.credibilityStrip.items.map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-4 py-2 text-sm text-text-soft"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal className="mt-6" delayMs={190}>
             <PartnerLogoStrip
               title={content.partners.title}
               subhead={content.partners.subhead}
               items={content.partners.items}
             />
           </Reveal>
-        </Section>
 
-        <Section>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {content.stats.items.map((item, idx) => (
-              <Reveal key={item.value} delayMs={idx * 70}>
-                <StatCard value={item.value} label={item.label} />
-              </Reveal>
-            ))}
-          </div>
-          <Reveal className="mt-4 max-w-[70ch] text-sm text-text-soft" delayMs={140}>
-            {content.stats.footnote}
-          </Reveal>
         </Section>
 
         <Section id="product">
@@ -1690,231 +1369,67 @@ export function Homepage() {
             </Reveal>
           </div>
 
-          <div className="mt-12">
+          <div id="how" className="mt-12">
             <Reveal>
-              <h3 className="text-2xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-3xl">
-                {content.applications.title}
-              </h3>
+              <div className="max-w-[40rem]">
+                <h3 className="text-2xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-3xl">
+                  {content.howItWorks.title}
+                </h3>
+                <p className="mt-3 text-base leading-7 text-text-soft">
+                  {content.howItWorks.subhead}
+                </p>
+              </div>
             </Reveal>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {content.applications.cards.map((card, index) => (
-                <Reveal key={card.id} delayMs={index * 80}>
-                  <Card
-                    brandLabel={content.brand.name}
-                    title={card.title}
-                    subtitle={card.subtitle}
-                    bullets={card.bullets}
-                    footer={
-                      <TertiaryLink href={card.cta.href}>
-                        {card.cta.label}
-                        <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-                      </TertiaryLink>
-                    }
-                  />
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              {content.howItWorks.steps.map((step, idx) => (
+                <Reveal key={step.title} delayMs={idx * 80}>
+                  <div className="h-full rounded-[24px] border border-[rgba(226,200,126,0.24)] bg-[linear-gradient(180deg,rgba(226,200,126,0.10),rgba(255,255,255,0.02))] p-5 shadow-[var(--shadowSm)]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.08)] text-sm font-semibold text-accent">
+                      {idx + 1}
+                    </div>
+                    <h4 className="mt-5 text-xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
+                      {step.title}
+                    </h4>
+                    <p className="mt-2 text-sm leading-6 text-text-soft">{step.body}</p>
+                  </div>
                 </Reveal>
               ))}
             </div>
           </div>
         </Section>
 
-        <Section id="how">
+        <Section id="workflows" className="pt-0">
           <Reveal>
             <div className="max-w-[44rem]">
               <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                {content.howItWorks.title}
+                {content.applications.title}
               </h2>
               <p className="mt-4 text-base leading-8 text-text-soft sm:text-lg">
-                {content.howItWorks.subhead}
+                {content.applications.subhead}
               </p>
             </div>
           </Reveal>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {content.howItWorks.steps.map((step, idx) => (
-              <Reveal key={step.title} delayMs={idx * 90}>
-                <div className="group h-full rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-6 shadow-[var(--shadowSm)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.08)] text-base font-semibold text-accent">
-                      {idx + 1}
-                    </span>
-                    <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(226,200,126,0.28),rgba(226,200,126,0))]" />
-                  </div>
-                  <h3 className="mt-6 text-2xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                    {step.title}
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {content.applications.cards.map((card, index) => (
+              <Reveal key={card.id} delayMs={index * 80}>
+                <div className="h-full rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]">
+                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{content.brand.name}</div>
+                  <h3 className="mt-2 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
+                    {card.title}
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-text-soft sm:text-base">{step.body}</p>
+                  <p className="mt-2 text-sm leading-6 text-text-soft">{card.subtitle}</p>
+                  <ul className="mt-4 space-y-2 text-sm text-text-soft">
+                    {card.bullets.map((b) => (
+                      <li key={b} className="flex gap-2">
+                        <span className="mt-[2px] text-accent">•</span>
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </Reveal>
             ))}
-          </div>
-
-          <Reveal className="mt-8 flex flex-col gap-3 sm:flex-row" delayMs={120}>
-            <TertiaryLink href={content.howItWorks.ctas[0]?.href ?? '#decision-pack'}>
-              {content.howItWorks.ctas[0]?.label}
-              <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-            </TertiaryLink>
-            <Link
-              href={content.howItWorks.ctas[1]?.href ?? '#security'}
-              className={cn(
-                'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
-                'hover:border-highlight hover:text-highlight',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-              )}
-            >
-              {content.howItWorks.ctas[1]?.label}
-            </Link>
-          </Reveal>
-        </Section>
-
-        <Section id="playbooks">
-          <Reveal>
-            <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-              {content.capabilities.title}
-            </h2>
-          </Reveal>
-
-          <Reveal className="mt-6" delayMs={70}>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {spotlightCards.slice(0, 3).map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-5"
-                  >
-                    <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div className="mt-4 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                      {item.title}
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-text-soft">{item.body}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </Reveal>
-
-          <Reveal className="mt-8" delayMs={90}>
-            <PillTabs
-              tabs={content.capabilities.tabs.map((t) => ({ id: t.id, label: t.label }))}
-              activeId={activeCapability}
-              onChange={(id) => {
-                setActiveCapability(id);
-                trackMarketingEvent('tab_change', { capability_id: id });
-              }}
-            />
-          </Reveal>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,0.92fr),minmax(300px,0.74fr)] lg:items-start">
-            <Reveal delayMs={90}>
-              <div className="rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-7 shadow-[var(--shadowSm)]">
-                <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-                  {capability?.label}
-                </div>
-                <h3 className="mt-3 max-w-[18ch] text-3xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                  {capability?.title}
-                </h3>
-                <ul className="mt-6 space-y-4 text-base leading-8 text-text-soft">
-                  {(capability?.bullets ?? []).map((b) => (
-                    <li key={b} className="flex gap-3">
-                      <span className="mt-[2px] text-highlight">•</span>
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
-
-            <Reveal delayMs={160}>
-              <CapabilityPreviewCard />
-            </Reveal>
-          </div>
-        </Section>
-
-        <Section id={content.decisionPack.id}>
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,0.82fr),minmax(320px,0.96fr)] xl:items-start">
-            <Reveal>
-              <div className="max-w-[42rem]">
-                <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                  {content.decisionPack.title}
-                </h2>
-                <ul className="mt-5 space-y-3 text-base leading-8 text-text-soft sm:text-lg">
-                  {content.decisionPack.bullets.map((b) => (
-                    <li key={b} className="flex gap-3">
-                      <span className="mt-[2px] text-highlight">•</span>
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {content.decisionPack.exportButtons.map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      className={cn(
-                        'min-h-[44px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 text-sm font-semibold text-text',
-                        'hover:border-highlight hover:text-highlight transition-colors duration-200',
-                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                      )}
-                    >
-                      {b}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal delayMs={100}>
-              <DecisionPackMock />
-            </Reveal>
-          </div>
-
-          <Reveal className="mt-6" delayMs={140}>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {content.ui.decisionPackPreview.deliverables.map((label) => (
-                <div
-                  key={label}
-                  className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-5"
-                >
-                  <div className="text-[11px] tracking-[0.16em] uppercase text-text-soft">
-                    {content.ui.decisionPackPreview.deliverablesLabel}
-                  </div>
-                  <div className="mt-3 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                    {label}
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-text-soft">
-                    {content.ui.decisionPackPreview.deliverablesBody}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </Section>
-
-        <Section id={content.security.id}>
-          <Reveal>
-            <div className="max-w-[44rem]">
-              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                {content.security.title}
-              </h2>
-            </div>
-          </Reveal>
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <Reveal delayMs={90}>
-              <Card
-                brandLabel={content.brand.name}
-                title={content.ui.security.buyersCareTitle}
-                bullets={content.security.leftBullets}
-              />
-            </Reveal>
-            <Reveal delayMs={160}>
-              <Card
-                brandLabel={content.brand.name}
-                title={content.security.rightCard.title}
-                bullets={content.security.rightCard.bullets}
-              />
-            </Reveal>
           </div>
         </Section>
 
@@ -1988,28 +1503,30 @@ export function Homepage() {
               <div className="mt-2 text-sm leading-7 text-text-soft">{content.pricing.usageMeter.body}</div>
             </div>
           </Reveal>
-        </Section>
 
-        <Section>
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.72fr),minmax(320px,1fr)] lg:items-start">
-            <Reveal>
-              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                {content.faq.title}
-              </h2>
-              <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
-                {content.faq.intro}
-              </p>
-            </Reveal>
-            <Reveal delayMs={90}>
-              <Accordion
-                items={content.faq.items}
-                onOpen={(id) => trackMarketingEvent('faq_open', { question_id: id })}
-              />
-              <div className="mt-6 rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-6">
-                <div className="text-text-soft">{content.faq.contactRow.note}</div>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <Reveal className="mt-10" delayMs={150}>
+            <div className="rounded-[38px] border border-[color:rgba(226,200,126,0.22)] bg-[radial-gradient(circle_at_top_right,rgba(226,200,126,0.14),transparent_26%),linear-gradient(135deg,rgba(24,24,27,0.97),rgba(19,19,22,0.99))] p-8 shadow-[var(--shadowSm)] sm:p-10">
+              <div className="max-w-[44rem]">
+                <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
+                  {content.finalCta.title}
+                </h2>
+                <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
+                  {content.finalCta.subhead}
+                </p>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <PrimaryLinkButton
+                    href={content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href}
+                    onClick={() =>
+                      trackPrimaryCtaClick(
+                        'final',
+                        content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href
+                      )
+                    }
+                  >
+                    {content.finalCta.ctas[0]?.label ?? content.nav.actions.primaryCta.label}
+                  </PrimaryLinkButton>
                   <Link
-                    href={content.faq.contactRow.ctas[0]?.href ?? '/support'}
+                    href={content.finalCta.ctas[1]?.href ?? '/support'}
                     onClick={() => trackMarketingEvent('contact_click')}
                     className={cn(
                       'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
@@ -2017,65 +1534,8 @@ export function Homepage() {
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
                     )}
                   >
-                    {content.faq.contactRow.ctas[0]?.label}
+                    {content.finalCta.ctas[1]?.label}
                   </Link>
-                  <PrimaryLinkButton
-                    href={content.faq.contactRow.ctas[1]?.href ?? content.nav.actions.primaryCta.href}
-                    onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'faq' })}
-                  >
-                    {content.faq.contactRow.ctas[1]?.label ?? content.nav.actions.primaryCta.label}
-                  </PrimaryLinkButton>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </Section>
-
-        <Section className="pt-0">
-          <Reveal>
-            <div className="rounded-[38px] border border-[color:rgba(226,200,126,0.22)] bg-[radial-gradient(circle_at_top_right,rgba(226,200,126,0.14),transparent_26%),linear-gradient(135deg,rgba(24,24,27,0.97),rgba(19,19,22,0.99))] p-8 shadow-[var(--shadowSm)] sm:p-10 lg:p-14">
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr),minmax(280px,0.7fr)] lg:items-center">
-                <div>
-                  <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                    {content.finalCta.title}
-                  </h2>
-                  <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
-                    {content.finalCta.subhead}
-                  </p>
-                  <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                    <PrimaryLinkButton
-                      href={content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href}
-                      onClick={() =>
-                        trackPrimaryCtaClick(
-                          'final',
-                          content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href
-                        )
-                      }
-                    >
-                      {content.finalCta.ctas[0]?.label ?? content.nav.actions.primaryCta.label}
-                    </PrimaryLinkButton>
-                    <Link
-                      href={content.finalCta.ctas[1]?.href ?? '/support'}
-                      onClick={() => trackMarketingEvent('contact_click')}
-                      className={cn(
-                        'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
-                        'hover:border-highlight hover:text-highlight',
-                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                      )}
-                    >
-                      {content.finalCta.ctas[1]?.label}
-                    </Link>
-                  </div>
-                </div>
-                <div className="rounded-[28px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] p-6">
-                  <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-                    {content.ui.finalCta.previewLabel}
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <div className="h-10 rounded-[14px] bg-[rgba(255,255,255,0.08)]" />
-                    <div className="h-10 rounded-[14px] bg-[rgba(255,255,255,0.08)]" />
-                    <div className="h-10 rounded-[14px] border border-[color:var(--highlight)] bg-[rgba(226,200,126,0.16)]" />
-                  </div>
                 </div>
               </div>
             </div>
@@ -2127,50 +1587,6 @@ export function Homepage() {
           </div>
         </footer>
       </main>
-      {demoVideoId ? (
-        <MarketingModal
-          isOpen={isDemoOpen}
-          title={content.ui.modal.demoTitle}
-          closeAriaLabel={content.ui.modal.close}
-          onClose={() => setIsDemoOpen(false)}
-        >
-          <div className="grid gap-6 lg:grid-cols-[1.45fr,0.55fr]">
-            <div className="overflow-hidden rounded-[24px] border border-border bg-black shadow-[var(--shadowSm)]">
-              {isDemoOpen ? (
-                <div className="aspect-video">
-                  <iframe
-                    src={demoEmbedUrl}
-                    title={content.ui.modal.demoTitle}
-                    className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                </div>
-              ) : null}
-            </div>
-            <div className="rounded-[24px] border border-border bg-[rgba(255,255,255,0.02)] p-5">
-              <div className="text-xs tracking-[0.14em] uppercase text-text-soft">
-                {content.ui.modal.demoShowsLabel}
-              </div>
-              <div className="mt-3 text-base leading-relaxed text-text-soft">
-                {content.ui.modal.demoShowsBody}
-              </div>
-              <div className="mt-6 flex flex-col gap-3">
-                <PrimaryLinkButton
-                  href={content.nav.actions.primaryCta.href}
-                  onClick={() => trackMarketingEvent('cta_start_free_click', { location: 'demo_modal' })}
-                >
-                  {content.nav.actions.primaryCta.label}
-                </PrimaryLinkButton>
-                <SecondaryButton onClick={() => setIsDemoOpen(false)}>
-                  {content.ui.modal.close}
-                </SecondaryButton>
-              </div>
-            </div>
-          </div>
-        </MarketingModal>
-      ) : null}
     </div>
   );
 }

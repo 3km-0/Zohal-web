@@ -1217,16 +1217,12 @@
             "href": "#how"
           },
           {
-            "label": "Sample Output",
-            "href": "#decision-pack"
+            "label": "Workflows",
+            "href": "#workflows"
           },
           {
             "label": "Pricing",
             "href": "#pricing"
-          },
-          {
-            "label": "Privacy",
-            "href": "#security"
           }
         ],
         "actions": {
@@ -1256,7 +1252,7 @@
         "ctas": [
           {
             "type": "primary",
-            "label": "Start automating safely",
+            "label": "Start free",
             "href": "/auth/signup"
           },
           {
@@ -1321,7 +1317,7 @@
         "title": "Stop sending unchecked AI output into real workflows.",
         "body": [
           "Generic document AI can save time while quietly introducing risk. A single unsupported extraction can move into a report, filing, or payment workflow before anyone notices.",
-          "Zohal is built to keep automation useful and reviewable: claims stay linked to evidence, discrepancies are surfaced clearly, and action happens only after review."
+          "Zohal keeps the source visible, surfaces mismatches early, and makes review explicit before anything is sent out."
         ],
         "sideCard": {
           "title": "Chat answer -> checked output",
@@ -1338,24 +1334,20 @@
         }
       },
       "howItWorks": {
-        "title": "From uploaded file to checked output.",
-        "subhead": "Zohal reads the document, extracts the important fields, checks them with a second verifier, and only then prepares reports, trackers, and handoffs.",
+        "title": "How review stays under control.",
+        "subhead": "Three steps: bring in the file, check the extracted fields against the source, and review exceptions before handoff.",
         "steps": [
           {
-            "title": "Intake & Normalize",
-            "body": "Bring in files from uploads, WhatsApp, Google Drive, and OneDrive. Zohal handles OCR cleanup, Arabic and English segmentation, translation and localization review, and layout parsing."
+            "title": "Bring in the file",
+            "body": "Bring in files from uploads, WhatsApp, Google Drive, and OneDrive. Zohal handles OCR cleanup and page parsing."
           },
           {
-            "title": "Extract & Link to Source",
-            "body": "Zohal pulls out the important fields and links each one to the exact page and source text so reviewers can click back and confirm it."
+            "title": "Check against the source",
+            "body": "Zohal pulls out the important fields, links each one to the exact page and source text, and runs a second verifier pass."
           },
           {
-            "title": "Run Generator + Verifier Checks",
-            "body": "A second verifier checks arithmetic, contradictions, policy conflicts, and translation or localization issues before anything leaves the workflow."
-          },
-          {
-            "title": "Review Before Export",
-            "body": "Export reports, trackers, calendar items, and system handoffs only after the required fields are reviewed or approved."
+            "title": "Review only the exceptions",
+            "body": "Teams focus on mismatches, approvals, and overrides before anything is exported or handed off."
           }
         ],
         "ctas": [
@@ -1449,16 +1441,16 @@
         ]
       },
       "applications": {
-        "title": "The platform for your most painful workflows.",
+        "title": "Where teams use Zohal first.",
+        "subhead": "Three review jobs where source links and a second check matter immediately.",
         "cards": [
           {
             "id": "contracts",
             "title": "Contract & Policy Review",
-            "subtitle": "Catch renewal terms, liability language, policy conflicts, and unsupported claims before they reach the next reviewer.",
+            "subtitle": "Catch renewal terms, liability language, and policy conflicts before they reach the next reviewer.",
             "bullets": [
-              "Clause-level evidence for each surfaced claim",
-              "Internal policy and contract language checked together",
-              "Clear decision-pack output for escalation or approval"
+              "Clause-level source links for each flagged item",
+              "Policy and contract language checked together"
             ],
             "cta": {
               "label": "See contract review",
@@ -1468,43 +1460,27 @@
           {
             "id": "amendments",
             "title": "Amendments & Related Files",
-            "subtitle": "See what changed across the document stack without re-reading every supporting file manually.",
+            "subtitle": "See what changed across the document stack without re-reading every supporting file.",
             "bullets": [
               "Primary document versus addendum and annex comparison",
-              "Conflicting terms surfaced as explicit discrepancies",
-              "Review-ready handoff with evidence"
+              "Conflicting terms surfaced as explicit discrepancies"
             ],
             "cta": {
               "label": "See amendment review",
-              "href": "#playbooks"
+              "href": "#product"
             }
           },
           {
             "id": "bilingual-work",
             "title": "Bilingual Approvals",
-            "subtitle": "Review Arabic and English versions together, including translation and localization mismatches, before anything is sent.",
+            "subtitle": "Review Arabic and English versions together before anything is sent.",
             "bullets": [
               "Side-by-side evidence across both languages",
-              "Layout-aware handling for scans, stamps, annexes, and translated tables",
               "Translation and localization mismatches surfaced early"
             ],
             "cta": {
               "label": "See bilingual review",
               "href": "#product"
-            }
-          },
-          {
-            "id": "counsel",
-            "title": "Reviewed Decision Packs",
-            "subtitle": "Move faster when the business needs an answer now, without settling for untraceable chat output.",
-            "bullets": [
-              "First-pass review tied to source evidence",
-              "Forwardable packs for stakeholders and approvers",
-              "Clear record of what was verified, overridden, or escalated"
-            ],
-            "cta": {
-              "label": "See legal ops flow",
-              "href": "#security"
             }
           }
         ]
@@ -1514,10 +1490,9 @@
         "title": "Decision packs your team can actually defend.",
         "bullets": [
           "Share-ready summaries for internal review or stakeholder delivery",
-          "Trackers for renewals, obligations, exceptions, and follow-up work",
           "Key facts and issues linked back to the source",
           "Clear distinction between verified items, review items, and overrides",
-          "Export options built for PDF, Word, and operational handoff"
+          "Export options for PDF, Word, and operational handoff"
         ],
         "exportButtons": [
           "Export PDF",
@@ -1528,7 +1503,7 @@
       },
       "security": {
         "id": "security",
-        "title": "Enterprise governance, built in from day one.",
+        "title": "Privacy and control, built in.",
         "leftBullets": [
           "Customer files are not used to train models",
           "Regional deployment options cover supported GCP regions, including Saudi, UAE, and the US",
@@ -1547,10 +1522,10 @@
       },
       "pricing": {
         "id": "pricing",
-        "title": "Pricing for individuals and teams.",
+        "title": "Pricing for solo reviewers and teams.",
         "toggleLabels": [
           "Individuals",
-          "Business"
+          "Teams"
         ],
         "professional": [
           {
@@ -1558,11 +1533,10 @@
             "name": "Pro",
             "price": "SAR 149 / month",
             "bullets": [
-              "10 GiB storage, 120M metered AI tokens, and 1,500 billable ops each month",
-              "Built for regular individual workloads with predictable monthly limits",
+              "Best for one person handling steady monthly review work",
               "Core review workflow tools, discrepancy routing, and calendar sync",
               "Drive, OneDrive, and WhatsApp import included",
-              "Best fit when you want one paid individual plan with clear meters"
+              "10 GiB storage, 120M metered AI tokens, and 1,500 billable ops each month"
             ],
             "cta": {
               "label": "Start Pro",
@@ -1574,11 +1548,10 @@
             "name": "Max",
             "price": "SAR 599 / month",
             "bullets": [
-              "100 GiB storage, 500M metered AI tokens, and 6,000 billable ops each month",
-              "For heavier individual use with larger monthly pools",
-              "Priority support and Google Drive sync",
+              "Best for heavier individual review and bilingual work",
               "Advanced bilingual translation, localization, and verification workflows",
-              "Best fit when you do not need shared team billing"
+              "Priority support and Google Drive sync",
+              "100 GiB storage, 500M metered AI tokens, and 6,000 billable ops each month"
             ],
             "cta": {
               "label": "Start Max",
@@ -1592,11 +1565,10 @@
             "name": "Team",
             "price": "14-day trial",
             "bullets": [
-              "250 GiB pooled storage, 1.5B metered tokens, and 20,000 pooled billable ops",
-              "Shared workspaces and team collaboration controls",
+              "Best for a first live team rollout",
+              "Shared workspaces and collaboration controls",
               "14-day trial with card setup through Moyasar",
-              "Trial usage is capped to Pro limits until billing begins",
-              "Best fit for the first live team rollout"
+              "250 GiB pooled storage, 1.5B metered tokens, and 20,000 pooled billable ops"
             ],
             "cta": {
               "label": "Start 14-Day Trial",
@@ -1608,7 +1580,7 @@
             "name": "Enterprise",
             "price": "Custom",
             "bullets": [
-              "Larger rollouts, governance controls, and procurement support",
+              "For larger rollouts, governance controls, and procurement support",
               "Data-locality planning and custom onboarding",
               "Shared rollout planning across multiple teams",
               "Custom pricing, support, and deployment scope"
@@ -1620,8 +1592,8 @@
           }
         ],
         "usageMeter": {
-          "title": "For first live team rollouts",
-          "body": "Zohal meters plans through 3 categories only: storage, metered AI tokens, and billable ops. Billable ops are completed analysis or export actions. Team includes a 14-day trial with card setup through Moyasar. Trial usage stays capped to Pro limits until billing begins. Enterprise pricing is custom."
+          "title": "Simple metering",
+          "body": "Plans are measured by storage, AI usage, and completed analysis or export actions. If you are unsure which tier fits your workflow, book a demo and we will help map it."
         }
       },
       "insights": {
@@ -1654,7 +1626,7 @@
             "excerpt": "Turn a messy bundle into a short, reviewable pack that highlights only what changed.",
             "date": "2026-01-14",
             "readTime": "3 min",
-            "href": "#playbooks"
+            "href": "#product"
           }
         ],
         "cta": {
@@ -1702,7 +1674,7 @@
           "ctas": [
             {
               "type": "secondary",
-              "label": "Contact us",
+              "label": "Book a demo",
               "href": "/support"
             },
             {
@@ -1719,13 +1691,13 @@
         "ctas": [
           {
             "type": "primary",
-            "label": "Book a demo",
-            "href": "/support"
+            "label": "Start free",
+            "href": "/auth/signup"
           },
           {
             "type": "secondary",
-            "label": "Start free",
-            "href": "/auth/signup"
+            "label": "Book a demo",
+            "href": "/support"
           }
         ]
       },
@@ -1744,11 +1716,11 @@
               },
               {
                 "label": "Conflict Radar",
-                "href": "#playbooks"
+                "href": "#how"
               },
               {
-                "label": "Decision Packs",
-                "href": "#decision-pack"
+                "label": "Workflows",
+                "href": "#workflows"
               }
             ]
           },
@@ -1757,15 +1729,15 @@
             "links": [
               {
                 "label": "Contract Review",
-                "href": "#product"
+                "href": "#workflows"
               },
               {
                 "label": "Bilingual Contracts",
-                "href": "#product"
+                "href": "#workflows"
               },
               {
                 "label": "Amendments",
-                "href": "#playbooks"
+                "href": "#workflows"
               }
             ]
           },
