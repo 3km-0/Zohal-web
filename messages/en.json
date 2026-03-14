@@ -1252,7 +1252,7 @@
       },
       "hero": {
         "headline": "AI that verifies before it acts.",
-        "subhead": "Upload contracts, invoices, and policies. Zohal extracts the key fields, links each result back to the source, runs a second verifier pass, and blocks downstream actions until a reviewer signs off.",
+        "subhead": "Zohal extracts key fields, links them to the source, and runs a second check before anything goes out.",
         "ctas": [
           {
             "type": "primary",
@@ -1285,28 +1285,35 @@
         ]
       },
       "partners": {
-        "title": "Partner ecosystem",
-        "subhead": "Reserved space for partner logos that reinforce trust on the homepage. Swap these placeholders for alliance, integration, and delivery partner marks when they are ready.",
+        "title": "Partners",
+        "subhead": "Selected ecosystem and program partners.",
         "items": [
           {
             "id": "partner-1",
-            "label": "Partner logo"
+            "label": "Misk",
+            "href": "https://misk.org.sa",
+            "logoSrc": "/partners/misk.png",
+            "logoAlt": "Misk Foundation",
+            "logoWidth": 5426,
+            "logoHeight": 3118
           },
           {
             "id": "partner-2",
-            "label": "Partner logo"
+            "label": "NTDP",
+            "href": "https://ntdp.gov.sa",
+            "logoSrc": "/partners/ntdp.svg",
+            "logoAlt": "National Technology Development Program",
+            "logoWidth": 512,
+            "logoHeight": 512
           },
           {
             "id": "partner-3",
-            "label": "Partner logo"
-          },
-          {
-            "id": "partner-4",
-            "label": "Partner logo"
-          },
-          {
-            "id": "partner-5",
-            "label": "Partner logo"
+            "label": "NDGP",
+            "href": "https://dgp.sdaia.gov.sa",
+            "logoSrc": "/partners/ndgp.svg",
+            "logoAlt": "National Data Governance Platform",
+            "logoWidth": 240,
+            "logoHeight": 58
           }
         ]
       },

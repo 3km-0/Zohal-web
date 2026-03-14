@@ -1252,7 +1252,7 @@
       },
       "hero": {
         "headline": "ذكاء اصطناعي يتحقق قبل أن ينفّذ.",
-        "subhead": "ارفع العقود والفواتير والسياسات. يستخرج زحل الحقول المهمة، ويربط كل نتيجة بالمصدر، ويشغّل فحص تحقق ثانياً، ثم يمنع أي إجراء لاحق حتى يراجعه شخص مسؤول.",
+        "subhead": "يستخرج زحل الحقول المهمة، ويربطها بالمصدر، ويشغّل فحصاً ثانياً قبل أن يخرج أي شيء.",
         "ctas": [
           {
             "type": "primary",
@@ -1285,28 +1285,35 @@
         ]
       },
       "partners": {
-        "title": "منظومة الشركاء",
-        "subhead": "مساحة مخصصة لشعارات الشركاء على الصفحة الرئيسية. يمكن استبدال هذه العناصر المؤقتة لاحقاً بشعارات شركاء التكامل والتحالفات والتنفيذ.",
+        "title": "الشركاء",
+        "subhead": "شركاء مختارون من المنظومة والبرامج.",
         "items": [
           {
             "id": "partner-1",
-            "label": "شعار شريك"
+            "label": "Misk",
+            "href": "https://misk.org.sa",
+            "logoSrc": "/partners/misk.png",
+            "logoAlt": "مؤسسة مسك",
+            "logoWidth": 5426,
+            "logoHeight": 3118
           },
           {
             "id": "partner-2",
-            "label": "شعار شريك"
+            "label": "NTDP",
+            "href": "https://ntdp.gov.sa",
+            "logoSrc": "/partners/ntdp.svg",
+            "logoAlt": "برنامج تطوير التقنية الوطنية",
+            "logoWidth": 512,
+            "logoHeight": 512
           },
           {
             "id": "partner-3",
-            "label": "شعار شريك"
-          },
-          {
-            "id": "partner-4",
-            "label": "شعار شريك"
-          },
-          {
-            "id": "partner-5",
-            "label": "شعار شريك"
+            "label": "NDGP",
+            "href": "https://dgp.sdaia.gov.sa",
+            "logoSrc": "/partners/ndgp.svg",
+            "logoAlt": "منصة حوكمة البيانات الوطنية",
+            "logoWidth": 240,
+            "logoHeight": 58
           }
         ]
       },

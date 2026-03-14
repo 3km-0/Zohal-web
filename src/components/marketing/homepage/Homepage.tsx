@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -43,7 +44,15 @@ type Content = {
   partners: {
     title: string;
     subhead: string;
-    items: Array<{ id: string; label: string }>;
+    items: Array<{
+      id: string;
+      label: string;
+      href: string;
+      logoSrc: string;
+      logoAlt: string;
+      logoWidth: number;
+      logoHeight: number;
+    }>;
   };
   problem: {
     title: string;
@@ -534,7 +543,15 @@ function PartnerLogoStrip({
 }: {
   title: string;
   subhead: string;
-  items: Array<{ id: string; label: string }>;
+  items: Array<{
+    id: string;
+    label: string;
+    href: string;
+    logoSrc: string;
+    logoAlt: string;
+    logoWidth: number;
+    logoHeight: number;
+  }>;
 }) {
   return (
     <div className="rounded-[32px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-5 py-6 shadow-[var(--shadowSm)] sm:px-6 sm:py-7">
@@ -542,19 +559,24 @@ function PartnerLogoStrip({
         <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">{title}</div>
         <p className="mt-3 text-sm leading-7 text-text-soft sm:text-base">{subhead}</p>
       </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
         {items.map((item) => (
-          <div
+          <a
             key={item.id}
-            className="flex min-h-[84px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-4"
+            href={item.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={item.label}
+            className="flex min-h-[110px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-white px-6 py-5 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2"
           >
-            <div className="flex items-center gap-3 text-center text-text-soft">
-              <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--accent)] opacity-70" />
-              <span className="text-xs font-semibold uppercase tracking-[0.16em]">
-                {item.label}
-              </span>
-            </div>
-          </div>
+            <Image
+              src={item.logoSrc}
+              alt={item.logoAlt}
+              width={item.logoWidth}
+              height={item.logoHeight}
+              className="max-h-14 w-auto max-w-full object-contain"
+            />
+          </a>
         ))}
       </div>
     </div>
