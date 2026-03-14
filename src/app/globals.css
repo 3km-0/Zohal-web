@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Scholar Design System - CSS Variables */
+/* Slate Design Language - CSS Variables */
 :root {
   /* Light Theme (Default) */
   --bg: #ffffff;
@@ -82,6 +82,7 @@
   --nav-border: rgba(255, 255, 255, 0.06);
 }
 
+/* Legacy aliases retained while older theme preference values are phased out. */
 [data-theme='scholar-dark'] {
   --bg: #09090b;
   --surface: #18181b;
@@ -113,7 +114,7 @@
   --nav-border: rgba(255, 255, 255, 0.06);
 }
 
-/* Scholar Neutral (alias; used by marketing page) */
+/* Legacy Scholar neutral alias. */
 [data-theme='scholar-neutral'] {
   --bg: #09090b;
   --surface: #18181b;

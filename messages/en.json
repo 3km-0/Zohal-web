@@ -1284,6 +1284,32 @@
           "WhatsApp, Google Drive, and OneDrive integrations"
         ]
       },
+      "partners": {
+        "title": "Partner ecosystem",
+        "subhead": "Reserved space for partner logos that reinforce trust on the homepage. Swap these placeholders for alliance, integration, and delivery partner marks when they are ready.",
+        "items": [
+          {
+            "id": "partner-1",
+            "label": "Partner logo"
+          },
+          {
+            "id": "partner-2",
+            "label": "Partner logo"
+          },
+          {
+            "id": "partner-3",
+            "label": "Partner logo"
+          },
+          {
+            "id": "partner-4",
+            "label": "Partner logo"
+          },
+          {
+            "id": "partner-5",
+            "label": "Partner logo"
+          }
+        ]
+      },
       "problem": {
         "title": "Stop trusting plausible text with high-stakes decisions.",
         "body": [

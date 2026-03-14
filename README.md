@@ -52,7 +52,7 @@ try {
 ```
 
 ### Styling
-- Use Tailwind CSS with Scholar theme colors
+- Use Tailwind CSS with Slate design language tokens
 - No inline hex colors - use theme tokens
 - Global toast for transient errors via `Toast` component
 
@@ -96,4 +96,4 @@ npm run build
 See the main project documentation in `../zohal-core/Documentation/`:
 - [Engineering_Quality_Master_Plan.md](../zohal-core/Documentation/Engineering_Quality_Master_Plan.md)
 - [architecture.md](../zohal-core/Documentation/architecture.md)
-- [Scholor_Theme.md](../zohal-core/Documentation/Scholor_Theme.md)
+- [Zohal Design Language.md](../zohal-core/Documentation/Zohal%20Design%20Language.md)

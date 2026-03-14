@@ -40,6 +40,11 @@ type Content = {
     mock: { title: string; panels: string[] };
   };
   credibilityStrip: { label: string; items: string[] };
+  partners: {
+    title: string;
+    subhead: string;
+    items: Array<{ id: string; label: string }>;
+  };
   problem: {
     title: string;
     body: string[];
@@ -518,6 +523,40 @@ function StatCard({ value, label }: { value: string; label: string }) {
         {value}
       </div>
       <div className="mt-2 text-sm text-text-soft">{label}</div>
+    </div>
+  );
+}
+
+function PartnerLogoStrip({
+  title,
+  subhead,
+  items,
+}: {
+  title: string;
+  subhead: string;
+  items: Array<{ id: string; label: string }>;
+}) {
+  return (
+    <div className="rounded-[32px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-5 py-6 shadow-[var(--shadowSm)] sm:px-6 sm:py-7">
+      <div className="max-w-[42rem]">
+        <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">{title}</div>
+        <p className="mt-3 text-sm leading-7 text-text-soft sm:text-base">{subhead}</p>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex min-h-[84px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-4"
+          >
+            <div className="flex items-center gap-3 text-center text-text-soft">
+              <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--accent)] opacity-70" />
+              <span className="text-xs font-semibold uppercase tracking-[0.16em]">
+                {item.label}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1557,6 +1596,14 @@ export function Homepage() {
                 ))}
               </div>
             </div>
+          </Reveal>
+
+          <Reveal className="mt-6" delayMs={190}>
+            <PartnerLogoStrip
+              title={content.partners.title}
+              subhead={content.partners.subhead}
+              items={content.partners.items}
+            />
           </Reveal>
         </Section>
 

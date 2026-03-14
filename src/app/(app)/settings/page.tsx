@@ -41,6 +41,10 @@ function writeThemeToStorage(value: 'light' | 'dark'): void {
   }
 }
 
+function themeToDataTheme(value: 'light' | 'dark'): 'slate-light' | 'slate-dark' {
+  return value === 'light' ? 'slate-light' : 'slate-dark';
+}
+
 export default function SettingsPage() {
   const t = useTranslations('settings');
   const tSettings = useTranslations('settingsPage');
@@ -171,13 +175,13 @@ export default function SettingsPage() {
     const resolvedTheme = savedTheme ?? 'dark';
     setTheme(resolvedTheme);
     writeThemeToStorage(resolvedTheme);
-    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    document.documentElement.setAttribute('data-theme', themeToDataTheme(resolvedTheme));
   }, []);
 
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
     setTheme(newTheme);
     writeThemeToStorage(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
+    document.documentElement.setAttribute('data-theme', themeToDataTheme(newTheme));
   };
 
   const handleSaveProfile = async () => {
