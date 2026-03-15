@@ -7,6 +7,9 @@ export interface FindingToolAction {
 
 export interface FindingCardModel {
   id: string;
+  recordId?: string;
+  moduleId?: string;
+  moduleTitle?: string;
   title: string;
   subtitle?: string;
   body?: string;
@@ -20,6 +23,8 @@ export interface FindingCardModel {
   sourcePage?: number;
   metadata?: Record<string, string | number | boolean | null | undefined>;
   groupKey?: string;
+  rendererHint?: string;
+  showInReport?: boolean;
   toolAction?: FindingToolAction;
 }
 
@@ -332,6 +337,7 @@ export function deriveModuleDescriptors(snapshot: EvidenceGradeSnapshot | null |
   const pack = asObject(snapshot?.pack);
   const playbook = asObject(pack.playbook);
   const modulesMap = asObject(pack.modules);
+  const records = Array.isArray(pack.records) ? pack.records : [];
   const modulesV2 = Array.isArray(playbook.modules_v2) ? playbook.modules_v2 : [];
   const modulesEnabled = Array.isArray(playbook.modules_enabled)
     ? playbook.modules_enabled
@@ -350,7 +356,9 @@ export function deriveModuleDescriptors(snapshot: EvidenceGradeSnapshot | null |
       title: asString(moduleSpec.title) || titleCaseFromId(id),
       kind: 'custom',
       renderer: selectModuleRenderer(getSnapshotTemplateId(snapshot), id),
-      hasOutput: Object.prototype.hasOwnProperty.call(modulesMap, id),
+      hasOutput:
+        Object.prototype.hasOwnProperty.call(modulesMap, id) ||
+        records.some((rawRecord) => asString(asObject(rawRecord).module_id) === id),
       enabled: moduleSpec.enabled !== false,
       order: index,
     });
@@ -365,7 +373,9 @@ export function deriveModuleDescriptors(snapshot: EvidenceGradeSnapshot | null |
       title: existing?.title || asString(asObject(modulesMap[id]).title) || titleCaseFromId(id),
       kind: 'custom',
       renderer: selectModuleRenderer(getSnapshotTemplateId(snapshot), id),
-      hasOutput: Object.prototype.hasOwnProperty.call(modulesMap, id),
+      hasOutput:
+        Object.prototype.hasOwnProperty.call(modulesMap, id) ||
+        records.some((rawRecord) => asString(asObject(rawRecord).module_id) === id),
       enabled: true,
       order: existing?.order ?? 100 + index,
     });
@@ -383,6 +393,22 @@ export function deriveModuleDescriptors(snapshot: EvidenceGradeSnapshot | null |
       hasOutput: true,
       enabled: existing?.enabled ?? true,
       order: existing?.order ?? 200 + index,
+    });
+  });
+
+  records.forEach((rawRecord, index) => {
+    const record = asObject(rawRecord);
+    const id = asString(record.module_id);
+    if (!id || CORE_MODULE_SET.has(id)) return;
+    const existing = descriptors.get(id);
+    descriptors.set(id, {
+      id,
+      title: existing?.title || asString(record.module_title) || titleCaseFromId(id),
+      kind: 'custom',
+      renderer: selectModuleRenderer(getSnapshotTemplateId(snapshot), id),
+      hasOutput: true,
+      enabled: existing?.enabled ?? true,
+      order: existing?.order ?? 300 + index,
     });
   });
 
@@ -555,12 +581,18 @@ export function recordsToFindingCards(records: Array<Record<string, unknown>>): 
     const metadata = toMetadata(asObject(record.fields), new Set());
     return {
       id: asString(record.id) || `record:${index}`,
+      recordId: asString(record.id) || `record:${index}`,
+      moduleId: asString(record.module_id) || undefined,
+      moduleTitle: asString(record.module_title) || undefined,
       title,
+      subtitle: asString(record.status) || undefined,
       body,
       severity,
       evidence: normalizeEvidence(record.evidence),
       metadata,
-      groupKey: asString(record.record_type) || undefined,
+      groupKey: asString(record.group_key) || asString(record.record_type) || undefined,
+      rendererHint: asString(record.renderer_hint) || undefined,
+      showInReport: record.show_in_report === false ? false : true,
       needsAttention: asString(record.status) === 'open' || severity === 'warning' || severity === 'blocker',
       attentionLabel: asString(record.status) === 'open' ? 'Open' : undefined,
     };

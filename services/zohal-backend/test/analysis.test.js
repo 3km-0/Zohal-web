@@ -136,6 +136,77 @@ test("native export renderer produces generic evidence-grade sections for regula
   assert.match(html, /Termination/);
 });
 
+test("native export renderer prefers record-backed module sections and hides rejected records", () => {
+  const html = renderContractExportHtml({
+    snapshot: {
+      schema_version: "2.2.0",
+      template: "contract_analysis",
+      variables: [],
+      clauses: [],
+      obligations: [],
+      risks: [],
+      pack: {
+        review: {
+          rejected: {
+            records: ["record-hidden"],
+          },
+        },
+        records: [
+          {
+            id: "record-visible",
+            module_id: "exam_questions",
+            module_title: "Exam Questions",
+            record_type: "question",
+            title: "Question 1",
+            summary: "What is the contract term?",
+            status: "proposed",
+            show_in_report: true,
+            evidence: [{ page_number: 2, source_quote: "The initial term is 12 months." }],
+          },
+          {
+            id: "record-hidden",
+            module_id: "exam_questions",
+            module_title: "Exam Questions",
+            record_type: "question",
+            title: "Question 2",
+            summary: "Hidden record",
+            status: "proposed",
+            show_in_report: true,
+          },
+        ],
+        modules: {
+          exam_questions: {
+            id: "exam_questions",
+            title: "Exam Questions",
+            status: "ok",
+            show_in_report: true,
+            result: {
+              questions: [{ title: "Raw blob fallback should stay hidden" }],
+            },
+          },
+        },
+      },
+    },
+    documentTitle: "Exam Questions Export",
+    state: "provisional",
+    versionNumber: 1,
+    finalizedAt: null,
+    reviewerName: null,
+    settings: {
+      customTitle: "",
+      customSubtitle: "",
+      primaryColor: "#2d8878",
+      template: "contract_analysis",
+      language: "en",
+    },
+  });
+
+  assert.match(html, /Exam Questions/);
+  assert.match(html, /Question 1/);
+  assert.doesNotMatch(html, /Question 2/);
+  assert.doesNotMatch(html, /Raw blob fallback should stay hidden/);
+});
+
 test("native batch text builder preserves ordered page markers", () => {
   const text = buildBatchText([
     { page_number: 2, content_text: "Second page" },

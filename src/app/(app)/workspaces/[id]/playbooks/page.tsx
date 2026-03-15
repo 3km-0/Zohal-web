@@ -372,7 +372,7 @@ export default function WorkspacePlaybooksPage() {
   const [ruleErrorById, setRuleErrorById] = useState<Record<string, string>>({});
   const [expandedSchemaIds, setExpandedSchemaIds] = useState<Set<string>>(new Set());
   const [activeSection, setActiveSection] = useState<'modules' | 'variables' | 'rules' | 'scope'>('modules');
-  const isConfigurationSection = activeSection === 'rules' || activeSection === 'scope';
+  const isConfigurationSection = activeSection === 'scope';
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
 
@@ -843,11 +843,11 @@ export default function WorkspacePlaybooksPage() {
                   {[
                       { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length, active: activeSection === 'modules' },
                       { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length, active: activeSection === 'variables' },
-                      { id: 'configuration' as const, label: t('builder.sections.configuration'), icon: Shield, count: (spec.rules || []).length + ((spec.bundle_schema?.roles || []).length > 0 ? 1 : 0), active: isConfigurationSection },
+                      { id: 'configuration' as const, label: 'Context', icon: Shield, count: (spec.bundle_schema?.roles || []).length + (spec.scope && spec.scope !== 'either' ? 1 : 0), active: isConfigurationSection },
                     ].map((tab) => (
                       <button
                         key={tab.id}
-                        onClick={() => setActiveSection(tab.id === 'configuration' ? 'rules' : tab.id)}
+                        onClick={() => setActiveSection(tab.id === 'configuration' ? 'scope' : tab.id)}
                         className={cn(
                           'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-b-2',
                           tab.active
@@ -874,11 +874,12 @@ export default function WorkspacePlaybooksPage() {
                 <div className="p-4 space-y-4">
                   {isConfigurationSection && (
                     <div className="rounded-scholar border border-border bg-surface-alt/40 p-3 space-y-3">
-                      <p className="text-xs text-text-soft">{t('builder.configuration.description')}</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <p className="text-xs text-text-soft">
+                        Context controls where this template can run and which document roles it expects. Legacy rules/checks are preserved in the saved spec but are no longer a primary authoring surface.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
                         {[
-                          { id: 'rules' as const, icon: ShieldCheck, label: t('builder.sections.rules'), subtitle: t('builder.configuration.rulesHint') },
-                          { id: 'scope' as const, icon: Globe, label: t('builder.sections.scopeRoles'), subtitle: t('builder.configuration.scopeHint') },
+                          { id: 'scope' as const, icon: Globe, label: 'Scope & Roles', subtitle: 'Define whether the template runs on one document or a bundle, and which document roles are required.' },
                         ].map((section) => (
                           <button
                             key={section.id}
@@ -907,8 +908,8 @@ export default function WorkspacePlaybooksPage() {
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-text-soft">
                           {isSystemPreset 
-                            ? 'View the extraction modules defined in this system template.'
-                            : 'Define extraction modules. Each module extracts specific data from documents.'}
+                            ? 'View the modules defined in this system template.'
+                            : 'Modules tell the AI what to produce and how to structure it. Each module should return schema-shaped records with evidence.'}
                         </p>
                         {!isSystemPreset && (
                           <Button
@@ -1074,7 +1075,7 @@ export default function WorkspacePlaybooksPage() {
                         <p className="text-sm text-text-soft">
                           {isSystemPreset 
                             ? 'View the variables defined in this system template.'
-                            : 'Define variables to extract from documents.'}
+                            : 'Variables are the canonical facts you want extracted and verified.'}
                         </p>
                         {!isSystemPreset && (
                           <Button
@@ -1355,7 +1356,7 @@ export default function WorkspacePlaybooksPage() {
                   {/* Scope & roles section */}
                   {activeSection === 'scope' && (
                     <div className="space-y-4">
-                      <p className="text-sm text-text-soft">{t('builder.scope.description')}</p>
+                      <p className="text-sm text-text-soft">Context defines source boundaries: whether the template runs on a single document or a bundle, and which document roles are expected.</p>
 
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-text-soft">{t('builder.scope.scopeLabel')}</label>

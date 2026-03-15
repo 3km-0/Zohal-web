@@ -587,24 +587,35 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   const moduleItemsById = useMemo(() => {
     const entries = new Map<string, GenericModuleItem[]>();
     for (const descriptor of moduleDescriptors) {
+      const moduleRecords = v3Records.filter(
+        (record) =>
+          String((record as any)?.module_id || '').trim() === descriptor.id &&
+          String((record as any)?.status || '').toLowerCase() !== 'rejected'
+      );
       const raw = packModules[descriptor.id];
       const moduleValue = raw && typeof raw === 'object' ? raw : {};
-      const items = hydrateFindingItems(
-        moduleResultToFindingCards({
-          moduleId: descriptor.id,
-          moduleTitle: descriptor.title,
-          result: (moduleValue as any).result,
-          evidence: (moduleValue as any).evidence,
-          moduleConfidence: (moduleValue as any).ai_confidence,
-        }) as GenericModuleItem[]
-      );
+      const recordFirstItems = recordsToFindingCards(
+        moduleRecords as Array<Record<string, unknown>>
+      ) as GenericModuleItem[];
+      const fallbackItems = moduleResultToFindingCards({
+        moduleId: descriptor.id,
+        moduleTitle: descriptor.title,
+        result: (moduleValue as any).result,
+        evidence: (moduleValue as any).evidence,
+        moduleConfidence: (moduleValue as any).ai_confidence,
+      }) as GenericModuleItem[];
+      const items = hydrateFindingItems(recordFirstItems.length > 0 ? recordFirstItems : fallbackItems);
       entries.set(
         descriptor.id,
-        items.filter((item) => !rejectedSets.modules.has(item.id))
+        items.filter((item) =>
+          item.recordId
+            ? !rejectedSets.records.has(item.recordId)
+            : !rejectedSets.modules.has(item.id)
+        )
       );
     }
     return entries;
-  }, [hydrateFindingItems, moduleDescriptors, packModules, rejectedSets.modules]);
+  }, [hydrateFindingItems, moduleDescriptors, packModules, rejectedSets.modules, rejectedSets.records, v3Records]);
 
   const recordItems = useMemo(
     () =>
@@ -2170,6 +2181,14 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     );
   }
 
+  async function rejectModuleItem(item: GenericModuleItem) {
+    if (item.recordId) {
+      await rejectItem('record', item.recordId);
+      return;
+    }
+    await rejectItem('module', item.id);
+  }
+
   async function addManualRisk() {
     const description = window.prompt(t('v3.addRiskPromptDescription'));
     if (!description || !description.trim()) return;
@@ -3625,6 +3644,14 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
               const moduleId = tab.slice('module:'.length);
               const descriptor = moduleDescriptorById.get(moduleId);
               const items = moduleItemsById.get(moduleId) || [];
+              const handleReject = (itemId: string) => {
+                const item = items.find((candidate) => candidate.id === itemId);
+                if (!item) {
+                  void rejectItem('module', itemId);
+                  return;
+                }
+                void rejectModuleItem(item);
+              };
               const emptyTitle = t('summary.moduleEmptyTitle', { module: descriptor?.title || moduleId });
               const emptyDescription = descriptor?.hasOutput
                 ? t('summary.moduleEmptyDescription', { module: descriptor?.title || moduleId })
@@ -3645,7 +3672,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3657,7 +3684,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3669,7 +3696,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                       verdictCount={visibleVerdicts.length}
                       exceptionCount={visibleExceptions.length}
@@ -3683,7 +3710,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3695,7 +3722,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3707,7 +3734,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3719,7 +3746,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3731,7 +3758,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3743,7 +3770,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       emptyDescription={emptyDescription}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isPatchingSnapshot={isPatchReadOnly}
                     />
                   );
@@ -3754,7 +3781,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       moduleTitle={descriptor.title}
                       workspaceId={workspaceId}
                       documentId={documentId}
-                      onReject={(itemId) => rejectItem('module', itemId)}
+                      onReject={handleReject}
                       isModuleRejected={rejectedSets.modules.has(moduleId)}
                       onRestoreModule={() => restoreItem('module', moduleId)}
                       isPatchingSnapshot={isPatchReadOnly}

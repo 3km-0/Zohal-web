@@ -232,14 +232,44 @@ function renderEntityCard(item, fallbackTitle, metaParts = []) {
 
 function renderPackModules(snapshot, rejected, settings) {
   const pack = snapshot?.pack && typeof snapshot.pack === "object" ? snapshot.pack : {};
+  const coreIds = new Set(["variables", "clauses", "obligations", "risks", "deadlines"]);
+  const groupedRecordModules = new Map();
+  for (const item of normalizeList(pack.records)) {
+    const recordId = String(item?.id || "").trim();
+    const moduleId = String(item?.module_id || "").trim();
+    if (!recordId || !moduleId || coreIds.has(moduleId)) continue;
+    if (rejected.records.has(recordId)) continue;
+    if (String(item?.status || "").trim().toLowerCase() === "rejected") continue;
+    if (item?.show_in_report === false) continue;
+    if (!groupedRecordModules.has(moduleId)) {
+      groupedRecordModules.set(moduleId, {
+        title: String(item?.module_title || moduleId),
+        items: [],
+      });
+    }
+    groupedRecordModules.get(moduleId).items.push({
+      title: item?.title || item?.summary || item?.record_type || moduleId,
+      body: item?.summary || item?.rationale || "",
+      meta: item?.status || item?.record_type || null,
+      evidence: Array.isArray(item?.evidence) && item.evidence[0]
+        ? { page_number: item.evidence[0].page_number, snippet: item.evidence[0].source_quote || item.evidence[0].snippet }
+        : null,
+    });
+  }
+  const recordBackedIds = new Set(Array.from(groupedRecordModules.keys()));
   const modules = pack.modules && typeof pack.modules === "object" && !Array.isArray(pack.modules)
     ? Object.entries(pack.modules)
-      .filter(([key]) => !rejected.modules.has(String(key || "").trim()))
+      .filter(([key]) =>
+        !rejected.modules.has(String(key || "").trim()) &&
+        !coreIds.has(String(key || "").trim()) &&
+        !recordBackedIds.has(String(key || "").trim())
+      )
       .map(([key, value]) => ({ key, value }))
     : [];
   const customModules = Array.isArray(pack?.playbook?.custom_modules)
     ? pack.playbook.custom_modules.filter((item) =>
-      !rejected.modules.has(String(item?.id || "").trim())
+      !rejected.modules.has(String(item?.id || "").trim()) &&
+      !recordBackedIds.has(String(item?.id || "").trim())
     )
     : [];
 
@@ -262,7 +292,7 @@ function renderPackModules(snapshot, rejected, settings) {
       : null,
   }));
 
-  return renderGenericSection(
+  const legacyHtml = renderGenericSection(
     translate(settings, "moduleOutputs"),
     [...moduleCards, ...customCards],
     (item) => `
@@ -275,6 +305,24 @@ function renderPackModules(snapshot, rejected, settings) {
     `,
     translate(settings, "none"),
   );
+
+  const recordHtml = Array.from(groupedRecordModules.values()).map((group) =>
+    renderGenericSection(
+      String(group.title || "Module"),
+      group.items,
+      (item) => `
+        <article class="card">
+          <div class="card-title">${escapeHtml(String(item.title || "Record"))}</div>
+          ${item.meta ? `<div class="card-meta">${escapeHtml(String(item.meta))}</div>` : ""}
+          ${item.body ? `<div class="card-body">${escapeHtml(String(item.body || ""))}</div>` : ""}
+          ${item.evidence ? renderEvidence(item) : ""}
+        </article>
+      `,
+      translate(settings, "none"),
+    )
+  ).join("");
+
+  return `${recordHtml}${legacyHtml}`;
 }
 
 function getVariableValue(snapshot, name) {

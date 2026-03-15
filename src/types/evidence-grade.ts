@@ -172,6 +172,25 @@ export interface RiskWithEvidence {
   resolved: boolean
 }
 
+export interface AnalysisRecord {
+  id: string
+  record_type: string
+  module_id?: string
+  module_title?: string
+  title?: string
+  summary?: string
+  status?: 'proposed' | 'confirmed' | 'rejected' | 'resolved'
+  severity?: string
+  rationale?: string
+  group_key?: string
+  renderer_hint?: string
+  show_in_report?: boolean
+  display_order?: number
+  fields?: Record<string, unknown>
+  evidence?: EvidenceAnchor[]
+  provenance?: Record<string, unknown>
+}
+
 // =============================================================================
 // Evidence Grade Snapshot
 // =============================================================================
@@ -214,7 +233,7 @@ export interface EvidenceGradeSnapshot {
     // Playbooks (additive)
     playbook?: Record<string, unknown>
     // Analysis V3 additive sections
-    records?: Array<Record<string, unknown>>
+    records?: AnalysisRecord[]
     rules?: Array<Record<string, unknown>>
     verdicts?: Array<Record<string, unknown>>
     exceptions_v3?: Array<Record<string, unknown>>
