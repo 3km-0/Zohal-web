@@ -1597,10 +1597,15 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     setIsGeneratingKnowledgePack(true);
     setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-knowledge-pack', {
+      const { data, error, response } = await supabase.functions.invoke('analyze-knowledge-pack', {
         body: { workspace_id: workspaceId, document_id: documentId, kind },
       });
-      if (error) throw error;
+      if (error) {
+        const json = await response?.json().catch(() => null);
+        const uiErr = mapHttpError(response?.status ?? 500, json, 'analyze-knowledge-pack');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
       if (!data?.ok) throw new Error(data?.message || t('errors.generateKnowledgePackFailed'));
       await load();
       await loadRuns({ keepSelection: true });
@@ -1615,10 +1620,15 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     setIsRunningCompliance(true);
     setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-compliance', {
+      const { data, error, response } = await supabase.functions.invoke('analyze-compliance', {
         body: { workspace_id: workspaceId, document_id: documentId },
       });
-      if (error) throw error;
+      if (error) {
+        const json = await response?.json().catch(() => null);
+        const uiErr = mapHttpError(response?.status ?? 500, json, 'analyze-compliance');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
       if (!data?.ok) throw new Error(data?.message || t('errors.complianceCheckFailed'));
       await load();
       await loadRuns({ keepSelection: true });

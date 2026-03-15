@@ -21,6 +21,8 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { downloadLibraryPdf } from '@/lib/zohal-library';
+import { mapHttpError } from '@/lib/errors';
+import { useToast } from '@/components/ui/Toast';
 
 type AskConversationSummary = {
   id: string;
@@ -85,6 +87,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
   const t = useTranslations('askAgent');
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const toast = useToast();
 
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -210,7 +213,9 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
 
     if (!response.ok || !response.body) {
       const json = await response.json().catch(() => null);
-      setError(sanitizeAskError(json?.error, t('errors.generic')));
+      const uiErr = mapHttpError(response.status, json, 'ask-stream');
+      toast.show(uiErr);
+      setError(uiErr.message);
       setLoading(false);
       return;
     }
@@ -249,7 +254,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     } finally {
       setLoading(false);
     }
-  }, [loadConversations, loading, query, selectedConversationId, supabase, t, workspaceId]);
+  }, [loadConversations, loading, query, selectedConversationId, supabase, t, toast, workspaceId]);
 
   const cancelRun = useCallback(() => {
     abortRef.current?.abort();

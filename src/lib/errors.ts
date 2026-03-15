@@ -48,6 +48,39 @@ interface BackendErrorResponse {
   feature?: string;
 }
 
+function includesAny(haystack: string, needles: string[]): boolean {
+  return needles.some((needle) => haystack.includes(needle));
+}
+
+function looksLikeUpgradeGate(response?: BackendErrorResponse, serverMessage?: string): boolean {
+  const errorKey = String(response?.error ?? response?.error_code ?? '').toLowerCase();
+  const message = String(serverMessage ?? '').toLowerCase();
+  const combined = `${errorKey} ${message}`;
+
+  return includesAny(combined, [
+    'feature_not_available',
+    'subscription required',
+    'paid subscription',
+    'requires a pro',
+    'requires pro',
+    'requires a premium',
+    'requires premium',
+    'requires a paid',
+    'upgrade to continue',
+    'upgrade your plan',
+    'limit_exceeded',
+    'limit reached',
+    'usage limit',
+    'daily limit',
+    'quota',
+    'free plan includes',
+    'included usage',
+    'billing period',
+    'current_tier',
+    'required_tier',
+  ]);
+}
+
 type UiLocale = 'en' | 'ar';
 
 function getUiLocale(): UiLocale {
@@ -132,6 +165,38 @@ export function mapHttpError(
   }
   if (legacyError === 'limit_exceeded') {
     return limitExceeded(requestId);
+  }
+
+  if (looksLikeUpgradeGate(backendResponse, serverMessage)) {
+    const looksLikeFeatureGate =
+      legacyError === 'feature_not_available' ||
+      String(serverMessage ?? '').toLowerCase().includes('subscription');
+
+    return looksLikeFeatureGate
+      ? {
+          title: tr('Upgrade Required', 'الترقية مطلوبة'),
+          message:
+            serverMessage ??
+            tr(
+              'This feature requires a paid subscription. Upgrade to continue.',
+              'هذه الميزة تتطلب اشتراكًا مدفوعًا. قم بالترقية للمتابعة.'
+            ),
+          category: 'limit',
+          action: 'upgrade',
+          requestId,
+        }
+      : {
+          title: tr('Limit Reached', 'تم الوصول إلى الحد'),
+          message:
+            serverMessage ??
+            tr(
+              "You've reached your usage limit. Upgrade for unlimited access.",
+              'لقد وصلت إلى حد الاستخدام. قم بالترقية للوصول غير المحدود.'
+            ),
+          category: 'limit',
+          action: 'upgrade',
+          requestId,
+        };
   }
 
   // Map by error code first (more specific)
@@ -300,4 +365,3 @@ function isUserFacingError(error: unknown): error is UserFacingError {
     'category' in error
   );
 }
-

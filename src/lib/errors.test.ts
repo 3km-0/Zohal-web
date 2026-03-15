@@ -27,6 +27,17 @@ describe('mapHttpError', () => {
     expect(result.requestId).toBe('req_2');
   });
 
+  it('treats upgrade/limit wording as an upgrade gate even if status is wrong', () => {
+    const result = mapHttpError(401, {
+      message: 'Free plan includes one contract analysis. Upgrade to run additional analyses.',
+      request_id: 'req_3',
+    });
+
+    expect(result.category).toBe('limit');
+    expect(result.action).toBe('upgrade');
+    expect(result.requestId).toBe('req_3');
+  });
+
   it('falls back to HTTP mapping when response body is unknown', () => {
     const result = mapHttpError(401, null);
     expect(result.category).toBe('auth');
