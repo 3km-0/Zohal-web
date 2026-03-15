@@ -1247,8 +1247,8 @@
         }
       },
       "hero": {
-        "headline": "AI that verifies before it acts.",
-        "subhead": "Zohal extracts key fields, links them to the source, and runs a second check before anything goes out.",
+        "headline": "Document analysis you can trust.",
+        "subhead": "Extract key fields, link every result to its source, and review outputs before they go out.",
         "ctas": [
           {
             "type": "primary",
