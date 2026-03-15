@@ -1,12 +1,14 @@
 # zohal-backend GCP deploy
 
-This folder is the deployment home for the Cloud Run ingestion service and its
+This folder is the deployment home for the Cloud Run execution service and its
 paired GCP resources.
 
 Resources managed here:
 - Cloud Run service: `zohal-backend`
 - Cloud Workflow: `document-ingestion-v1`
 - Cloud Tasks queue: `document-ingestion-jobs`
+- Cloud Workflow: `contract-analysis-v1`
+- Cloud Tasks queue: `contract-analysis-jobs`
 
 Deploy:
 
@@ -22,14 +24,17 @@ PROJECT_ID=asens-ai \
 SERVICE_REGION=me-central2 \
 ORCHESTRATION_REGION=us-central1 \
 SERVICE_NAME=zohal-backend \
-WORKFLOW_NAME=document-ingestion-v1 \
-TASK_QUEUE_NAME=document-ingestion-jobs \
+INGESTION_WORKFLOW_NAME=document-ingestion-v1 \
+INGESTION_TASK_QUEUE_NAME=document-ingestion-jobs \
+ANALYSIS_WORKFLOW_NAME=contract-analysis-v1 \
+ANALYSIS_TASK_QUEUE_NAME=contract-analysis-jobs \
 bash infra/gcp/zohal-backend/deploy.sh
 ```
 
 Notes:
 - The script deploys Cloud Run from `services/zohal-backend/`.
-- It updates `INGESTION_SERVICE_BASE_URL` after the Cloud Run URL is known.
+- It updates `INGESTION_SERVICE_BASE_URL` and `ANALYSIS_SERVICE_BASE_URL` after
+  the Cloud Run URL is known.
 - `SERVICE_REGION` controls where Cloud Run runs; `ORCHESTRATION_REGION` controls
   where Cloud Tasks and Cloud Workflows live.
 - Use `SET_SECRETS` to attach Secret Manager secrets during deploy and

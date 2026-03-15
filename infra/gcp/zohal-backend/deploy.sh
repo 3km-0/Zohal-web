@@ -3,14 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 SERVICE_DIR="${ROOT_DIR}/services/zohal-backend"
-WORKFLOW_FILE="${SERVICE_DIR}/workflows/document-ingestion-v1.yaml"
+INGESTION_WORKFLOW_FILE="${SERVICE_DIR}/workflows/document-ingestion-v1.yaml"
+ANALYSIS_WORKFLOW_FILE="${SERVICE_DIR}/workflows/contract-analysis-v1.yaml"
 
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 SERVICE_REGION="${SERVICE_REGION:-me-central2}"
 ORCHESTRATION_REGION="${ORCHESTRATION_REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-zohal-backend}"
-WORKFLOW_NAME="${WORKFLOW_NAME:-document-ingestion-v1}"
-TASK_QUEUE_NAME="${TASK_QUEUE_NAME:-document-ingestion-jobs}"
+INGESTION_WORKFLOW_NAME="${INGESTION_WORKFLOW_NAME:-${WORKFLOW_NAME:-document-ingestion-v1}}"
+INGESTION_TASK_QUEUE_NAME="${INGESTION_TASK_QUEUE_NAME:-${TASK_QUEUE_NAME:-document-ingestion-jobs}}"
+ANALYSIS_WORKFLOW_NAME="${ANALYSIS_WORKFLOW_NAME:-contract-analysis-v1}"
+ANALYSIS_TASK_QUEUE_NAME="${ANALYSIS_TASK_QUEUE_NAME:-contract-analysis-jobs}"
 IMAGE_REPO="${IMAGE_REPO:-gcr.io/${PROJECT_ID}/${SERVICE_NAME}}"
 IMAGE_TAG="${IMAGE_TAG:-$(date +%Y%m%d%H%M%S)}"
 IMAGE_URI="${IMAGE_URI:-${IMAGE_REPO}:${IMAGE_TAG}}"
@@ -37,8 +40,13 @@ if [[ ! -f "${SERVICE_DIR}/package.json" ]]; then
   exit 1
 fi
 
-if [[ ! -f "${WORKFLOW_FILE}" ]]; then
-  echo "Missing workflow file: ${WORKFLOW_FILE}" >&2
+if [[ ! -f "${INGESTION_WORKFLOW_FILE}" ]]; then
+  echo "Missing workflow file: ${INGESTION_WORKFLOW_FILE}" >&2
+  exit 1
+fi
+
+if [[ ! -f "${ANALYSIS_WORKFLOW_FILE}" ]]; then
+  echo "Missing workflow file: ${ANALYSIS_WORKFLOW_FILE}" >&2
   exit 1
 fi
 
@@ -62,7 +70,7 @@ DEPLOY_ARGS=(
   --cpu="${CPU}"
   --max-instances="${MAX_INSTANCES}"
   --min-instances="${MIN_INSTANCES}"
-  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_WORKFLOWS_LOCATION=${ORCHESTRATION_REGION},GCP_DOCUMENT_INGESTION_WORKFLOW=${WORKFLOW_NAME},GCP_TASKS_LOCATION=${ORCHESTRATION_REGION},GCP_DOCUMENT_INGESTION_TASK_QUEUE=${TASK_QUEUE_NAME}"
+  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_WORKFLOWS_LOCATION=${ORCHESTRATION_REGION},GCP_DOCUMENT_INGESTION_WORKFLOW=${INGESTION_WORKFLOW_NAME},GCP_TASKS_LOCATION=${ORCHESTRATION_REGION},GCP_DOCUMENT_INGESTION_TASK_QUEUE=${INGESTION_TASK_QUEUE_NAME},GCP_CONTRACT_ANALYSIS_WORKFLOW=${ANALYSIS_WORKFLOW_NAME},GCP_CONTRACT_ANALYSIS_TASK_QUEUE=${ANALYSIS_TASK_QUEUE_NAME}"
 )
 
 if [[ "${ALLOW_UNAUTHENTICATED}" == "true" ]]; then
@@ -89,42 +97,53 @@ SERVICE_URL="$(gcloud run services describe "${SERVICE_NAME}" \
 gcloud run services update "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${SERVICE_REGION}" \
-  --update-env-vars="INGESTION_SERVICE_BASE_URL=${SERVICE_URL}"
+  --update-env-vars="INGESTION_SERVICE_BASE_URL=${SERVICE_URL},ANALYSIS_SERVICE_BASE_URL=${SERVICE_URL}"
 
-if gcloud tasks queues describe "${TASK_QUEUE_NAME}" \
-  --project="${PROJECT_ID}" \
-  --location="${ORCHESTRATION_REGION}" >/dev/null 2>&1; then
-  gcloud tasks queues update "${TASK_QUEUE_NAME}" \
+for queue_name in "${INGESTION_TASK_QUEUE_NAME}" "${ANALYSIS_TASK_QUEUE_NAME}"; do
+  if gcloud tasks queues describe "${queue_name}" \
     --project="${PROJECT_ID}" \
-    --location="${ORCHESTRATION_REGION}" \
-    --max-dispatches-per-second="${TASKS_MAX_DISPATCHES_PER_SECOND}" \
-    --max-concurrent-dispatches="${TASKS_MAX_CONCURRENT_DISPATCHES}" \
-    --max-attempts="${TASKS_MAX_ATTEMPTS}" \
-    --max-retry-duration="${TASKS_MAX_RETRY_SECONDS}s"
-else
-  gcloud tasks queues create "${TASK_QUEUE_NAME}" \
-    --project="${PROJECT_ID}" \
-    --location="${ORCHESTRATION_REGION}" \
-    --max-dispatches-per-second="${TASKS_MAX_DISPATCHES_PER_SECOND}" \
-    --max-concurrent-dispatches="${TASKS_MAX_CONCURRENT_DISPATCHES}" \
-    --max-attempts="${TASKS_MAX_ATTEMPTS}" \
-    --max-retry-duration="${TASKS_MAX_RETRY_SECONDS}s"
-fi
+    --location="${ORCHESTRATION_REGION}" >/dev/null 2>&1; then
+    gcloud tasks queues update "${queue_name}" \
+      --project="${PROJECT_ID}" \
+      --location="${ORCHESTRATION_REGION}" \
+      --max-dispatches-per-second="${TASKS_MAX_DISPATCHES_PER_SECOND}" \
+      --max-concurrent-dispatches="${TASKS_MAX_CONCURRENT_DISPATCHES}" \
+      --max-attempts="${TASKS_MAX_ATTEMPTS}" \
+      --max-retry-duration="${TASKS_MAX_RETRY_SECONDS}s"
+  else
+    gcloud tasks queues create "${queue_name}" \
+      --project="${PROJECT_ID}" \
+      --location="${ORCHESTRATION_REGION}" \
+      --max-dispatches-per-second="${TASKS_MAX_DISPATCHES_PER_SECOND}" \
+      --max-concurrent-dispatches="${TASKS_MAX_CONCURRENT_DISPATCHES}" \
+      --max-attempts="${TASKS_MAX_ATTEMPTS}" \
+      --max-retry-duration="${TASKS_MAX_RETRY_SECONDS}s"
+  fi
+done
 
-WORKFLOW_ARGS=(
-  workflows deploy "${WORKFLOW_NAME}"
-  --project="${PROJECT_ID}"
-  --location="${ORCHESTRATION_REGION}"
-  --source="${WORKFLOW_FILE}"
-)
+deploy_workflow() {
+  local workflow_name="$1"
+  local workflow_file="$2"
+  local -a workflow_args=(
+    workflows deploy "${workflow_name}"
+    --project="${PROJECT_ID}"
+    --location="${ORCHESTRATION_REGION}"
+    --source="${workflow_file}"
+  )
 
-if [[ -n "${WORKFLOW_SERVICE_ACCOUNT}" ]]; then
-  WORKFLOW_ARGS+=(--service-account="${WORKFLOW_SERVICE_ACCOUNT}")
-fi
+  if [[ -n "${WORKFLOW_SERVICE_ACCOUNT}" ]]; then
+    workflow_args+=(--service-account="${WORKFLOW_SERVICE_ACCOUNT}")
+  fi
 
-gcloud "${WORKFLOW_ARGS[@]}"
+  gcloud "${workflow_args[@]}"
+}
+
+deploy_workflow "${INGESTION_WORKFLOW_NAME}" "${INGESTION_WORKFLOW_FILE}"
+deploy_workflow "${ANALYSIS_WORKFLOW_NAME}" "${ANALYSIS_WORKFLOW_FILE}"
 
 echo
 echo "Cloud Run URL: ${SERVICE_URL}"
-echo "Workflow: ${WORKFLOW_NAME}"
-echo "Task queue: ${TASK_QUEUE_NAME}"
+echo "Ingestion workflow: ${INGESTION_WORKFLOW_NAME}"
+echo "Ingestion queue: ${INGESTION_TASK_QUEUE_NAME}"
+echo "Analysis workflow: ${ANALYSIS_WORKFLOW_NAME}"
+echo "Analysis queue: ${ANALYSIS_TASK_QUEUE_NAME}"

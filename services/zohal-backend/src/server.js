@@ -1,4 +1,9 @@
 import { createServer } from "node:http";
+import {
+  handleAnalysisExportReport,
+  handleAnalysisStart,
+  handleAnalysisTask,
+} from "./handlers/analysis.js";
 import { handleConvertToPdf } from "./handlers/convert-to-pdf.js";
 import {
   handleIngestionChunk,
@@ -46,6 +51,22 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/convert-to-pdf") {
       return await handleConvertToPdf(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/analysis/start") {
+      return await handleAnalysisStart(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/analysis/tasks") {
+      return await handleAnalysisTask(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/analysis/export-report") {
+      return await handleAnalysisExportReport(req, res, {
         requestId,
         log,
         readJsonBody,
