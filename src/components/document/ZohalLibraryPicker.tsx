@@ -6,6 +6,7 @@ import { X, FileText, Download, AlertCircle, Search, Library } from 'lucide-reac
 import { Button, Card, Spinner, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { deriveLibraryObjectPathFromUrl, downloadLibraryPdf, normalizeLibraryObjectPath } from '@/lib/zohal-library';
 
 type LibraryItem = {
   id: string;
@@ -21,54 +22,6 @@ type LibraryItem = {
 interface ZohalLibraryPickerProps {
   onClose: () => void;
   onSelectFile: (file: File) => void;
-}
-
-function normalizeLibraryObjectPath(value: unknown): string | null {
-  const path = decodeURIComponent(String(value || '').trim()).replace(/^\/+/, '');
-  if (!path) return null;
-  if (path.includes('..')) return null;
-  return path;
-}
-
-function deriveLibraryObjectPathFromUrl(rawUrl: string): string | null {
-  const trimmed = rawUrl.trim();
-  if (!trimmed) return null;
-
-  if (trimmed.startsWith('gs://')) {
-    const noScheme = trimmed.replace(/^gs:\/\//, '');
-    const slash = noScheme.indexOf('/');
-    if (slash < 0) return null;
-    const path = noScheme.slice(slash + 1).replace(/^\/+/, '');
-    return normalizeLibraryObjectPath(path);
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-
-    if (parsed.hostname.endsWith('.storage.googleapis.com')) {
-      return normalizeLibraryObjectPath(parsed.pathname);
-    }
-
-    if (parsed.hostname === 'storage.googleapis.com') {
-      const parts = decodeURIComponent(parsed.pathname).split('/').filter(Boolean);
-      if (parts.length === 0) return null;
-
-      const oIndex = parts.indexOf('o');
-      if (oIndex >= 0 && oIndex + 1 < parts.length) {
-        return normalizeLibraryObjectPath(parts.slice(oIndex + 1).join('/'));
-      }
-
-      if (parts.length >= 2) {
-        return normalizeLibraryObjectPath(parts.slice(1).join('/'));
-      }
-
-      return normalizeLibraryObjectPath(parts[0]);
-    }
-
-    return normalizeLibraryObjectPath(parsed.pathname);
-  } catch {
-    return null;
-  }
 }
 
 export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPickerProps) {
@@ -131,27 +84,11 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
       const objectPath = it.objectPath || deriveLibraryObjectPathFromUrl(it.url);
       if (!objectPath) throw new Error(`${t('errors.downloadFailed')} (library path missing)`);
 
-      const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
-        body: { object_path: objectPath },
+      const blob = await downloadLibraryPdf(supabase, {
+        objectPath,
+        url: it.url,
+        filename: it.title,
       });
-
-      if (error) {
-        throw error;
-      }
-      if (response && !response.ok) {
-        throw new Error(`${t('errors.downloadFailed')} (${response.status})`);
-      }
-
-      let blob: Blob | null = null;
-      if (data instanceof Blob) {
-        blob = data;
-      } else if (data instanceof ArrayBuffer) {
-        blob = new Blob([data], { type: 'application/pdf' });
-      } else if (response) {
-        blob = await response.blob();
-      }
-      if (!blob) throw new Error(t('errors.downloadFailed'));
-
       const file = new File([blob], `${it.title}.pdf`, { type: 'application/pdf' });
       onSelectFile(file);
       onClose();

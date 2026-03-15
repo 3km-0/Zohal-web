@@ -7,7 +7,7 @@ export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low' | 'unknown';
 const severityConfig: Record<SeverityLevel, { color: string; bg: string; border: string; label: string }> = {
   critical: { color: 'text-error', bg: 'bg-error/10', border: 'border-l-error', label: 'Critical' },
   high: { color: 'text-error', bg: 'bg-error/10', border: 'border-l-error', label: 'High' },
-  medium: { color: 'text-highlight', bg: 'bg-highlight/10', border: 'border-l-highlight', label: 'Medium' },
+  medium: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-l-accent', label: 'Medium' },
   low: { color: 'text-success', bg: 'bg-success/10', border: 'border-l-success', label: 'Low' },
   unknown: { color: 'text-text-soft', bg: 'bg-surface-alt', border: 'border-l-border', label: 'Unknown' },
 };
@@ -37,8 +37,8 @@ export function getDeadlineUrgency(dateStr: string | null | undefined): {
 
   if (days < 0) return { daysRemaining: days, urgencyLevel: 'overdue', color: 'text-error', bgColor: 'bg-error/10', label: `${Math.abs(days)}d overdue` };
   if (days <= 7) return { daysRemaining: days, urgencyLevel: 'urgent', color: 'text-error', bgColor: 'bg-error/10', label: `${days}d remaining` };
-  if (days <= 30) return { daysRemaining: days, urgencyLevel: 'approaching', color: 'text-highlight', bgColor: 'bg-highlight/10', label: `${days}d remaining` };
-  if (days <= 60) return { daysRemaining: days, urgencyLevel: 'approaching', color: 'text-highlight', bgColor: 'bg-highlight/10', label: `${days}d remaining` };
+  if (days <= 30) return { daysRemaining: days, urgencyLevel: 'approaching', color: 'text-accent', bgColor: 'bg-accent/10', label: `${days}d remaining` };
+  if (days <= 60) return { daysRemaining: days, urgencyLevel: 'approaching', color: 'text-accent', bgColor: 'bg-accent/10', label: `${days}d remaining` };
   return { daysRemaining: days, urgencyLevel: 'safe', color: 'text-success', bgColor: 'bg-success/10', label: `${days}d remaining` };
 }
 

@@ -85,7 +85,7 @@ export function GenericSummaryTab({
                       metric.tone === 'danger'
                         ? 'text-error'
                         : metric.tone === 'warning'
-                          ? 'text-highlight'
+                          ? 'text-accent'
                           : metric.tone === 'success'
                             ? 'text-success'
                             : 'text-text'

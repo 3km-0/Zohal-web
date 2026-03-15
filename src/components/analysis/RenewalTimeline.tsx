@@ -131,7 +131,7 @@ export function RenewalTimeline({ effectiveDate, noticeDeadline, endDate, classN
               ? pt.urgency.urgencyLevel === 'urgent' || pt.urgency.urgencyLevel === 'overdue'
                 ? 'bg-error border-error/30'
                 : pt.urgency.urgencyLevel === 'approaching'
-                  ? 'bg-highlight border-highlight/30'
+                  ? 'bg-accent border-accent/30'
                   : 'bg-accent border-accent/30'
               : 'bg-text-soft/40 border-border';
 

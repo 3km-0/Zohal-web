@@ -2568,7 +2568,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                               </div>
                               <p className="mt-1 text-sm text-text-soft">{localizedTemplateText('autoDescription')}</p>
                               {resolvedRecommendedPlaybook?.name ? (
-                                <p className="mt-2 text-xs font-semibold text-highlight">
+                                <p className="mt-2 text-xs font-semibold text-accent">
                                   {isArabic ? 'الموصى به:' : 'Recommended:'} {resolvedRecommendedPlaybook.name}
                                 </p>
                               ) : null}
@@ -2596,7 +2596,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                                 'w-full rounded-scholar border p-3 text-left transition-colors',
                                 selectedPlaybookId === recommendedSystemPlaybook.id
                                   ? 'border-accent bg-accent/5'
-                                  : 'border-highlight bg-highlight/5 hover:border-accent/50'
+                                  : 'border-accent bg-accent/5 hover:border-accent/50'
                               )}
                             >
                               <div className="flex items-start gap-3">
@@ -2962,8 +2962,8 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                     )}
 
                     {docsetIssues.length > 0 && (
-                      <div className="flex items-start gap-2.5 p-3 border border-highlight/30 bg-highlight/5 rounded-scholar">
-                        <AlertTriangle className="w-4 h-4 text-highlight flex-shrink-0 mt-0.5" />
+                      <div className="flex items-start gap-2.5 p-3 border border-accent/30 bg-accent/5 rounded-scholar">
+                        <AlertTriangle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
                         <div className="space-y-1 text-xs">
                           {docsetIssues.map((issue, idx) => (
                             <p key={`${issue}_${idx}`} className="text-text">{issue}</p>
@@ -3054,11 +3054,11 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                   'flex items-start gap-3 p-4 rounded-scholar border',
                   snapshot.pack.exceptions_summary.blocker > 0
                     ? 'bg-error/5 border-error/20'
-                    : 'bg-highlight/5 border-highlight/20',
+                    : 'bg-accent/5 border-accent/20',
                 )}>
                   <ShieldAlert className={cn(
                     'w-5 h-5 flex-shrink-0 mt-0.5',
-                    snapshot.pack.exceptions_summary.blocker > 0 ? 'text-error' : 'text-highlight',
+                    snapshot.pack.exceptions_summary.blocker > 0 ? 'text-error' : 'text-accent',
                   )} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -3085,7 +3085,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       'px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex-shrink-0',
                       snapshot.pack.exceptions_summary.blocker > 0
                         ? 'text-error bg-error/10 hover:bg-error/20 border border-error/20'
-                        : 'text-highlight bg-highlight/10 hover:bg-highlight/20 border border-highlight/20',
+                        : 'text-accent bg-accent/10 hover:bg-accent/20 border border-accent/20',
                     )}
                   >
                     Jump to Exceptions
@@ -3246,7 +3246,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       <div className="flex items-center gap-2 text-xs">
                         <span className={cn(
                           'inline-flex w-2 h-2 rounded-full',
-                          v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-highlight'
+                          v.verifier.status === 'green' ? 'bg-success' : v.verifier.status === 'red' ? 'bg-error' : 'bg-accent'
                         )} />
                         <span className="text-text-soft">
                           Verifier: {v.verifier.status.toUpperCase()}
@@ -3288,7 +3288,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                           sourceHref: proofHref(c.evidence),
                           sourcePage: c.evidence?.page_number ?? undefined,
                           icon: <ScrollText className="w-4 h-4" />,
-                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
+                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-accent' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
                         }))
                       : clauses.map((c) => ({
                           id: c.id,
@@ -3301,7 +3301,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                             : null,
                           sourcePage: c.page_number ?? undefined,
                           icon: <ScrollText className="w-4 h-4" />,
-                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-highlight' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
+                          iconColor: c.risk_level === 'high' ? 'text-error' : c.risk_level === 'medium' ? 'text-accent' : c.risk_level === 'low' ? 'text-success' : 'text-text-soft',
                         }));
                     return allClauses.filter((c) => !rejectedSets.clauses.has(c.id)) as GenericModuleItem[];
                   })()}
@@ -3502,7 +3502,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                         sourceHref: proofHref(r.evidence),
                         sourcePage: r.evidence?.page_number ?? undefined,
                         icon: <ShieldAlert className="w-4 h-4" />,
-                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
+                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-accent' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
                       }))
                     : risks.map((r) => ({
                         id: r.id,
@@ -3515,7 +3515,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                           : null,
                         sourcePage: r.page_number ?? undefined,
                         icon: <ShieldAlert className="w-4 h-4" />,
-                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-highlight' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
+                        iconColor: r.severity === 'critical' || r.severity === 'high' ? 'text-error' : r.severity === 'medium' ? 'text-accent' : r.severity === 'low' ? 'text-success' : 'text-text-soft',
                       }));
                   return allRisks.filter((r) => !rejectedSets.risks.has(r.id)) as GenericModuleItem[];
                   })()}

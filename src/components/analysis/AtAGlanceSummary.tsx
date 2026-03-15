@@ -56,7 +56,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
                 const segments = [
                   { count: riskDistribution.critical, color: 'var(--error)' },
                   { count: riskDistribution.high, color: 'var(--error)' },
-                  { count: riskDistribution.medium, color: 'var(--highlight)' },
+                  { count: riskDistribution.medium, color: 'var(--accent)' },
                   { count: riskDistribution.low, color: 'var(--success)' },
                 ].filter(s => s.count > 0);
 
@@ -101,7 +101,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
             <div className="flex gap-2 mt-1 text-[10px] text-text-soft">
               {riskDistribution.critical > 0 && <span className="text-error">{riskDistribution.critical} critical</span>}
               {riskDistribution.high > 0 && <span className="text-error">{riskDistribution.high} high</span>}
-              {riskDistribution.medium > 0 && <span className="text-highlight">{riskDistribution.medium} med</span>}
+              {riskDistribution.medium > 0 && <span className="text-accent">{riskDistribution.medium} med</span>}
               {riskDistribution.low > 0 && <span className="text-success">{riskDistribution.low} low</span>}
             </div>
           </div>
@@ -125,7 +125,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
               )}
               {confidenceDistribution.medium > 0 && (
                 <div
-                  className="bg-highlight transition-all duration-500"
+                  className="bg-accent transition-all duration-500"
                   style={{ width: `${(confidenceDistribution.medium / totalConfidence) * 100}%` }}
                 />
               )}
@@ -138,7 +138,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
             </div>
             <div className="flex justify-between mt-1 text-[10px] text-text-soft">
               <span className="text-success">{confidenceDistribution.high} high</span>
-              <span className="text-highlight">{confidenceDistribution.medium} med</span>
+              <span className="text-accent">{confidenceDistribution.medium} med</span>
               <span className="text-error">{confidenceDistribution.low} low</span>
             </div>
           </div>
@@ -152,7 +152,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
           deadlineUrgency.urgencyLevel === 'urgent' || deadlineUrgency.urgencyLevel === 'overdue'
             ? 'border-error/30'
             : deadlineUrgency.urgencyLevel === 'approaching'
-              ? 'border-highlight/30'
+              ? 'border-accent/30'
               : 'border-border',
         )}>
           <div className={cn(

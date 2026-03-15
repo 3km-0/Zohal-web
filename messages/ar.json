@@ -290,6 +290,7 @@
     "noConversations": "لا توجد محادثات بعد.",
     "emptyGlobalTitle": "اسأل أي شيء",
     "emptyWorkspaceTitle": "اسأل أي شيء",
+    "librarySource": "مكتبة زحل",
     "errors": {
       "auth": "سجّل الدخول مرة أخرى لاستخدام Ask.",
       "history": "تعذّر تحميل هذه المحادثة.",

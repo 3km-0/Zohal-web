@@ -221,7 +221,7 @@ export function DeadlinesTab({
                   urgency.urgencyLevel === 'overdue' || urgency.urgencyLevel === 'urgent'
                     ? 'bg-error border-error/30'
                     : urgency.urgencyLevel === 'approaching'
-                      ? 'bg-highlight border-highlight/30'
+                      ? 'bg-accent border-accent/30'
                       : 'bg-success border-success/30',
                   urgency.urgencyLevel === 'urgent' && 'animate-pulse',
                 )} />
@@ -232,7 +232,7 @@ export function DeadlinesTab({
                   urgency.urgencyLevel === 'overdue' || urgency.urgencyLevel === 'urgent'
                     ? 'border-error/20'
                     : urgency.urgencyLevel === 'approaching'
-                      ? 'border-highlight/20'
+                      ? 'border-accent/20'
                       : 'border-border',
                 )}>
                   <div className="flex items-start justify-between gap-3">

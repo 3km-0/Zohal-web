@@ -20,6 +20,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { downloadLibraryPdf } from '@/lib/zohal-library';
 
 type AskConversationSummary = {
   id: string;
@@ -35,8 +36,12 @@ type AskCitation = {
   document_title: string;
   page_number: number;
   quote: string;
+  source_kind?: 'workspace_document' | 'zohal_library';
   workspace_id?: string | null;
   workspace_name?: string | null;
+  library_item_id?: string | null;
+  library_object_path?: string | null;
+  library_url?: string | null;
 };
 
 type AskMessage = {
@@ -141,12 +146,29 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
   }, [loadConversations]);
 
   const openCitation = useCallback(
-    (citation: AskCitation) => {
+    async (citation: AskCitation) => {
+      if (citation.source_kind === 'zohal_library' || citation.library_item_id) {
+        try {
+          const blob = await downloadLibraryPdf(supabase, {
+            objectPath: citation.library_object_path,
+            url: citation.library_url,
+            filename: citation.document_title,
+          });
+          const objectUrl = URL.createObjectURL(blob);
+          const pageSuffix = citation.page_number > 0 ? `#page=${citation.page_number}` : '';
+          window.open(`${objectUrl}${pageSuffix}`, '_blank', 'noopener,noreferrer');
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+        } catch {
+          setError(t('errors.generic'));
+        }
+        return;
+      }
+
       const targetWorkspaceId = workspaceId ?? citation.workspace_id;
       if (!targetWorkspaceId) return;
       router.push(`/workspaces/${targetWorkspaceId}/documents/${citation.document_id}?page=${citation.page_number}&pane=chat`);
     },
-    [router, workspaceId]
+    [router, supabase, t, workspaceId]
   );
 
   const startNewConversation = useCallback(() => {
@@ -439,7 +461,9 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
                               <div className="flex items-center gap-1.5">
                                 <FileText className="h-3.5 w-3.5 shrink-0 text-accent" />
                                 <span className="line-clamp-1 text-xs font-semibold text-text">
-                                  {citation.workspace_name ? `${citation.workspace_name} · ` : ''}{citation.document_title}
+                                  {citation.source_kind === 'zohal_library'
+                                    ? `${t('librarySource')} · ${citation.document_title}`
+                                    : `${citation.workspace_name ? `${citation.workspace_name} · ` : ''}${citation.document_title}`}
                                 </span>
                               </div>
                               <div className="mt-0.5 text-[11px] text-text-soft">p. {citation.page_number}</div>

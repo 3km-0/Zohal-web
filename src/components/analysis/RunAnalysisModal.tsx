@@ -555,7 +555,7 @@ export function RunAnalysisModal(props: {
                             </div>
                             <p className="mt-1 text-sm text-text-soft">{localizedTemplateText('autoDescription')}</p>
                             {resolvedRecommendedPlaybook?.name ? (
-                              <p className="mt-2 text-xs font-semibold text-highlight">
+                              <p className="mt-2 text-xs font-semibold text-accent">
                                 {isArabic ? 'الموصى به:' : 'Recommended:'} {resolvedRecommendedPlaybook.name}
                               </p>
                             ) : null}
@@ -583,7 +583,7 @@ export function RunAnalysisModal(props: {
                               'w-full rounded-xl border p-3 text-left transition-colors',
                               selectedPlaybookId === recommendedSystemPlaybook.id
                                 ? 'border-accent bg-accent/5'
-                                : 'border-highlight bg-highlight/5 hover:border-accent/40'
+                                : 'border-accent bg-accent/5 hover:border-accent/40'
                             )}
                           >
                             <div className="flex items-start gap-3">

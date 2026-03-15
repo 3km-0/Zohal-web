@@ -290,6 +290,7 @@
     "noConversations": "No conversations yet.",
     "emptyGlobalTitle": "Ask anything",
     "emptyWorkspaceTitle": "Ask anything",
+    "librarySource": "Zohal Library",
     "errors": {
       "auth": "Sign in again to use Ask.",
       "history": "Unable to load that conversation.",

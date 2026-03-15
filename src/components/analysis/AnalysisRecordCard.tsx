@@ -15,7 +15,7 @@ export interface AIConfidenceBadgeProps {
 export function AIConfidenceBadge({ confidence }: AIConfidenceBadgeProps) {
   const config = {
     high: { label: 'High', bg: 'bg-success/10', border: 'border-success/20', text: 'text-success', dot: 'bg-success' },
-    medium: { label: 'Medium', bg: 'bg-highlight/10', border: 'border-highlight/20', text: 'text-highlight', dot: 'bg-highlight' },
+    medium: { label: 'Medium', bg: 'bg-accent/10', border: 'border-accent/20', text: 'text-accent', dot: 'bg-accent' },
     low: { label: 'Low', bg: 'bg-error/10', border: 'border-error/20', text: 'text-error', dot: 'bg-error' },
   };
   const c = config[confidence];
