@@ -16,6 +16,7 @@ import { PrivacySettingsPanel } from './PrivacySettingsPanel';
 import { isGoogleDriveConfigured } from '@/lib/google-drive';
 import { isOneDriveConfigured } from '@/lib/onedrive';
 import { mapHttpError } from '@/lib/errors';
+import { getEffectiveSubscriptionTier } from '@/lib/subscription';
 import {
   SensitiveDataSanitizer,
   extractTextFromPdf,
@@ -127,11 +128,11 @@ export function DocumentUploadModal({
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('subscription_tier')
+        .select('subscription_tier, subscription_status, subscription_expires_at, grace_period_ends_at')
         .eq('id', user.id)
         .single();
 
-      const tier = String(profile?.subscription_tier || 'free') as SubscriptionTier;
+      const tier = getEffectiveSubscriptionTier(profile) as SubscriptionTier;
       setSubscriptionTier(tier);
     };
 

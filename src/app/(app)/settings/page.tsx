@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/types/database';
 import { OrgDataLocalityPanel } from '@/components/enterprise/OrgDataLocalityPanel';
+import { getEffectiveSubscriptionTier } from '@/lib/subscription';
 
 function readThemeFromStorage(): 'light' | 'dark' | null {
   try {
@@ -267,6 +268,8 @@ export default function SettingsPage() {
     );
   }
 
+  const effectiveTier = getEffectiveSubscriptionTier(profile);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} />
@@ -309,36 +312,36 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between p-4 bg-surface-alt rounded-scholar">
               <div>
                 <p className="font-medium text-text">
-                  {profile?.subscription_tier === 'free'
+                  {effectiveTier === 'free'
                     ? tSettings('freePlan')
-                    : profile?.subscription_tier === 'pro'
+                    : effectiveTier === 'pro'
                       ? tSettings('proPlan')
-                      : profile?.subscription_tier === 'team'
+                      : effectiveTier === 'team'
                         ? tSettings('teamPlan')
                         : tSettings('premiumPlan')}
                 </p>
                 <p className="text-sm text-text-soft">
-                  {profile?.subscription_tier === 'free'
+                  {effectiveTier === 'free'
                     ? tSettings('freePlanDesc')
-                    : profile?.subscription_tier === 'pro'
+                    : effectiveTier === 'pro'
                       ? tSettings('proPlanDesc')
-                      : profile?.subscription_tier === 'team'
+                      : effectiveTier === 'team'
                         ? tSettings('teamPlanDesc')
                         : tSettings('premiumPlanDesc')}
                 </p>
               </div>
               <Badge
-                variant={profile?.subscription_tier === 'free' ? 'default' : 'success'}
+                variant={effectiveTier === 'free' ? 'default' : 'success'}
               >
-                {profile?.subscription_tier === 'premium'
+                {effectiveTier === 'premium'
                   ? 'MAX'
-                  : profile?.subscription_tier === 'team'
+                  : effectiveTier === 'team'
                     ? 'TEAM'
-                    : profile?.subscription_tier?.toUpperCase()}
+                    : effectiveTier.toUpperCase()}
               </Badge>
             </div>
 
-            {profile?.subscription_tier === 'free' && (
+            {effectiveTier === 'free' && (
               <Button variant="secondary" className="mt-4">
                 {tSettings('upgradeToPro')}
               </Button>

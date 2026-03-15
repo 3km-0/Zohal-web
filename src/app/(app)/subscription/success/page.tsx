@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { CHECKOUT_STATE_STORAGE_KEY, parseCheckoutState } from '@/lib/checkout-state';
+import { getEffectiveSubscriptionTier } from '@/lib/subscription';
 
 export default function SubscriptionSuccessPage() {
   const router = useRouter();
@@ -78,7 +79,7 @@ export default function SubscriptionSuccessPage() {
         .single();
 
       if (profile) {
-        setTier(profile.subscription_tier || 'free');
+        setTier(getEffectiveSubscriptionTier(profile));
         setExpiresAt(profile.subscription_expires_at);
         setStatus(profile.subscription_status || 'active');
       }

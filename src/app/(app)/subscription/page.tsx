@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { getWebSubscriptionFlags } from '@/lib/feature-flags';
 import { CHECKOUT_STATE_STORAGE_KEY } from '@/lib/checkout-state';
+import { getEffectiveSubscriptionTier } from '@/lib/subscription';
 
 interface SubscriptionPlan {
   tier: string;
@@ -49,6 +50,7 @@ interface BillingProfile {
   subscription_expires_at: string | null;
   payment_source: string | null;
   subscription_status: string | null;
+  grace_period_ends_at?: string | null;
   subscription_trial_consumed_at?: string | null;
 }
 
@@ -141,12 +143,13 @@ export default function SubscriptionPage() {
     const profile = data as BillingProfile | null;
 
     if (profile) {
-      setCurrentTier(profile.subscription_tier || 'free');
+      const effectiveTier = getEffectiveSubscriptionTier(profile);
+      setCurrentTier(effectiveTier);
       setSubscriptionExpires(profile.subscription_expires_at);
       setPaymentSource(profile.payment_source || 'apple');
       setCurrentStatus(profile.subscription_status || 'active');
       setTrialConsumedAt(profile.subscription_trial_consumed_at || null);
-      if (profile.subscription_tier === 'team') {
+      if (effectiveTier === 'team') {
         setBillingSegment('business');
       }
     }
