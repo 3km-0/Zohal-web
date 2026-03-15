@@ -166,6 +166,18 @@ export function mapHttpError(
   if (legacyError === 'limit_exceeded') {
     return limitExceeded(requestId);
   }
+  if (legacyError === 'unauthorized_internal_caller') {
+    return {
+      title: tr('Something Went Wrong', 'حدث خطأ ما'),
+      message: tr(
+        "We couldn't start analysis right now. Please try again.",
+        'تعذر بدء التحليل الآن. يرجى المحاولة مرة أخرى.'
+      ),
+      category: 'server',
+      action: 'retry',
+      requestId,
+    };
+  }
 
   if (looksLikeUpgradeGate(backendResponse, serverMessage)) {
     const looksLikeFeatureGate =

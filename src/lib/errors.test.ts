@@ -43,4 +43,15 @@ describe('mapHttpError', () => {
     expect(result.category).toBe('auth');
     expect(result.action).toBe('sign-in');
   });
+
+  it('does not treat internal caller auth failures as user sign-in problems', () => {
+    const result = mapHttpError(401, {
+      error: 'unauthorized_internal_caller',
+      request_id: 'req_4',
+    });
+
+    expect(result.category).toBe('server');
+    expect(result.action).toBe('retry');
+    expect(result.requestId).toBe('req_4');
+  });
 });
