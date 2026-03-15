@@ -1244,7 +1244,7 @@ export function Homepage() {
               className={cn(
                 "relative z-10 grid gap-10",
                 isRtl
-                  ? "xl:grid-cols-[minmax(0,0.82fr),minmax(440px,1.18fr)] xl:items-center"
+                  ? "xl:grid-cols-[minmax(0,0.9fr),minmax(400px,1.08fr)] xl:items-start"
                   : "lg:grid-cols-[minmax(0,0.9fr),minmax(380px,1.1fr)] lg:items-center"
               )}
             >
