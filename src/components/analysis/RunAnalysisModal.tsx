@@ -9,18 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { resolveRecommendedPlaybook, supportsStructuredAnalysis } from '@/lib/document-analysis';
 import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplateGroupLabel, groupSystemPlaybooks } from '@/lib/template-library';
-
-type PlaybookScope = 'single' | 'bundle' | 'either';
-type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
-type TemplateFilter = 'all' | 'contract_operations' | 'finance_operations' | 'adjacent_domains' | 'variants' | 'custom';
-
-type PlaybookRecord = {
-  id: string;
-  name: string;
-  is_system_preset?: boolean;
-  current_version_id?: string | null;
-  current_version?: { id: string; version_number: number; spec_json?: any } | null;
-};
+import type { BundleSchemaRole, PlaybookRecord, PlaybookScope, TemplateFilter, TemplateSpecV1 } from '@/types/templates';
 
 type DocumentBundleRow = {
   id: string;
@@ -288,7 +277,7 @@ export function RunAnalysisModal(props: {
 
   const selectedPlaybookSpec = useMemo(() => {
     const raw = selectedPlaybook?.current_version?.spec_json;
-    return raw && typeof raw === 'object' ? raw : null;
+    return raw && typeof raw === 'object' ? (raw as TemplateSpecV1) : null;
   }, [selectedPlaybook]);
 
   const enforcedScope = useMemo<PlaybookScope>(() => {

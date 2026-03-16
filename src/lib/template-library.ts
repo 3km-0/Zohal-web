@@ -1,9 +1,5 @@
-export type TemplateLibraryGroup =
-  | 'contract_operations'
-  | 'finance_operations'
-  | 'adjacent_domains'
-  | 'variants'
-  | 'custom';
+import type { TemplateLibraryGroup, TemplateLibraryPlaybookLike } from '@/types/templates';
+export type { TemplateLibraryGroup, TemplateLibraryPlaybookLike } from '@/types/templates';
 
 type TemplateDefinition = {
   canonicalName: string;
@@ -14,12 +10,6 @@ type TemplateDefinition = {
   descriptionAr: string;
   aliases?: string[];
   variant?: boolean;
-};
-
-export type TemplateLibraryPlaybookLike = {
-  name: string;
-  is_system_preset?: boolean;
-  current_version?: { spec_json?: any } | null;
 };
 
 const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
@@ -146,7 +136,7 @@ function specMeta(playbook: TemplateLibraryPlaybookLike): Record<string, unknown
   return playbook.current_version?.spec_json?.meta &&
     typeof playbook.current_version.spec_json.meta === 'object' &&
     !Array.isArray(playbook.current_version.spec_json.meta)
-    ? playbook.current_version.spec_json.meta
+    ? (playbook.current_version.spec_json.meta as Record<string, unknown>)
     : {};
 }
 

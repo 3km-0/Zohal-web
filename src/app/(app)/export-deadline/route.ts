@@ -1,6 +1,25 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+function getSnapshotVariableValue(snapshot: Record<string, unknown>, name: string): unknown {
+  const variables = Array.isArray(snapshot.variables) ? snapshot.variables as Array<Record<string, unknown>> : [];
+  return variables.find((variable) => String(variable?.name || '') === name)?.value;
+}
+
+function computeNoticeDeadlineIso(endDateValue: unknown, noticeDaysValue: unknown): string | null {
+  const endDateIso = typeof endDateValue === 'string' ? endDateValue : null;
+  const noticeDays = typeof noticeDaysValue === 'number'
+    ? noticeDaysValue
+    : typeof noticeDaysValue === 'string' && noticeDaysValue.trim()
+      ? Number(noticeDaysValue)
+      : null;
+  if (!endDateIso || noticeDays == null || !Number.isFinite(noticeDays)) return null;
+  const end = new Date(endDateIso);
+  if (Number.isNaN(end.getTime())) return null;
+  end.setDate(end.getDate() - Number(noticeDays));
+  return end.toISOString();
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -64,59 +83,73 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Load contract to resolve contract-level dates and to scope obligations.
-  const { data: contract, error: contractErr } = await supabase
-    .from('legal_contracts')
-    .select('id, counterparty_name, effective_date, end_date, notice_period_days, auto_renewal')
+  const { data: verificationObject, error: verificationObjectErr } = await supabase
+    .from('verification_objects')
+    .select('id, current_version_id')
     .eq('document_id', documentId)
+    .eq('object_type', 'contract_analysis')
     .maybeSingle();
-  if (contractErr) {
-    return NextResponse.json({ error: contractErr.message }, { status: 500 });
+  if (verificationObjectErr) {
+    return NextResponse.json({ error: verificationObjectErr.message }, { status: 500 });
   }
-  if (!contract?.id) {
-    return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+  if (!verificationObject?.current_version_id) {
+    return NextResponse.json({ error: 'Analysis snapshot not found' }, { status: 404 });
   }
+
+  const { data: version, error: versionErr } = await supabase
+    .from('verification_object_versions')
+    .select('snapshot_json')
+    .eq('id', verificationObject.current_version_id)
+    .maybeSingle();
+  if (versionErr) {
+    return NextResponse.json({ error: versionErr.message }, { status: 500 });
+  }
+  const snapshot = (version?.snapshot_json || {}) as Record<string, unknown>;
 
   let title = 'Deadline';
   let description = 'Deadline';
   let dateIso: string | null = null;
+  const counterpartyName = typeof getSnapshotVariableValue(snapshot, 'counterparty_name') === 'string'
+    ? String(getSnapshotVariableValue(snapshot, 'counterparty_name'))
+    : null;
+  const endDate = typeof getSnapshotVariableValue(snapshot, 'end_date') === 'string'
+    ? String(getSnapshotVariableValue(snapshot, 'end_date'))
+    : null;
+  const noticePeriodDays = getSnapshotVariableValue(snapshot, 'notice_period_days');
+  const autoRenewal = Boolean(getSnapshotVariableValue(snapshot, 'auto_renewal'));
 
   if (key === 'contract_end') {
-    dateIso = contract.end_date ?? null;
+    dateIso = endDate;
     title = 'Contract End Date';
-    description = `Contract term ends${contract.counterparty_name ? ` • ${contract.counterparty_name}` : ''}`;
+    description = `Contract term ends${counterpartyName ? ` • ${counterpartyName}` : ''}`;
   } else if (key === 'renewal') {
-    dateIso = contract.end_date ?? null;
+    if (!autoRenewal) {
+      return NextResponse.json({ error: 'Auto-renewal not available for this analysis' }, { status: 404 });
+    }
+    dateIso = endDate;
     title = 'Auto-Renewal Date';
-    description = `Contract renews automatically unless notice is given${contract.counterparty_name ? ` • ${contract.counterparty_name}` : ''}`;
+    description = `Contract renews automatically unless notice is given${counterpartyName ? ` • ${counterpartyName}` : ''}`;
   } else if (key === 'notice_deadline') {
-    if (contract.end_date && contract.notice_period_days != null) {
-      const end = new Date(contract.end_date);
-      if (!Number.isNaN(end.getTime())) {
-        const d = new Date(end.getTime());
-        d.setDate(d.getDate() - Number(contract.notice_period_days));
-        dateIso = d.toISOString();
-      }
-    }
+    dateIso = computeNoticeDeadlineIso(endDate, noticePeriodDays);
     title = 'Notice Deadline';
-    description = `Last day to provide ${contract.notice_period_days ?? ''}-day notice`;
+    description = `Last day to provide ${noticePeriodDays ?? ''}-day notice`;
   } else if (key.startsWith('ob_')) {
-    const obligationId = key.slice(3);
-    const { data: ob, error: obErr } = await supabase
-      .from('legal_obligations')
-      .select('id, due_at, summary, action, obligation_type')
-      .eq('id', obligationId)
-      .eq('contract_id', contract.id)
+    const actionId = key.slice(3);
+    const { data: action, error: actionErr } = await supabase
+      .from('analysis_actions')
+      .select('id, due_at, title, summary, action_text, action_kind')
+      .eq('id', actionId)
+      .eq('document_id', documentId)
       .maybeSingle();
-    if (obErr) {
-      return NextResponse.json({ error: obErr.message }, { status: 500 });
+    if (actionErr) {
+      return NextResponse.json({ error: actionErr.message }, { status: 500 });
     }
-    if (!ob?.id) {
-      return NextResponse.json({ error: 'Obligation not found' }, { status: 404 });
+    if (!action?.id) {
+      return NextResponse.json({ error: 'Analysis action not found' }, { status: 404 });
     }
-    dateIso = ob.due_at ?? null;
-    title = String(ob.obligation_type || 'Obligation');
-    description = String(ob.summary || ob.action || 'Obligation deadline');
+    dateIso = action.due_at ?? null;
+    title = String(action.title || action.action_kind || 'Action');
+    description = String(action.summary || action.action_text || 'Action deadline');
   } else {
     return NextResponse.json({ error: 'Unknown key' }, { status: 400 });
   }

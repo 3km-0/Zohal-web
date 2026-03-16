@@ -1,10 +1,8 @@
 import type { DocumentType } from '@/types/database';
-import { playbookMatchesName, sortSystemPlaybooks, type TemplateLibraryPlaybookLike } from '@/lib/template-library';
+import { playbookMatchesName, sortSystemPlaybooks } from '@/lib/template-library';
+import type { TemplateLibraryPlaybookLike, TemplateRecord } from '@/types/templates';
 
-type PlaybookLike = TemplateLibraryPlaybookLike & {
-  id: string;
-  current_version_id?: string | null;
-};
+type PlaybookLike = TemplateLibraryPlaybookLike & Pick<TemplateRecord, 'id' | 'current_version_id'>;
 
 type DocumentMetadata = {
   documentType?: string | null;

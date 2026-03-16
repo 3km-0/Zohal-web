@@ -54,6 +54,13 @@ import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
 import { parseSnapshot } from '@/types/evidence-grade';
+import type {
+  BundleSchemaRole,
+  PlaybookRecord,
+  PlaybookScope,
+  TemplateFilter,
+  TemplateSpecV1,
+} from '@/types/templates';
 import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
@@ -76,26 +83,14 @@ import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplate
 
 type Tab = string;
 
-type PlaybookRecord = {
-  id: string;
-  name: string;
-  is_system_preset?: boolean;
-  workspace_id?: string | null;
-  current_version_id?: string | null;
-  current_version?: { id: string; version_number: number; spec_json?: any } | null;
-};
-
 type BundlePack = {
   id: string;
   name: string | null;
   member_count?: number;
 };
 
-type PlaybookScope = 'single' | 'bundle' | 'either';
 type RunScope = 'single' | 'bundle';
-type BundleSchemaRole = { role: string; required: boolean; multiple: boolean };
 type DocsetMode = 'ephemeral' | 'saved';
-type TemplateFilter = 'all' | 'contract_operations' | 'finance_operations' | 'adjacent_domains' | 'variants' | 'custom';
 
 type WorkspaceFolder = {
   id: string;
@@ -416,7 +411,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
 
   const selectedPlaybookSpec = useMemo(() => {
     const raw = selectedPlaybook?.current_version?.spec_json;
-    return raw && typeof raw === 'object' ? raw : null;
+    return raw && typeof raw === 'object' ? (raw as TemplateSpecV1) : null;
   }, [selectedPlaybook]);
 
   const enforcedPlaybookScope = useMemo<PlaybookScope>(() => {
@@ -910,6 +905,95 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     return d;
   }
 
+  function getSnapshotVariableValue(parsed: EvidenceGradeSnapshot | null, name: string): unknown {
+    return parsed?.variables.find((variable) => variable.name === name)?.value;
+  }
+
+  function toOptionalString(value: unknown): string | undefined {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return undefined;
+  }
+
+  function toOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return undefined;
+  }
+
+  function toOptionalBoolean(value: unknown): boolean | undefined {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', 'yes', '1'].includes(normalized)) return true;
+      if (['false', 'no', '0'].includes(normalized)) return false;
+    }
+    return undefined;
+  }
+
+  function buildContractFromSnapshot(
+    parsed: EvidenceGradeSnapshot,
+    verificationObjectIdValue: string,
+  ): LegalContract {
+    const analyzedAt = parsed.analyzed_at || new Date().toISOString();
+    return {
+      id: verificationObjectIdValue,
+      document_id: documentId,
+      workspace_id: workspaceId,
+      contract_type: toOptionalString(getSnapshotVariableValue(parsed, 'contract_type')),
+      effective_date: toOptionalString(getSnapshotVariableValue(parsed, 'effective_date')),
+      end_date: toOptionalString(getSnapshotVariableValue(parsed, 'end_date')),
+      term_length_months: toOptionalNumber(getSnapshotVariableValue(parsed, 'term_length_months')),
+      notice_period_days: toOptionalNumber(getSnapshotVariableValue(parsed, 'notice_period_days')),
+      auto_renewal: toOptionalBoolean(getSnapshotVariableValue(parsed, 'auto_renewal')),
+      termination_for_convenience: toOptionalBoolean(getSnapshotVariableValue(parsed, 'termination_for_convenience')),
+      governing_law: toOptionalString(getSnapshotVariableValue(parsed, 'governing_law')),
+      counterparty_name: toOptionalString(getSnapshotVariableValue(parsed, 'counterparty_name')),
+      status: 'active',
+      verification_object_id: verificationObjectIdValue,
+      created_at: analyzedAt,
+      updated_at: analyzedAt,
+    };
+  }
+
+  async function loadTaskLinksForObligations(obligationIds: string[]): Promise<Map<string, string>> {
+    const links = new Map<string, string>();
+    if (obligationIds.length === 0) return links;
+
+    const { data: taskRows, error } = await supabase
+      .from('tasks')
+      .select('id, metadata')
+      .eq('workspace_id', workspaceId)
+      .eq('document_id', documentId)
+      .is('deleted_at', null);
+
+    if (error || !Array.isArray(taskRows)) return links;
+
+    const wanted = new Set(obligationIds.map((id) => String(id).toLowerCase()));
+    for (const row of taskRows as Array<{ id?: string; metadata?: Record<string, unknown> | null }>) {
+      const metadata = row?.metadata;
+      const sourceType = metadata && typeof metadata === 'object'
+        ? String(metadata.source_record_type || '')
+        : '';
+      const sourceId = metadata && typeof metadata === 'object'
+        ? String(metadata.source_record_id || '').toLowerCase()
+        : '';
+      if (sourceType === 'obligation' && sourceId && wanted.has(sourceId) && row?.id) {
+        links.set(sourceId, String(row.id));
+      }
+    }
+
+    return links;
+  }
+
   async function loadSnapshotVersion(versionId: string | null, sourceDocId: string = documentId) {
     if (!versionId) {
       return;
@@ -924,18 +1008,27 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
 
     const parsed = parseSnapshot(data.snapshot_json, sourceDocId);
     setSnapshot(parsed);
-    applySnapshotToCoreModules(parsed);
+    if (verificationObjectId && parsed) {
+      const nextContract = buildContractFromSnapshot(parsed, verificationObjectId);
+      const taskLinks = await loadTaskLinksForObligations(parsed.obligations.map((obligation) => String(obligation.id)));
+      applySnapshotToCoreModules(parsed, nextContract, taskLinks);
+    }
   }
 
-  function applySnapshotToCoreModules(parsed: EvidenceGradeSnapshot | null) {
+  function applySnapshotToCoreModules(
+    parsed: EvidenceGradeSnapshot | null,
+    nextContract: LegalContract,
+    taskLinks?: Map<string, string>,
+  ) {
     // Snapshot-canonical rendering: use snapshot arrays when available.
     // Projections remain as accelerators and fallback for older runs / partial snapshots.
-    if (!parsed || !contract?.id) return;
+    if (!parsed) return;
+    setContract(nextContract);
 
     if (Array.isArray(parsed.clauses) && parsed.clauses.length > 0) {
       const mapped: LegalClause[] = parsed.clauses.map((c) => ({
         id: String(c.id),
-        contract_id: String(contract.id),
+        contract_id: String(nextContract.id),
         clause_type: String(c.clause_type || 'other'),
         clause_title: c.clause_title ? String(c.clause_title) : undefined,
         clause_number: c.clause_number ? String(c.clause_number) : undefined,
@@ -947,7 +1040,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
         char_start: c.evidence?.char_start,
         char_end: c.evidence?.char_end,
         is_missing_standard_protection: Boolean(c.is_missing_standard_protection),
-        created_at: contract.created_at,
+        created_at: nextContract.created_at,
       }));
       setClauses(mapped);
     }
@@ -956,12 +1049,12 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
       const mapped: LegalObligation[] = parsed.obligations.map((o) => {
         const vState = String(o.verification_state || 'extracted');
         const confidenceState: 'extracted' | 'needs_review' | 'confirmed' =
-          vState === 'needs_review' ? 'needs_review' : 'extracted';
+          vState === 'needs_review' ? 'needs_review' : (vState === 'verified' || vState === 'finalized' ? 'confirmed' : 'extracted');
         const conf = o.ai_confidence === 'high' || o.ai_confidence === 'medium' || o.ai_confidence === 'low' ? o.ai_confidence : undefined;
         return {
           id: String(o.id),
-          contract_id: String(contract.id),
-          task_id: undefined,
+          contract_id: String(nextContract.id),
+          task_id: taskLinks?.get(String(o.id).toLowerCase()),
           obligation_type: String(o.obligation_type || 'other'),
           due_at: o.due_at ? String(o.due_at) : undefined,
           recurrence: o.recurrence ? String(o.recurrence) : undefined,
@@ -974,9 +1067,9 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           source_clause_id: undefined,
           page_number: o.evidence?.page_number,
           user_notes: undefined,
-          confirmed_at: undefined,
+          confirmed_at: confidenceState === 'confirmed' ? nextContract.updated_at : undefined,
           confirmed_by: undefined,
-          created_at: contract.created_at,
+          created_at: nextContract.created_at,
         };
       });
       setObligations(mapped);
@@ -985,13 +1078,13 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     if (Array.isArray(parsed.risks) && parsed.risks.length > 0) {
       const mapped: LegalRiskFlag[] = parsed.risks.map((r) => ({
         id: String(r.id),
-        contract_id: String(contract.id),
+        contract_id: String(nextContract.id),
         severity: (r.severity === 'critical' || r.severity === 'high' || r.severity === 'medium' || r.severity === 'low') ? r.severity : 'low',
         description: String(r.description || ''),
         explanation: r.explanation ? String(r.explanation) : undefined,
         resolved: Boolean(r.resolved),
         page_number: r.evidence?.page_number ?? null,
-        created_at: contract.created_at,
+        created_at: nextContract.created_at,
       }));
       setRisks(mapped);
     }
@@ -1118,15 +1211,16 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
         .maybeSingle();
       if (!docErr) setDocumentRow((docData || null) as any);
 
-      const { data: contractData, error: contractError } = await supabase
-        .from('legal_contracts')
-        .select('*')
+      const { data: verificationObject, error: verificationObjectError } = await supabase
+        .from('verification_objects')
+        .select('id, current_version_id, state, finalized_at')
         .eq('document_id', documentId)
+        .eq('object_type', 'contract_analysis')
         .maybeSingle();
 
-      if (contractError) throw contractError;
+      if (verificationObjectError) throw verificationObjectError;
 
-      if (!contractData) {
+      if (!verificationObject?.id || !verificationObject.current_version_id) {
         setContract(null);
         setClauses([]);
         setObligations([]);
@@ -1138,54 +1232,35 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
         return { hasContract: false as const };
       }
 
-      setContract(contractData);
       setSnapshot(null);
-      setVerificationObjectId(contractData.verification_object_id || null);
-      setCurrentVersionId(null);
-      setVerificationObjectState(null);
+      setVerificationObjectId(String(verificationObject.id));
+      setCurrentVersionId(String(verificationObject.current_version_id));
+      setVerificationObjectState(String(verificationObject.state || 'provisional'));
       
       // If we found a contract, analysis is complete - reset analyzing state
       // This handles the case where user left and came back after completion
       setIsAnalyzing(false);
 
-      const [clausesRes, obligationsRes, risksRes] = await Promise.all([
-        supabase.from('legal_clauses').select('*').eq('contract_id', contractData.id).order('page_number', { ascending: true }),
-        supabase.from('legal_obligations').select('*').eq('contract_id', contractData.id).order('due_at', { ascending: true }),
-        supabase.from('legal_risk_flags').select('*').eq('contract_id', contractData.id),
-      ]);
-
-      if (clausesRes.error) throw clausesRes.error;
-      if (obligationsRes.error) throw obligationsRes.error;
-      if (risksRes.error) throw risksRes.error;
-
-      setClauses((clausesRes.data || []) as LegalClause[]);
-      setObligations((obligationsRes.data || []) as LegalObligation[]);
-      setRisks((risksRes.data || []) as LegalRiskFlag[]);
-
-      // Load evidence-grade snapshot (canonical) to power Variables + verifier
-      if (contractData.verification_object_id) {
-        const { data: vo, error: voErr } = await supabase
-          .from('verification_objects')
-          .select('current_version_id, state, finalized_at')
-          .eq('id', contractData.verification_object_id)
-          .maybeSingle();
-        if (!voErr && vo?.current_version_id) {
-          setCurrentVersionId(String(vo.current_version_id));
-          setVerificationObjectState(String(vo.state || 'provisional'));
-          const { data: vov, error: vovErr } = await supabase
-            .from('verification_object_versions')
-            .select('snapshot_json')
-            .eq('id', vo.current_version_id)
-            .maybeSingle();
-          if (!vovErr && vov?.snapshot_json) {
-            const parsed = parseSnapshot(vov.snapshot_json, documentId);
-            setSnapshot(parsed);
-            applySnapshotToCoreModules(parsed);
-          }
-        } else {
-          setCurrentVersionId(null);
-          setVerificationObjectState(vo?.state ? String(vo.state) : null);
+      const { data: versionData, error: versionError } = await supabase
+        .from('verification_object_versions')
+        .select('snapshot_json')
+        .eq('id', verificationObject.current_version_id)
+        .maybeSingle();
+      if (versionError) throw versionError;
+      if (versionData?.snapshot_json) {
+        const parsed = parseSnapshot(versionData.snapshot_json, documentId);
+        if (!parsed) {
+          throw new Error('Failed to parse analysis snapshot');
         }
+        setSnapshot(parsed);
+        const nextContract = buildContractFromSnapshot(parsed, String(verificationObject.id));
+        const taskLinks = await loadTaskLinksForObligations(parsed.obligations.map((obligation) => String(obligation.id)));
+        applySnapshotToCoreModules(parsed, nextContract, taskLinks);
+      } else {
+        setContract(null);
+        setClauses([]);
+        setObligations([]);
+        setRisks([]);
       }
       return { hasContract: true as const };
     } catch (e) {
@@ -2115,14 +2190,16 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           description: descriptionParts.join('\n'),
           status: 'pending',
           due_at: o.due_at || null,
+          metadata: {
+            source: 'document_analysis',
+            source_record_type: 'obligation',
+            source_record_id: String(o.id).toLowerCase(),
+            page_number: o.page_number ?? null,
+          },
         })
         .select('*')
         .single();
       if (taskErr) throw taskErr;
-
-      // Link obligation to task for UI state
-      const { error: linkErr } = await supabase.from('legal_obligations').update({ task_id: task.id }).eq('id', o.id);
-      if (linkErr) throw linkErr;
 
       setObligations((prev) => prev.map((x) => (x.id === o.id ? { ...x, task_id: task.id } : x)));
     } catch (e) {

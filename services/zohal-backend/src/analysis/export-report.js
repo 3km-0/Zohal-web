@@ -1058,90 +1058,48 @@ async function loadVerificationObjectExport(supabase, verificationObjectId) {
   };
 }
 
-async function buildLegacySnapshotFromContract(supabase, contract) {
-  const contractId = normalizeId(contract?.id);
-  if (!contractId) return null;
-
-  const [
-    clausesResult,
-    obligationsResult,
-    risksResult,
-  ] = await Promise.all([
-    supabase.from("legal_clauses").select("*").eq("contract_id", contractId),
-    supabase.from("legal_obligations").select("*").eq("contract_id", contractId),
-    supabase.from("legal_risk_flags").select("*").eq("contract_id", contractId),
-  ]);
-
-  return {
-    contract_type: contract.contract_type,
-    effective_date: contract.effective_date,
-    end_date: contract.end_date,
-    term_length_months: contract.term_length_months,
-    notice_period_days: contract.notice_period_days,
-    auto_renewal: contract.auto_renewal,
-    termination_for_convenience: contract.termination_for_convenience,
-    governing_law: contract.governing_law,
-    counterparty_name: contract.counterparty_name,
-    clauses: clausesResult.data || [],
-    obligations: obligationsResult.data || [],
-    risks: risksResult.data || [],
-  };
-}
-
 async function loadDocumentExport(supabase, documentId) {
-  const { data: contract, error } = await supabase
-    .from("legal_contracts")
-    .select("*, documents(id, title, user_id, workspace_id), verification_objects(*)")
+  const { data: verificationObject, error } = await supabase
+    .from("verification_objects")
+    .select("*, documents(id, title, user_id, workspace_id)")
     .eq("document_id", normalizeId(documentId))
+    .eq("object_type", "contract_analysis")
     .single();
 
-  if (error || !contract) {
+  if (error || !verificationObject) {
     throw new Error("Contract analysis not found");
   }
 
   let snapshot = null;
-  let state = "unknown";
   let versionNumber = 0;
-  let finalizedAt = null;
-  let reviewerName = null;
-
-  if (contract.verification_object_id && contract.version_id) {
+  if (verificationObject.current_version_id) {
     const { data: version } = await supabase
       .from("verification_object_versions")
       .select("*")
-      .eq("id", normalizeId(contract.version_id))
+      .eq("id", normalizeId(verificationObject.current_version_id))
       .maybeSingle();
     if (version) {
       snapshot = version.snapshot_json || null;
       versionNumber = Number(version.version_number || 0);
-      state = String(version.state || state);
-      finalizedAt = version.reviewed_at || finalizedAt;
-    }
-    if (contract.verification_objects) {
-      state = String(contract.verification_objects.state || state);
-      finalizedAt = contract.verification_objects.finalized_at || finalizedAt;
-      reviewerName = await fetchReviewerName(
-        supabase,
-        contract.verification_objects.finalized_by,
-      );
     }
   }
 
   if (!snapshot) {
-    snapshot = await buildLegacySnapshotFromContract(supabase, contract);
-    state = "legacy";
+    throw new Error("Analysis snapshot not found");
   }
 
   return {
     snapshot,
-    state,
+    state: String(verificationObject.state || "unknown"),
     versionNumber,
-    finalizedAt,
-    reviewerName,
-    documentTitle: contract.documents?.title || "Contract",
-    documentId: contract.documents?.id ? normalizeId(contract.documents.id) : normalizeId(documentId),
-    workspaceId: contract.documents?.workspace_id
-      ? normalizeId(contract.documents.workspace_id)
+    finalizedAt: verificationObject.finalized_at || null,
+    reviewerName: await fetchReviewerName(supabase, verificationObject.finalized_by),
+    documentTitle: verificationObject.documents?.title || "Contract",
+    documentId: verificationObject.documents?.id
+      ? normalizeId(verificationObject.documents.id)
+      : normalizeId(documentId),
+    workspaceId: verificationObject.documents?.workspace_id
+      ? normalizeId(verificationObject.documents.workspace_id)
       : null,
   };
 }

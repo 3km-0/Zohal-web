@@ -17,70 +17,8 @@ import {
 } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
+import type { PlaybookRecord as TemplateRecord, TemplateSpecV1 as PlaybookSpecV1 } from '@/types/templates';
 import { cn } from '@/lib/utils';
-
-type PlaybookSpecV1 = {
-  meta: { name: string; kind: string };
-  options?: { strictness?: 'default' | 'strict'; enable_verifier?: boolean; language?: 'en' | 'ar' };
-  scope?: 'single' | 'bundle' | 'either';
-  bundle_schema?: {
-    roles?: Array<{ role: string; required: boolean; multiple: boolean }>;
-    allowed_document_types?: string[];
-  };
-  modules?: string[];
-  outputs?: string[];
-  modules_v2?: Array<{
-    id: string;
-    title: string;
-    prompt: string;
-    json_schema: Record<string, unknown>;
-    enabled?: boolean;
-    show_in_report?: boolean;
-  }>;
-  custom_modules?: Array<{
-    id: string;
-    title: string;
-    prompt: string;
-    json_schema: Record<string, unknown>;
-    enabled?: boolean;
-    show_in_report?: boolean;
-  }>;
-  variables: Array<{
-    key: string;
-    type: string;
-    required?: boolean;
-    source_scope?: string;
-    source_scopes?: string[];
-    constraints?: { min?: number; max?: number; allowed_values?: string[] };
-  }>;
-  record_types?: Array<{
-    id: string;
-    title: string;
-    json_schema?: Record<string, unknown>;
-    show_in_report?: boolean;
-    source_scope?: string;
-    source_scopes?: string[];
-  }>;
-  rules?: Array<Record<string, unknown>>;
-  checks?: Array<
-    | { id: string; type: 'required'; variable_key: string; severity: 'blocker' | 'warning' }
-    | {
-        id: string;
-        type: 'range';
-        variable_key: string;
-        severity: 'blocker' | 'warning';
-        min?: number;
-        max?: number;
-      }
-    | {
-        id: string;
-        type: 'enum';
-        variable_key: string;
-        severity: 'blocker' | 'warning';
-        allowed_values: string[];
-      }
-  >;
-};
 
 const CORE_MODULE_ORDER = ['variables', 'clauses', 'obligations', 'risks', 'deadlines'] as const;
 
@@ -124,22 +62,11 @@ function syncLegacyFromModulesV2(p: PlaybookSpecV1): PlaybookSpecV1 {
 
 type BundleRoleRow = { role: string; required: boolean; multiple: boolean };
 
-type PlaybookRow = {
-  id: string;
-  name: string;
-  status: 'draft' | 'published' | 'deprecated';
-  is_system_preset?: boolean;
-  workspace_id?: string | null;
-  current_version_id?: string | null;
-  current_version?: {
-    id: string;
-    version_number: number;
-    spec_json: any;
-    published_at?: string | null;
-  } | null;
-};
+type PlaybookRow = TemplateRecord;
 
 function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
+  const base = input && typeof input === 'object' && !Array.isArray(input) ? { ...input } : {};
+  const baseMeta = input?.meta && typeof input.meta === 'object' && !Array.isArray(input.meta) ? { ...input.meta } : {};
   const metaName = typeof input?.meta?.name === 'string' ? input.meta.name : fallbackName;
   const metaKind = typeof input?.meta?.kind === 'string' ? input.meta.kind : 'contract';
   const optionsRaw = input?.options && typeof input.options === 'object' ? input.options : null;
@@ -311,7 +238,8 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
     .filter(Boolean) as PlaybookSpecV1['checks'];
 
   return syncLegacyFromModulesV2({
-    meta: { name: metaName, kind: metaKind },
+    ...base,
+    meta: { ...baseMeta, name: metaName, kind: metaKind },
     options,
     scope,
     bundle_schema,
@@ -587,10 +515,13 @@ export default function WorkspacePlaybooksPage() {
     if (!selected) return;
     setDuplicating(true);
     try {
-      const sourceSpec = selected.current_version?.spec_json || spec;
+      const sourceSpec = (selected.current_version?.spec_json &&
+        typeof selected.current_version.spec_json === 'object'
+        ? selected.current_version.spec_json
+        : spec) as PlaybookSpecV1;
       const duplicatedSpec = {
         ...sourceSpec,
-        meta: { ...sourceSpec.meta, name: `${selected.name} (Copy)` },
+        meta: { ...(sourceSpec.meta || { kind: 'contract' }), name: `${selected.name} (Copy)` },
       };
       const { data, error } = await supabase.functions.invoke('playbooks-create', {
         body: {
@@ -732,7 +663,7 @@ export default function WorkspacePlaybooksPage() {
                               System
                             </span>
                           ) : (
-                            statusBadge(pb.status)
+                            statusBadge(pb.status || 'draft')
                           )}
                         </div>
                       </div>
@@ -818,7 +749,7 @@ export default function WorkspacePlaybooksPage() {
                           <Pencil className="w-4 h-4 text-text-soft opacity-0 group-hover:opacity-100 transition-opacity" />
                         </button>
                       )}
-                      {!isSystemPreset && statusBadge(selected.status)}
+                      {!isSystemPreset && statusBadge(selected.status || 'draft')}
                       {!isSystemPreset && (
                         <span className="text-xs text-text-soft">
                           {isSaving ? t('builder.saving') : lastSaved ? `${t('builder.saved')} ${lastSaved.toLocaleTimeString()}` : ''}

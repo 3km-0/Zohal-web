@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { allowedVariableNamesForTemplate } from "./batch.js";
 
 function normalizeUuid(value) {
@@ -2772,139 +2773,259 @@ async function upsertVerificationSnapshot({ supabase, parentRun, snapshotJson })
   };
 }
 
-async function upsertContractProjections({
+function actionAsString(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+}
+
+function actionAsInteger(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+  }
+  return null;
+}
+
+function normalizeActionEvidenceList(evidence) {
+  if (!Array.isArray(evidence)) return [];
+  return evidence.filter((item) => item && typeof item === "object" && !Array.isArray(item));
+}
+
+function normalizeActionWorkflowState(value) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "needs_review") return "needs_review";
+  if (raw === "verified" || raw === "finalized") return "confirmed";
+  if (raw === "resolved") return "resolved";
+  if (raw === "dismissed" || raw === "rejected") return "dismissed";
+  return "extracted";
+}
+
+function normalizeActionKind(value) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  return raw ? raw.replace(/\s+/g, "_") : "action";
+}
+
+function normalizeActionIsoDate(value) {
+  const raw = actionAsString(value);
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function deterministicUuid(seed) {
+  const hex = createHash("sha256").update(String(seed)).digest("hex").slice(0, 32).split("");
+  hex[12] = "4";
+  hex[16] = ["8", "9", "a", "b"][parseInt(hex[16], 16) % 4];
+  const normalized = hex.join("");
+  return `${normalized.slice(0, 8)}-${normalized.slice(8, 12)}-${normalized.slice(12, 16)}-${normalized.slice(16, 20)}-${normalized.slice(20, 32)}`;
+}
+
+function getSnapshotVariableValue(snapshot, name) {
+  const variables = Array.isArray(snapshot?.variables) ? snapshot.variables : [];
+  const match = variables.find((variable) =>
+    String(variable?.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase(),
+  );
+  return match?.value;
+}
+
+function getSnapshotVariableEvidence(snapshot, name) {
+  const variables = Array.isArray(snapshot?.variables) ? snapshot.variables : [];
+  const match = variables.find((variable) =>
+    String(variable?.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase(),
+  );
+  return match?.evidence && typeof match.evidence === "object" && !Array.isArray(match.evidence)
+    ? match.evidence
+    : null;
+}
+
+function computeNoticeDeadlineIso(snapshot) {
+  const explicit = normalizeActionIsoDate(getSnapshotVariableValue(snapshot, "notice_deadline"));
+  if (explicit) return explicit;
+  const endDateRaw = actionAsString(getSnapshotVariableValue(snapshot, "end_date"));
+  const noticeDays = actionAsInteger(getSnapshotVariableValue(snapshot, "notice_period_days"));
+  if (!endDateRaw || noticeDays == null) return null;
+  const endDate = new Date(endDateRaw);
+  if (Number.isNaN(endDate.getTime())) return null;
+  endDate.setUTCDate(endDate.getUTCDate() - noticeDays);
+  return endDate.toISOString();
+}
+
+function buildRecordDerivedActionRow(record, { workspaceId, documentId, verificationObjectId, versionId }) {
+  const fields = record?.fields && typeof record.fields === "object" && !Array.isArray(record.fields)
+    ? record.fields
+    : {};
+  const dueAt = normalizeActionIsoDate(fields.due_at ?? fields.due_date ?? fields.deadline_at);
+  const id = actionAsString(record?.id);
+  if (!dueAt || !id) return null;
+  const evidenceJson = normalizeActionEvidenceList(record?.evidence);
+  const primaryEvidence = evidenceJson[0] || null;
+  return {
+    id,
+    workspace_id: workspaceId,
+    document_id: documentId,
+    verification_object_id: verificationObjectId,
+    version_id: versionId || null,
+    source_record_id: id,
+    action_kind: normalizeActionKind(fields.action_kind ?? record?.record_type ?? "action"),
+    title: actionAsString(record?.title) ?? actionAsString(fields.title) ?? null,
+    summary: actionAsString(record?.summary) ?? actionAsString(fields.summary) ?? null,
+    action_text: actionAsString(fields.action_text) ?? actionAsString(fields.action) ?? null,
+    condition_text: actionAsString(fields.condition_text) ?? actionAsString(fields.condition) ?? null,
+    responsible_party: actionAsString(fields.responsible_party) ?? actionAsString(fields.owner) ?? null,
+    due_at: dueAt,
+    recurrence: actionAsString(fields.recurrence),
+    workflow_state: normalizeActionWorkflowState(fields.workflow_state ?? record?.status),
+    task_id: actionAsString(fields.task_id),
+    primary_page_number: actionAsInteger(fields.primary_page_number ?? primaryEvidence?.page_number),
+    evidence_document_id: actionAsString(fields.evidence_document_id ?? primaryEvidence?.document_id),
+    evidence_json: evidenceJson,
+    metadata_json: {
+      source: "analysis_record",
+      record_type: actionAsString(record?.record_type),
+      severity: actionAsString(record?.severity),
+      ...fields,
+    },
+    provenance_json: record?.provenance && typeof record.provenance === "object" && !Array.isArray(record.provenance)
+      ? record.provenance
+      : {},
+  };
+}
+
+function buildObligationDerivedActionRow(obligation, { workspaceId, documentId, verificationObjectId, versionId }) {
+  const id = actionAsString(obligation?.id);
+  const dueAt = normalizeActionIsoDate(obligation?.due_at);
+  if (!id || !dueAt) return null;
+  const evidence = obligation?.evidence && typeof obligation.evidence === "object" && !Array.isArray(obligation.evidence)
+    ? obligation.evidence
+    : null;
+  return {
+    id,
+    workspace_id: workspaceId,
+    document_id: documentId,
+    verification_object_id: verificationObjectId,
+    version_id: versionId || null,
+    source_record_id: null,
+    action_kind: normalizeActionKind(obligation?.obligation_type || "obligation"),
+    title: actionAsString(obligation?.summary) ?? actionAsString(obligation?.action) ?? actionAsString(obligation?.obligation_type) ?? "Obligation",
+    summary: actionAsString(obligation?.summary),
+    action_text: actionAsString(obligation?.action),
+    condition_text: actionAsString(obligation?.condition),
+    responsible_party: actionAsString(obligation?.responsible_party),
+    due_at: dueAt,
+    recurrence: actionAsString(obligation?.recurrence),
+    workflow_state: normalizeActionWorkflowState(obligation?.verification_state),
+    task_id: null,
+    primary_page_number: actionAsInteger(evidence?.page_number),
+    evidence_document_id: actionAsString(evidence?.document_id),
+    evidence_json: evidence ? [evidence] : [],
+    metadata_json: {
+      source: "snapshot_obligation",
+      obligation_type: actionAsString(obligation?.obligation_type),
+      ai_confidence: actionAsString(obligation?.ai_confidence),
+    },
+    provenance_json: {},
+  };
+}
+
+function buildNoticeDeadlineActionRow(snapshot, { workspaceId, documentId, verificationObjectId, versionId }) {
+  const dueAt = computeNoticeDeadlineIso(snapshot);
+  if (!dueAt) return null;
+  const endDateEvidence = getSnapshotVariableEvidence(snapshot, "end_date");
+  const noticeDays = actionAsInteger(getSnapshotVariableValue(snapshot, "notice_period_days"));
+  return {
+    id: deterministicUuid(`${verificationObjectId}:notice_deadline:${dueAt}`),
+    workspace_id: workspaceId,
+    document_id: documentId,
+    verification_object_id: verificationObjectId,
+    version_id: versionId || null,
+    source_record_id: null,
+    action_kind: "notice_deadline",
+    title: "Notice Deadline",
+    summary: noticeDays == null
+      ? "Last day to provide notice"
+      : `Last day to provide ${noticeDays}-day notice`,
+    action_text: "Send non-renewal or termination notice before the deadline.",
+    condition_text: null,
+    responsible_party: null,
+    due_at: dueAt,
+    recurrence: null,
+    workflow_state: "confirmed",
+    task_id: null,
+    primary_page_number: actionAsInteger(endDateEvidence?.page_number),
+    evidence_document_id: actionAsString(endDateEvidence?.document_id),
+    evidence_json: endDateEvidence ? [endDateEvidence] : [],
+    metadata_json: {
+      source: "computed_notice_deadline",
+      variable_name: "notice_deadline",
+      notice_period_days: noticeDays,
+      computed_from: ["end_date", "notice_period_days"],
+    },
+    provenance_json: {
+      origin: "system",
+      computation: "end_date_minus_notice_period_days",
+    },
+  };
+}
+
+function buildAnalysisActionsFromSnapshot(snapshot, args) {
+  if (!snapshot || typeof snapshot !== "object") return [];
+  const rows = [];
+  const seenIds = new Set();
+  const packRecords = Array.isArray(snapshot?.pack?.records) ? snapshot.pack.records : [];
+  for (const record of packRecords) {
+    const row = buildRecordDerivedActionRow(record, args);
+    if (!row || seenIds.has(row.id)) continue;
+    rows.push(row);
+    seenIds.add(row.id);
+  }
+  const obligations = Array.isArray(snapshot?.obligations) ? snapshot.obligations : [];
+  for (const obligation of obligations) {
+    const row = buildObligationDerivedActionRow(obligation, args);
+    if (!row || seenIds.has(row.id)) continue;
+    rows.push(row);
+    seenIds.add(row.id);
+  }
+  const noticeDeadline = buildNoticeDeadlineActionRow(snapshot, args);
+  if (noticeDeadline && !seenIds.has(noticeDeadline.id)) {
+    rows.push(noticeDeadline);
+  }
+  return rows.sort((a, b) => {
+    const dueA = a.due_at || "";
+    const dueB = b.due_at || "";
+    if (dueA && dueB && dueA !== dueB) return dueA.localeCompare(dueB);
+    return a.action_kind.localeCompare(b.action_kind);
+  });
+}
+
+async function syncAnalysisActions({
   supabase,
   parentRun,
-  reduced,
   snapshotJson,
   verificationObjectId,
   versionId,
 }) {
-  const normalizedWorkspaceId = normalizeUuid(parentRun.workspace_id);
-  const normalizedDocumentId = normalizeUuid(parentRun.document_id);
-  const contractPayload = {
-    workspace_id: normalizedWorkspaceId,
-    contract_type: normalizeContractType(pickVar(reduced.extracted_variables, "contract_type")),
-    effective_date: normalizeDate(pickVar(reduced.extracted_variables, "effective_date")),
-    end_date: normalizeDate(pickVar(reduced.extracted_variables, "end_date")),
-    term_length_months: normalizeInteger(pickVar(reduced.extracted_variables, "term_length_months")),
-    notice_period_days: normalizeInteger(pickVar(reduced.extracted_variables, "notice_period_days")),
-    auto_renewal: normalizeBoolean(pickVar(reduced.extracted_variables, "auto_renewal")),
-    termination_for_convenience: normalizeBoolean(
-      pickVar(reduced.extracted_variables, "termination_for_convenience"),
-    ),
-    governing_law: pickVar(reduced.extracted_variables, "governing_law"),
-    counterparty_name: pickVar(reduced.extracted_variables, "counterparty_name"),
-    verification_object_id: verificationObjectId,
-    version_id: versionId,
-  };
-
-  const { data: existingContract } = await supabase
-    .from("legal_contracts")
-    .select("id")
-    .eq("document_id", normalizedDocumentId)
-    .maybeSingle();
-
-  let contractId;
-  if (existingContract) {
-    const { data, error } = await supabase
-      .from("legal_contracts")
-      .update({
-        ...contractPayload,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existingContract.id)
-      .select("id")
-      .single();
-    if (error) throw new Error(`Failed to update contract: ${error.message}`);
-    contractId = data.id;
-  } else {
-    const { data, error } = await supabase
-      .from("legal_contracts")
-      .insert({
-        document_id: normalizedDocumentId,
-        status: "active",
-        ...contractPayload,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(`Failed to create contract: ${error.message}`);
-    contractId = data.id;
+  const workspaceId = normalizeUuid(parentRun.workspace_id);
+  const documentId = normalizeUuid(parentRun.document_id);
+  const rows = buildAnalysisActionsFromSnapshot(snapshotJson, {
+    workspaceId,
+    documentId,
+    verificationObjectId,
+    versionId,
+  });
+  await supabase.from("analysis_actions").delete().eq("verification_object_id", verificationObjectId);
+  if (rows.length > 0) {
+    await supabase.from("analysis_actions").insert(rows);
   }
-
-  await Promise.all([
-    supabase.from("legal_clauses").delete().eq("contract_id", contractId),
-    supabase.from("legal_obligations").delete().eq("contract_id", contractId),
-    supabase.from("legal_risk_flags").delete().eq("contract_id", contractId),
-  ]);
-
-  const clauses = Array.isArray(snapshotJson?.clauses) ? snapshotJson.clauses : [];
-  const obligations = Array.isArray(snapshotJson?.obligations) ? snapshotJson.obligations : [];
-  const risks = Array.isArray(snapshotJson?.risks) ? snapshotJson.risks : [];
-
-  if (clauses.length) {
-    await supabase.from("legal_clauses").insert(
-      clauses.map((item) => ({
-        contract_id: contractId,
-        clause_type: String(item.clause_type || "other").toLowerCase().replace(/\s+/g, "_"),
-        clause_title: item.clause_title,
-        clause_number: item.clause_number,
-        text: item.text,
-        risk_level: normalizeRiskLevel(item.risk_level),
-        page_number: item.evidence?.page_number ?? null,
-        is_missing_standard_protection: item.is_missing_standard_protection ?? false,
-      })),
-    );
-  }
-
-  if (obligations.length) {
-    const validObligationTypes = new Set([
-      "deliverable",
-      "payment",
-      "notice",
-      "reporting",
-      "compliance",
-      "milestone",
-      "renewal",
-      "termination",
-      "confidentiality",
-      "indemnification",
-      "insurance",
-      "audit",
-      "other",
-    ]);
-    await supabase.from("legal_obligations").insert(
-      obligations.map((item) => ({
-        contract_id: contractId,
-        obligation_type: validObligationTypes.has(String(item.obligation_type || "").toLowerCase())
-          ? String(item.obligation_type || "").toLowerCase()
-          : "other",
-        due_at: item.due_at,
-        recurrence: item.recurrence,
-        responsible_party: item.responsible_party,
-        summary: item.summary,
-        action: item.action,
-        condition: item.condition,
-        confidence: item.ai_confidence || "medium",
-        confidence_state: "extracted",
-        page_number: item.evidence?.page_number ?? null,
-      })),
-    );
-  }
-
-  if (risks.length) {
-    await supabase.from("legal_risk_flags").insert(
-      risks.map((item) => ({
-        contract_id: contractId,
-        severity: normalizeSeverity(item.severity),
-        description: item.description || "Risk identified",
-        explanation: item.explanation,
-        page_number: item.evidence?.page_number ?? null,
-      })),
-    );
-  }
-
-  return contractId;
+  return rows;
 }
 
 async function syncAnalysisV3Projections({
@@ -3641,14 +3762,14 @@ export async function executeContractAnalysisReduce({
     parentRun,
     snapshotJson,
   });
-  const contractId = await upsertContractProjections({
+  await syncAnalysisActions({
     supabase,
     parentRun,
-    reduced,
     snapshotJson,
     verificationObjectId,
     versionId,
   });
+  const contractId = null;
 
   if (analysisV3Flags.enabled) {
     try {

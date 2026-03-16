@@ -277,6 +277,7 @@ export interface Explanation {
 }
 
 export interface LegalContract {
+  // Legacy presentation DTO synthesized from snapshot-native analysis data.
   id: string;
   document_id: string;
   workspace_id: string;
@@ -296,6 +297,7 @@ export interface LegalContract {
 }
 
 export interface LegalClause {
+  // Legacy presentation DTO synthesized from snapshot-native analysis data.
   id: string;
   contract_id: string;
   clause_type: string;
@@ -316,6 +318,7 @@ export interface LegalClause {
 export type ObligationConfidenceState = 'extracted' | 'needs_review' | 'confirmed';
 
 export interface LegalObligation {
+  // Legacy presentation DTO synthesized from snapshot-native analysis data.
   id: string;
   contract_id: string;
   task_id?: string;
@@ -388,6 +391,7 @@ export interface VerificationObjectVersion {
 }
 
 export interface LegalRiskFlag {
+  // Legacy presentation DTO synthesized from snapshot-native analysis data.
   id: string;
   contract_id: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
