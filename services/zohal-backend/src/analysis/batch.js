@@ -173,6 +173,21 @@ function remapModelForProvider(provider, path, payload) {
   return mapped === model ? payload : { ...payload, model: mapped };
 }
 
+function normalizeChatPayloadForProvider(provider, payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  if (provider !== "openai") return payload;
+  const model = String(payload.model || "").trim().toLowerCase();
+  if (!(model.startsWith("gpt-5") || model.startsWith("o"))) return payload;
+  if (!Object.prototype.hasOwnProperty.call(payload, "max_tokens")) return payload;
+  const maxCompletionTokens = payload.max_completion_tokens;
+  const next = { ...payload };
+  next.max_completion_tokens = typeof maxCompletionTokens === "number"
+    ? maxCompletionTokens
+    : payload.max_tokens;
+  delete next.max_tokens;
+  return next;
+}
+
 async function createChatCompletion(payload, options = {}) {
   const provider = options.providerOverride ||
     resolveAIProvider({ workspaceId: options.workspaceId });
@@ -183,10 +198,14 @@ async function createChatCompletion(payload, options = {}) {
   };
   if (options.requestId) headers["x-request-id"] = options.requestId;
 
+  const requestPayload = normalizeChatPayloadForProvider(
+    provider,
+    remapModelForProvider(provider, "/chat/completions", payload),
+  );
   const response = await fetch(`${providerConfig.baseUrl}/chat/completions`, {
     method: "POST",
     headers,
-    body: JSON.stringify(remapModelForProvider(provider, "/chat/completions", payload)),
+    body: JSON.stringify(requestPayload),
     signal: options.signal,
   });
   const json = await response.json().catch(() => ({}));

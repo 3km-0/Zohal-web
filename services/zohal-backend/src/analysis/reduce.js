@@ -263,6 +263,21 @@ function remapModelForProvider(provider, path, payload) {
   return mapped === model ? payload : { ...payload, model: mapped };
 }
 
+function normalizeChatPayloadForProvider(provider, payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  if (provider !== "openai") return payload;
+  const model = String(payload.model || "").trim().toLowerCase();
+  if (!(model.startsWith("gpt-5") || model.startsWith("o"))) return payload;
+  if (!Object.prototype.hasOwnProperty.call(payload, "max_tokens")) return payload;
+  const maxCompletionTokens = payload.max_completion_tokens;
+  const next = { ...payload };
+  next.max_completion_tokens = typeof maxCompletionTokens === "number"
+    ? maxCompletionTokens
+    : payload.max_tokens;
+  delete next.max_tokens;
+  return next;
+}
+
 async function createChatCompletion(payload, options = {}) {
   const provider = options.providerOverride ||
     resolveAIProvider({ workspaceId: options.workspaceId });
@@ -272,10 +287,14 @@ async function createChatCompletion(payload, options = {}) {
     ...providerConfig.headers,
   };
   if (options.requestId) headers["x-request-id"] = options.requestId;
+  const requestPayload = normalizeChatPayloadForProvider(
+    provider,
+    remapModelForProvider(provider, "/chat/completions", payload),
+  );
   const response = await fetch(`${providerConfig.baseUrl}/chat/completions`, {
     method: "POST",
     headers,
-    body: JSON.stringify(remapModelForProvider(provider, "/chat/completions", payload)),
+    body: JSON.stringify(requestPayload),
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -2377,6 +2396,121 @@ function buildCustomModulesDocumentText(chunks, maxCharsPerPage, maxTotalChars) 
   return sections.join("").trim();
 }
 
+function collectEvidenceSeedsForModule({ moduleId, snapshotJson, primaryDocumentId }) {
+  if (moduleId !== "compliance_deviations") return { chunkIds: new Set(), pages: new Set() };
+
+  const chunkIds = new Set();
+  const pages = new Set();
+  const addEvidence = (evidence) => {
+    if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return;
+    const documentId = String(evidence.document_id || primaryDocumentId || "").trim().toLowerCase();
+    const pageNumber = typeof evidence.page_number === "number" ? evidence.page_number : null;
+    const chunkId = typeof evidence.chunk_id === "string" ? evidence.chunk_id.trim() : "";
+    if (chunkId) chunkIds.add(chunkId);
+    if (documentId && pageNumber) pages.add(`${documentId}:${pageNumber}`);
+  };
+
+  for (const variable of Array.isArray(snapshotJson?.variables) ? snapshotJson.variables : []) {
+    addEvidence(variable?.evidence);
+  }
+  for (const clause of Array.isArray(snapshotJson?.clauses) ? snapshotJson.clauses : []) {
+    addEvidence(clause?.evidence);
+  }
+  for (const obligation of Array.isArray(snapshotJson?.obligations) ? snapshotJson.obligations : []) {
+    addEvidence(obligation?.evidence);
+  }
+  for (const risk of Array.isArray(snapshotJson?.risks) ? snapshotJson.risks : []) {
+    addEvidence(risk?.evidence);
+  }
+  for (const discrepancy of Array.isArray(snapshotJson?.pack?.discrepancies) ? snapshotJson.pack.discrepancies : []) {
+    for (const value of Array.isArray(discrepancy?.values) ? discrepancy.values : []) {
+      addEvidence(value?.evidence);
+    }
+  }
+
+  return { chunkIds, pages };
+}
+
+export function buildFocusedModuleChunks({ moduleId, chunks, snapshotJson, primaryDocumentId }) {
+  const allChunks = Array.isArray(chunks) ? chunks.filter((chunk) => !!chunk && typeof chunk === "object") : [];
+  if (allChunks.length <= 80) return allChunks;
+
+  const seeds = collectEvidenceSeedsForModule({ moduleId, snapshotJson, primaryDocumentId });
+  if (seeds.chunkIds.size === 0 && seeds.pages.size === 0) return allChunks;
+
+  const byChunkId = new Map();
+  const byPage = new Map();
+  for (const chunk of allChunks) {
+    if (chunk?.id) byChunkId.set(String(chunk.id), chunk);
+    const docId = String(chunk?.document_id || "").trim().toLowerCase();
+    const pageNumber = typeof chunk?.page_number === "number" ? chunk.page_number : null;
+    if (!docId || !pageNumber) continue;
+    const key = `${docId}:${pageNumber}`;
+    if (!byPage.has(key)) byPage.set(key, []);
+    byPage.get(key).push(chunk);
+  }
+
+  for (const list of byPage.values()) {
+    list.sort((a, b) => Number(a?.chunk_index || 0) - Number(b?.chunk_index || 0));
+  }
+
+  const selected = new Map();
+  const addChunk = (chunk) => {
+    if (!chunk) return;
+    const key = String(chunk?.id || `${chunk?.document_id || "doc"}:${chunk?.page_number || 0}:${chunk?.chunk_index || 0}`);
+    if (!selected.has(key)) selected.set(key, chunk);
+  };
+  const addNeighbors = (chunk) => {
+    if (!chunk) return;
+    const docId = String(chunk?.document_id || "").trim().toLowerCase();
+    const pageNumber = typeof chunk?.page_number === "number" ? chunk.page_number : null;
+    if (!docId || !pageNumber) return;
+    const pageChunks = byPage.get(`${docId}:${pageNumber}`) || [];
+    const index = pageChunks.findIndex((item) => item?.id === chunk?.id);
+    if (index === -1) return;
+    for (let offset = -1; offset <= 1; offset++) {
+      addChunk(pageChunks[index + offset]);
+    }
+  };
+
+  for (const chunkId of seeds.chunkIds) {
+    const chunk = byChunkId.get(chunkId);
+    addChunk(chunk);
+    addNeighbors(chunk);
+  }
+  for (const pageKey of seeds.pages) {
+    const [docId, rawPage] = String(pageKey).split(":");
+    const pageNumber = Number(rawPage);
+    for (let delta = -1; delta <= 1; delta++) {
+      const pageChunks = byPage.get(`${docId}:${pageNumber + delta}`) || [];
+      for (const chunk of pageChunks.slice(0, 8)) {
+        addChunk(chunk);
+        addNeighbors(chunk);
+      }
+    }
+  }
+
+  const focusedChunks = Array.from(selected.values()).sort((a, b) => {
+    const docCmp = String(a?.document_id || "").localeCompare(String(b?.document_id || ""));
+    if (docCmp !== 0) return docCmp;
+    const pageCmp = Number(a?.page_number || 0) - Number(b?.page_number || 0);
+    if (pageCmp !== 0) return pageCmp;
+    return Number(a?.chunk_index || 0) - Number(b?.chunk_index || 0);
+  });
+
+  return focusedChunks.length >= 6 ? focusedChunks : allChunks;
+}
+
+export function buildModuleDocumentText({ moduleId, chunks, snapshotJson, primaryDocumentId }) {
+  const allChunks = Array.isArray(chunks) ? chunks : [];
+  if (moduleId === "compliance_deviations") {
+    const focusedChunks = buildFocusedModuleChunks({ moduleId, chunks: allChunks, snapshotJson, primaryDocumentId });
+    const focusedText = buildCustomModulesDocumentText(focusedChunks, 1800, 22000);
+    if (focusedText && focusedText.length >= 2500) return focusedText;
+  }
+  return buildCustomModulesDocumentText(allChunks, 1600, 40000);
+}
+
 function sanitizeCustomModuleEvidence(evidence) {
   if (!Array.isArray(evidence)) return [];
   return evidence
@@ -2390,7 +2524,7 @@ function sanitizeCustomModuleEvidence(evidence) {
     .filter(Boolean);
 }
 
-async function runCustomModules({ chunks, modules, language, workspaceId, requestId }) {
+async function runCustomModules({ chunks, modules, language, workspaceId, requestId, onProgress }) {
   const generatorConfig = getAIStageConfig("generator");
   const verifierConfig = getAIStageConfig("verifier");
   const model = generatorConfig.model;
@@ -2399,12 +2533,23 @@ async function runCustomModules({ chunks, modules, language, workspaceId, reques
   if (!docText) return [];
 
   const outputs = [];
-  for (const moduleDef of (modules || []).slice(0, 5)) {
+  const enabledModules = (modules || []).slice(0, 5).filter((moduleDef) => {
+    const id = String(moduleDef?.id || "").trim();
+    const title = String(moduleDef?.title || "").trim();
+    const prompt = String(moduleDef?.prompt || "");
+    return !!id && !!title && !!prompt && moduleDef?.enabled !== false;
+  });
+  for (const [moduleIndex, moduleDef] of enabledModules.entries()) {
     const id = String(moduleDef.id || "").trim();
     const title = String(moduleDef.title || "").trim();
     const prompt = String(moduleDef.prompt || "");
     const showInReport = moduleDef.show_in_report === true;
-    if (!id || !title || !prompt || moduleDef.enabled === false) continue;
+    await onProgress?.({
+      current: moduleIndex + 1,
+      total: enabledModules.length,
+      title,
+      moduleId: id,
+    });
     const system =
       "You are an evidence-grade contract analyzer.\n" +
       "You will be given contract excerpts with page markers like [Page N].\n" +
@@ -2490,21 +2635,50 @@ async function runCustomModules({ chunks, modules, language, workspaceId, reques
   return outputs;
 }
 
-async function runModulesV2({ chunks, modules, language, workspaceId, requestId }) {
+async function runModulesV2({
+  chunks,
+  modules,
+  language,
+  workspaceId,
+  requestId,
+  onProgress,
+  snapshotJson,
+  primaryDocumentId,
+}) {
   const generatorConfig = getAIStageConfig("generator");
   const verifierConfig = getAIStageConfig("verifier");
   const model = generatorConfig.model;
   const languageName = humanLanguageName(language);
-  const docText = buildCustomModulesDocumentText(chunks, 1600, 40000);
-  if (!docText) return [];
+  if (!Array.isArray(chunks) || !chunks.length) return [];
 
   const outputs = [];
-  for (const moduleDef of (modules || []).slice(0, 20)) {
+  const enabledModules = (modules || []).slice(0, 20).filter((moduleDef) => {
+    const id = String(moduleDef?.id || "").trim();
+    const title = String(moduleDef?.title || "").trim();
+    const prompt = String(moduleDef?.prompt || "");
+    return !!id && !!title && !!prompt && moduleDef?.enabled !== false;
+  });
+  for (const [moduleIndex, moduleDef] of enabledModules.entries()) {
     const id = String(moduleDef.id || "").trim();
     const title = String(moduleDef.title || "").trim();
     const prompt = String(moduleDef.prompt || "");
     const showInReport = moduleDef.show_in_report === true;
-    if (!id || !title || !prompt || moduleDef.enabled === false) continue;
+    await onProgress?.({
+      current: moduleIndex + 1,
+      total: enabledModules.length,
+      title,
+      moduleId: id,
+    });
+    const docText = buildModuleDocumentText({
+      moduleId: id,
+      chunks,
+      snapshotJson,
+      primaryDocumentId,
+    });
+    if (!docText) {
+      outputs.push({ id, title, status: "error", error: "no_document_text", show_in_report: showInReport });
+      continue;
+    }
 
     const system =
       "You are an evidence-grade document analyzer.\n" +
@@ -2685,6 +2859,34 @@ function buildStageTrace({ totalBatches, completedBatches, verifierInvoked, rule
     { stage: "verify", status: verifierInvoked ? "completed" : "skipped" },
     { stage: "decide", status: "completed" },
   ];
+}
+
+async function updateActionProgress({
+  supabase,
+  actionId,
+  status = "running",
+  outputPatch,
+}) {
+  if (!actionId) return;
+  const { data: existingAction } = await supabase
+    .from("actions")
+    .select("output_json")
+    .eq("id", actionId)
+    .maybeSingle();
+  await supabase
+    .from("actions")
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+      output_json: {
+        ...(existingAction?.output_json && typeof existingAction.output_json === "object"
+          ? existingAction.output_json
+          : {}),
+        ...(outputPatch && typeof outputPatch === "object" ? outputPatch : {}),
+      },
+    })
+    .eq("id", actionId)
+    .throwOnError();
 }
 
 function computeEvidenceCoverage(snapshotJson) {
@@ -3304,27 +3506,19 @@ export async function executeContractAnalysisReduce({
 
   const merged = mergeBatchCandidates(completed);
   if (actionId) {
-    const { data: existingAction } = await supabase
-      .from("actions")
-      .select("output_json")
-      .eq("id", actionId)
-      .maybeSingle();
-    await supabase
-      .from("actions")
-      .update({
-        status: "running",
-        updated_at: new Date().toISOString(),
-        output_json: {
-          ...(existingAction?.output_json && typeof existingAction.output_json === "object"
-            ? existingAction.output_json
-            : {}),
-          stage: "reduce",
-          run_id: normalizeUuid(parentRunId),
-          ...(docsetProgressContext || {}),
-        },
-      })
-      .eq("id", actionId)
-      .throwOnError();
+    await updateActionProgress({
+      supabase,
+      actionId,
+      status: "running",
+      outputPatch: {
+        stage: "reduce",
+        status_message: "Reducing batch results...",
+        run_id: normalizeUuid(parentRunId),
+        completed_batches: completed.length,
+        total_batches: totalBatches,
+        ...(docsetProgressContext || {}),
+      },
+    });
   }
 
   const reduced = await reduceWithOpenAI(
@@ -3480,6 +3674,25 @@ export async function executeContractAnalysisReduce({
         language: resolveRunLanguagePreference(input, playbookSpec),
         workspaceId: parentRun.workspace_id,
         requestId,
+        snapshotJson,
+        primaryDocumentId,
+        onProgress: actionId
+          ? async ({ current, total, title }) => {
+            await updateActionProgress({
+              supabase,
+              actionId,
+              status: "running",
+              outputPatch: {
+                stage: "modules",
+                status_message: `Running module ${current} of ${total}: ${title}`,
+                completed_batches: completed.length,
+                total_batches: totalBatches,
+                run_id: normalizeUuid(parentRunId),
+                ...(docsetProgressContext || {}),
+              },
+            });
+          }
+          : undefined,
       });
       const enabledIds = modulesV2.filter((item) => item.enabled !== false).map((item) => item.id);
       const mergedModulesEnabled = Array.from(new Set([...orderedModulesEnabled, ...enabledIds]));
@@ -3562,6 +3775,23 @@ export async function executeContractAnalysisReduce({
         language: resolveRunLanguagePreference(input, playbookSpec),
         workspaceId: parentRun.workspace_id,
         requestId,
+        onProgress: actionId
+          ? async ({ current, total, title }) => {
+            await updateActionProgress({
+              supabase,
+              actionId,
+              status: "running",
+              outputPatch: {
+                stage: "modules",
+                status_message: `Running module ${current} of ${total}: ${title}`,
+                completed_batches: completed.length,
+                total_batches: totalBatches,
+                run_id: normalizeUuid(parentRunId),
+                ...(docsetProgressContext || {}),
+              },
+            });
+          }
+          : undefined,
       });
       snapshotJson = {
         ...snapshotJson,
@@ -3666,13 +3896,35 @@ export async function executeContractAnalysisReduce({
 
   let verifier = null;
   if (verifierEnabled) {
+    if (actionId) {
+      await updateActionProgress({
+        supabase,
+        actionId,
+        status: "running",
+        outputPatch: {
+          stage: "verify",
+          status_message: "Running verifier checks...",
+          completed_batches: completed.length,
+          total_batches: totalBatches,
+          run_id: normalizeUuid(parentRunId),
+          ...(docsetProgressContext || {}),
+        },
+      });
+    }
     try {
       verifier = runDeterministicVerifier({
         snapshotJson,
         chunksByDoc,
         defaultDocumentId: primaryDocumentId,
       });
-      if (llmVerifierEnabled) {
+    } catch (error) {
+      log?.warn?.("deterministic verifier failed in native reduce", {
+        error: error?.message || String(error),
+      });
+      verifier = null;
+    }
+    if (verifier && llmVerifierEnabled) {
+      try {
         verifier = await runSemanticVerifierForTargetVariables({
           snapshotJson,
           verifier,
@@ -3680,8 +3932,14 @@ export async function executeContractAnalysisReduce({
           defaultDocumentId: primaryDocumentId,
           requestId,
         });
+      } catch (error) {
+        log?.warn?.("semantic verifier failed in native reduce", {
+          error: error?.message || String(error),
+        });
       }
-      if (judgeEnabled) {
+    }
+    if (verifier && judgeEnabled) {
+      try {
         verifier = await runJudgeForTargetVariables({
           snapshotJson,
           verifier,
@@ -3689,7 +3947,13 @@ export async function executeContractAnalysisReduce({
           defaultDocumentId: primaryDocumentId,
           requestId,
         });
+      } catch (error) {
+        log?.warn?.("judge verifier failed in native reduce", {
+          error: error?.message || String(error),
+        });
       }
+    }
+    if (verifier) {
       snapshotJson = enrichSnapshotWithVerifier(snapshotJson, verifier);
       snapshotJson = {
         ...snapshotJson,
@@ -3700,9 +3964,6 @@ export async function executeContractAnalysisReduce({
           return { ...variable, verification_state: "needs_review" };
         }),
       };
-    } catch (error) {
-      log?.warn?.("verifier failed in native reduce", { error: error?.message || String(error) });
-      verifier = null;
     }
   }
 
@@ -3756,6 +4017,22 @@ export async function executeContractAnalysisReduce({
     enabledModules,
     analysisV3Enabled: analysisV3Flags.enabled,
   });
+
+  if (actionId) {
+    await updateActionProgress({
+      supabase,
+      actionId,
+      status: "running",
+      outputPatch: {
+        stage: "saving",
+        status_message: "Saving analysis snapshot...",
+        completed_batches: completed.length,
+        total_batches: totalBatches,
+        run_id: normalizeUuid(parentRunId),
+        ...(docsetProgressContext || {}),
+      },
+    });
+  }
 
   const { verificationObjectId, versionId, versionNumber } = await upsertVerificationSnapshot({
     supabase,

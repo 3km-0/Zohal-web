@@ -18,6 +18,7 @@ import {
 import {
   addComputedNoticeDeadlineIfPossible,
   attachPackMetadata,
+  buildFocusedModuleChunks,
   shouldNativeReduceRun,
   toSnapshot,
 } from "../src/analysis/reduce.js";
@@ -322,4 +323,36 @@ test("native reduce snapshot computes notice deadline and pack metadata", () => 
   const noticeDeadline = snapshot.variables.find((item) => item.name === "notice_deadline");
   assert.equal(noticeDeadline.value, "2026-08-01");
   assert.deepEqual(snapshot.pack.modules_activated, ["renewal_actions"]);
+});
+
+test("compliance deviations module focuses on evidence-seeded chunks for large docsets", () => {
+  const chunks = Array.from({ length: 90 }, (_, index) => ({
+    id: `chunk-${index}`,
+    document_id: "doc-1",
+    page_number: Math.floor(index / 6) + 1,
+    chunk_index: index % 6,
+    content_text: `Chunk ${index} content`,
+  }));
+  const focused = buildFocusedModuleChunks({
+    moduleId: "compliance_deviations",
+    chunks,
+    snapshotJson: {
+      risks: [
+        {
+          evidence: {
+            document_id: "doc-1",
+            page_number: 5,
+            chunk_id: "chunk-24",
+          },
+        },
+      ],
+    },
+    primaryDocumentId: "doc-1",
+  });
+
+  assert.ok(focused.length < chunks.length);
+  assert.ok(focused.some((chunk) => chunk.id === "chunk-24"));
+  assert.ok(focused.some((chunk) => chunk.id === "chunk-25"));
+  assert.ok(focused.some((chunk) => chunk.page_number === 5));
+  assert.ok(focused.every((chunk) => chunk.page_number >= 4 && chunk.page_number <= 6));
 });

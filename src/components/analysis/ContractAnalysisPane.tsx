@@ -194,7 +194,12 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const progressRef = useRef<HTMLDivElement | null>(null);
-  const [progressDetail, setProgressDetail] = useState<{ stage: string; completed: number; total: number } | null>(null);
+  const [progressDetail, setProgressDetail] = useState<{
+    stage: string;
+    completed: number;
+    total: number;
+    message?: string | null;
+  } | null>(null);
 
   const [contract, setContract] = useState<LegalContract | null>(null);
   const [clauses, setClauses] = useState<LegalClause[]>([]);
@@ -1889,6 +1894,12 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
               stage: String(stage),
               completed: Number.isFinite(completedBatches) ? Number(completedBatches) : 0,
               total: Number.isFinite(totalBatches) ? Number(totalBatches) : 0,
+              message:
+                typeof output?.status_message === 'string' && output.status_message.trim()
+                  ? output.status_message.trim()
+                  : typeof output?.message === 'string' && output.message.trim()
+                    ? output.message.trim()
+                    : null,
             });
 
             const actionStatus = String((action as any).status || '').toLowerCase();
@@ -3902,13 +3913,16 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                 // - 0..90%: chunk/batch analysis (MAP)
                 // - 90..100%: reduce/finalize (+ optional verifier pass)
                 if (stage.includes('queue') || stage === 'starting' || stage === 'queued') return 3;
-                if (stage.includes('reduce')) return 95;
-                if (stage.includes('final')) return 99;
-                if (stage.includes('verify')) return 92;
+                if (stage.includes('reduce')) return 93;
+                if (stage.includes('module')) return 96;
+                if (stage.includes('verify')) return 97;
+                if (stage.includes('save') || stage.includes('final')) return 99;
                 // Default: batch progress (0..90)
                 return Math.round(frac * 90);
               })()}
               statusMessage={(() => {
+                const explicitMessage = progressDetail?.message?.trim();
+                if (explicitMessage) return explicitMessage;
                 const stage = progressDetail?.stage || '';
                 const total = progressDetail?.total || 0;
                 const completed = progressDetail?.completed || 0;
@@ -3918,9 +3932,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                   const c0 = Number(completed || 0);
                   const frac = t0 > 0 ? Math.max(0, Math.min(1, c0 / t0)) : 0;
                   if (st.includes('queue') || st === 'starting' || st === 'queued') return 3;
-                  if (st.includes('reduce')) return 95;
-                  if (st.includes('final')) return 99;
-                  if (st.includes('verify')) return 92;
+                  if (st.includes('reduce')) return 93;
+                  if (st.includes('module')) return 96;
+                  if (st.includes('verify')) return 97;
+                  if (st.includes('save') || st.includes('final')) return 99;
                   return Math.round(frac * 90);
                 })();
 
@@ -3931,10 +3946,13 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                 if (st.includes('verify')) {
                   return t('progress.status.verifying', { percent });
                 }
+                if (st.includes('module')) {
+                  return t('progress.status.reducing', { percent });
+                }
                 if (st.includes('reduce')) {
                   return t('progress.status.reducing', { percent });
                 }
-                if (st.includes('final')) {
+                if (st.includes('save') || st.includes('final')) {
                   return t('progress.status.finalizing', { percent });
                 }
                 if (total > 0) {
