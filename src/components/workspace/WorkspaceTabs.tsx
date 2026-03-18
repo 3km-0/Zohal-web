@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { FileText, Layers, MessageSquare, Package, ScrollText, StickyNote, Users } from 'lucide-react';
+import { FileText, Layers, MessageSquare, Package, Rocket, ScrollText, StickyNote, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-type WorkspaceTabKey = 'documents' | 'ask' | 'notes' | 'reports' | 'pipelines' | 'packs' | 'members';
+type WorkspaceTabKey = 'documents' | 'ask' | 'notes' | 'reports' | 'pipelines' | 'packs' | 'experiences' | 'members';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -26,6 +26,8 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
       ? 'notes'
       : pathname.includes('/ask')
         ? 'ask'
+      : pathname.includes('/experiences')
+        ? 'experiences'
       : pathname.includes('/members')
         ? 'members'
       : pathname.includes('/reports')
@@ -48,6 +50,7 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     { key: 'reports', label: t('reports'), href: `/workspaces/${workspaceId}/reports`, icon: ScrollText },
     { key: 'pipelines', label: t('pipelines'), href: `/workspaces/${workspaceId}/pipelines`, icon: Layers },
     { key: 'packs', label: t('packs'), href: `/workspaces/${workspaceId}/packs`, icon: Package },
+    { key: 'experiences', label: t('experiences'), href: `/workspaces/${workspaceId}/experiences`, icon: Rocket },
     ...(showMembersTab
       ? [{ key: 'members' as const, label: t('members'), href: `/workspaces/${workspaceId}/members`, icon: Users }]
       : []),

@@ -381,7 +381,70 @@
     "reports": "Reports",
     "pipelines": "Pipelines",
     "packs": "Packs",
+    "experiences": "Experiences",
     "members": "Members"
+  },
+  "experiencesPage": {
+    "title": "Experiences",
+    "subtitle": "Compile, validate, publish, and share live document-native experiences for this workspace.",
+    "configure": {
+      "title": "Publication configuration",
+      "description": "Use the investor dashboard as the first reference template and drive the publication lifecycle from here."
+    },
+    "status": {
+      "title": "Publication status",
+      "description": "Track the active revision, latest candidate, and validation state.",
+      "loading": "Loading publication status…",
+      "activeRevision": "Active revision",
+      "latestCandidate": "Latest candidate",
+      "validation": "Validation",
+      "validationSummary": "{fails} fails, {warnings} warnings",
+      "noValidation": "No validation report yet.",
+      "none": "None yet"
+    },
+    "sharing": {
+      "title": "Access and sharing",
+      "description": "Issue expiring links or open a restricted preview session.",
+      "latestLink": "Latest issued link"
+    },
+    "events": {
+      "title": "Recent events",
+      "description": "A lightweight view of publication activity for this experience.",
+      "empty": "No publication events yet."
+    },
+    "fields": {
+      "experienceId": "Experience ID",
+      "corpusId": "Corpus ID",
+      "title": "Title",
+      "host": "Host",
+      "visibility": "Visibility",
+      "password": "Shared password",
+      "passwordPlaceholder": "Only used for password-protected links"
+    },
+    "visibility": {
+      "publicIndexed": "Public indexed",
+      "publicUnlisted": "Public unlisted",
+      "password": "Password protected",
+      "org": "Organization restricted",
+      "expiring": "Signed expiring link"
+    },
+    "actions": {
+      "compile": "Compile",
+      "validate": "Validate",
+      "promote": "Promote",
+      "rollback": "Rollback",
+      "issueLink": "Issue expiring link",
+      "openRestrictedPreview": "Open restricted preview",
+      "openLive": "Open live experience"
+    },
+    "defaults": {
+      "subtitle": "Evidence-grounded investor dashboard",
+      "summary": "Compile verified workspace truth into a live investor experience."
+    },
+    "errors": {
+      "statusFailed": "Failed to load publication status.",
+      "actionFailed": "The publication action failed."
+    }
   },
   "workspaceCard": {
     "updated": "Updated",

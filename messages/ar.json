@@ -381,7 +381,70 @@
     "reports": "التقارير",
     "pipelines": "خطوط المعالجة",
     "packs": "الحزم",
+    "experiences": "التجارب",
     "members": "الأعضاء"
+  },
+  "experiencesPage": {
+    "title": "التجارب",
+    "subtitle": "قم ببناء التجارب الحية والتحقق منها ونشرها ومشاركتها من داخل مساحة العمل.",
+    "configure": {
+      "title": "إعدادات النشر",
+      "description": "استخدم لوحة المستثمر كأول قالب مرجعي وأدر دورة النشر من هنا."
+    },
+    "status": {
+      "title": "حالة النشر",
+      "description": "تابع النسخة النشطة وآخر مرشح وحالة التحقق.",
+      "loading": "جارٍ تحميل حالة النشر…",
+      "activeRevision": "النسخة النشطة",
+      "latestCandidate": "آخر مرشح",
+      "validation": "التحقق",
+      "validationSummary": "{fails} إخفاقات، {warnings} تحذيرات",
+      "noValidation": "لا يوجد تقرير تحقق بعد.",
+      "none": "لا يوجد بعد"
+    },
+    "sharing": {
+      "title": "الوصول والمشاركة",
+      "description": "أنشئ روابط مؤقتة أو افتح جلسة معاينة مقيّدة.",
+      "latestLink": "آخر رابط مُنشأ"
+    },
+    "events": {
+      "title": "الأحداث الأخيرة",
+      "description": "عرض خفيف لنشاط النشر الخاص بهذه التجربة.",
+      "empty": "لا توجد أحداث نشر بعد."
+    },
+    "fields": {
+      "experienceId": "معرّف التجربة",
+      "corpusId": "معرّف المجموعة",
+      "title": "العنوان",
+      "host": "المضيف",
+      "visibility": "الرؤية",
+      "password": "كلمة المرور المشتركة",
+      "passwordPlaceholder": "يُستخدم فقط في الروابط المحمية بكلمة مرور"
+    },
+    "visibility": {
+      "publicIndexed": "عام ومفهرس",
+      "publicUnlisted": "عام غير مفهرس",
+      "password": "محمي بكلمة مرور",
+      "org": "مقيّد بالمؤسسة",
+      "expiring": "رابط مؤقت موقّع"
+    },
+    "actions": {
+      "compile": "بناء",
+      "validate": "تحقق",
+      "promote": "ترقية",
+      "rollback": "تراجع",
+      "issueLink": "إنشاء رابط مؤقت",
+      "openRestrictedPreview": "فتح معاينة مقيّدة",
+      "openLive": "فتح التجربة الحية"
+    },
+    "defaults": {
+      "subtitle": "لوحة مستثمرين مبنية على الأدلة",
+      "summary": "حوّل الحقيقة المتحققة في مساحة العمل إلى تجربة مستثمرين حية."
+    },
+    "errors": {
+      "statusFailed": "تعذّر تحميل حالة النشر.",
+      "actionFailed": "فشل إجراء النشر."
+    }
   },
   "workspaceCard": {
     "updated": "محدّث",
