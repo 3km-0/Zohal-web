@@ -212,13 +212,19 @@
     "emptyDescription": "أنشئ أول ملاحظة أو دع الذكاء الاصطناعي يستخرج رؤى من مستنداتك."
   },
   "aiPane": {
-    "title": "ذكاء المستند",
+    "title": "وكيل المستند",
+    "agent": "الوكيل",
+    "agentHeading": "ابدأ مع الوكيل",
     "ask": "اسأل",
-    "history": "السجل",
-    "run": "التشغيل",
+    "activity": "النشاط",
+    "history": "النشاط",
+    "run": "عمليات التشغيل",
+    "runs": "عمليات التشغيل",
     "actions": "الإجراءات",
     "actionItems": {
       "newRun": "تشغيل جديد",
+      "manageTemplates": "إدارة القوالب",
+      "experienceReview": "مراجعة التجربة",
       "generateReport": "إنشاء التقرير",
       "exportCalendar": "تصدير التقويم",
       "finalize": "اعتماد نهائي"
@@ -235,6 +241,10 @@
     "emptyState": "اطرح أسئلة حول هذا المستند أو حدّد نصًا ليتم شرحه",
     "inputPlaceholder": "اطرح سؤالًا...",
     "newConversation": "محادثة جديدة",
+    "recentActivity": "الأحدث في هذا المستند",
+    "noActivity": "لا يوجد نشاط بعد",
+    "activityEmpty": "ستظهر هنا المحادثات وعمليات التحليل",
+    "loadingActivity": "جارٍ تحميل النشاط...",
     "noConversations": "لا توجد محادثات بعد",
     "historyEmpty": "ستظهر محادثاتك السابقة هنا",
     "messageCount": "{count} رسالة",
@@ -244,6 +254,12 @@
     "savedToNotesTitle": "تم الحفظ في الملاحظات",
     "savedToNotesBody": "أصبحت هذه الإجابة متاحة الآن في ملاحظات مساحة العمل.",
     "conversationFallback": "محادثة",
+    "quickActions": {
+      "runAnalysis": "تشغيل التحليل",
+      "openAnalysis": "فتح التحليل",
+      "templates": "القوالب",
+      "experience": "التجربة"
+    },
     "modelPicker": {
       "title": "اختر النموذج",
       "subtitle": "اختر النموذج المناسب للعمل. سيبقى اختيارك الحالي مفعلاً حتى تغيّره.",

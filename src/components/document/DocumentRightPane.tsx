@@ -1,15 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Calendar, CheckCircle, Clock, FileText, RefreshCw, Sparkles, X, Zap } from 'lucide-react';
-import { Button, ScholarActionMenu, ScholarTabs, type ScholarActionMenuItem, type ScholarTab } from '@/components/ui';
+import { FileText, Sparkles, X } from 'lucide-react';
+import { Button } from '@/components/ui';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
 import type { DocumentType } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
-
-type PaneTab = 'history' | 'ask' | 'run';
+import { useRouter } from 'next/navigation';
 
 const MIN_PANE_WIDTH = 280;
 const MAX_PANE_WIDTH_VW = 0.75;
@@ -39,8 +38,8 @@ export function DocumentRightPane({
   onWidthChange,
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
+  const router = useRouter();
   const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
-  const [paneTab, setPaneTab] = useState<PaneTab>(mode === 'analysis' ? 'run' : 'ask');
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -81,33 +80,11 @@ export function DocumentRightPane({
 
   useEffect(() => {
     if (!selectedText.trim()) return;
-    setPaneTab('ask');
-  }, [selectedText]);
-
-  const tabs = useMemo<ScholarTab[]>(() => {
-    return [
-      { id: 'history', label: t('history'), icon: <Clock className="h-4 w-4" /> },
-      { id: 'ask', label: t('ask'), icon: <Sparkles className="h-4 w-4" /> },
-      { id: 'run', label: t('run'), icon: <FileText className="h-4 w-4" /> },
-    ];
-  }, [t]);
-
-  const handleTabChange = (tabId: string) => {
-    const nextTab = tabId as PaneTab;
-    setPaneTab(nextTab);
-
-    if (nextTab === 'history' || nextTab === 'ask') {
-      onModeChange('chat');
-      return;
-    }
-
-    setAnalysisInitialView('results');
-    onModeChange('analysis');
-  };
+    onModeChange('chat');
+  }, [onModeChange, selectedText]);
 
   const triggerAnalysisAction = useCallback(
-    (action: 'new-run' | 'generate-report' | 'export-calendar' | 'finalize') => {
-      setPaneTab('run');
+    (action: 'new-run' | 'generate-report') => {
       setAnalysisInitialView(action === 'new-run' ? 'run' : 'results');
       onModeChange('analysis');
 
@@ -116,33 +93,6 @@ export function DocumentRightPane({
       }, 50);
     },
     [onModeChange]
-  );
-
-  const actionItems = useMemo<ScholarActionMenuItem[]>(
-    () => [
-      {
-        label: t('actionItems.newRun'),
-        icon: <RefreshCw className="h-4 w-4" />,
-        onClick: () => triggerAnalysisAction('new-run'),
-      },
-      { type: 'divider' },
-      {
-        label: t('actionItems.generateReport'),
-        icon: <FileText className="h-4 w-4" />,
-        onClick: () => triggerAnalysisAction('generate-report'),
-      },
-      {
-        label: t('actionItems.exportCalendar'),
-        icon: <Calendar className="h-4 w-4" />,
-        onClick: () => triggerAnalysisAction('export-calendar'),
-      },
-      {
-        label: t('actionItems.finalize'),
-        icon: <CheckCircle className="h-4 w-4" />,
-        onClick: () => triggerAnalysisAction('finalize'),
-      },
-    ],
-    [t, triggerAnalysisAction]
   );
 
   return (
@@ -183,15 +133,36 @@ export function DocumentRightPane({
             </Button>
           </div>
           <div className="mt-3">
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <ScholarTabs tabs={tabs} activeTab={paneTab} onTabChange={handleTabChange} />
-              </div>
-              <ScholarActionMenu
-                icon={<Zap className="h-4 w-4" />}
-                label={t('actions')}
-                items={actionItems}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => onModeChange('chat')}
+                className={[
+                  'inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors',
+                  mode === 'chat'
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-border bg-surface text-text hover:border-accent/40',
+                ].join(' ')}
+              >
+                <Sparkles className="h-4 w-4" />
+                {t('agent')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAnalysisInitialView('results');
+                  onModeChange('analysis');
+                }}
+                className={[
+                  'inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors',
+                  mode === 'analysis'
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-border bg-surface text-text hover:border-accent/40',
+                ].join(' ')}
+              >
+                <FileText className="h-4 w-4" />
+                {t('runs')}
+              </button>
             </div>
           </div>
         </div>
@@ -202,11 +173,27 @@ export function DocumentRightPane({
             workspaceId={workspaceId}
             selectedText={selectedText}
             currentPage={currentPage}
-            activeTab={paneTab === 'history' ? 'history' : 'ask'}
-            onConversationLoaded={() => {
-              setPaneTab('ask');
-              onModeChange('chat');
+            onOpenAnalysis={(target, runId) => {
+              if (target === 'run') {
+                triggerAnalysisAction('new-run');
+                return;
+              }
+              setAnalysisInitialView('results');
+              onModeChange('analysis');
+              if (runId) {
+                window.setTimeout(() => {
+                  window.dispatchEvent(
+                    new CustomEvent('zohal:analysis:select-run', { detail: { runId } })
+                  );
+                }, 50);
+              }
             }}
+            onOpenTemplates={() =>
+              router.push(`/workspaces/${workspaceId}/playbooks?document_id=${documentId}`)
+            }
+            onOpenExperience={() =>
+              router.push(`/workspaces/${workspaceId}/experiences?document_id=${documentId}`)
+            }
           />
         </div>
         {mode === 'analysis' && (

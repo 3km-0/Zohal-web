@@ -212,13 +212,19 @@
     "emptyDescription": "Create your first note or let AI generate insights from your documents."
   },
   "aiPane": {
-    "title": "Document AI",
+    "title": "Document Agent",
+    "agent": "Agent",
+    "agentHeading": "Start with the agent",
     "ask": "Ask",
-    "history": "History",
-    "run": "Run",
+    "activity": "Activity",
+    "history": "Activity",
+    "run": "Runs",
+    "runs": "Runs",
     "actions": "Actions",
     "actionItems": {
       "newRun": "New Run",
+      "manageTemplates": "Manage Templates",
+      "experienceReview": "Experience Review",
       "generateReport": "Generate Report",
       "exportCalendar": "Export Calendar",
       "finalize": "Finalize"
@@ -235,6 +241,10 @@
     "emptyState": "Ask questions about this document or select text to explain",
     "inputPlaceholder": "Ask a question...",
     "newConversation": "New conversation",
+    "recentActivity": "Recent in this document",
+    "noActivity": "No activity yet",
+    "activityEmpty": "Conversations and analysis runs will appear here",
+    "loadingActivity": "Loading activity...",
     "noConversations": "No conversations yet",
     "historyEmpty": "Your past conversations will appear here",
     "messageCount": "{count} messages",
@@ -244,6 +254,12 @@
     "savedToNotesTitle": "Saved to Notes",
     "savedToNotesBody": "This response is now available in workspace Notes.",
     "conversationFallback": "Conversation",
+    "quickActions": {
+      "runAnalysis": "Run analysis",
+      "openAnalysis": "Open analysis",
+      "templates": "Templates",
+      "experience": "Experience"
+    },
     "modelPicker": {
       "title": "Choose a model",
       "subtitle": "Pick the model that matches the work. Your current choice stays selected until you change it.",

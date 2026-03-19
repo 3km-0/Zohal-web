@@ -7,13 +7,13 @@ import {
   CheckCircle2,
   ChevronDown,
   Code2,
-  Clock,
   FileText,
   Globe2,
   Hammer,
   Layers3,
   LockOpen,
   MessageSquare,
+  PanelRightOpen,
   Send,
   Star,
   Type,
@@ -23,17 +23,20 @@ import {
 import { Button, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
+import { DocumentAgentActivityPanel } from '@/components/document/DocumentAgentActivityPanel';
 
 interface AIPanelProps {
   documentId: string;
   workspaceId: string;
   selectedText?: string;
   currentPage?: number;
-  activeTab: 'ask' | 'history';
-  onConversationLoaded?: () => void;
+  onOpenAnalysis?: (target: 'results' | 'run', runId?: string) => void;
+  onOpenTemplates?: () => void;
+  onOpenExperience?: () => void;
+  onConversationStateChange?: (conversationId: string | null) => void;
 }
 
 interface ChatMessage {
@@ -42,20 +45,28 @@ interface ChatMessage {
   timestamp?: string;
 }
 
-interface ConversationSummary {
-  id: string;
-  preview: string;
-  timestamp: string;
-  messageCount: number;
-}
+type DocumentAgentStreamEvent =
+  | { type: 'run_started'; conversation_id: string }
+  | { type: 'status'; message: string }
+  | { type: 'tool_activity'; message: string }
+  | { type: 'action_accepted'; message: string }
+  | { type: 'candidate_ready'; message: string }
+  | { type: 'run_status'; message: string }
+  | { type: 'promotion_result'; message: string }
+  | { type: 'answer_delta'; delta: string }
+  | { type: 'citations'; citations: Array<Record<string, unknown>> }
+  | { type: 'completed'; conversation_id: string }
+  | { type: 'error'; message: string };
 
 export function AIPanel({
   documentId,
   workspaceId,
   selectedText,
   currentPage,
-  activeTab,
-  onConversationLoaded,
+  onOpenAnalysis,
+  onOpenTemplates,
+  onOpenExperience,
+  onConversationStateChange,
 }: AIPanelProps) {
   // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
   // any callbacks depending on it will change every render, which can re-trigger
@@ -68,8 +79,8 @@ export function AIPanel({
   const [error, setError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [agentActivities, setAgentActivities] = useState<string[]>([]);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -100,51 +111,14 @@ export function AIPanel({
 
   useEffect(() => {
     resizeTextarea();
-  }, [activeTab, chatInput, resizeTextarea]);
-
-  // Load conversation history
-  const loadConversationHistory = useCallback(async () => {
-    try {
-      // Get unique conversations for this document
-      const { data, error } = await supabase
-        .from('explanations')
-        .select('conversation_id, request_type, input_text, response_text, created_at')
-        .eq('document_id', documentId)
-        .not('conversation_id', 'is', null)
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        // Group by conversation_id and get the first message as preview
-        const conversationsMap = new Map<string, ConversationSummary>();
-        
-        data.forEach((item) => {
-          if (!item.conversation_id) return;
-          
-          if (!conversationsMap.has(item.conversation_id)) {
-            conversationsMap.set(item.conversation_id, {
-              id: item.conversation_id,
-              preview: item.input_text || item.response_text?.slice(0, 100) || t('conversationFallback'),
-              timestamp: item.created_at,
-              messageCount: 1,
-            });
-          } else {
-            const conv = conversationsMap.get(item.conversation_id)!;
-            conv.messageCount++;
-          }
-        });
-
-        setConversationHistory(Array.from(conversationsMap.values()).slice(0, 10));
-      }
-    } catch (err) {
-      console.error('Failed to load conversation history:', err);
-    }
-  }, [supabase, documentId, t]);
+  }, [chatInput, resizeTextarea]);
 
   // Initialize on mount and when the document changes.
   // (Do NOT tie this to callbacks that might change every render.)
   useEffect(() => {
     setChatHistory([]);
     setCurrentConversationId(null);
+    setAgentActivities([]);
     setError(null);
     setLoading(false);
     setLoadingConversation(false);
@@ -153,9 +127,11 @@ export function AIPanel({
     chatSeqRef.current++;
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
+  }, [documentId]);
 
-    loadConversationHistory();
-  }, [documentId, loadConversationHistory]);
+  useEffect(() => {
+    onConversationStateChange?.(currentConversationId);
+  }, [currentConversationId, onConversationStateChange]);
 
   const filteredModelOptions = useMemo(() => {
     const query = modelSearch.trim().toLowerCase();
@@ -169,111 +145,6 @@ export function AIPanel({
       );
     });
   }, [modelSearch, t]);
-
-  const buildChatContext = useCallback(async () => {
-    const contextParts: string[] = [];
-    const maxChars = 15000;
-    let totalChars = 0;
-
-    const appendPart = (value: string) => {
-      const trimmed = value.trim();
-      if (!trimmed) return;
-
-      const separator = contextParts.length > 0 ? '\n\n' : '';
-      const availableChars = maxChars - totalChars - separator.length;
-      if (availableChars <= 0) return;
-
-      const nextValue = trimmed.length > availableChars ? trimmed.slice(0, availableChars) : trimmed;
-      contextParts.push(nextValue);
-      totalChars += separator.length + nextValue.length;
-    };
-
-    let isPrivacyModeDocument = false;
-    let documentTitle = '';
-
-    try {
-      const { data } = await supabase
-        .from('documents')
-        .select('title, privacy_mode')
-        .eq('id', documentId)
-        .single();
-
-      documentTitle = (data?.title as string | undefined) ?? '';
-      isPrivacyModeDocument = data?.privacy_mode === true;
-    } catch (err) {
-      console.error('Failed to load document metadata for chat context:', err);
-    }
-
-    if (documentTitle) appendPart(`Document: ${documentTitle}`);
-    if (typeof currentPage === 'number') appendPart(`Current page: ${currentPage}`);
-    if (selectedText?.trim()) appendPart(`Selected text:\n${selectedText.trim()}`);
-
-    if (isPrivacyModeDocument) {
-      return contextParts.join('\n\n') || undefined;
-    }
-
-    const loadChunks = async (pageRange?: { start: number; end: number }) => {
-      let query = supabase
-        .from('document_chunks')
-        .select('page_number, chunk_index, content_text')
-        .eq('document_id', documentId)
-        .order('page_number', { ascending: true })
-        .order('chunk_index', { ascending: true })
-        .limit(80);
-
-      if (pageRange) {
-        query = query
-          .gte('page_number', pageRange.start)
-          .lte('page_number', pageRange.end);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data ?? [];
-    };
-
-    try {
-      const nearbyRange =
-        typeof currentPage === 'number'
-          ? { start: Math.max(1, currentPage - 2), end: Math.max(1, currentPage + 2) }
-          : undefined;
-
-      let chunks = await loadChunks(nearbyRange);
-      if (chunks.length === 0 && nearbyRange) {
-        chunks = await loadChunks();
-      }
-
-      if (chunks.length > 0) {
-        const pageBlocks: string[] = [];
-        let contentChars = 0;
-
-        for (const row of chunks as Array<{
-          page_number: number | null;
-          content_text: string | null;
-        }>) {
-          const text = (row.content_text ?? '').trim();
-          if (!text) continue;
-
-          const block = `--- Page ${row.page_number ?? 1} ---\n${text}`;
-          const separator = pageBlocks.length > 0 ? '\n\n' : '';
-          const availableChars = maxChars - totalChars - contentChars - separator.length;
-          if (availableChars <= 0) break;
-
-          const nextBlock = block.length > availableChars ? block.slice(0, availableChars) : block;
-          pageBlocks.push(nextBlock);
-          contentChars += separator.length + nextBlock.length;
-        }
-
-        if (pageBlocks.length > 0) {
-          appendPart(`--- DOCUMENT CONTENT ---\n${pageBlocks.join('\n\n')}\n--- END DOCUMENT CONTENT ---`);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load document chunks for chat context:', err);
-    }
-
-    return contextParts.join('\n\n') || undefined;
-  }, [supabase, documentId, currentPage, selectedText]);
 
   const handleChat = useCallback(
     async (message: string) => {
@@ -296,6 +167,7 @@ export function AIPanel({
       setChatInput('');
       setLoading(true);
       setError(null);
+      setAgentActivities([]);
 
       try {
         const {
@@ -303,14 +175,8 @@ export function AIPanel({
         } = await supabase.auth.getSession();
 
         if (!session) throw new Error('Not authenticated');
-
-        const userId = session.user?.id;
-        if (!userId) throw new Error('Missing user');
-
-        const context = await buildChatContext();
-
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/document-ai-agent`,
           {
             method: 'POST',
             headers: {
@@ -319,45 +185,92 @@ export function AIPanel({
             },
             signal: controller.signal,
             body: JSON.stringify({
-              user_id: userId,
+              question: message,
               document_id: documentId,
               workspace_id: workspaceId,
               conversation_id: conversationIdAtSend,
-              message,
-              context,
-              request_type: 'chat',
-              model: selectedModelId,
+              current_page: currentPage,
+              selected_text: selectedText?.trim() || undefined,
+              options: {
+                top_k: 8,
+              },
             }),
           }
         );
 
-        const json = await response.json().catch(() => null);
-        if (!response.ok) {
+        if (!response.ok || !response.body) {
+          const json = await response.json().catch(() => null);
           const uiErr = mapHttpError(response.status, json, 'chat');
           toast.show(uiErr);
           setError(uiErr.message);
           return;
         }
 
-        // If the user started a new conversation (or hit "+") while the request was in-flight,
-        // ignore this stale response.
-        if (seq !== chatSeqRef.current) return;
+        const pendingAssistantIndex = chatHistory.length + 1;
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: '',
+            timestamp: new Date().toISOString(),
+          },
+        ]);
 
-        const data = ((json || {}) as any).data ?? ((json || {}) as any);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        // Update conversation ID if new
-        if (data.conversation_id && !conversationIdAtSend) {
-          setCurrentConversationId(data.conversation_id);
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line) as DocumentAgentStreamEvent;
+
+            if (seq !== chatSeqRef.current) return;
+
+            if (event.type === 'run_started') {
+              setCurrentConversationId(event.conversation_id);
+              continue;
+            }
+
+            if (
+              event.type === 'status' ||
+              event.type === 'tool_activity' ||
+              event.type === 'action_accepted' ||
+              event.type === 'candidate_ready' ||
+              event.type === 'run_status' ||
+              event.type === 'promotion_result'
+            ) {
+              setAgentActivities((prev) => [...prev, event.message]);
+              continue;
+            }
+
+            if (event.type === 'answer_delta') {
+              setChatHistory((prev) =>
+                prev.map((item, index) =>
+                  index === pendingAssistantIndex
+                    ? { ...item, content: `${item.content}${event.delta}` }
+                    : item
+                )
+              );
+              continue;
+            }
+
+            if (event.type === 'completed') {
+              setCurrentConversationId(event.conversation_id);
+              continue;
+            }
+
+            if (event.type === 'error') {
+              setError(event.message);
+            }
+          }
         }
-
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: data.message?.content || 'No response',
-          timestamp: data.message?.created_at || new Date().toISOString(),
-        };
-        setChatHistory((prev) => [...prev, assistantMessage]);
-        // Keep Conversations list in sync (otherwise "+" feels like it does nothing).
-        loadConversationHistory();
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -373,9 +286,9 @@ export function AIPanel({
       currentConversationId,
       toast,
       loading,
-      loadConversationHistory,
-      buildChatContext,
-      selectedModelId,
+      currentPage,
+      selectedText,
+      chatHistory.length,
     ]
   );
 
@@ -458,7 +371,7 @@ export function AIPanel({
 
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
-          onConversationLoaded?.();
+          setAgentActivities([]);
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
@@ -468,7 +381,7 @@ export function AIPanel({
         setLoadingConversation(false);
       }
     },
-    [supabase, toast, onConversationLoaded]
+    [supabase, toast]
   );
 
   const startNewConversation = useCallback(() => {
@@ -483,6 +396,7 @@ export function AIPanel({
     setLoading(false);
     setLoadingConversation(false);
     setChatInput('');
+    setAgentActivities([]);
     resizeTextarea();
   }, [resizeTextarea]);
 
@@ -490,137 +404,107 @@ export function AIPanel({
     <div className="flex h-full w-full flex-col bg-surface">
       <div className="relative flex-1 min-h-0">
         <div className="flex h-full flex-col">
-          {activeTab === 'history' ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 overflow-auto p-4">
-                {conversationHistory.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface-alt/50 px-6 text-center">
-                    <Clock className="mb-3 h-10 w-10 text-text-soft" />
-                    <p className="text-sm font-semibold text-text">{t('noConversations')}</p>
-                    <p className="mt-1 text-sm text-text-soft">{t('historyEmpty')}</p>
+          <>
+            <div className="flex-1 overflow-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+              <div className="space-y-4">
+                {selectedText && chatHistory.length === 0 && (
+                  <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+                      {t('selectedText')}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-text line-clamp-4">{selectedText}</p>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          handleChat(
+                            `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
+                          )
+                        }
+                        disabled={loading || loadingConversation}
+                        title={t('explainSelected')}
+                      >
+                        <FileText className="w-4 h-4" />
+                        {t('explain')}
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {conversationHistory.map((conv) => {
-                      const isActive = conv.id === currentConversationId;
-                      return (
-                        <button
-                          key={conv.id}
-                          onClick={() => loadConversation(conv.id)}
-                          className={cn(
-                            'w-full rounded-2xl border p-4 text-left transition-colors',
-                            isActive
-                              ? 'border-accent bg-accent/5'
-                              : 'border-border bg-surface-alt hover:border-accent/40'
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-text">{conv.preview}</p>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-soft">
-                                <span>{t('messageCount', { count: conv.messageCount })}</span>
-                                <span>•</span>
-                                <span>{formatRelativeTime(conv.timestamp)}</span>
-                              </div>
-                            </div>
-                            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-text-soft" />
-                          </div>
-                        </button>
-                      );
-                    })}
+                )}
+
+                {chatHistory.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border bg-surface-alt/50 px-6 py-8 text-center">
+                    <MessageSquare className="mx-auto mb-3 h-10 w-10 text-text-soft" />
+                    <p className="text-sm font-semibold text-text">{t('agentHeading')}</p>
+                    <p className="mt-1 text-sm text-text-soft">{t('emptyState')}</p>
+                  </div>
+                )}
+
+                {chatHistory.length === 0 && (
+                  <DocumentAgentActivityPanel
+                    documentId={documentId}
+                    workspaceId={workspaceId}
+                    currentConversationId={currentConversationId}
+                    onSelectConversation={(conversationId) => {
+                      void loadConversation(conversationId);
+                    }}
+                    onSelectRun={(runId) => onOpenAnalysis?.('results', runId)}
+                    variant="compact"
+                    limit={6}
+                    title={t('recentActivity')}
+                  />
+                )}
+
+                {error && (
+                  <div className="rounded-2xl border border-error/20 bg-error/10 p-3">
+                    <p className="text-sm text-error">{error}</p>
+                  </div>
+                )}
+
+                {agentActivities.map((activity, index) => (
+                  <div
+                    key={`${activity}-${index}`}
+                    className="mx-auto max-w-[92%] rounded-2xl border border-border bg-surface-alt/70 px-4 py-3 text-center text-sm text-text-soft"
+                  >
+                    {activity}
+                  </div>
+                ))}
+
+                {chatHistory.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      'group relative max-w-[88%] rounded-2xl border p-4 shadow-sm',
+                      msg.role === 'user'
+                        ? 'ml-auto border-accent bg-accent text-white'
+                        : 'border-border bg-surface-alt'
+                    )}
+                  >
+                    <p className="text-sm whitespace-pre-wrap leading-6">{msg.content}</p>
+                    {msg.role === 'assistant' && (
+                      <button
+                        onClick={() => pinMessage(msg)}
+                        className="absolute -top-2 -right-2 rounded-full border border-border bg-surface p-1.5 opacity-0 transition-opacity hover:bg-surface-alt group-hover:opacity-100"
+                        title={t('saveToNotes')}
+                      >
+                        <Star className="h-3 w-3 text-text-soft" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {(loading || loadingConversation) && (
+                  <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface-alt px-4 py-3">
+                    <Spinner size="sm" />
+                    <span className="text-sm text-text-soft">
+                      {loadingConversation ? t('loadingConversation') : t('thinking')}
+                    </span>
                   </div>
                 )}
               </div>
             </div>
-          ) : (
-            <>
-              {chatHistory.length === 0 && (
-                <div className="space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                  {selectedText && (
-                    <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-                        {t('selectedText')}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-text line-clamp-4">{selectedText}</p>
-                      <div className="mt-4 flex items-center gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            handleChat(
-                              `Explain the selected text (from page ${currentPage ?? ''}):\n\n${selectedText}`
-                            )
-                          }
-                          disabled={loading || loadingConversation}
-                          title={t('explainSelected')}
-                        >
-                          <FileText className="w-4 h-4" />
-                          {t('explain')}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
 
-                  {!selectedText && (
-                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface-alt/50 px-6 py-10 text-center">
-                      <MessageSquare className="mb-3 h-10 w-10 text-text-soft" />
-                      <p className="text-sm font-semibold text-text">{t('ask')}</p>
-                      <p className="mt-1 text-sm text-text-soft">{t('emptyState')}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {loading && chatHistory.length === 0 && (
-                <div className="flex items-center justify-center px-4 py-8">
-                  <Spinner size="lg" />
-                </div>
-              )}
-
-              {error && (
-                <div className="p-4">
-                  <div className="rounded-2xl border border-error/20 bg-error/10 p-3">
-                    <p className="text-sm text-error">{error}</p>
-                  </div>
-                </div>
-              )}
-
-              {chatHistory.length > 0 && (
-                <div className="flex-1 space-y-4 overflow-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                  {chatHistory.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'group relative max-w-[88%] rounded-2xl border p-4 shadow-sm',
-                        msg.role === 'user'
-                          ? 'ml-auto border-accent bg-accent text-white'
-                          : 'border-border bg-surface-alt'
-                      )}
-                    >
-                      <p className="text-sm whitespace-pre-wrap leading-6">{msg.content}</p>
-                      {msg.role === 'assistant' && (
-                        <button
-                          onClick={() => pinMessage(msg)}
-                          className="absolute -top-2 -right-2 rounded-full border border-border bg-surface p-1.5 opacity-0 transition-opacity hover:bg-surface-alt group-hover:opacity-100"
-                          title={t('saveToNotes')}
-                        >
-                          <Star className="h-3 w-3 text-text-soft" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {(loading || loadingConversation) && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface-alt px-4 py-3">
-                      <Spinner size="sm" />
-                      <span className="text-sm text-text-soft">
-                        {loadingConversation ? t('loadingConversation') : t('thinking')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="border-t border-border bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+            <div className="border-t border-border bg-surface p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                 <div className="rounded-[1.75rem] border border-border bg-surface-alt/90 p-3 shadow-[var(--shadowSm)]">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <button
@@ -659,6 +543,40 @@ export function AIPanel({
                       </Button>
                     </div>
                   </div>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onOpenAnalysis?.('run')}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
+                    >
+                      <Zap className="h-4 w-4 text-accent" />
+                      {t('quickActions.runAnalysis')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenAnalysis?.('results')}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
+                    >
+                      <PanelRightOpen className="h-4 w-4 text-accent" />
+                      {t('quickActions.openAnalysis')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onOpenTemplates}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
+                    >
+                      <FileText className="h-4 w-4 text-accent" />
+                      {t('quickActions.templates')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onOpenExperience}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
+                    >
+                      <Globe2 className="h-4 w-4 text-accent" />
+                      {t('quickActions.experience')}
+                    </button>
+                  </div>
                   <textarea
                     ref={textareaRef}
                     value={chatInput}
@@ -684,9 +602,8 @@ export function AIPanel({
                     </Button>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+            </div>
+          </>
         </div>
 
         {showModelPicker && (

@@ -2124,19 +2124,31 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
       void finalizeVerificationObject();
     };
 
+    const handleSelectRun = (event: Event) => {
+      const customEvent = event as CustomEvent<{ runId?: string }>;
+      const runId = customEvent.detail?.runId;
+      if (!runId) return;
+      const nextRun = runs.find((candidate) => candidate.runId === runId);
+      if (nextRun) {
+        void selectRun(nextRun);
+      }
+    };
+
     window.addEventListener('zohal:analysis:new-run', handleNewRun);
     window.addEventListener('zohal:analysis:generate-report', handleGenerateReport);
     window.addEventListener('zohal:analysis:export-calendar', handleExportCalendar);
     window.addEventListener('zohal:analysis:finalize', handleFinalize);
+    window.addEventListener('zohal:analysis:select-run', handleSelectRun as EventListener);
 
     return () => {
       window.removeEventListener('zohal:analysis:new-run', handleNewRun);
       window.removeEventListener('zohal:analysis:generate-report', handleGenerateReport);
       window.removeEventListener('zohal:analysis:export-calendar', handleExportCalendar);
       window.removeEventListener('zohal:analysis:finalize', handleFinalize);
+      window.removeEventListener('zohal:analysis:select-run', handleSelectRun as EventListener);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contract, isFinalizing, isGeneratingReport, isHistoricalRunSelected, verificationObjectId, verificationObjectState]);
+  }, [contract, isFinalizing, isGeneratingReport, isHistoricalRunSelected, runs, verificationObjectId, verificationObjectState]);
 
   async function downloadAuditPack() {
     if (!verificationObjectId && !currentVersionId) return;
