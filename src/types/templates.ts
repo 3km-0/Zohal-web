@@ -73,8 +73,17 @@ export type TemplateRecordType = {
 
 export type TemplateRule = Record<string, unknown>;
 
+export type TemplateSource = {
+  version: string;
+  text: string;
+  compiler_version?: string;
+  generated_from?: string;
+  updated_at?: string;
+};
+
 export type TemplateSpecV1 = {
   template_id?: string;
+  template_source?: TemplateSource;
   meta: { name: string; kind: string } & Record<string, unknown>;
   options?: TemplateOptions;
   scope?: TemplateScope;

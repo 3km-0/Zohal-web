@@ -64,6 +64,68 @@ type BundleRoleRow = { role: string; required: boolean; multiple: boolean };
 
 type PlaybookRow = TemplateRecord;
 
+function deriveTemplateSourceText(spec: Partial<PlaybookSpecV1> | Record<string, unknown>, fallbackName: string): string {
+  const meta = spec && typeof spec === 'object' && spec.meta && typeof spec.meta === 'object' ? spec.meta : {};
+  const source = spec && typeof spec === 'object' && spec.template_source && typeof spec.template_source === 'object'
+    ? spec.template_source as { text?: string }
+    : null;
+  if (source && typeof source.text === 'string' && source.text.trim()) {
+    return source.text;
+  }
+
+  const lines: string[] = [];
+  const metaName = typeof (meta as { name?: unknown }).name === 'string' ? String((meta as { name?: string }).name).trim() : fallbackName;
+  const metaKind = typeof (meta as { kind?: unknown }).kind === 'string' ? String((meta as { kind?: string }).kind).trim() : 'contract';
+  const metaDescription = typeof (meta as { description?: unknown }).description === 'string'
+    ? String((meta as { description?: string }).description).trim()
+    : '';
+  lines.push(`Template: ${metaName}`);
+  lines.push(`Kind: ${metaKind}`);
+  if (metaDescription) lines.push(`Goal: ${metaDescription}`);
+  lines.push(`Scope: ${String((spec as { scope?: string }).scope || 'either')}`);
+
+  const roles = Array.isArray((spec as { bundle_schema?: { roles?: BundleRoleRow[] } }).bundle_schema?.roles)
+    ? (spec as { bundle_schema?: { roles?: BundleRoleRow[] } }).bundle_schema?.roles || []
+    : [];
+  if (roles.length > 0) {
+    lines.push('Roles:');
+    roles.forEach((role) => lines.push(`- ${role.role} (${role.required ? 'required' : 'optional'}${role.multiple ? ', multiple' : ''})`));
+  }
+
+  const variables = Array.isArray((spec as { variables?: Array<{ key?: string; type?: string; required?: boolean }> }).variables)
+    ? (spec as { variables?: Array<{ key?: string; type?: string; required?: boolean }> }).variables || []
+    : [];
+  if (variables.length > 0) {
+    lines.push('Variables:');
+    variables.forEach((variable) => {
+      if (!variable?.key) return;
+      lines.push(`- ${variable.key}: ${variable.type || 'text'}${variable.required ? ' required' : ''}`);
+    });
+  }
+
+  const modules = Array.isArray((spec as { modules_v2?: Array<{ title?: string; prompt?: string }> }).modules_v2)
+    ? (spec as { modules_v2?: Array<{ title?: string; prompt?: string }> }).modules_v2 || []
+    : [];
+  if (modules.length > 0) {
+    lines.push('Modules:');
+    modules.forEach((module) => {
+      lines.push(`- ${module.title || 'Module'}: ${module.prompt || ''}`.trim());
+    });
+  }
+
+  return lines.join('\n').trim();
+}
+
+function summarizeCompiledSpec(spec: PlaybookSpecV1) {
+  const enabledModules = (spec.modules_v2 || []).filter((module) => module.enabled !== false);
+  return {
+    variableCount: spec.variables.length,
+    moduleCount: enabledModules.length,
+    scope: spec.scope || 'either',
+    moduleTitles: enabledModules.map((module) => module.title || module.id).slice(0, 6),
+  };
+}
+
 function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
   const base = input && typeof input === 'object' && !Array.isArray(input) ? { ...input } : {};
   const baseMeta = input?.meta && typeof input.meta === 'object' && !Array.isArray(input.meta) ? { ...input.meta } : {};
@@ -338,27 +400,32 @@ export default function WorkspacePlaybooksPage() {
   const isReadOnly = isSystemPreset;
   const [duplicating, setDuplicating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompiling, setIsCompiling] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [templateSourceText, setTemplateSourceText] = useState('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Save draft version (debounced auto-save)
-  const saveDraft = useCallback(async (specToSave: PlaybookSpecV1) => {
+  const compileAndSave = useCallback(async (publish = false) => {
     if (!selected || isSystemPreset) return;
     setIsSaving(true);
+    setIsCompiling(true);
     try {
-      const { data, error } = await supabase.functions.invoke('playbooks-create-version', {
+      const { data, error } = await supabase.functions.invoke('playbooks-save-draft', {
         body: {
           playbook_id: selected.id,
-          spec_json: specToSave,
-          changelog: 'Auto-save',
-          make_current: true,
+          template_name: (spec.meta.name || selected.name || '').trim(),
+          template_source_text: templateSourceText,
+          language: spec.options?.language === 'ar' ? 'ar' : 'en',
+          document_type: spec.meta.kind || 'contract',
+          publish,
+          changelog: publish ? 'Published from template source' : 'Saved from template source',
         },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.message || 'Failed to save');
+      const savedSpec = normalizeSpec(data.spec_json, spec.meta.name || selected.name);
+      setSpec(savedSpec);
       setLastSaved(new Date());
-
-      // Keep local list in sync so switching templates doesn't "lose" edits.
       const v = data?.version as { id?: string; version_number?: number; published_at?: string | null } | undefined;
       if (v?.id && typeof v.version_number === 'number') {
         const versionId = v.id;
@@ -369,11 +436,13 @@ export default function WorkspacePlaybooksPage() {
             pb.id === selected.id
               ? {
                   ...pb,
+                  name: savedSpec.meta.name || pb.name,
+                  status: publish ? 'published' : 'draft',
                   current_version_id: versionId,
                   current_version: {
                     id: versionId,
                     version_number: versionNumber,
-                    spec_json: specToSave,
+                    spec_json: savedSpec,
                     published_at: publishedAt ?? pb.current_version?.published_at ?? null,
                   },
                 }
@@ -381,39 +450,14 @@ export default function WorkspacePlaybooksPage() {
           )
         );
       }
-
-      // Also update the playbook name if changed
-      if (specToSave.meta.name !== selected.name) {
-        // Best-effort: version is already saved. Avoid treating name update failures as save failures.
-        await supabase.from('playbooks').update({ name: specToSave.meta.name }).eq('id', selected.id);
-      }
+      setTemplateSourceText(deriveTemplateSourceText(savedSpec, savedSpec.meta.name || selected.name));
     } catch (e) {
       showError(e, 'playbooks');
     } finally {
       setIsSaving(false);
+      setIsCompiling(false);
     }
-  }, [selected, isSystemPreset, supabase, showError]);
-
-  // Debounced auto-save when spec changes (only for non-system templates)
-  useEffect(() => {
-    if (!selected || isSystemPreset) return;
-    
-    // Clear previous timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    // Set new timeout for debounced save (2 seconds after last change)
-    saveTimeoutRef.current = setTimeout(() => {
-      saveDraft(spec);
-    }, 2000);
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [spec, selected, isSystemPreset, saveDraft]);
+  }, [isSystemPreset, selected, showError, spec, supabase, templateSourceText]);
 
   async function loadPlaybooks() {
     setLoading(true);
@@ -430,6 +474,7 @@ export default function WorkspacePlaybooksPage() {
           setSelectedId(first.id);
           const initial = normalizeSpec(first.current_version?.spec_json, first.name);
           setSpec(initial);
+          setTemplateSourceText(deriveTemplateSourceText(initial, first.name));
         }
         return rows;
       }
@@ -449,7 +494,11 @@ export default function WorkspacePlaybooksPage() {
   function selectPlaybook(id: string) {
     setSelectedId(id);
     const pb = playbooks.find((p) => p.id === id);
-    if (pb) setSpec(normalizeSpec(pb.current_version?.spec_json, pb.name));
+    if (pb) {
+      const next = normalizeSpec(pb.current_version?.spec_json, pb.name);
+      setSpec(next);
+      setTemplateSourceText(deriveTemplateSourceText(next, pb.name));
+    }
   }
 
   async function createPlaybook() {
@@ -485,7 +534,17 @@ export default function WorkspacePlaybooksPage() {
       if (!data?.ok) throw new Error(data?.message || 'Failed to create playbook');
       showSuccess('Playbook created');
       setNewName('');
-      await loadPlaybooks();
+      const rows = await loadPlaybooks();
+      const createdId = String(data.playbook?.id || '').trim();
+      if (createdId) {
+        const created = rows.find((row) => row.id === createdId);
+        if (created) {
+          const next = normalizeSpec(created.current_version?.spec_json, created.name);
+          setSelectedId(created.id);
+          setSpec(next);
+          setTemplateSourceText(deriveTemplateSourceText(next, created.name));
+        }
+      }
     } catch (e) {
       showError(e, 'playbooks');
     } finally {
@@ -497,13 +556,8 @@ export default function WorkspacePlaybooksPage() {
     if (!selected || isSystemPreset) return;
     setPublishing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('playbooks-publish', {
-        body: { playbook_id: selected.id, version_id: selected.current_version_id },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || 'Failed to publish');
+      await compileAndSave(true);
       showSuccess('Published');
-      await loadPlaybooks();
     } catch (e) {
       showError(e, 'playbooks');
     } finally {
@@ -559,7 +613,9 @@ export default function WorkspacePlaybooksPage() {
 
         setSelectedId(createdId);
         const specSource = row?.current_version?.spec_json || duplicatedSpec;
-        setSpec(normalizeSpec(specSource, row?.name || `${selected.name} (Copy)`));
+        const next = normalizeSpec(specSource, row?.name || `${selected.name} (Copy)`);
+        setSpec(next);
+        setTemplateSourceText(deriveTemplateSourceText(next, row?.name || `${selected.name} (Copy)`));
       }
     } catch (e) {
       showError(e, 'playbooks');
@@ -693,7 +749,7 @@ export default function WorkspacePlaybooksPage() {
             ) : (
               <div className="rounded-scholar border border-border bg-surface overflow-hidden">
                 {/* Sticky header with template name */}
-                <div className="sticky top-0 z-10 bg-surface border-b border-border">
+                <div className="bg-surface border-b border-border">
                   {/* System preset banner */}
                   {isSystemPreset && (
                     <div className="px-4 py-2 bg-surface-alt/50 border-b border-border flex items-center gap-2 text-sm text-text-soft">
@@ -762,15 +818,87 @@ export default function WorkspacePlaybooksPage() {
                         {t('builder.duplicateToEdit')}
                       </Button>
                     ) : (
-                      <Button onClick={publish} disabled={publishing || isSaving} variant="primary" size="sm">
-                        <UploadCloud className="w-4 h-4" />
-                        {t('builder.publish')}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button onClick={() => void compileAndSave(false)} disabled={publishing || isSaving || isCompiling} variant="secondary" size="sm">
+                          {isCompiling ? <Spinner size="sm" /> : null}
+                          Save Draft
+                        </Button>
+                        <Button onClick={publish} disabled={publishing || isSaving || isCompiling} variant="primary" size="sm">
+                          <UploadCloud className="w-4 h-4" />
+                          {t('builder.publish')}
+                        </Button>
+                      </div>
                     )}
                   </div>
 
-                {/* Section navigation tabs */}
-                <div className="flex border-t border-border bg-surface-alt/30">
+                  <div className="p-4 space-y-4 border-t border-border">
+                    <div className="rounded-scholar border border-border bg-surface-alt/40 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-text">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Template source</span>
+                      </div>
+                      <p className="text-sm text-text-soft">
+                        Describe what the template should do in natural language. Zohal compiles this source into the internal analysis template that runs behind the scenes.
+                      </p>
+                      <textarea
+                        className="w-full min-h-[260px] rounded-scholar border border-border bg-surface px-3 py-3 text-sm text-text"
+                        value={templateSourceText}
+                        disabled={isReadOnly}
+                        onChange={(e) => setTemplateSourceText(e.target.value)}
+                        placeholder="Example: Review employment agreements for compensation, probation, notice periods, termination rights, restrictive covenants, and employer obligations. Extract the effective date, salary, governing law, probation period, notice period, and termination triggers."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {(() => {
+                        const summary = summarizeCompiledSpec(spec);
+                        return (
+                          <>
+                            <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Variables</div>
+                              <div className="mt-2 text-2xl font-semibold text-text">{summary.variableCount}</div>
+                            </div>
+                            <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Modules</div>
+                              <div className="mt-2 text-2xl font-semibold text-text">{summary.moduleCount}</div>
+                            </div>
+                            <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Scope</div>
+                              <div className="mt-2 text-2xl font-semibold text-text capitalize">{summary.scope}</div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="rounded-scholar border border-border bg-surface-alt/30 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-text">
+                        <Layers className="w-4 h-4" />
+                        <span>Latest compiled output</span>
+                      </div>
+                      {(spec.modules_v2 || []).length === 0 ? (
+                        <p className="text-sm text-text-soft">
+                          Save the draft to compile this source into a runnable template.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="flex flex-wrap gap-2">
+                            {summarizeCompiledSpec(spec).moduleTitles.map((title) => (
+                              <Badge key={title} variant="accent">{title}</Badge>
+                            ))}
+                          </div>
+                          {(spec.variables || []).length > 0 && (
+                            <p className="text-sm text-text-soft">
+                              {(spec.variables || []).slice(0, 8).map((variable) => variable.key).join(', ')}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                {/* Legacy builder kept hidden while source-first flow rolls out */}
+                <div className="hidden flex border-t border-border bg-surface-alt/30">
                   {[
                       { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length, active: activeSection === 'modules' },
                       { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length, active: activeSection === 'variables' },
@@ -802,7 +930,7 @@ export default function WorkspacePlaybooksPage() {
                 </div>
 
                 {/* Section content */}
-                <div className="p-4 space-y-4">
+                <div className="hidden p-4 space-y-4">
                   {isConfigurationSection && (
                     <div className="rounded-scholar border border-border bg-surface-alt/40 p-3 space-y-3">
                       <p className="text-xs text-text-soft">
