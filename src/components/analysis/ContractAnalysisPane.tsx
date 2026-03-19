@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Settings, Table2, ScrollText, ClipboardCheck, Puzzle } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Table2, ScrollText, ClipboardCheck, Puzzle } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -49,7 +49,6 @@ import {
   CoverageGapsTab,
   PolicyConformanceTab,
 } from '@/components/analysis/TemplateRunTabs';
-import { BundleManagerModal } from '@/components/document/BundleManagerModal';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
@@ -65,7 +64,7 @@ import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
 import type { AnalysisRunSummary } from '@/types/analysis-runs';
-import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, toAnalysisRunSummary } from '@/lib/analysis/runs';
+import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import {
   deriveModuleDescriptors,
   deriveTabDescriptors,
@@ -83,14 +82,7 @@ import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplate
 
 type Tab = string;
 
-type BundlePack = {
-  id: string;
-  name: string | null;
-  member_count?: number;
-};
-
 type RunScope = 'single' | 'bundle';
-type DocsetMode = 'ephemeral' | 'saved';
 
 type WorkspaceFolder = {
   id: string;
@@ -232,19 +224,15 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
 
   // DocSet/run setup state.
   const [scope, setScope] = useState<RunScope>('single');
-  const [bundlePacks, setBundlePacks] = useState<BundlePack[]>([]);
-  const [selectedBundleId, setSelectedBundleId] = useState<string>('');
-  const [docsetMode, setDocsetMode] = useState<DocsetMode>('ephemeral');
   const [docsetMembers, setDocsetMembers] = useState<DocsetMember[]>([]);
-  const [docsetName, setDocsetName] = useState<string>('');
-  const [saveDocset, setSaveDocset] = useState(false);
   const [docsetSearch, setDocsetSearch] = useState('');
   const [docsetIssues, setDocsetIssues] = useState<string[]>([]);
   const [docsetPrimaryDocumentId, setDocsetPrimaryDocumentId] = useState<string>(documentId);
   const [docsetPrecedencePolicy, setDocsetPrecedencePolicy] = useState<'manual' | 'primary_first' | 'latest_wins'>('manual');
   const [workspaceDocs, setWorkspaceDocs] = useState<WorkspaceDoc[]>([]);
   const [workspaceFolders, setWorkspaceFolders] = useState<WorkspaceFolder[]>([]);
-  const [showBundleModal, setShowBundleModal] = useState(false);
+  const [rememberedSourceRunId, setRememberedSourceRunId] = useState<string | null>(null);
+  const [didPrefillRememberedRelatedDocs, setDidPrefillRememberedRelatedDocs] = useState(false);
   const autoRunTriggered = useRef(false);
 
   // Expanded sections for collapsible groups
@@ -1321,35 +1309,6 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     setDidInitializeRecommendedPlaybook(true);
   }, [didInitializeRecommendedPlaybook, documentRow, playbooks, resolvedRecommendedPlaybook, selectedPlaybookId]);
 
-  async function loadBundlePacks() {
-    try {
-      // Fetch bundle packs for this workspace
-      const { data: packs, error } = await supabase
-        .from('packs')
-        .select('id, name')
-        .eq('workspace_id', workspaceId)
-        .eq('pack_type', 'bundle')
-        .order('created_at', { ascending: false });
-
-      if (error || !packs) return;
-
-      // Get member counts for each pack
-      const packsWithCounts = await Promise.all(
-        packs.map(async (p) => {
-          const { count } = await supabase
-            .from('pack_members')
-            .select('id', { count: 'exact', head: true })
-            .eq('pack_id', p.id);
-          return { id: p.id, name: p.name, member_count: count ?? 0 };
-        })
-      );
-
-      setBundlePacks(packsWithCounts);
-    } catch {
-      // Best-effort
-    }
-  }
-
   async function loadWorkspaceDocsetSources() {
     try {
       const [{ data: docs }, { data: folders }] = await Promise.all([
@@ -1429,10 +1388,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           sort_order: Number.isFinite(m?.sort_order) ? Number(m.sort_order) : idx,
         }))
         .filter((m) => !!m.document_id);
-
-      setSelectedBundleId(packId);
-      setDocsetMode('saved');
-      setDocsetName(String((packRow as any)?.name || '').trim());
+      setRememberedSourceRunId(null);
       setDocsetPrecedencePolicy(
         (String((packRow as any)?.precedence_policy || 'manual').toLowerCase() as any) === 'primary_first'
           ? 'primary_first'
@@ -1470,9 +1426,12 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     }
   }
 
+  function clearRememberedRelatedDocuments() {
+    setRememberedSourceRunId(null);
+  }
+
   function addDocumentToDocset(docId: string) {
-    setSelectedBundleId('');
-    setDocsetMode('ephemeral');
+    clearRememberedRelatedDocuments();
     setDocsetMembers((prev) => {
       if (prev.some((m) => m.document_id === docId)) return prev;
       const role = docId === docsetPrimaryDocumentId ? 'primary' : 'other';
@@ -1481,8 +1440,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   }
 
   function removeDocumentFromDocset(docId: string) {
-    setSelectedBundleId('');
-    setDocsetMode('ephemeral');
+    clearRememberedRelatedDocuments();
     setDocsetMembers((prev) =>
       prev
         .filter((m) => m.document_id !== docId)
@@ -1491,8 +1449,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   }
 
   function moveDocsetMember(docId: string, direction: 'up' | 'down') {
-    setSelectedBundleId('');
-    setDocsetMode('ephemeral');
+    clearRememberedRelatedDocuments();
     setDocsetMembers((prev) => {
       const idx = prev.findIndex((m) => m.document_id === docId);
       if (idx < 0) return prev;
@@ -1507,8 +1464,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   }
 
   function updateDocsetMemberRole(docId: string, role: string) {
-    setSelectedBundleId('');
-    setDocsetMode('ephemeral');
+    clearRememberedRelatedDocuments();
     setDocsetMembers((prev) =>
       prev.map((m) => (m.document_id === docId ? { ...m, role: role.trim().toLowerCase() || 'other' } : m))
     );
@@ -1578,6 +1534,36 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   }, [enforcedPlaybookScope]);
 
   useEffect(() => {
+    if (!showSettings) {
+      setDidPrefillRememberedRelatedDocs(false);
+    }
+  }, [showSettings]);
+
+  useEffect(() => {
+    if (!showSettings || didPrefillRememberedRelatedDocs) return;
+
+    const remembered = selectRememberedRelatedDocuments(runs, documentId);
+    if (!remembered) {
+      setRememberedSourceRunId(null);
+      setDidPrefillRememberedRelatedDocs(true);
+      return;
+    }
+
+    setScope('bundle');
+    setRememberedSourceRunId(remembered.sourceRunId);
+    setDocsetPrimaryDocumentId(remembered.primaryDocumentId || documentId);
+    setDocsetPrecedencePolicy(remembered.precedencePolicy);
+    setDocsetMembers(
+      remembered.memberRoles.map((member, idx) => ({
+        document_id: member.documentId,
+        role: member.role,
+        sort_order: idx,
+      }))
+    );
+    setDidPrefillRememberedRelatedDocs(true);
+  }, [didPrefillRememberedRelatedDocs, documentId, runs, showSettings]);
+
+  useEffect(() => {
     if (effectiveScope !== 'bundle') {
       setDocsetIssues([]);
       return;
@@ -1605,6 +1591,9 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     }
     if (!docsetMembers.some((m) => m.document_id === documentId)) {
       issues.push(t('docset.validation.currentDocumentRequired'));
+    }
+    if (!docsetMembers.some((m) => m.document_id === docsetPrimaryDocumentId)) {
+      issues.push(t('docset.validation.primaryDocumentRequired'));
     }
 
     if (bundleSchemaRoles.length > 0) {
@@ -1719,41 +1708,6 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     }
   }
 
-  async function persistDocsetAsPack(userId: string): Promise<string> {
-    const name = docsetName.trim() || null;
-    const { data: pack, error: packErr } = await supabase
-      .from('packs')
-      .insert({
-        workspace_id: workspaceId,
-        name,
-        pack_type: 'bundle',
-        precedence_policy: docsetPrecedencePolicy,
-        primary_document_id: docsetPrimaryDocumentId || documentId,
-        created_by: userId,
-      })
-      .select('id')
-      .single();
-    if (packErr || !pack?.id) {
-      throw packErr || new Error('Failed to create DocSet');
-    }
-
-    if (docsetMembers.length > 0) {
-      const rows = docsetMembers.map((m, idx) => ({
-        pack_id: pack.id,
-        document_id: m.document_id,
-        role: String(m.role || 'other').trim().toLowerCase() || 'other',
-        sort_order: idx,
-        added_by: userId,
-      }));
-      const { error: membersErr } = await supabase
-        .from('pack_members')
-        .upsert(rows, { onConflict: 'pack_id,document_id' });
-      if (membersErr) throw membersErr;
-    }
-
-    return String(pack.id);
-  }
-
   async function analyzeOnce() {
     setIsAnalyzing(true);
     setError(null);
@@ -1799,21 +1753,6 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
         ? Array.from(new Set(normalizedDocsetMembers.map((m) => m.document_id)))
         : [];
 
-      let resolvedPackId: string | undefined;
-      let resolvedDocsetMode: DocsetMode = 'ephemeral';
-      if (shouldUseDocset) {
-        if (saveDocset) {
-          resolvedPackId = await persistDocsetAsPack(userId);
-          resolvedDocsetMode = 'saved';
-          setSelectedBundleId(resolvedPackId);
-          setDocsetMode('saved');
-          await loadBundlePacks();
-        } else if (selectedBundleId && docsetMode === 'saved') {
-          resolvedPackId = selectedBundleId;
-          resolvedDocsetMode = 'saved';
-        }
-      }
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-contract`, {
         method: 'POST',
         headers: {
@@ -1827,15 +1766,11 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           ...(playbook_options ? { playbook_options } : {}),
           ...(shouldUseDocset
             ? {
-                ...(resolvedPackId ? { pack_id: resolvedPackId } : {}),
                 document_ids: docsetDocumentIds,
                 member_roles: normalizedDocsetMembers,
                 primary_document_id: docsetPrimaryDocumentId || documentId,
                 precedence_policy: docsetPrecedencePolicy,
-                docset_mode: resolvedDocsetMode,
-                ...(resolvedDocsetMode === 'saved' && docsetName.trim()
-                  ? { saved_docset_name: docsetName.trim() }
-                  : {}),
+                docset_mode: 'ephemeral',
               }
             : {}),
           ...(selectedPlaybookId
@@ -2362,7 +2297,6 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   useEffect(() => {
     load();
     loadPlaybooks();
-    loadBundlePacks();
     loadWorkspaceDocsetSources();
     loadRuns();
     
@@ -2536,11 +2470,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                       {run.playbookLabel || t('runs.defaultLabel')}
                     </p>
                     <div className="flex items-center gap-1">
-                      {run.scope === 'bundle' && run.docsetMode === 'ephemeral' && (
-                        <Badge size="sm" variant="warning">{t('runs.unsaved')}</Badge>
-                      )}
-                      {run.scope === 'bundle' && run.docsetMode === 'saved' && run.savedDocsetName && (
-                        <Badge size="sm">{run.savedDocsetName}</Badge>
+                      {run.scope === 'bundle' && (
+                        <Badge size="sm" variant="warning">
+                          {t('runs.scopeDocset')}
+                        </Badge>
                       )}
                       <Badge
                         size="sm"
@@ -2858,35 +2791,26 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('docset.title')}</div>
-                        <button
-                          onClick={() => setShowBundleModal(true)}
-                          className="flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent/80 transition-colors px-2 py-1 rounded-md hover:bg-accent/5"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            clearRememberedRelatedDocuments();
+                            setScope('single');
+                            setDocsetPrimaryDocumentId(documentId);
+                            setDocsetPrecedencePolicy('manual');
+                            setDocsetMembers([{ document_id: documentId, role: 'primary', sort_order: 0 }]);
+                          }}
                         >
-                          <Settings className="w-3 h-3" />
-                          {t('docset.manageSaved')}
-                        </button>
+                          {t('docset.reset')}
+                        </Button>
                       </div>
                       <p className="text-xs text-text-soft">{t('docset.help')}</p>
-                      <select
-                        value={selectedBundleId}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (!value) {
-                            setSelectedBundleId('');
-                            setDocsetMode('ephemeral');
-                            return;
-                          }
-                          void loadDocsetFromSavedPack(value);
-                        }}
-                        className="w-full px-2.5 py-2 border border-border rounded-md bg-surface-alt text-sm text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
-                      >
-                        <option value="">{t('docset.savedPickerPlaceholder')}</option>
-                        {bundlePacks.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name || t('docset.unnamed')} ({b.member_count || 0})
-                          </option>
-                        ))}
-                      </select>
+                      {rememberedSourceRunId && (
+                        <div className="rounded-scholar border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-text">
+                          {t('docset.prefill')}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-3">
@@ -3022,7 +2946,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                         <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('docset.primaryDocument')}</div>
                         <select
                           value={docsetPrimaryDocumentId}
-                          onChange={(e) => setDocsetPrimaryDocumentId(e.target.value)}
+                          onChange={(e) => {
+                            clearRememberedRelatedDocuments();
+                            setDocsetPrimaryDocumentId(e.target.value);
+                          }}
                           className="w-full px-2.5 py-2 border border-border rounded-md bg-surface-alt text-sm text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
                         >
                           {docsetMembers.map((m) => {
@@ -3039,7 +2966,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                         <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('docset.precedencePolicy')}</div>
                         <ScholarSelect
                           value={docsetPrecedencePolicy}
-                          onChange={(e) => setDocsetPrecedencePolicy(e.target.value as 'manual' | 'primary_first' | 'latest_wins')}
+                          onChange={(e) => {
+                            clearRememberedRelatedDocuments();
+                            setDocsetPrecedencePolicy(e.target.value as 'manual' | 'primary_first' | 'latest_wins');
+                          }}
                           options={[
                             { value: 'manual', label: t('docset.precedence.manual') },
                             { value: 'primary_first', label: t('docset.precedence.primaryFirst') },
@@ -3048,28 +2978,6 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                         />
                       </div>
                     </div>
-
-                    <label className="flex items-center gap-2.5 text-sm text-text cursor-pointer group">
-                      <div className="relative flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={saveDocset}
-                          onChange={(e) => setSaveDocset(e.target.checked)}
-                          className="peer sr-only"
-                        />
-                        <div className="w-8 h-[18px] rounded-full bg-border peer-checked:bg-accent transition-colors" />
-                        <div className="absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-3.5" />
-                      </div>
-                      <span className="text-sm">{t('docset.saveToggle')}</span>
-                    </label>
-                    {saveDocset && (
-                      <input
-                        value={docsetName}
-                        onChange={(e) => setDocsetName(e.target.value)}
-                        placeholder={t('docset.namePlaceholder')}
-                        className="w-full px-3 py-2 rounded-md border border-border bg-surface text-sm text-text placeholder:text-text-soft/50 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
-                      />
-                    )}
 
                     {docsetIssues.length > 0 && (
                       <div className="flex items-start gap-2.5 p-3 border border-accent/30 bg-accent/5 rounded-scholar">
@@ -3094,8 +3002,8 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                         </Badge>
                       )}
                       {effectiveScope === 'bundle' && (
-                        <Badge size="sm" variant={saveDocset || selectedBundleId ? 'success' : 'warning'}>
-                          {saveDocset || selectedBundleId ? t('runs.scopeDocsetSaved') : t('runs.scopeDocsetUnsaved')}
+                        <Badge size="sm" variant="warning">
+                          {rememberedSourceRunId ? t('docset.remembered') : t('runs.scopeDocset')}
                         </Badge>
                       )}
                     </div>
@@ -3981,21 +3889,6 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           </div>
         )}
       </div>
-
-      {/* Bundle Manager Modal */}
-      {showBundleModal && (
-        <BundleManagerModal
-          workspaceId={workspaceId}
-          documentId={documentId}
-          selectedBundleId={selectedBundleId}
-          onSelectBundle={(bundleId) => {
-            setSelectedBundleId(bundleId);
-            // Reload bundles to get updated counts
-            loadBundlePacks();
-          }}
-          onClose={() => setShowBundleModal(false)}
-        />
-      )}
     </div>
   );
 }

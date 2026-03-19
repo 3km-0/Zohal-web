@@ -1,5 +1,13 @@
 import type { Database } from '@/types/supabase';
-import type { AnalysisRunDocsetMode, AnalysisRunScope, AnalysisRunStatus, AnalysisRunSummary } from '@/types/analysis-runs';
+import type {
+  AnalysisRunDocsetMode,
+  AnalysisRunMemberRole,
+  AnalysisRunPrecedencePolicy,
+  AnalysisRunScope,
+  AnalysisRunStatus,
+  AnalysisRunSummary,
+  RememberedRelatedDocuments,
+} from '@/types/analysis-runs';
 
 type ExtractionRunRow = Database['public']['Tables']['extraction_runs']['Row'];
 type ActionRow = Database['public']['Tables']['actions']['Row'];
@@ -14,6 +22,13 @@ function asString(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizePrecedencePolicy(value: string | null | undefined): AnalysisRunPrecedencePolicy {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'primary_first') return 'primary_first';
+  if (normalized === 'latest_wins') return 'latest_wins';
+  return 'manual';
 }
 
 function statusFromValue(value: string | null | undefined): AnalysisRunStatus | null {
@@ -76,6 +91,108 @@ function parseDocsetMode(inputConfig: unknown): AnalysisRunDocsetMode | null {
   return parseScope(config) === 'bundle' ? 'ephemeral' : null;
 }
 
+function parsePrimaryDocumentId(inputConfig: unknown): string | null {
+  const config = asRecord(inputConfig);
+  const bundle = asRecord(config.bundle);
+  return (
+    asString(config.primary_document_id) ||
+    asString(config.primaryDocumentId) ||
+    asString(bundle.primary_document_id) ||
+    asString(bundle.primaryDocumentId) ||
+    null
+  );
+}
+
+function parsePrecedencePolicy(inputConfig: unknown): AnalysisRunPrecedencePolicy {
+  const config = asRecord(inputConfig);
+  const bundle = asRecord(config.bundle);
+  return normalizePrecedencePolicy(
+    asString(config.precedence_policy) ||
+      asString(config.precedencePolicy) ||
+      asString(bundle.precedence_policy) ||
+      asString(bundle.precedencePolicy)
+  );
+}
+
+function parseDocumentIds(inputConfig: unknown): string[] {
+  const config = asRecord(inputConfig);
+  const bundle = asRecord(config.bundle);
+  const candidates = [config.document_ids, bundle.document_ids, config.scope_document_ids];
+
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
+    const ids = Array.from(
+      new Set(
+        candidate
+          .map((value) => asString(value))
+          .filter((value): value is string => !!value)
+      )
+    );
+    if (ids.length > 0) return ids;
+  }
+
+  return [];
+}
+
+function parseMemberRoles(inputConfig: unknown, documentIds: string[], primaryDocumentId: string | null): AnalysisRunMemberRole[] {
+  const config = asRecord(inputConfig);
+  const bundle = asRecord(config.bundle);
+  const rawRoles = Array.isArray(config.member_roles)
+    ? config.member_roles
+    : Array.isArray(bundle.member_roles)
+      ? bundle.member_roles
+      : [];
+
+  const parsed: AnalysisRunMemberRole[] = rawRoles
+    .map((value, idx) => {
+      const record = value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+      const documentId = asString(record.document_id) || asString(record.documentId);
+      if (!documentId) return null;
+      const role = asString(record.role) || 'other';
+      const sortOrderRaw = record.sort_order ?? record.sortOrder;
+      const sortOrder = typeof sortOrderRaw === 'number' && Number.isFinite(sortOrderRaw) ? sortOrderRaw : idx;
+      return {
+        documentId,
+        role,
+        sortOrder,
+      };
+    })
+    .filter((value): value is AnalysisRunMemberRole => !!value);
+
+  if (parsed.length > 0) {
+    return parsed
+      .filter((role) => documentIds.includes(role.documentId))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((role, idx) => ({ ...role, sortOrder: idx }));
+  }
+
+  return documentIds.map((documentId, idx) => ({
+    documentId,
+    role: primaryDocumentId && documentId === primaryDocumentId ? 'primary' : 'other',
+    sortOrder: idx,
+  }));
+}
+
+function parseRememberedRelatedDocuments(runId: string, inputConfig: unknown): RememberedRelatedDocuments | null {
+  const scope = parseScope(inputConfig);
+  const documentIds = parseDocumentIds(inputConfig);
+  const primaryDocumentId = parsePrimaryDocumentId(inputConfig);
+  const memberRoles = parseMemberRoles(inputConfig, documentIds, primaryDocumentId);
+
+  if (scope !== 'bundle' || documentIds.length === 0) return null;
+
+  return {
+    sourceRunId: runId,
+    scope,
+    documentIds,
+    memberRoles,
+    primaryDocumentId,
+    precedencePolicy: parsePrecedencePolicy(inputConfig),
+  };
+}
+
 export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow | null): AnalysisRunSummary {
   const config = asRecord(run.input_config);
   const outputSummary = asRecord(run.output_summary);
@@ -124,6 +241,7 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     asString(outputSummary.verification_object_id) ||
     asString(outputSummary.verificationObjectId) ||
     null;
+  const rememberedRelatedDocuments = parseRememberedRelatedDocuments(run.id, run.input_config);
 
   return {
     runId: run.id,
@@ -139,6 +257,7 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     savedDocsetName,
     versionId,
     verificationObjectId,
+    rememberedRelatedDocuments,
   };
 }
 
@@ -147,4 +266,18 @@ export function selectDefaultAnalysisRun(runs: AnalysisRunSummary[]): AnalysisRu
 
   const withVersion = runs.find((run) => !!run.versionId);
   return withVersion ?? runs[0];
+}
+
+export function selectRememberedRelatedDocuments(
+  runs: AnalysisRunSummary[],
+  primaryDocumentId: string
+): RememberedRelatedDocuments | null {
+  const latestSuccessfulRun = runs.find((run) => run.status === 'succeeded');
+  if (!latestSuccessfulRun) return null;
+
+  const remembered = latestSuccessfulRun.rememberedRelatedDocuments;
+  if (!remembered || remembered.documentIds.length < 2) return null;
+  if (!remembered.documentIds.includes(primaryDocumentId)) return null;
+
+  return remembered;
 }

@@ -3,23 +3,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { X, Play, Layers, FileText, CheckCircle } from 'lucide-react';
+import { X, Play, Layers, FileText, CheckCircle, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { resolveRecommendedPlaybook, supportsStructuredAnalysis } from '@/lib/document-analysis';
+import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplateGroupLabel, groupSystemPlaybooks } from '@/lib/template-library';
 import type { BundleSchemaRole, PlaybookRecord, PlaybookScope, TemplateFilter, TemplateSpecV1 } from '@/types/templates';
 
-type DocumentBundleRow = {
+type Scope = 'single' | 'bundle';
+
+type RelatedDocument = {
   id: string;
-  name: string | null;
-  precedence_policy: string;
-  primary_document_id: string | null;
-  updated_at: string | null;
+  title: string;
 };
 
-type Scope = 'single' | 'bundle';
+type RelatedDocsetMember = {
+  document_id: string;
+  role: string;
+  sort_order: number;
+};
 
 export function RunAnalysisModal(props: {
   open: boolean;
@@ -40,6 +44,7 @@ export function RunAnalysisModal(props: {
   const supportsTemplateRun = supportsStructuredAnalysis(documentType);
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>('');
   const [selectedPlaybookVersionId, setSelectedPlaybookVersionId] = useState<string>('');
@@ -49,12 +54,13 @@ export function RunAnalysisModal(props: {
   const [documentMetadata, setDocumentMetadata] = useState<{ title: string | null; original_filename: string | null; document_type: string | null; source_metadata?: any } | null>(null);
 
   const [scope, setScope] = useState<Scope>('single');
-  const [bundles, setBundles] = useState<DocumentBundleRow[]>([]);
-  const [selectedBundleId, setSelectedBundleId] = useState<string>(''); // pack_id for bundle packs
-  const [bundleMemberIssues, setBundleMemberIssues] = useState<string[]>([]);
-
-  const [creatingBundle, setCreatingBundle] = useState(false);
-  const [newBundleName, setNewBundleName] = useState('');
+  const [workspaceDocuments, setWorkspaceDocuments] = useState<RelatedDocument[]>([]);
+  const [docsetSearch, setDocsetSearch] = useState('');
+  const [docsetMembers, setDocsetMembers] = useState<RelatedDocsetMember[]>([{ document_id: documentId, role: 'primary', sort_order: 0 }]);
+  const [docsetPrimaryDocumentId, setDocsetPrimaryDocumentId] = useState(documentId);
+  const [docsetPrecedencePolicy, setDocsetPrecedencePolicy] = useState<'manual' | 'primary_first' | 'latest_wins'>('manual');
+  const [relatedDocumentIssues, setRelatedDocumentIssues] = useState<string[]>([]);
+  const [rememberedSourceRunId, setRememberedSourceRunId] = useState<string | null>(null);
 
   const loadPlaybooks = useCallback(async () => {
     try {
@@ -70,36 +76,80 @@ export function RunAnalysisModal(props: {
     }
   }, [supabase, workspaceId]);
 
-  const loadBundles = useCallback(async () => {
+  const loadWorkspaceDocuments = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('packs')
-        .select('id,name,precedence_policy,primary_document_id,updated_at')
+        .from('documents')
+        .select('id,title,storage_path')
         .eq('workspace_id', workspaceId)
-        .eq('pack_type', 'bundle')
+        .is('deleted_at', null)
+        .neq('storage_path', 'local')
         .order('updated_at', { ascending: false });
       if (error) return;
-      setBundles((data || []) as DocumentBundleRow[]);
+
+      const docs = ((data || []) as any[]).map((doc) => ({
+        id: String(doc.id),
+        title: String(doc.title || doc.id),
+      }));
+      if (!docs.some((doc) => doc.id === documentId)) {
+        docs.unshift({ id: documentId, title: documentMetadata?.title || 'Current document' });
+      }
+      setWorkspaceDocuments(docs);
     } catch {
       // Best-effort
     }
-  }, [supabase, workspaceId]);
+  }, [documentId, documentMetadata?.title, supabase, workspaceId]);
+
+  const loadRememberedRelatedDocuments = useCallback(async () => {
+    try {
+      const { data: runs, error } = await supabase
+        .from('extraction_runs')
+        .select('id,status,created_at,updated_at,input_config,output_summary,extraction_type,document_id,workspace_id,user_id,completed_at,error,model,prompt_version,started_at')
+        .eq('workspace_id', workspaceId)
+        .eq('document_id', documentId)
+        .eq('extraction_type', 'contract_analysis')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error || !runs) return;
+
+      const summaries = (runs as any[]).map((run) => toAnalysisRunSummary(run));
+      const remembered = selectRememberedRelatedDocuments(summaries, documentId);
+      if (!remembered) return;
+
+      setScope('bundle');
+      setRememberedSourceRunId(remembered.sourceRunId);
+      setDocsetPrimaryDocumentId(remembered.primaryDocumentId || documentId);
+      setDocsetPrecedencePolicy(remembered.precedencePolicy);
+      setDocsetMembers(
+        remembered.memberRoles.map((role, idx) => ({
+          document_id: role.documentId,
+          role: role.role,
+          sort_order: idx,
+        }))
+      );
+    } catch {
+      // Best-effort
+    }
+  }, [documentId, supabase, workspaceId]);
 
   useEffect(() => {
     if (!open) return;
-    // Reset transient state each time we open.
+
+    setLoading(false);
+    setError(null);
     setScope('single');
-    setSelectedBundleId('');
-    setNewBundleName('');
-    setCreatingBundle(false);
+    setRememberedSourceRunId(null);
+    setDocsetSearch('');
+    setDocsetPrimaryDocumentId(documentId);
+    setDocsetPrecedencePolicy('manual');
+    setDocsetMembers([{ document_id: documentId, role: 'primary', sort_order: 0 }]);
     setTemplateSearch('');
     setTemplateFilter('all');
     setSelectedPlaybookId('');
     setSelectedPlaybookVersionId('');
     setDidInitializeRecommendedPlaybook(false);
-    void loadPlaybooks();
-    void loadBundles();
 
+    void loadPlaybooks();
     void (async () => {
       try {
         const { data } = await supabase
@@ -112,7 +162,13 @@ export function RunAnalysisModal(props: {
         setDocumentMetadata(null);
       }
     })();
-  }, [open, loadPlaybooks, loadBundles, supabase, documentId]);
+  }, [documentId, loadPlaybooks, open, supabase]);
+
+  useEffect(() => {
+    if (!open) return;
+    void loadWorkspaceDocuments();
+    void loadRememberedRelatedDocuments();
+  }, [loadRememberedRelatedDocuments, loadWorkspaceDocuments, open]);
 
   const recommendedTemplateIds = useMemo(() => {
     const raw = (documentMetadata as any)?.source_metadata?.recommended_template_ids;
@@ -133,17 +189,16 @@ export function RunAnalysisModal(props: {
   useEffect(() => {
     if (!open || didInitializeRecommendedPlaybook || selectedPlaybookId || playbooks.length === 0) return;
 
-    const recommendedPlaybook = resolvedRecommendedPlaybook;
-    if (recommendedPlaybook) {
-      setSelectedPlaybookId(recommendedPlaybook.id);
-      setSelectedPlaybookVersionId(recommendedPlaybook.current_version?.id || recommendedPlaybook.current_version_id || '');
+    if (resolvedRecommendedPlaybook) {
+      setSelectedPlaybookId(resolvedRecommendedPlaybook.id);
+      setSelectedPlaybookVersionId(resolvedRecommendedPlaybook.current_version?.id || resolvedRecommendedPlaybook.current_version_id || '');
     }
     setDidInitializeRecommendedPlaybook(true);
   }, [didInitializeRecommendedPlaybook, open, playbooks, resolvedRecommendedPlaybook, selectedPlaybookId]);
 
   const selectedPlaybook = useMemo(() => {
     if (!selectedPlaybookId) return null;
-    return playbooks.find((p) => p.id === selectedPlaybookId) || null;
+    return playbooks.find((playbook) => playbook.id === selectedPlaybookId) || null;
   }, [playbooks, selectedPlaybookId]);
 
   const localizedTemplateText = useCallback(
@@ -281,8 +336,8 @@ export function RunAnalysisModal(props: {
   }, [selectedPlaybook]);
 
   const enforcedScope = useMemo<PlaybookScope>(() => {
-    const s = String(selectedPlaybookSpec?.scope || '').trim();
-    if (s === 'single' || s === 'bundle' || s === 'either') return s;
+    const value = String(selectedPlaybookSpec?.scope || '').trim();
+    if (value === 'single' || value === 'bundle' || value === 'either') return value;
     return 'either';
   }, [selectedPlaybookSpec]);
 
@@ -290,12 +345,12 @@ export function RunAnalysisModal(props: {
     const roles = selectedPlaybookSpec?.bundle_schema?.roles;
     if (!Array.isArray(roles)) return [];
     return roles
-      .map((r: any) => ({
-        role: String(r?.role || '').trim(),
-        required: r?.required === true,
-        multiple: r?.multiple === true,
+      .map((role: any) => ({
+        role: String(role?.role || '').trim(),
+        required: role?.required === true,
+        multiple: role?.multiple === true,
       }))
-      .filter((r: any) => !!r.role);
+      .filter((role: BundleSchemaRole) => !!role.role);
   }, [selectedPlaybookSpec]);
 
   const effectiveScope: Scope = useMemo(() => {
@@ -305,118 +360,144 @@ export function RunAnalysisModal(props: {
   }, [enforcedScope, scope]);
 
   useEffect(() => {
-    // Default to the playbook's current version if present.
     if (!selectedPlaybook) {
       setSelectedPlaybookVersionId('');
       return;
     }
-    const v = selectedPlaybook.current_version?.id || selectedPlaybook.current_version_id || '';
-    setSelectedPlaybookVersionId(v || '');
+    const versionId = selectedPlaybook.current_version?.id || selectedPlaybook.current_version_id || '';
+    setSelectedPlaybookVersionId(versionId || '');
   }, [selectedPlaybook]);
 
   useEffect(() => {
-    // Enforce playbook scope constraints in the UI (non-breaking; only constrains when playbook asks).
     if (enforcedScope === 'bundle') setScope('bundle');
     if (enforcedScope === 'single') setScope('single');
   }, [enforcedScope]);
 
-  // Validate bundle membership/roles when required.
+  const roleOptions = useMemo(() => {
+    const options = bundleSchemaRoles
+      .map((role) => role.role.trim().toLowerCase())
+      .filter(Boolean);
+    if (options.length === 0) options.push('primary', 'other');
+
+    for (const member of docsetMembers) {
+      const role = member.role.trim().toLowerCase();
+      if (role && !options.includes(role)) options.push(role);
+    }
+
+    return options;
+  }, [bundleSchemaRoles, docsetMembers]);
+
+  const sortedDocsetMembers = useMemo(
+    () => [...docsetMembers].sort((a, b) => a.sort_order - b.sort_order),
+    [docsetMembers]
+  );
+
+  const filteredWorkspaceDocuments = useMemo(() => {
+    const query = docsetSearch.trim().toLowerCase();
+    if (!query) return workspaceDocuments;
+    return workspaceDocuments.filter((doc) => doc.title.toLowerCase().includes(query));
+  }, [docsetSearch, workspaceDocuments]);
+
   useEffect(() => {
-    let cancelled = false;
-    async function validateBundle() {
-      if (!open) return;
-      if (!supportsTemplateRun) return;
-      if (effectiveScope !== 'bundle') {
-        setBundleMemberIssues([]);
-        return;
-      }
-      if (!selectedBundleId) {
-        setBundleMemberIssues([t('bundle.issues.selectBundle')]);
-        return;
-      }
-
-      const issues: string[] = [];
-      try {
-        const { data: members, error: memErr } = await supabase
-          .from('pack_members')
-          .select('document_id, role')
-          .eq('pack_id', selectedBundleId);
-        if (memErr) throw memErr;
-        const rows = Array.isArray(members) ? (members as any[]) : [];
-
-        const docIds = new Set(rows.map((m) => String(m?.document_id || '').toLowerCase()).filter(Boolean));
-        if (!docIds.has(String(documentId).toLowerCase())) {
-          issues.push(t('bundle.issues.currentDocNotMember'));
-        }
-
-        const counts: Record<string, number> = {};
-        for (const r of rows) {
-          const role = String(r?.role || '').trim().toLowerCase();
-          if (!role) continue;
-          counts[role] = (counts[role] || 0) + 1;
-        }
-
-        for (const def of bundleSchemaRoles) {
-          const key = def.role.trim().toLowerCase();
-          const n = counts[key] || 0;
-          if (def.required && n === 0) issues.push(t('bundle.issues.missingRequiredRole', { role: def.role }));
-          if (!def.multiple && n > 1) issues.push(t('bundle.issues.roleMustBeUnique', { role: def.role }));
-        }
-      } catch {
-        issues.push('Could not validate pack members. You can still run single-document analysis.');
-      }
-
-      if (!cancelled) setBundleMemberIssues(issues);
+    if (!open || !supportsTemplateRun) return;
+    if (effectiveScope !== 'bundle') {
+      setRelatedDocumentIssues([]);
+      return;
     }
-    void validateBundle();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, supabase, supportsTemplateRun, effectiveScope, selectedBundleId, documentId, bundleSchemaRoles, t]);
 
-  const createBundle = useCallback(async () => {
-    setCreatingBundle(true);
-    try {
-      const { data: userRes, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-      const userId = userRes.user?.id;
-      if (!userId) throw new Error('Not authenticated');
+    const issues: string[] = [];
+    if (sortedDocsetMembers.length < 2) {
+      issues.push(t('related.validation.minTwoDocuments'));
+    }
+    if (!sortedDocsetMembers.some((member) => member.document_id === documentId)) {
+      issues.push(t('related.validation.currentDocumentRequired'));
+    }
+    if (!sortedDocsetMembers.some((member) => member.document_id === docsetPrimaryDocumentId)) {
+      issues.push(t('related.validation.primaryDocumentRequired'));
+    }
 
-      const { data: b, error: bErr } = await supabase
-        .from('packs')
-        .insert({
-          workspace_id: workspaceId,
-          name: newBundleName.trim() || null,
-          pack_type: 'bundle',
-          precedence_policy: 'manual',
-          primary_document_id: documentId,
-          created_by: userId,
-        })
-        .select('id')
-        .single();
-      if (bErr) throw bErr;
+    const counts: Record<string, number> = {};
+    for (const member of sortedDocsetMembers) {
+      const role = member.role.trim().toLowerCase();
+      if (!role) continue;
+      counts[role] = (counts[role] || 0) + 1;
+    }
 
-      // Add current doc as a member (best-effort; ignore conflict).
-      await supabase.from('pack_members').upsert(
+    for (const role of bundleSchemaRoles) {
+      const key = role.role.trim().toLowerCase();
+      const count = counts[key] || 0;
+      if (role.required && count === 0) issues.push(t('related.validation.missingRequiredRole', { role: role.role }));
+      if (!role.multiple && count > 1) issues.push(t('related.validation.roleMustBeUnique', { role: role.role }));
+    }
+
+    setRelatedDocumentIssues(issues);
+  }, [bundleSchemaRoles, docsetPrimaryDocumentId, documentId, effectiveScope, open, sortedDocsetMembers, supportsTemplateRun, t]);
+
+  const clearRememberedRelatedDocuments = useCallback(() => {
+    setRememberedSourceRunId(null);
+  }, []);
+
+  const addDocumentToDocset = useCallback((nextDocumentId: string) => {
+    clearRememberedRelatedDocuments();
+    setDocsetMembers((prev) => {
+      if (prev.some((member) => member.document_id === nextDocumentId)) return prev;
+      return [
+        ...prev,
         {
-          pack_id: b.id,
-          document_id: documentId,
-          role: 'master',
-          sort_order: 0,
-          added_by: userId,
+          document_id: nextDocumentId,
+          role: nextDocumentId === docsetPrimaryDocumentId ? 'primary' : 'other',
+          sort_order: prev.length,
         },
-        { onConflict: 'pack_id,document_id' }
-      );
+      ];
+    });
+  }, [clearRememberedRelatedDocuments, docsetPrimaryDocumentId]);
 
-      await loadBundles();
-      setSelectedBundleId(String(b.id));
-      setScope('bundle');
-    } catch {
-      // Best-effort: keep UI usable even if bundle creation fails
-    } finally {
-      setCreatingBundle(false);
-    }
-  }, [supabase, workspaceId, documentId, newBundleName, loadBundles]);
+  const removeDocumentFromDocset = useCallback((targetDocumentId: string) => {
+    clearRememberedRelatedDocuments();
+    setDocsetMembers((prev) => {
+      const next = prev
+        .filter((member) => member.document_id !== targetDocumentId)
+        .map((member, idx) => ({ ...member, sort_order: idx }));
+      if (!next.some((member) => member.document_id === docsetPrimaryDocumentId)) {
+        setDocsetPrimaryDocumentId(next[0]?.document_id || documentId);
+      }
+      return next;
+    });
+  }, [clearRememberedRelatedDocuments, docsetPrimaryDocumentId, documentId]);
+
+  const updateDocsetMemberRole = useCallback((targetDocumentId: string, role: string) => {
+    clearRememberedRelatedDocuments();
+    setDocsetMembers((prev) =>
+      prev.map((member) =>
+        member.document_id === targetDocumentId
+          ? { ...member, role: role.trim().toLowerCase() || 'other' }
+          : member
+      )
+    );
+  }, [clearRememberedRelatedDocuments]);
+
+  const moveDocsetMember = useCallback((targetDocumentId: string, direction: 'up' | 'down') => {
+    clearRememberedRelatedDocuments();
+    setDocsetMembers((prev) => {
+      const next = [...prev].sort((a, b) => a.sort_order - b.sort_order);
+      const index = next.findIndex((member) => member.document_id === targetDocumentId);
+      if (index < 0) return prev;
+      const swapIndex = direction === 'up' ? index - 1 : index + 1;
+      if (swapIndex < 0 || swapIndex >= next.length) return prev;
+      const current = next[index];
+      next[index] = next[swapIndex];
+      next[swapIndex] = current;
+      return next.map((member, idx) => ({ ...member, sort_order: idx }));
+    });
+  }, [clearRememberedRelatedDocuments]);
+
+  const resetToCurrentDocument = useCallback(() => {
+    clearRememberedRelatedDocuments();
+    setScope('single');
+    setDocsetPrimaryDocumentId(documentId);
+    setDocsetPrecedencePolicy('manual');
+    setDocsetMembers([{ document_id: documentId, role: 'primary', sort_order: 0 }]);
+  }, [clearRememberedRelatedDocuments, documentId]);
 
   const run = useCallback(async () => {
     if (!supportsTemplateRun) {
@@ -425,33 +506,92 @@ export function RunAnalysisModal(props: {
       return;
     }
 
-    // Navigate to contract analysis with autorun config (keeps one execution path).
-    const params = new URLSearchParams();
-    params.set('autorun', '1');
-    if (selectedPlaybookId) params.set('playbook_id', selectedPlaybookId);
-    if (selectedPlaybookVersionId) params.set('playbook_version_id', selectedPlaybookVersionId);
-    if (effectiveScope === 'bundle' && selectedBundleId) params.set('pack_id', selectedBundleId);
+    if (effectiveScope === 'bundle' && relatedDocumentIssues.length > 0) return;
 
-    onClose();
-    router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis?${params.toString()}`);
+    setLoading(true);
+    setError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const normalizedMembers = effectiveScope === 'bundle'
+        ? sortedDocsetMembers.map((member, idx) => ({
+            document_id: member.document_id,
+            role: member.role.trim().toLowerCase() || 'other',
+            sort_order: idx,
+          }))
+        : [];
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-contract`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          document_id: documentId,
+          workspace_id: workspaceId,
+          user_id: userId,
+          ...(selectedPlaybookId
+            ? {
+                playbook_id: selectedPlaybookId,
+                playbook_version_id: selectedPlaybookVersionId || undefined,
+              }
+            : {}),
+          ...(effectiveScope === 'bundle'
+            ? {
+                document_ids: normalizedMembers.map((member) => member.document_id),
+                member_roles: normalizedMembers,
+                primary_document_id: docsetPrimaryDocumentId,
+                precedence_policy: docsetPrecedencePolicy,
+                docset_mode: 'ephemeral',
+              }
+            : {}),
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+      if (!response.ok && response.status !== 202) {
+        throw new Error(json?.message || t('runFailed'));
+      }
+
+      onClose();
+      router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('runFailed'));
+    } finally {
+      setLoading(false);
+    }
   }, [
-    supportsTemplateRun,
-    onOpenAITools,
-    onClose,
-    router,
-    workspaceId,
+    docsetPrecedencePolicy,
+    docsetPrimaryDocumentId,
     documentId,
+    effectiveScope,
+    onClose,
+    onOpenAITools,
+    relatedDocumentIssues.length,
+    router,
     selectedPlaybookId,
     selectedPlaybookVersionId,
-    effectiveScope,
-    selectedBundleId,
+    sortedDocsetMembers,
+    supabase,
+    supportsTemplateRun,
+    t,
+    workspaceId,
   ]);
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-3xl">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-text-soft" />
@@ -470,9 +610,7 @@ export function RunAnalysisModal(props: {
         <CardContent className="space-y-5">
           {!supportsTemplateRun ? (
             <div className="space-y-3">
-              <p className="text-sm text-text-soft">
-                {t('templatesComingSoon')}
-              </p>
+              <p className="text-sm text-text-soft">{t('templatesComingSoon')}</p>
               <div className="flex gap-2">
                 <Button
                   variant="primary"
@@ -500,23 +638,21 @@ export function RunAnalysisModal(props: {
                       placeholder={localizedTemplateText('search')}
                     />
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                      {(['all', 'contract_operations', 'finance_operations', 'adjacent_domains', 'variants', 'custom'] as TemplateFilter[]).map(
-                        (filter) => (
-                          <button
-                            key={filter}
-                            type="button"
-                            onClick={() => setTemplateFilter(filter)}
-                            className={cn(
-                              'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                              templateFilter === filter
-                                ? 'bg-accent text-white'
-                                : 'bg-surface-alt text-text-soft hover:text-text'
-                            )}
-                          >
-                            {templateCategoryLabel(filter)}
-                          </button>
-                        )
-                      )}
+                      {(['all', 'contract_operations', 'finance_operations', 'adjacent_domains', 'variants', 'custom'] as TemplateFilter[]).map((filter) => (
+                        <button
+                          key={filter}
+                          type="button"
+                          onClick={() => setTemplateFilter(filter)}
+                          className={cn(
+                            'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                            templateFilter === filter
+                              ? 'bg-accent text-white'
+                              : 'bg-surface-alt text-text-soft hover:text-text'
+                          )}
+                        >
+                          {templateCategoryLabel(filter)}
+                        </button>
+                      ))}
                     </div>
                     <div className="space-y-2 max-h-72 overflow-auto pr-1">
                       <button
@@ -568,12 +704,7 @@ export function RunAnalysisModal(props: {
                                   ''
                               );
                             }}
-                            className={cn(
-                              'w-full rounded-xl border p-3 text-left transition-colors',
-                              selectedPlaybookId === recommendedSystemPlaybook.id
-                                ? 'border-accent bg-accent/5'
-                                : 'border-accent bg-accent/5 hover:border-accent/40'
-                            )}
+                            className="w-full rounded-xl border border-accent bg-accent/5 p-3 text-left transition-colors hover:border-accent/40"
                           >
                             <div className="flex items-start gap-3">
                               <div className="text-xl leading-none">{templateEmoji(recommendedSystemPlaybook)}</div>
@@ -598,48 +729,44 @@ export function RunAnalysisModal(props: {
                         </div>
                       )}
 
-                      {displayGroupedSystemPlaybooks.length > 0 && (
-                        <div className="space-y-2">
-                          {displayGroupedSystemPlaybooks.map(({ group, playbooks }) => (
-                            <div key={group} className="space-y-2">
-                              <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                                {getTemplateGroupLabel(group, isArabic ? 'ar' : 'en')}
-                              </div>
-                              {playbooks.map((playbook) => (
-                                <button
-                                  key={playbook.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedPlaybookId(playbook.id);
-                                    setSelectedPlaybookVersionId(playbook.current_version?.id || playbook.current_version_id || '');
-                                  }}
-                                  className={cn(
-                                    'w-full rounded-xl border p-3 text-left transition-colors',
-                                    selectedPlaybookId === playbook.id
-                                      ? 'border-accent bg-accent/5'
-                                      : 'border-border bg-surface-alt hover:border-accent/40'
-                                  )}
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <div className="text-xl leading-none">{templateEmoji(playbook)}</div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-text">{playbook.name}</span>
-                                        <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
-                                      </div>
-                                      <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
-                                        {getTemplateGroupLabel(getTemplateGroup(playbook), isArabic ? 'ar' : 'en')}
-                                      </div>
-                                      <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
-                                    </div>
-                                    {selectedPlaybookId === playbook.id ? <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> : null}
+                      {displayGroupedSystemPlaybooks.map(({ group, playbooks }) => (
+                        <div key={group} className="space-y-2">
+                          <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
+                            {getTemplateGroupLabel(group, isArabic ? 'ar' : 'en')}
+                          </div>
+                          {playbooks.map((playbook) => (
+                            <button
+                              key={playbook.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPlaybookId(playbook.id);
+                                setSelectedPlaybookVersionId(playbook.current_version?.id || playbook.current_version_id || '');
+                              }}
+                              className={cn(
+                                'w-full rounded-xl border p-3 text-left transition-colors',
+                                selectedPlaybookId === playbook.id
+                                  ? 'border-accent bg-accent/5'
+                                  : 'border-border bg-surface-alt hover:border-accent/40'
+                              )}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="text-xl leading-none">{templateEmoji(playbook)}</div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-text">{playbook.name}</span>
+                                    <Badge size="sm">{localizedTemplateText('systemLabel')}</Badge>
                                   </div>
-                                </button>
-                              ))}
-                            </div>
+                                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+                                    {getTemplateGroupLabel(getTemplateGroup(playbook), isArabic ? 'ar' : 'en')}
+                                  </div>
+                                  <p className="mt-1 text-sm text-text-soft">{templateDescription(playbook)}</p>
+                                </div>
+                                {selectedPlaybookId === playbook.id ? <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> : null}
+                              </div>
+                            </button>
                           ))}
                         </div>
-                      )}
+                      ))}
 
                       {filteredCustomPlaybooks.length > 0 && (
                         <div className="space-y-2">
@@ -692,30 +819,196 @@ export function RunAnalysisModal(props: {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-text">{t('scope.label')}</div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={effectiveScope === 'single' ? 'primary' : 'secondary'}
-                      size="sm"
-                      onClick={() => setScope('single')}
-                      disabled={enforcedScope === 'bundle'}
-                    >
-                      {t('scope.single')}
-                    </Button>
-                    <Button
-                      variant={effectiveScope === 'bundle' ? 'primary' : 'secondary'}
-                      size="sm"
-                      onClick={() => setScope('bundle')}
-                      disabled={enforcedScope === 'single'}
-                    >
-                      <Layers className="w-4 h-4" />
-                      {t('scope.bundle')}
-                    </Button>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-text">{t('scope.label')}</div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={effectiveScope === 'single' ? 'primary' : 'secondary'}
+                        size="sm"
+                        onClick={() => setScope('single')}
+                        disabled={enforcedScope === 'bundle'}
+                      >
+                        {t('scope.single')}
+                      </Button>
+                      <Button
+                        variant={effectiveScope === 'bundle' ? 'primary' : 'secondary'}
+                        size="sm"
+                        onClick={() => setScope('bundle')}
+                        disabled={enforcedScope === 'single'}
+                      >
+                        <Layers className="w-4 h-4" />
+                        {t('scope.related')}
+                      </Button>
+                    </div>
+                    <div className="text-xs text-text-soft">{t('scope.help')}</div>
                   </div>
-                  <div className="text-xs text-text-soft">
-                    {t('scope.help')}
-                  </div>
+
+                  {effectiveScope === 'bundle' ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-medium text-text">{t('related.label')}</div>
+                        <Button variant="secondary" size="sm" onClick={resetToCurrentDocument}>
+                          <RotateCcw className="w-4 h-4" />
+                          {t('related.reset')}
+                        </Button>
+                      </div>
+
+                      {rememberedSourceRunId ? (
+                        <div className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-text">
+                          {t('related.prefill')}
+                        </div>
+                      ) : null}
+
+                      <Input
+                        value={docsetSearch}
+                        onChange={(e) => setDocsetSearch(e.target.value)}
+                        placeholder={t('related.searchPlaceholder')}
+                      />
+
+                      <div className="max-h-40 space-y-2 overflow-auto rounded-xl border border-border bg-surface p-3">
+                        {filteredWorkspaceDocuments.map((doc) => {
+                          const inSelection = sortedDocsetMembers.some((member) => member.document_id === doc.id);
+                          return (
+                            <div key={doc.id} className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium text-text">{doc.title}</div>
+                              </div>
+                              <Button
+                                variant={inSelection ? 'secondary' : 'primary'}
+                                size="sm"
+                                onClick={() => (inSelection ? removeDocumentFromDocset(doc.id) : addDocumentToDocset(doc.id))}
+                              >
+                                {inSelection ? t('related.remove') : t('related.add')}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-text">
+                          {t('related.selectedCount', { count: sortedDocsetMembers.length })}
+                        </div>
+                        <div className="space-y-2">
+                          {sortedDocsetMembers.map((member, index) => {
+                            const doc = workspaceDocuments.find((item) => item.id === member.document_id);
+                            return (
+                              <div key={member.document_id} className="rounded-xl border border-border bg-surface-alt p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-sm font-medium text-text">{doc?.title || member.document_id}</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDocumentFromDocset(member.document_id)}
+                                    className="text-xs font-semibold text-error"
+                                  >
+                                    {t('related.remove')}
+                                  </button>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <select
+                                    value={member.role}
+                                    onChange={(e) => updateDocsetMemberRole(member.document_id, e.target.value)}
+                                    className="min-w-[8rem] rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text"
+                                  >
+                                    {roleOptions.map((role) => (
+                                      <option key={role} value={role}>
+                                        {role}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={index === 0}
+                                    onClick={() => moveDocsetMember(member.document_id, 'up')}
+                                  >
+                                    ↑
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={index === sortedDocsetMembers.length - 1}
+                                    onClick={() => moveDocsetMember(member.document_id, 'down')}
+                                  >
+                                    ↓
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-text">{t('related.primaryDocument')}</div>
+                          <select
+                            value={docsetPrimaryDocumentId}
+                            onChange={(e) => {
+                              clearRememberedRelatedDocuments();
+                              setDocsetPrimaryDocumentId(e.target.value);
+                            }}
+                            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text"
+                          >
+                            {sortedDocsetMembers.map((member) => {
+                              const doc = workspaceDocuments.find((item) => item.id === member.document_id);
+                              return (
+                                <option key={member.document_id} value={member.document_id}>
+                                  {doc?.title || member.document_id}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-text">{t('related.precedencePolicy')}</div>
+                          <select
+                            value={docsetPrecedencePolicy}
+                            onChange={(e) => {
+                              clearRememberedRelatedDocuments();
+                              setDocsetPrecedencePolicy(e.target.value as 'manual' | 'primary_first' | 'latest_wins');
+                            }}
+                            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text"
+                          >
+                            <option value="manual">{t('related.precedence.manual')}</option>
+                            <option value="primary_first">{t('related.precedence.primaryFirst')}</option>
+                            <option value="latest_wins">{t('related.precedence.latestWins')}</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {bundleSchemaRoles.length > 0 ? (
+                        <div className="rounded-xl border border-border bg-surface-alt p-4 space-y-2">
+                          <div className="text-sm font-semibold text-text">{t('related.requirementsTitle')}</div>
+                          <div className="flex flex-wrap gap-2">
+                            {bundleSchemaRoles.map((role) => (
+                              <Badge key={role.role} size="sm" variant={role.required ? 'warning' : 'default'}>
+                                {role.role}
+                                {role.required ? ' *' : ''}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {relatedDocumentIssues.length > 0 ? (
+                        <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 space-y-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-text">
+                            <AlertTriangle className="h-4 w-4 text-accent" />
+                            {t('related.validationTitle')}
+                          </div>
+                          <div className="space-y-1 text-sm text-text-soft">
+                            {relatedDocumentIssues.map((issue) => (
+                              <div key={issue}>{issue}</div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -725,48 +1018,9 @@ export function RunAnalysisModal(props: {
                 </div>
               ) : null}
 
-              {effectiveScope === 'bundle' ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-text">{t('bundle.label')}</div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={newBundleName}
-                        onChange={(e) => setNewBundleName(e.target.value)}
-                        placeholder={t('bundle.newNamePlaceholder')}
-                      />
-                      <Button variant="secondary" size="sm" onClick={createBundle} disabled={creatingBundle}>
-                        {creatingBundle ? <Spinner size="sm" /> : t('bundle.create')}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <select
-                    className="w-full px-3 py-2 rounded-lg bg-surface-alt border border-border text-sm"
-                    value={selectedBundleId}
-                    onChange={(e) => setSelectedBundleId(e.target.value)}
-                  >
-                    <option value="">{t('bundle.select')}</option>
-                    {bundles.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name || `Bundle ${b.id.slice(0, 8)}`}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="text-xs text-text-soft">
-                    {t('bundle.fallbackHint')}
-                  </div>
-                </div>
-              ) : null}
-
-              {effectiveScope === 'bundle' && bundleMemberIssues.length > 0 ? (
-                <div className="rounded-lg border border-border bg-surface-alt p-3">
-                  <div className="text-sm font-semibold text-text">{t('bundle.requirementsTitle')}</div>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-text-soft">
-                    {bundleMemberIssues.map((m, idx) => (
-                      <li key={idx}>{m}</li>
-                    ))}
-                  </ul>
+              {error ? (
+                <div className="rounded-xl border border-error/30 bg-error/5 px-3 py-2 text-sm text-error">
+                  {error}
                 </div>
               ) : null}
 
@@ -774,12 +1028,8 @@ export function RunAnalysisModal(props: {
                 <Button variant="secondary" onClick={onClose}>
                   {t('cancel')}
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={run}
-                  disabled={loading || (effectiveScope === 'bundle' && bundleMemberIssues.length > 0)}
-                >
-                  <Play className="w-4 h-4" />
+                <Button onClick={run} disabled={loading || (effectiveScope === 'bundle' && relatedDocumentIssues.length > 0)}>
+                  {loading ? <Spinner size="sm" /> : <Play className="w-4 h-4" />}
                   {t('run')}
                 </Button>
               </div>

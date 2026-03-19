@@ -1023,12 +1023,39 @@
     "close": "إغلاق",
     "cancel": "إلغاء",
     "run": "تشغيل",
+    "runFailed": "فشل التشغيل",
     "scope": {
       "label": "النطاق",
       "single": "مستند واحد",
-      "bundle": "حزمة مستندات",
-      "help": "الحزم مناسبة لاتفاقية رئيسية + أوامر عمل + ملاحق. يتم إظهار التعارضات بشكل صريح.",
+      "bundle": "مستندات مرتبطة",
+      "related": "مستندات مرتبطة",
+      "help": "أضف مستندات مرتبطة عند الحاجة إلى سياق عبر أكثر من مستند. يتذكر زحل آخر مجموعة ناجحة تلقائياً.",
       "enforced": "يتطلب هذا القالب نطاقًا"
+    },
+    "related": {
+      "label": "المستندات المرتبطة",
+      "reset": "العودة إلى هذا المستند فقط",
+      "prefill": "يتم استخدام المستندات المرتبطة من آخر تشغيل.",
+      "searchPlaceholder": "البحث في مستندات مساحة العمل",
+      "remove": "إزالة",
+      "add": "إضافة",
+      "selectedCount": "{count} محدد",
+      "primaryDocument": "المستند الأساسي",
+      "precedencePolicy": "أولوية المستندات",
+      "requirementsTitle": "متطلبات أدوار القالب",
+      "validationTitle": "تحقق من هذا الإعداد قبل التشغيل",
+      "precedence": {
+        "manual": "يدوي",
+        "primaryFirst": "الأساسي أولاً",
+        "latestWins": "الأحدث يتقدّم"
+      },
+      "validation": {
+        "minTwoDocuments": "يجب أن تحتوي المستندات المرتبطة على مستندين على الأقل.",
+        "currentDocumentRequired": "يجب تضمين المستند الحالي.",
+        "primaryDocumentRequired": "يجب أن يكون المستند الأساسي ضمن المستندات المحددة.",
+        "missingRequiredRole": "دور مطلوب مفقود: {role}",
+        "roleMustBeUnique": "لا يمكن تكرار هذا الدور: {role}"
+      }
     },
     "bundle": {
       "label": "الحزمة",
@@ -1089,11 +1116,11 @@
       "chat": "المحادثة",
       "defaultLabel": "تحليل العقد",
       "scopeSingle": "مستند واحد",
-      "scopeBundle": "حزمة",
+      "scopeBundle": "مستندات مرتبطة",
       "scopeDocset": "مجموعة مستندات",
-      "scopeDocsetSaved": "مجموعة محفوظة",
-      "scopeDocsetUnsaved": "مجموعة غير محفوظة",
-      "unsaved": "غير محفوظة",
+      "scopeDocsetSaved": "مستندات مرتبطة",
+      "scopeDocsetUnsaved": "مستندات مرتبطة",
+      "unsaved": "مستندات مرتبطة",
       "historicalReadOnly": "تعرض نتائج تحليل سابق. التعديل غير متاح في وضع القراءة.",
       "selectedStatus": "حالة التحليل المحدد: {status}. يُعرض التقدّم المباشر عند توفّره."
     },
@@ -1103,11 +1130,11 @@
       "scopeSingle": "مستند واحد",
       "scopeDocset": "مجموعة مستندات",
       "scopeEnforced": "هذا القالب يتطلب: {scope}",
-      "title": "مجموعة المستندات",
-      "help": "حدّد المستندات التي يشملها هذا التحليل.",
-      "savedPickerPlaceholder": "اختيار مجموعة محفوظة",
-      "manageSaved": "إدارة المحفوظ",
-      "unnamed": "مجموعة بدون اسم",
+      "title": "المستندات المرتبطة",
+      "help": "أضف المستندات الداعمة لهذا التشغيل. يتذكر زحل آخر مجموعة ناجحة تلقائياً.",
+      "savedPickerPlaceholder": "استخدام المستندات المرتبطة المتذكَّرة",
+      "manageSaved": "إدارة",
+      "unnamed": "مجموعة مرتبطة بدون اسم",
       "searchPlaceholder": "البحث في مستندات مساحة العمل",
       "workspaceRoot": "المجلد الرئيسي",
       "remove": "إزالة",
@@ -1116,21 +1143,25 @@
       "emptySelection": "لم يتم تحديد مستندات بعد.",
       "primaryDocument": "المستند الأساسي",
       "precedencePolicy": "أولوية المستندات",
-      "saveToggle": "حفظ هذه المجموعة لاستخدامها لاحقاً",
-      "namePlaceholder": "اسم المجموعة (اختياري)",
+      "saveToggle": "تذكّر هذه المستندات المرتبطة",
+      "namePlaceholder": "اسم المجموعة المرتبطة (اختياري)",
       "run": "بدء التحليل",
       "running": "جارٍ التحليل…",
+      "prefill": "يتم استخدام المستندات المرتبطة من آخر تشغيل ناجح.",
+      "reset": "العودة إلى هذا المستند فقط",
+      "remembered": "متذكّرة من آخر تشغيل",
       "precedence": {
         "manual": "يدوي",
         "primaryFirst": "الأساسي أولاً",
         "latestWins": "الأحدث يتقدّم"
       },
       "validation": {
-        "minTwoDocuments": "يجب أن تحتوي المجموعة على مستندين على الأقل.",
-        "currentDocumentRequired": "يجب تضمين المستند الحالي في المجموعة.",
+        "minTwoDocuments": "يجب أن تحتوي المستندات المرتبطة على مستندين على الأقل.",
+        "currentDocumentRequired": "يجب تضمين المستند الحالي.",
+        "primaryDocumentRequired": "يجب أن يكون المستند الأساسي ضمن المستندات المحددة.",
         "missingRequiredRole": "دور مطلوب مفقود: {role}",
         "roleMustBeUnique": "لا يمكن تكرار هذا الدور: {role}",
-        "invalidDocset": "إعداد المجموعة غير صالح."
+        "invalidDocset": "إعداد المستندات المرتبطة غير صالح."
       }
     },
     "tabs": {

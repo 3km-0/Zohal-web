@@ -1,11 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Spinner } from '@/components/ui';
 import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
+import type { RememberedRelatedDocuments } from '@/types/analysis-runs';
 
 interface ExperiencePublicationPanelProps {
   workspaceId: string;
@@ -44,6 +48,9 @@ type PublicationStatus = {
 
 export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicationPanelProps) {
   const t = useTranslations('experiencesPage');
+  const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
+  const documentId = searchParams.get('document_id');
   const [experienceId, setExperienceId] = useState(`exp_${workspaceId.replace(/-/g, '_')}_investor_dashboard`);
   const [corpusId, setCorpusId] = useState(`corpus_${workspaceId.replace(/-/g, '_')}_investor_dashboard`);
   const [title, setTitle] = useState('Investor Dashboard');
@@ -54,6 +61,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [rememberedRelatedDocuments, setRememberedRelatedDocuments] = useState<RememberedRelatedDocuments | null>(null);
+  const [documentTitlesById, setDocumentTitlesById] = useState<Record<string, string>>({});
 
   const fetchStatus = useCallback(async () => {
     if (!experienceId.trim()) return;
@@ -77,6 +86,70 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     }, 5000);
     return () => window.clearInterval(timer);
   }, [fetchStatus, t]);
+
+  useEffect(() => {
+    if (!documentId) {
+      setRememberedRelatedDocuments(null);
+      setDocumentTitlesById({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: runs, error: runsError } = await supabase
+          .from('extraction_runs')
+          .select('id,status,created_at,updated_at,input_config,output_summary,extraction_type,document_id,workspace_id,user_id,completed_at,error,model,prompt_version,started_at')
+          .eq('workspace_id', workspaceId)
+          .eq('document_id', documentId)
+          .eq('extraction_type', 'contract_analysis')
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (runsError || !runs || cancelled) return;
+
+        const remembered = selectRememberedRelatedDocuments(
+          (runs as any[]).map((run) => toAnalysisRunSummary(run)),
+          documentId
+        );
+
+        if (!remembered) {
+          if (!cancelled) {
+            setRememberedRelatedDocuments(null);
+            setDocumentTitlesById({});
+          }
+          return;
+        }
+
+        const { data: documents } = await supabase
+          .from('documents')
+          .select('id,title')
+          .in('id', remembered.documentIds)
+          .eq('workspace_id', workspaceId)
+          .is('deleted_at', null);
+
+        if (cancelled) return;
+
+        setRememberedRelatedDocuments(remembered);
+        setDocumentTitlesById(
+          Object.fromEntries(
+            ((documents || []) as Array<{ id: string; title: string | null }>).map((doc) => [
+              String(doc.id),
+              String(doc.title || doc.id),
+            ])
+          )
+        );
+      } catch {
+        if (!cancelled) {
+          setRememberedRelatedDocuments(null);
+          setDocumentTitlesById({});
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, supabase, workspaceId]);
 
   const compilePayload = useMemo(
     () => ({
@@ -132,6 +205,25 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               <CardDescription>{t('configure.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {rememberedRelatedDocuments ? (
+                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                  <div className="font-semibold text-text">Related documents remembered from last analysis</div>
+                  <p className="mt-1 text-text-soft">
+                    Experience publish still compiles from the primary document only in this release.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {rememberedRelatedDocuments.memberRoles.map((member) => (
+                      <span
+                        key={member.documentId}
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-text"
+                      >
+                        <span>{documentTitlesById[member.documentId] || member.documentId}</span>
+                        <span className="text-text-soft">{member.role}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="grid gap-4 md:grid-cols-2">
                 <Input label={t('fields.experienceId')} value={experienceId} onChange={(e) => setExperienceId(e.target.value)} />
                 <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />

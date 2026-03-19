@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, toAnalysisRunSummary } from '@/lib/analysis/runs';
+import {
+  normalizeAnalysisRunStatus,
+  selectDefaultAnalysisRun,
+  selectRememberedRelatedDocuments,
+  toAnalysisRunSummary,
+} from '@/lib/analysis/runs';
 
 describe('analysis run utilities', () => {
   it('normalizes statuses with action status priority', () => {
@@ -70,6 +75,7 @@ describe('analysis run utilities', () => {
     expect(summary.templateId).toBe('template-1');
     expect(summary.versionId).toBe('version-1');
     expect(summary.verificationObjectId).toBe('vo-1');
+    expect(summary.rememberedRelatedDocuments).toBeNull();
   });
 
   it('derives ephemeral docset mode from input config', () => {
@@ -104,6 +110,137 @@ describe('analysis run utilities', () => {
     expect(summary.savedDocsetName).toBe('Q1 Vendor Docs');
   });
 
+  it('parses remembered related documents from explicit multi-document input', () => {
+    const summary = toAnalysisRunSummary(
+      {
+        id: 'run-3',
+        status: 'completed',
+        created_at: '2026-01-03T00:00:00Z',
+        updated_at: '2026-01-03T00:01:00Z',
+        input_config: {
+          document_ids: ['doc-1', 'doc-2'],
+          primary_document_id: 'doc-1',
+          precedence_policy: 'latest_wins',
+          member_roles: [
+            { document_id: 'doc-1', role: 'primary', sort_order: 0 },
+            { document_id: 'doc-2', role: 'amendment', sort_order: 1 },
+          ],
+        },
+        output_summary: {},
+        extraction_type: 'contract_analysis',
+        document_id: 'doc-1',
+        workspace_id: 'ws-1',
+        user_id: 'u-1',
+        completed_at: null,
+        error: null,
+        model: 'model',
+        prompt_version: '1',
+        started_at: null,
+      } as any
+    );
+
+    expect(summary.rememberedRelatedDocuments).toEqual({
+      sourceRunId: 'run-3',
+      scope: 'bundle',
+      documentIds: ['doc-1', 'doc-2'],
+      memberRoles: [
+        { documentId: 'doc-1', role: 'primary', sortOrder: 0 },
+        { documentId: 'doc-2', role: 'amendment', sortOrder: 1 },
+      ],
+      primaryDocumentId: 'doc-1',
+      precedencePolicy: 'latest_wins',
+    });
+  });
+
+  it('uses the latest successful run to pick remembered related documents', () => {
+    const remembered = selectRememberedRelatedDocuments(
+      [
+        {
+          runId: 'r-new',
+          actionId: null,
+          status: 'succeeded',
+          createdAt: '2026-01-02T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+          templateId: null,
+          playbookLabel: null,
+          scope: 'single',
+          packId: null,
+          docsetMode: null,
+          savedDocsetName: null,
+          versionId: 'v-new',
+          verificationObjectId: 'vo-new',
+          rememberedRelatedDocuments: null,
+        },
+        {
+          runId: 'r-old',
+          actionId: null,
+          status: 'succeeded',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+          templateId: null,
+          playbookLabel: null,
+          scope: 'bundle',
+          packId: null,
+          docsetMode: 'ephemeral',
+          savedDocsetName: null,
+          versionId: 'v-old',
+          verificationObjectId: 'vo-old',
+          rememberedRelatedDocuments: {
+            sourceRunId: 'r-old',
+            scope: 'bundle',
+            documentIds: ['doc-1', 'doc-2'],
+            memberRoles: [
+              { documentId: 'doc-1', role: 'primary', sortOrder: 0 },
+              { documentId: 'doc-2', role: 'other', sortOrder: 1 },
+            ],
+            primaryDocumentId: 'doc-1',
+            precedencePolicy: 'manual',
+          },
+        },
+      ],
+      'doc-1'
+    );
+
+    expect(remembered).toBeNull();
+  });
+
+  it('returns the latest successful multi-document remembered set when it is current', () => {
+    const remembered = selectRememberedRelatedDocuments(
+      [
+        {
+          runId: 'r-latest',
+          actionId: null,
+          status: 'succeeded',
+          createdAt: '2026-01-03T00:00:00Z',
+          updatedAt: '2026-01-03T00:00:00Z',
+          templateId: null,
+          playbookLabel: null,
+          scope: 'bundle',
+          packId: null,
+          docsetMode: 'ephemeral',
+          savedDocsetName: null,
+          versionId: 'v-latest',
+          verificationObjectId: 'vo-latest',
+          rememberedRelatedDocuments: {
+            sourceRunId: 'r-latest',
+            scope: 'bundle',
+            documentIds: ['doc-1', 'doc-2', 'doc-3'],
+            memberRoles: [
+              { documentId: 'doc-1', role: 'primary', sortOrder: 0 },
+              { documentId: 'doc-2', role: 'other', sortOrder: 1 },
+              { documentId: 'doc-3', role: 'other', sortOrder: 2 },
+            ],
+            primaryDocumentId: 'doc-1',
+            precedencePolicy: 'manual',
+          },
+        },
+      ],
+      'doc-1'
+    );
+
+    expect(remembered?.documentIds).toEqual(['doc-1', 'doc-2', 'doc-3']);
+  });
+
   it('selects newest run with a version by default', () => {
     const selected = selectDefaultAnalysisRun([
       {
@@ -120,6 +257,7 @@ describe('analysis run utilities', () => {
         savedDocsetName: null,
         versionId: null,
         verificationObjectId: null,
+        rememberedRelatedDocuments: null,
       },
       {
         runId: 'r2',
@@ -135,6 +273,7 @@ describe('analysis run utilities', () => {
         savedDocsetName: null,
         versionId: 'v2',
         verificationObjectId: 'vo',
+        rememberedRelatedDocuments: null,
       },
     ]);
 
