@@ -14,10 +14,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Link2,
+  Building2,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { getEffectiveSubscriptionTier } from '@/lib/subscription';
 
 interface SidebarProps {
   className?: string;
@@ -30,18 +34,38 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const tCommon = useTranslations('common');
   const t = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const supabase = useMemo(() => createClient(), []);
+  const [showOrgTab, setShowOrgTab] = useState(false);
 
   useEffect(() => {
     onClose?.();
   }, [pathname, onClose]);
 
-  // NOTE: Tasks removed from sidebar as we now use Apple Reminders integration on iOS.
-  // Web users can still access /tasks page if needed, but it's hidden from main nav.
+  useEffect(() => {
+    async function checkTier() {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('subscription_tier, subscription_status, subscription_expires_at, grace_period_ends_at')
+        .eq('id', user.id)
+        .single();
+      if (data) {
+        const tier = getEffectiveSubscriptionTier(data);
+        setShowOrgTab(tier === 'team' || tier === 'premium');
+      }
+    }
+    checkTier();
+  }, [supabase, user]);
+
   const navItems = [
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
     { href: '/ask', label: t('ask'), icon: Search },
+    { href: '/integrations', label: t('integrations'), icon: Link2 },
+    ...(showOrgTab
+      ? [{ href: '/organization', label: t('organization'), icon: Building2 }]
+      : []),
   ];
 
   const bottomItems = [
@@ -53,6 +77,12 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const isActive = (href: string) => {
     if (href === '/workspaces') {
       return pathname === '/workspaces' || pathname.startsWith('/workspaces/');
+    }
+    if (href === '/integrations') {
+      return pathname === '/integrations' || pathname.startsWith('/integrations/');
+    }
+    if (href === '/organization') {
+      return pathname === '/organization' || pathname.startsWith('/organization/');
     }
     return pathname.startsWith(href);
   };

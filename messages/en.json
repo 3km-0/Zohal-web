@@ -49,7 +49,9 @@
     "privacy": "Privacy",
     "support": "Support",
     "library": "Library",
-    "trash": "Trash"
+    "trash": "Trash",
+    "integrations": "Integrations",
+    "organization": "Organization"
   },
   "auth": {
     "login": "Log In",
@@ -217,7 +219,7 @@
     "agentHeading": "Start with the agent",
     "ask": "Ask",
     "activity": "Activity",
-    "history": "Activity",
+    "history": "History",
     "run": "Runs",
     "runs": "Runs",
     "actions": "Actions",
@@ -255,6 +257,7 @@
     "savedToNotesBody": "This response is now available in workspace Notes.",
     "conversationFallback": "Conversation",
     "quickActions": {
+      "analysis": "Analysis",
       "runAnalysis": "Run analysis",
       "openAnalysis": "Open analysis",
       "templates": "Templates",
@@ -709,6 +712,30 @@
     "logOut": "Log Out",
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your workspaces, documents, and notes will be permanently deleted.",
     "yesDeleteAccount": "Yes, Delete My Account"
+  },
+  "integrationsPage": {
+    "title": "Integrations",
+    "description": "Connect your cloud accounts to import files and sync calendar events.",
+    "google": "Google",
+    "googleDesc": "Drive & Calendar",
+    "microsoft": "Microsoft",
+    "microsoftDesc": "OneDrive & Calendar",
+    "connected": "Connected",
+    "connect": "Connect",
+    "disconnect": "Disconnect"
+  },
+  "organizationPage": {
+    "title": "Organization",
+    "noOrganizations": "No organizations found. Organizations are available on Team and Enterprise plans.",
+    "defaultOrg": "Default organization",
+    "none": "None",
+    "save": "Save",
+    "accessControl": "Access Control",
+    "multiUser": "Enterprise multi-user",
+    "multiUserDesc": "Enable workspace sharing via members. Safe to keep off until you're ready to flip.",
+    "workspaceMembers": "Workspace Members",
+    "workspaceMembersDesc": "Manage members and roles for each workspace in your organization.",
+    "manageMembers": "Manage members"
   },
   "dataLocalityPage": {
     "title": "Data Locality",

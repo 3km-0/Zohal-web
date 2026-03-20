@@ -49,7 +49,9 @@
     "privacy": "الخصوصية",
     "support": "الدعم",
     "library": "المكتبة",
-    "trash": "السلة"
+    "trash": "السلة",
+    "integrations": "التكاملات",
+    "organization": "المؤسسة"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -217,7 +219,7 @@
     "agentHeading": "ابدأ مع الوكيل",
     "ask": "اسأل",
     "activity": "النشاط",
-    "history": "النشاط",
+    "history": "السجل",
     "run": "عمليات التشغيل",
     "runs": "عمليات التشغيل",
     "actions": "الإجراءات",
@@ -255,6 +257,7 @@
     "savedToNotesBody": "أصبحت هذه الإجابة متاحة الآن في ملاحظات مساحة العمل.",
     "conversationFallback": "محادثة",
     "quickActions": {
+      "analysis": "التحليل",
       "runAnalysis": "تشغيل التحليل",
       "openAnalysis": "فتح التحليل",
       "templates": "القوالب",
@@ -709,6 +712,30 @@
     "logOut": "تسجيل الخروج",
     "deleteAccountConfirm": "هل أنت متأكد من حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع مساحات العمل والمستندات والملاحظات بشكل دائم.",
     "yesDeleteAccount": "نعم، احذف حسابي"
+  },
+  "integrationsPage": {
+    "title": "التكاملات",
+    "description": "اربط حساباتك السحابية لاستيراد الملفات ومزامنة أحداث التقويم.",
+    "google": "جوجل",
+    "googleDesc": "درايف والتقويم",
+    "microsoft": "مايكروسوفت",
+    "microsoftDesc": "ون درايف والتقويم",
+    "connected": "متصل",
+    "connect": "ربط",
+    "disconnect": "فصل"
+  },
+  "organizationPage": {
+    "title": "المؤسسة",
+    "noOrganizations": "لا توجد مؤسسات. المؤسسات متاحة في خطط الفريق والمؤسسات.",
+    "defaultOrg": "المؤسسة الافتراضية",
+    "none": "لا يوجد",
+    "save": "حفظ",
+    "accessControl": "التحكم بالوصول",
+    "multiUser": "وضع المستخدمين المتعددين",
+    "multiUserDesc": "تفعيل مشاركة مساحات العمل عبر الأعضاء. آمن للإبقاء معطّلاً حتى تكون جاهزاً.",
+    "workspaceMembers": "أعضاء مساحة العمل",
+    "workspaceMembersDesc": "إدارة الأعضاء والأدوار لكل مساحة عمل في مؤسستك.",
+    "manageMembers": "إدارة الأعضاء"
   },
   "dataLocalityPage": {
     "title": "موقع البيانات",
