@@ -14,15 +14,15 @@
   --text-soft: #78716c;
   --text-muted: #a8a29e;
   --border: #e7e5e4;
-  --accent: #0d9488;
-  --accent-alt: #0f766e;
+  --accent: #4f46e5;
+  --accent-alt: #4338ca;
   --success: #16a34a;
   --error: #dc2626;
   --warning: #b45309;
   --warning-soft: rgba(180, 83, 9, 0.06);
-  --highlight: #134e4a;
-  --accent-soft: rgba(13, 148, 136, 0.08);
-  --accent-dim: rgba(13, 148, 136, 0.04);
+  --highlight: #312e81;
+  --accent-soft: rgba(79, 70, 229, 0.07);
+  --accent-dim: rgba(79, 70, 229, 0.04);
   --accent-text: #ffffff;
   --button-primary-bg: #1c1917;
   --button-primary-bg-hover: #292524;
@@ -59,18 +59,18 @@
   --text-soft: rgba(245, 240, 230, 0.55);
   --text-muted: rgba(245, 240, 230, 0.35);
   --border: rgba(255, 255, 255, 0.06);
-  --accent: #e2c87e;
+  --accent: #c4a45a;
   --highlight: #f5f0e6;
   --accent-alt: #e2c87e;
   --success: #4ade80;
   --error: #f87171;
-  --warning: #e2c87e;
-  --warning-soft: rgba(226, 200, 126, 0.12);
-  --accent-soft: rgba(226, 200, 126, 0.15);
-  --accent-dim: rgba(226, 200, 126, 0.08);
+  --warning: #f59e0b;
+  --warning-soft: rgba(196, 164, 90, 0.12);
+  --accent-soft: rgba(196, 164, 90, 0.15);
+  --accent-dim: rgba(196, 164, 90, 0.08);
   --accent-text: #1a1a1a;
-  --button-primary-bg: #e2c87e;
-  --button-primary-bg-hover: #ead79c;
+  --button-primary-bg: #c4a45a;
+  --button-primary-bg-hover: #e2c87e;
   --button-primary-text: #1a1a1a;
   --grid-color: transparent;
   --grid-opacity: 0;
@@ -91,18 +91,18 @@
   --text-soft: rgba(245, 240, 230, 0.55);
   --text-muted: rgba(245, 240, 230, 0.35);
   --border: rgba(255, 255, 255, 0.06);
-  --accent: #e2c87e;
+  --accent: #c4a45a;
   --highlight: #f5f0e6;
   --accent-alt: #e2c87e;
   --success: #4ade80;
   --error: #f87171;
-  --warning: #e2c87e;
-  --warning-soft: rgba(226, 200, 126, 0.12);
-  --accent-soft: rgba(226, 200, 126, 0.15);
-  --accent-dim: rgba(226, 200, 126, 0.08);
+  --warning: #f59e0b;
+  --warning-soft: rgba(196, 164, 90, 0.12);
+  --accent-soft: rgba(196, 164, 90, 0.15);
+  --accent-dim: rgba(196, 164, 90, 0.08);
   --accent-text: #1a1a1a;
-  --button-primary-bg: #e2c87e;
-  --button-primary-bg-hover: #ead79c;
+  --button-primary-bg: #c4a45a;
+  --button-primary-bg-hover: #e2c87e;
   --button-primary-text: #1a1a1a;
   --grid-color: transparent;
   --grid-opacity: 0;
@@ -123,18 +123,18 @@
   --text-soft: rgba(245, 240, 230, 0.55);
   --text-muted: rgba(245, 240, 230, 0.35);
   --border: rgba(255, 255, 255, 0.06);
-  --accent: #e2c87e;
+  --accent: #c4a45a;
   --highlight: #f5f0e6;
   --accent-alt: #e2c87e;
   --success: #4ade80;
   --error: #f87171;
-  --warning: #e2c87e;
-  --warning-soft: rgba(226, 200, 126, 0.12);
-  --accent-soft: rgba(226, 200, 126, 0.15);
-  --accent-dim: rgba(226, 200, 126, 0.08);
+  --warning: #f59e0b;
+  --warning-soft: rgba(196, 164, 90, 0.12);
+  --accent-soft: rgba(196, 164, 90, 0.15);
+  --accent-dim: rgba(196, 164, 90, 0.08);
   --accent-text: #1a1a1a;
-  --button-primary-bg: #e2c87e;
-  --button-primary-bg-hover: #ead79c;
+  --button-primary-bg: #c4a45a;
+  --button-primary-bg-hover: #e2c87e;
   --button-primary-text: #1a1a1a;
   --grid-color: transparent;
   --grid-opacity: 0;
@@ -157,15 +157,15 @@
 
   --border: #e7e5e4;
 
-  --accent: #0d9488;
-  --accent-alt: #0f766e;
-  --highlight: #134e4a;
+  --accent: #4f46e5;
+  --accent-alt: #4338ca;
+  --highlight: #312e81;
   --success: #16a34a;
   --error: #b91c1c;
   --warning: #b45309;
   --warning-soft: rgba(180, 83, 9, 0.06);
-  --accent-soft: rgba(13, 148, 136, 0.08);
-  --accent-dim: rgba(13, 148, 136, 0.04);
+  --accent-soft: rgba(79, 70, 229, 0.07);
+  --accent-dim: rgba(79, 70, 229, 0.04);
   --accent-text: #ffffff;
   --grid-color: transparent;
   --grid-opacity: 0;
@@ -190,15 +190,15 @@
 
   --border: rgba(255, 255, 255, 0.06);
 
-  --accent: #e2c87e;
+  --accent: #c4a45a;
   --accent-alt: #e2c87e;
   --highlight: #f5f0e6;
   --success: #4ade80;
   --error: #f87171;
-  --warning: #e2c87e;
-  --warning-soft: rgba(226, 200, 126, 0.12);
-  --accent-soft: rgba(226, 200, 126, 0.15);
-  --accent-dim: rgba(226, 200, 126, 0.08);
+  --warning: #f59e0b;
+  --warning-soft: rgba(196, 164, 90, 0.12);
+  --accent-soft: rgba(196, 164, 90, 0.15);
+  --accent-dim: rgba(196, 164, 90, 0.08);
   --accent-text: #1a1a1a;
   --grid-color: transparent;
   --grid-opacity: 0;
@@ -240,7 +240,7 @@ body {
 }
 
 .website-shell ::selection {
-  background: var(--accent-soft, rgba(13, 148, 136, 0.14));
+  background: var(--accent-soft, rgba(79, 70, 229, 0.14));
   color: var(--text);
 }
 
