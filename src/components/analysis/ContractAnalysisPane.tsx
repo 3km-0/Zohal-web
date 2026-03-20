@@ -64,7 +64,13 @@ import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
 import type { AnalysisRunSummary } from '@/types/analysis-runs';
-import { normalizeAnalysisRunStatus, selectDefaultAnalysisRun, selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
+import {
+  mergeVerificationObjectFallbackRun,
+  normalizeAnalysisRunStatus,
+  selectDefaultAnalysisRun,
+  selectRememberedRelatedDocuments,
+  toAnalysisRunSummary,
+} from '@/lib/analysis/runs';
 import {
   deriveModuleDescriptors,
   deriveTabDescriptors,
@@ -1086,14 +1092,22 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   async function loadRuns(options?: { keepSelection?: boolean }) {
     setRunsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('extraction_runs')
-        .select('id, status, created_at, updated_at, input_config, output_summary')
-        .eq('workspace_id', workspaceId)
-        .eq('document_id', documentId)
-        .eq('extraction_type', 'contract_analysis')
-        .order('created_at', { ascending: false })
-        .limit(30);
+      const [{ data, error }, { data: verificationObject }] = await Promise.all([
+        supabase
+          .from('extraction_runs')
+          .select('id, status, created_at, updated_at, input_config, output_summary')
+          .eq('workspace_id', workspaceId)
+          .eq('document_id', documentId)
+          .eq('extraction_type', 'contract_analysis')
+          .order('created_at', { ascending: false })
+          .limit(30),
+        supabase
+          .from('verification_objects')
+          .select('id, title, state, created_at, updated_at, current_version_id')
+          .eq('document_id', documentId)
+          .eq('object_type', 'contract_analysis')
+          .maybeSingle(),
+      ]);
       if (error || !data) {
         setRuns([]);
         return;
@@ -1123,8 +1137,8 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
         });
       }
 
-      const normalized = rows
-        .map((row) => {
+      const normalized = mergeVerificationObjectFallbackRun(
+        rows.map((row) => {
           const input = row.input_config && typeof row.input_config === 'object' ? row.input_config : {};
           const actionId = (input as any).action_id || (input as any).actionId || null;
           const action = actionId ? actionsById.get(String(actionId)) : null;
@@ -1149,14 +1163,15 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
             } as any,
             action
           );
-        })
-        .map((run) => {
+        }).map((run) => {
           const action = run.actionId ? actionsById.get(run.actionId) : null;
           return {
             ...run,
             status: normalizeAnalysisRunStatus(run.status, action?.status ?? null),
           } as AnalysisRunSummary;
-        });
+        }),
+        verificationObject as any
+      );
 
       setRuns(normalized);
 

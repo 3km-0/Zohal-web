@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Clock, FileText, MessageSquare } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import { toAnalysisRunSummary } from '@/lib/analysis/runs';
+import { mergeVerificationObjectFallbackRun, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import type { AnalysisRunSummary } from '@/types/analysis-runs';
 
 type ConversationSummary = {
@@ -64,7 +64,7 @@ export function DocumentAgentActivityPanel({
   const loadActivity = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: explanationRows }, { data: runRows }] = await Promise.all([
+      const [{ data: explanationRows }, { data: runRows }, { data: verificationObject }] = await Promise.all([
         supabase
           .from('explanations')
           .select('conversation_id, input_text, response_text, created_at')
@@ -79,6 +79,12 @@ export function DocumentAgentActivityPanel({
           .eq('document_id', documentId)
           .order('created_at', { ascending: false })
           .limit(20),
+        supabase
+          .from('verification_objects')
+          .select('id, title, state, created_at, updated_at, current_version_id')
+          .eq('document_id', documentId)
+          .eq('object_type', 'contract_analysis')
+          .maybeSingle(),
       ]);
 
       const conversationsMap = new Map<string, ConversationSummary>();
@@ -132,11 +138,18 @@ export function DocumentAgentActivityPanel({
         conversationId: item.id,
       }));
 
-      const runItems: ActivityItem[] = (runRows ?? []).map((row) => {
-        const summary = toAnalysisRunSummary(
-          row as never,
-          (row.action_id ? actionsById.get(String(row.action_id)) : null) as never
-        );
+      const normalizedRuns = mergeVerificationObjectFallbackRun(
+        (runRows ?? []).map((row) => {
+          const summary = toAnalysisRunSummary(
+            row as never,
+            (row.action_id ? actionsById.get(String(row.action_id)) : null) as never
+          );
+          return summary;
+        }),
+        verificationObject as never
+      );
+
+      const runItems: ActivityItem[] = normalizedRuns.map((summary) => {
         return {
           id: `analysis_run:${summary.runId}`,
           kind: 'analysis_run',

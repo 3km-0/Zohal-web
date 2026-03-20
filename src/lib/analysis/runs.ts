@@ -11,6 +11,7 @@ import type {
 
 type ExtractionRunRow = Database['public']['Tables']['extraction_runs']['Row'];
 type ActionRow = Database['public']['Tables']['actions']['Row'];
+type VerificationObjectRow = Database['public']['Tables']['verification_objects']['Row'];
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -259,6 +260,50 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     verificationObjectId,
     rememberedRelatedDocuments,
   };
+}
+
+export function mergeVerificationObjectFallbackRun(
+  runs: AnalysisRunSummary[],
+  verificationObject:
+    | Pick<VerificationObjectRow, 'id' | 'title' | 'state' | 'created_at' | 'updated_at' | 'current_version_id'>
+    | null
+    | undefined
+): AnalysisRunSummary[] {
+  const verificationObjectId = asString(verificationObject?.id);
+  const versionId = asString(verificationObject?.current_version_id);
+  if (!verificationObjectId || !versionId) return runs;
+
+  const alreadyCovered = runs.some((run) => {
+    return run.versionId === versionId || run.verificationObjectId === verificationObjectId;
+  });
+  if (alreadyCovered) return runs;
+
+  const fallbackRun: AnalysisRunSummary = {
+    runId: `vo:${verificationObjectId}:${versionId}`,
+    actionId: null,
+    status: 'succeeded',
+    createdAt:
+      asString(verificationObject?.updated_at) ||
+      asString(verificationObject?.created_at) ||
+      new Date(0).toISOString(),
+    updatedAt:
+      asString(verificationObject?.updated_at) ||
+      asString(verificationObject?.created_at) ||
+      new Date(0).toISOString(),
+    templateId: null,
+    playbookLabel: asString(verificationObject?.title),
+    scope: 'single',
+    packId: null,
+    docsetMode: null,
+    savedDocsetName: null,
+    versionId,
+    verificationObjectId,
+    rememberedRelatedDocuments: null,
+  };
+
+  return [fallbackRun, ...runs].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
 }
 
 export function selectDefaultAnalysisRun(runs: AnalysisRunSummary[]): AnalysisRunSummary | null {

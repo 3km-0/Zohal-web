@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  mergeVerificationObjectFallbackRun,
   normalizeAnalysisRunStatus,
   selectDefaultAnalysisRun,
   selectRememberedRelatedDocuments,
@@ -278,5 +279,59 @@ describe('analysis run utilities', () => {
     ]);
 
     expect(selected?.runId).toBe('r2');
+  });
+
+  it('adds a fallback current analysis when verification object exists without a run manifest', () => {
+    const runs = mergeVerificationObjectFallbackRun(
+      [],
+      {
+        id: 'vo-1',
+        title: 'Contract analysis',
+        state: 'provisional',
+        created_at: '2026-01-05T00:00:00Z',
+        updated_at: '2026-01-05T00:10:00Z',
+        current_version_id: 'version-1',
+      } as any
+    );
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.runId).toBe('vo:vo-1:version-1');
+    expect(runs[0]?.versionId).toBe('version-1');
+    expect(runs[0]?.verificationObjectId).toBe('vo-1');
+    expect(runs[0]?.status).toBe('succeeded');
+  });
+
+  it('does not duplicate a run when the current verification object is already covered', () => {
+    const runs = mergeVerificationObjectFallbackRun(
+      [
+        {
+          runId: 'r1',
+          actionId: null,
+          status: 'succeeded',
+          createdAt: '2026-01-05T00:00:00Z',
+          updatedAt: '2026-01-05T00:10:00Z',
+          templateId: null,
+          playbookLabel: null,
+          scope: 'single',
+          packId: null,
+          docsetMode: null,
+          savedDocsetName: null,
+          versionId: 'version-1',
+          verificationObjectId: 'vo-1',
+          rememberedRelatedDocuments: null,
+        },
+      ],
+      {
+        id: 'vo-1',
+        title: 'Contract analysis',
+        state: 'provisional',
+        created_at: '2026-01-05T00:00:00Z',
+        updated_at: '2026-01-05T00:10:00Z',
+        current_version_id: 'version-1',
+      } as any
+    );
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.runId).toBe('r1');
   });
 });
