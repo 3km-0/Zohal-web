@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Table2, ScrollText, ClipboardCheck, Puzzle } from 'lucide-react';
+import { ArrowLeft, Download, Scale, Calendar, FileText, ShieldAlert, AlertTriangle, CheckCircle, X, FileSearch, CircleHelp, Zap, Package, BookOpen, Layers, RefreshCw, Table2, ScrollText, ClipboardCheck, Puzzle, Globe2 } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -131,9 +131,59 @@ function toRejectedSet(value: unknown): Set<string> {
 interface ContractAnalysisPaneProps {
   embedded?: boolean;
   initialView?: 'results' | 'run';
+  presentation?: 'full' | 'run-config';
+  onRunConfigured?: () => void;
 }
 
-export function ContractAnalysisPane({ embedded = false, initialView = 'results' }: ContractAnalysisPaneProps = {}) {
+type WorkspaceExperienceSummary = {
+  experience_id: string;
+  workspace_id: string;
+  corpus_id: string;
+  template_id: string;
+  template_version: string;
+  publication_status: string;
+  experience_lane?: string | null;
+  default_visibility: string;
+  visibility: string;
+  publication_lane: string;
+  scaffold_status?: string | null;
+  materialization_status?: string | null;
+  last_canonical_version_id?: string | null;
+  title: string;
+  description?: string | null;
+  host?: string | null;
+  path_family?: string | null;
+  path_key?: string | null;
+  document_id?: string | null;
+  verification_object_id?: string | null;
+  active_revision_id?: string | null;
+  previous_revision_id?: string | null;
+  compatibility_status?: string | null;
+  validity_status?: string | null;
+  public_url?: string | null;
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+};
+
+type WorkspaceExperiencesEnvelope = {
+  ok: boolean;
+  workspace_id: string;
+  experiences: WorkspaceExperienceSummary[];
+};
+
+type OpenPrivateLiveEnvelope = {
+  ok: boolean;
+  live_url?: string | null;
+  redeem_url?: string | null;
+};
+
+export function ContractAnalysisPane({
+  embedded = false,
+  initialView = 'results',
+  presentation = 'full',
+  onRunConfigured,
+}: ContractAnalysisPaneProps = {}) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -144,6 +194,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   const locale = useLocale();
   const toast = useToast();
   const isArabic = locale === 'ar';
+  const compactRunConfig = presentation === 'run-config';
 
   // Run settings (per-run execution; does NOT require duplicating templates)
   const [runLanguage, setRunLanguage] = useState<'en' | 'ar'>(() => (locale === 'ar' ? 'ar' : 'en'));
@@ -219,6 +270,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   const [runsLoading, setRunsLoading] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedRunStatus, setSelectedRunStatus] = useState<AnalysisRunSummary['status'] | null>(null);
+  const [liveExperience, setLiveExperience] = useState<WorkspaceExperienceSummary | null>(null);
+  const [isLoadingLiveExperience, setIsLoadingLiveExperience] = useState(false);
+  const [isOpeningLiveExperience, setIsOpeningLiveExperience] = useState(false);
+  const [liveExperienceError, setLiveExperienceError] = useState<string | null>(null);
 
   // Playbook selection (MVP): optional; defaults preserve current behavior.
   const [playbooks, setPlaybooks] = useState<PlaybookRecord[]>([]);
@@ -1195,6 +1250,59 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     }
   }
 
+  async function loadLiveExperience() {
+    setIsLoadingLiveExperience(true);
+    setLiveExperienceError(null);
+    try {
+      const response = await fetch(
+        `/api/experiences/v1/experiences/workspaces/${encodeURIComponent(workspaceId)}/experiences`
+      );
+      const data = (await response.json()) as WorkspaceExperiencesEnvelope;
+      if (!response.ok) {
+        throw new Error((data as any)?.message || 'Failed to load experiences');
+      }
+      const experiences = Array.isArray(data.experiences) ? data.experiences : [];
+      const match = experiences.find((item) => item.document_id === documentId) || null;
+      setLiveExperience(match);
+    } catch (e) {
+      setLiveExperience(null);
+      setLiveExperienceError(e instanceof Error ? e.message : t('liveExperience.loadFailed'));
+    } finally {
+      setIsLoadingLiveExperience(false);
+    }
+  }
+
+  async function openLiveExperience() {
+    if (!liveExperience?.experience_id) return;
+    setIsOpeningLiveExperience(true);
+    setLiveExperienceError(null);
+    try {
+      if (liveExperience.experience_lane === 'private_live') {
+        const response = await fetch('/api/experiences/v1/experiences/private-live/open', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ experience_id: liveExperience.experience_id }),
+        });
+        const data = (await response.json()) as OpenPrivateLiveEnvelope & { message?: string };
+        if (!response.ok || !data.redeem_url) {
+          throw new Error(data.message || t('liveExperience.openFailed'));
+        }
+        window.open(data.redeem_url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const target = liveExperience.public_url;
+      if (!target) {
+        throw new Error(t('liveExperience.preparing'));
+      }
+      window.open(target, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setLiveExperienceError(e instanceof Error ? e.message : t('liveExperience.openFailed'));
+    } finally {
+      setIsOpeningLiveExperience(false);
+    }
+  }
+
   async function selectRun(run: AnalysisRunSummary) {
     setSelectedRunId(run.runId);
     setSelectedRunStatus(run.status);
@@ -1870,8 +1978,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                 await new Promise((r) => setTimeout(r, 800));
               }
               await loadRuns({ keepSelection: true });
+              await loadLiveExperience();
               setIsAnalyzing(false);
               setShowSettings(false);
+              onRunConfigured?.();
               return;
             }
             
@@ -1907,8 +2017,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
       // Synchronous success (legacy path or immediate completion)
       await load();
       await loadRuns({ keepSelection: true });
+      await loadLiveExperience();
       setIsAnalyzing(false);
       setShowSettings(false);
+      onRunConfigured?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.contractAnalysisFailed'));
       setIsAnalyzing(false);
@@ -1960,11 +2072,11 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
   useEffect(() => {
     const requestedView = searchParams.get('view');
     const shouldOpenRunSetup = initialView === 'run' || requestedView === 'run';
-    setShowSettings(shouldOpenRunSetup || !contract);
+    setShowSettings(compactRunConfig || shouldOpenRunSetup || !contract);
     if (shouldOpenRunSetup) {
       setTab('overview');
     }
-  }, [contract, initialView, searchParams]);
+  }, [compactRunConfig, contract, initialView, searchParams]);
 
   function exportCalendar() {
     setError(null);
@@ -2314,6 +2426,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
     loadPlaybooks();
     loadWorkspaceDocsetSources();
     loadRuns();
+    loadLiveExperience();
     
     // Re-load when tab becomes visible (handles laptop sleep, tab switching)
     const handleVisibilityChange = () => {
@@ -2321,6 +2434,7 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
         console.log('[Contract] Tab visible, refreshing data...');
         load();
         loadRuns({ keepSelection: true });
+        loadLiveExperience();
       }
     };
     
@@ -2437,75 +2551,77 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           embedded ? 'p-3 pb-[calc(env(safe-area-inset-bottom)+12rem)]' : 'p-4'
         )}
       >
-        <div className="mb-3 p-3 border border-border rounded-scholar bg-surface-alt">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-text-soft">{t('runs.title')}</p>
-              <p className="text-sm text-text-soft">
-                {runsLoading
-                  ? t('runs.loading')
-                  : runs.length > 0
-                    ? t('runs.recentCount', { count: runs.length })
-                    : t('runs.empty')}
-              </p>
+        {!compactRunConfig && (
+          <div className="mb-3 p-3 border border-border rounded-scholar bg-surface-alt">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-soft">{t('runs.title')}</p>
+                <p className="text-sm text-text-soft">
+                  {runsLoading
+                    ? t('runs.loading')
+                    : runs.length > 0
+                      ? t('runs.recentCount', { count: runs.length })
+                      : t('runs.empty')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {runs.length > 0 && (
+                  <Button
+                    variant={showSettings ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => {
+                      setShowSettings(true);
+                      setTab('overview');
+                    }}
+                  >
+                    {t('runs.newRun')}
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {runs.length > 0 && (
-                <Button
-                  variant={showSettings ? 'primary' : 'secondary'}
-                  size="sm"
-                  onClick={() => {
-                    setShowSettings(true);
-                    setTab('overview');
-                  }}
-                >
-                  {t('runs.newRun')}
-                </Button>
-              )}
-            </div>
-          </div>
-          {runs.length > 0 && (
-            <div className="mt-3 space-y-2 max-h-44 overflow-auto pr-1">
-              {runs.map((run) => (
-                <button
-                  key={run.runId}
-                  type="button"
-                  onClick={() => {
-                    void selectRun(run);
-                  }}
-                  className={cn(
-                    'w-full text-left p-2 rounded-scholar border transition-colors',
-                    selectedRunId === run.runId
-                      ? 'border-accent bg-accent/5'
-                      : 'border-border hover:border-accent/40 bg-surface'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-text truncate">
-                      {run.playbookLabel || t('runs.defaultLabel')}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      {run.scope === 'bundle' && (
-                        <Badge size="sm" variant="warning">
-                          {t('runs.scopeDocset')}
+            {runs.length > 0 && (
+              <div className="mt-3 space-y-2 max-h-44 overflow-auto pr-1">
+                {runs.map((run) => (
+                  <button
+                    key={run.runId}
+                    type="button"
+                    onClick={() => {
+                      void selectRun(run);
+                    }}
+                    className={cn(
+                      'w-full text-left p-2 rounded-scholar border transition-colors',
+                      selectedRunId === run.runId
+                        ? 'border-accent bg-accent/5'
+                        : 'border-border hover:border-accent/40 bg-surface'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-text truncate">
+                        {run.playbookLabel || t('runs.defaultLabel')}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        {run.scope === 'bundle' && (
+                          <Badge size="sm" variant="warning">
+                            {t('runs.scopeDocset')}
+                          </Badge>
+                        )}
+                        <Badge
+                          size="sm"
+                          variant={run.status === 'failed' ? 'error' : run.status === 'running' ? 'warning' : run.status === 'succeeded' ? 'success' : 'default'}
+                        >
+                          {run.status}
                         </Badge>
-                      )}
-                      <Badge
-                        size="sm"
-                        variant={run.status === 'failed' ? 'error' : run.status === 'running' ? 'warning' : run.status === 'succeeded' ? 'success' : 'default'}
-                      >
-                        {run.status}
-                      </Badge>
+                      </div>
                     </div>
-                  </div>
-                  <p className="mt-1 text-xs text-text-soft">
-                    {run.scope === 'bundle' ? t('runs.scopeDocset') : t('runs.scopeSingle')} · {new Date(run.createdAt).toLocaleString()}
-                  </p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                    <p className="mt-1 text-xs text-text-soft">
+                      {run.scope === 'bundle' ? t('runs.scopeDocset') : t('runs.scopeSingle')} · {new Date(run.createdAt).toLocaleString()}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {isHistoricalRunSelected && (
           <div className="mb-3 p-3 rounded-scholar border border-warning/40 bg-warning/10 text-warning text-sm">
@@ -2528,10 +2644,10 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
           <div className="flex items-center justify-center py-16">
             <Spinner size="lg" />
           </div>
-        ) : !contract || showSettings ? (
+        ) : compactRunConfig || !contract || showSettings ? (
           <div className="space-y-4 max-w-xl mx-auto">
             {/* Show a back-to-results button when re-configuring an existing analysis */}
-            {contract && showSettings && (
+            {contract && showSettings && !compactRunConfig && (
               <div className="flex items-center justify-between p-3 bg-surface-alt border border-border rounded-scholar">
                 <p className="text-sm text-text-soft">
                   An analysis already exists. Configure and run again to replace it.
@@ -3142,6 +3258,67 @@ export function ContractAnalysisPane({ embedded = false, initialView = 'results'
                 return d.toISOString();
               })()}
             />
+
+            <Card>
+              <CardContent className="space-y-3 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-text">{t('liveExperience.title')}</div>
+                    <p className="mt-1 text-sm text-text-soft">
+                      {liveExperience?.experience_lane === 'private_live'
+                        ? t('liveExperience.privateDescription')
+                        : t('liveExperience.publicDescription')}
+                    </p>
+                  </div>
+                  {liveExperience?.experience_lane === 'private_live' ? (
+                    <Badge size="sm" variant="warning">{t('liveExperience.privateBadge')}</Badge>
+                  ) : liveExperience ? (
+                    <Badge size="sm">{t('liveExperience.liveBadge')}</Badge>
+                  ) : null}
+                </div>
+
+                {liveExperience ? (
+                  <>
+                    <div className="rounded-scholar border border-border bg-surface-alt p-3 text-sm">
+                      <div className="text-text-soft">{t('liveExperience.canonicalPath')}</div>
+                      <div className="mt-1 break-all font-medium text-text">
+                        {liveExperience.public_url || t('liveExperience.preparing')}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button
+                        size="sm"
+                        onClick={() => void openLiveExperience()}
+                        isLoading={isOpeningLiveExperience}
+                      >
+                        <Globe2 className="h-4 w-4" />
+                        {liveExperience.experience_lane === 'private_live'
+                          ? t('liveExperience.openPrivate')
+                          : t('liveExperience.openLive')}
+                      </Button>
+                      <p className="text-xs text-text-soft">
+                        {liveExperience.experience_lane === 'private_live'
+                          ? t('liveExperience.privateHint')
+                          : t('liveExperience.publicHint')}
+                      </p>
+                    </div>
+                  </>
+                ) : isLoadingLiveExperience ? (
+                  <div className="flex items-center gap-2 text-sm text-text-soft">
+                    <Spinner size="sm" />
+                    {t('liveExperience.loading')}
+                  </div>
+                ) : (
+                  <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-3 py-4 text-sm text-text-soft">
+                    {t('liveExperience.empty')}
+                  </div>
+                )}
+
+                {liveExperienceError ? (
+                  <div className="text-sm text-error">{liveExperienceError}</div>
+                ) : null}
+              </CardContent>
+            </Card>
 
             {documentRow?.privacy_mode && (
               <Card>

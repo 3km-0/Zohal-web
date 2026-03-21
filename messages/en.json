@@ -1259,6 +1259,23 @@
       "title": "Needs review",
       "subtitle": "Deterministic playbook checks / verifier findings computed post-reduce."
     },
+    "liveExperience": {
+      "title": "Live experience",
+      "privateDescription": "This private live view updates automatically as analysis materializes.",
+      "publicDescription": "Open the live experience for this analysis.",
+      "privateBadge": "Private live",
+      "liveBadge": "Live",
+      "canonicalPath": "Canonical path",
+      "openPrivate": "Open Private Link",
+      "openLive": "Open live experience",
+      "privateHint": "Open Private Link uses a signed entry link. The route shown here is the canonical path.",
+      "publicHint": "This route can be opened directly.",
+      "loading": "Preparing live experience link…",
+      "preparing": "The live experience URL is still being prepared.",
+      "empty": "No live experience has been created for this analysis yet.",
+      "loadFailed": "Failed to load the live experience.",
+      "openFailed": "Failed to open the live experience."
+    },
     "privacyMode": {
       "sanitizedTitle": "Sanitized document (Privacy Mode)",
       "sanitizedSubtitle": "Some fields are masked before cloud processing. Do not guess redacted content."

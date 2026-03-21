@@ -13,7 +13,6 @@ import {
   Layers3,
   LockOpen,
   MessageSquare,
-  PanelRightOpen,
   Send,
   Star,
   Type,
@@ -26,16 +25,12 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
-import { DocumentAgentActivityPanel } from '@/components/document/DocumentAgentActivityPanel';
 
 interface AIPanelProps {
   documentId: string;
   workspaceId: string;
   selectedText?: string;
   currentPage?: number;
-  onOpenAnalysis?: (target: 'results' | 'run', runId?: string) => void;
-  onOpenTemplates?: () => void;
-  onOpenExperience?: () => void;
   onConversationStateChange?: (conversationId: string | null) => void;
 }
 
@@ -63,9 +58,6 @@ export function AIPanel({
   workspaceId,
   selectedText,
   currentPage,
-  onOpenAnalysis,
-  onOpenTemplates,
-  onOpenExperience,
   onConversationStateChange,
 }: AIPanelProps) {
   // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
@@ -400,6 +392,20 @@ export function AIPanel({
     resizeTextarea();
   }, [resizeTextarea]);
 
+  useEffect(() => {
+    const handleConversationSelect = (event: Event) => {
+      const customEvent = event as CustomEvent<{ conversationId?: string }>;
+      const conversationId = String(customEvent.detail?.conversationId || '').trim();
+      if (!conversationId) return;
+      void loadConversation(conversationId);
+    };
+
+    window.addEventListener('zohal:agent:select-conversation', handleConversationSelect as EventListener);
+    return () => {
+      window.removeEventListener('zohal:agent:select-conversation', handleConversationSelect as EventListener);
+    };
+  }, [loadConversation]);
+
   return (
     <div className="flex h-full w-full flex-col bg-surface">
       <div className="relative flex-1 min-h-0">
@@ -438,21 +444,6 @@ export function AIPanel({
                     <p className="text-sm font-semibold text-text">{t('agentHeading')}</p>
                     <p className="mt-1 text-sm text-text-soft">{t('emptyState')}</p>
                   </div>
-                )}
-
-                {chatHistory.length === 0 && (
-                  <DocumentAgentActivityPanel
-                    documentId={documentId}
-                    workspaceId={workspaceId}
-                    currentConversationId={currentConversationId}
-                    onSelectConversation={(conversationId) => {
-                      void loadConversation(conversationId);
-                    }}
-                    onSelectRun={(runId) => onOpenAnalysis?.('results', runId)}
-                    variant="compact"
-                    limit={6}
-                    title={t('recentActivity')}
-                  />
                 )}
 
                 {error && (
@@ -542,40 +533,6 @@ export function AIPanel({
                         {t('newConversation')}
                       </Button>
                     </div>
-                  </div>
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpenAnalysis?.('run')}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
-                    >
-                      <Zap className="h-4 w-4 text-accent" />
-                      {t('quickActions.runAnalysis')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onOpenAnalysis?.('results')}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
-                    >
-                      <PanelRightOpen className="h-4 w-4 text-accent" />
-                      {t('quickActions.openAnalysis')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onOpenTemplates}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
-                    >
-                      <FileText className="h-4 w-4 text-accent" />
-                      {t('quickActions.templates')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onOpenExperience}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/40"
-                    >
-                      <Globe2 className="h-4 w-4 text-accent" />
-                      {t('quickActions.experience')}
-                    </button>
                   </div>
                   <textarea
                     ref={textareaRef}

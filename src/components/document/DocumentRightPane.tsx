@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { FileText, Sparkles, X } from 'lucide-react';
+import { ChevronDown, Clock3, FileText, Globe2, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
+import { DocumentAgentActivityPanel } from '@/components/document/DocumentAgentActivityPanel';
 import type { DocumentType } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
 import { useRouter } from 'next/navigation';
@@ -39,9 +40,16 @@ export function DocumentRightPane({
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
   const router = useRouter();
+  const topBarItemClass =
+    'inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-text-soft transition-colors hover:bg-surface hover:text-text';
   const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [analysisMenuOpen, setAnalysisMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [runConfigOpen, setRunConfigOpen] = useState(false);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const analysisOpen = mode === 'analysis';
 
   const handleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -83,17 +91,17 @@ export function DocumentRightPane({
     onModeChange('chat');
   }, [onModeChange, selectedText]);
 
-  const triggerAnalysisAction = useCallback(
-    (action: 'new-run' | 'generate-report') => {
-      setAnalysisInitialView(action === 'new-run' ? 'run' : 'results');
-      onModeChange('analysis');
+  useEffect(() => {
+    if (!historyOpen) return;
+    setAnalysisMenuOpen(false);
+    setMoreMenuOpen(false);
+  }, [historyOpen]);
 
-      window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent(`zohal:analysis:${action}`));
-      }, 50);
-    },
-    [onModeChange]
-  );
+  useEffect(() => {
+    if (!analysisOpen && !runConfigOpen) return;
+    setAnalysisMenuOpen(false);
+    setMoreMenuOpen(false);
+  }, [analysisOpen, runConfigOpen]);
 
   return (
     <aside
@@ -120,85 +128,194 @@ export function DocumentRightPane({
 
       <div className="flex min-h-0 flex-1 flex-col md:overflow-hidden">
         <div className="shrink-0 border-b border-border bg-surface-alt px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
-              <Sparkles className="h-5 w-5" />
-            </div>
+          <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-text">{t('title')}</p>
+              <p className="text-sm font-semibold text-text">{t('agent')}</p>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-              {t('close')}
-            </Button>
-          </div>
-          <div className="mt-3">
-            <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setHistoryOpen(true)} className={topBarItemClass}>
+              {t('history')}
+            </button>
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => onModeChange('chat')}
                 className={[
-                  'inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors',
-                  mode === 'chat'
-                    ? 'border-accent bg-accent/10 text-accent'
-                    : 'border-border bg-surface text-text hover:border-accent/40',
+                  topBarItemClass,
+                  analysisOpen || runConfigOpen ? 'bg-surface text-text' : '',
                 ].join(' ')}
-              >
-                <Sparkles className="h-4 w-4" />
-                {t('agent')}
-              </button>
-              <button
-                type="button"
                 onClick={() => {
-                  setAnalysisInitialView('results');
-                  onModeChange('analysis');
+                  setMoreMenuOpen(false);
+                  setAnalysisMenuOpen((prev) => !prev);
                 }}
-                className={[
-                  'inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors',
-                  mode === 'analysis'
-                    ? 'border-accent bg-accent/10 text-accent'
-                    : 'border-border bg-surface text-text hover:border-accent/40',
-                ].join(' ')}
               >
-                <FileText className="h-4 w-4" />
-                {t('runs')}
+                {t('quickActions.analysis')}
+                <ChevronDown className="h-3.5 w-3.5" />
               </button>
+              {analysisMenuOpen && (
+                <div className="absolute end-0 top-full z-30 mt-2 min-w-[12rem] rounded-2xl border border-border bg-surface p-2 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnalysisMenuOpen(false);
+                      setRunConfigOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-text transition-colors hover:bg-surface-alt"
+                  >
+                    <FileText className="h-4 w-4 text-accent" />
+                    {t('quickActions.runAnalysis')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnalysisMenuOpen(false);
+                      setAnalysisInitialView('results');
+                      onModeChange('analysis');
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-text transition-colors hover:bg-surface-alt"
+                  >
+                    <Clock3 className="h-4 w-4 text-accent" />
+                    {t('quickActions.openAnalysis')}
+                  </button>
+                </div>
+              )}
             </div>
+            <div className="relative">
+              <button
+                type="button"
+                className={topBarItemClass}
+                onClick={() => {
+                  setAnalysisMenuOpen(false);
+                  setMoreMenuOpen((prev) => !prev);
+                }}
+              >
+                {t('actions')}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {moreMenuOpen && (
+                <div className="absolute end-0 top-full z-30 mt-2 min-w-[12rem] rounded-2xl border border-border bg-surface p-2 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      router.push(`/workspaces/${workspaceId}/experiences?document_id=${documentId}`);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-text transition-colors hover:bg-surface-alt"
+                  >
+                    <Globe2 className="h-4 w-4 text-accent" />
+                    {t('quickActions.experience')}
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('close')}
+              className="inline-flex items-center rounded-md p-1.5 text-text-soft transition-colors hover:bg-surface hover:text-text"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
-        <div className={mode === 'chat' ? 'h-full' : 'hidden h-full'}>
+        <div className="h-full">
           <AIPanel
             documentId={documentId}
             workspaceId={workspaceId}
             selectedText={selectedText}
             currentPage={currentPage}
-            onOpenAnalysis={(target, runId) => {
-              if (target === 'run') {
-                triggerAnalysisAction('new-run');
-                return;
-              }
-              setAnalysisInitialView('results');
-              onModeChange('analysis');
-              if (runId) {
-                window.setTimeout(() => {
-                  window.dispatchEvent(
-                    new CustomEvent('zohal:analysis:select-run', { detail: { runId } })
-                  );
-                }, 50);
-              }
-            }}
-            onOpenTemplates={() =>
-              router.push(`/workspaces/${workspaceId}/playbooks?document_id=${documentId}`)
-            }
-            onOpenExperience={() =>
-              router.push(`/workspaces/${workspaceId}/experiences?document_id=${documentId}`)
-            }
           />
         </div>
-        {mode === 'analysis' && (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+
+        {historyOpen && (
+          <div className="absolute inset-0 z-20 flex bg-black/20 backdrop-blur-[1px]">
+            <button
+              type="button"
+              className="hidden flex-1 md:block"
+              aria-label={t('close')}
+              onClick={() => setHistoryOpen(false)}
+            />
+            <div className="flex h-full w-full max-w-full flex-col border-s border-border bg-surface shadow-2xl md:ms-auto md:w-[24rem]">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-text">{t('history')}</div>
+                  <div className="text-xs text-text-soft">{t('recentActivity')}</div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setHistoryOpen(false)}>
+                  <X className="h-4 w-4" />
+                  {t('close')}
+                </Button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden p-3">
+                <DocumentAgentActivityPanel
+                  documentId={documentId}
+                  workspaceId={workspaceId}
+                  onSelectConversation={(conversationId) => {
+                    setHistoryOpen(false);
+                    onModeChange('chat');
+                    window.setTimeout(() => {
+                      window.dispatchEvent(
+                        new CustomEvent('zohal:agent:select-conversation', { detail: { conversationId } })
+                      );
+                    }, 50);
+                  }}
+                  onSelectRun={(runId) => {
+                    setHistoryOpen(false);
+                    setAnalysisInitialView('results');
+                    onModeChange('analysis');
+                    window.setTimeout(() => {
+                      window.dispatchEvent(
+                        new CustomEvent('zohal:analysis:select-run', { detail: { runId } })
+                      );
+                    }, 50);
+                  }}
+                  variant="full"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {runConfigOpen && (
+          <div className="pointer-events-none absolute inset-x-3 top-[4.25rem] z-20 flex justify-end">
+            <div className="pointer-events-auto flex h-[min(34rem,calc(100dvh-8rem))] w-full max-w-[25rem] flex-col overflow-hidden rounded-[1.25rem] border border-border bg-surface shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-3">
+                <div className="text-sm font-semibold text-text">{t('quickActions.runAnalysis')}</div>
+                <button
+                  type="button"
+                  onClick={() => setRunConfigOpen(false)}
+                  aria-label={t('close')}
+                  className="inline-flex items-center rounded-md p-1.5 text-text-soft transition-colors hover:bg-surface hover:text-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <ContractAnalysisPane
+                  embedded
+                  initialView="run"
+                  presentation="run-config"
+                  onRunConfigured={() => {
+                    setRunConfigOpen(false);
+                    setAnalysisInitialView('results');
+                    onModeChange('analysis');
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {analysisOpen && (
+          <div className="absolute inset-0 z-10 flex flex-col border-t border-border bg-surface shadow-[0_-12px_40px_rgba(0,0,0,0.08)]">
+            <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-3">
+              <div>
+                <div className="text-sm font-semibold text-text">{t('documentAnalysis')}</div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => onModeChange('chat')}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
               <ContractAnalysisPane embedded initialView={analysisInitialView} />
             </div>
           </div>
