@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import {
@@ -38,6 +39,78 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
+}
+
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+
+function shortenUrlLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'live.zohal.ai' && parsed.pathname.startsWith('/__access/redeem')) {
+      return 'Open Private Link';
+    }
+    if (parsed.hostname === 'live.zohal.ai' && parsed.pathname.startsWith('/live/')) {
+      const slug = parsed.pathname.split('/').filter(Boolean).pop() || 'live';
+      return `Canonical Live URL (${slug})`;
+    }
+    const shortPath = parsed.pathname === '/'
+      ? ''
+      : parsed.pathname.length > 24
+      ? `${parsed.pathname.slice(0, 24)}…`
+      : parsed.pathname;
+    return `${parsed.hostname}${shortPath}`;
+  } catch {
+    return url.length > 48 ? `${url.slice(0, 45)}…` : url;
+  }
+}
+
+function renderInlineContent(text: string): ReactNode[] {
+  return text.split(URL_PATTERN).map((part, index) => {
+    if (!part) return null;
+    if (index % 2 === 1) {
+      return (
+        <a
+          key={`url-${index}-${part}`}
+          href={part}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium underline decoration-accent/60 underline-offset-4 transition-colors hover:text-accent"
+        >
+          {shortenUrlLabel(part)}
+        </a>
+      );
+    }
+    const lines = part.split('\n');
+    return (
+      <span key={`text-${index}`}>
+        {lines.map((line, lineIndex) => (
+          <span key={`line-${index}-${lineIndex}`}>
+            {line}
+            {lineIndex < lines.length - 1 ? <br /> : null}
+          </span>
+        ))}
+      </span>
+    );
+  }).filter(Boolean) as ReactNode[];
+}
+
+function renderMessageContent(content: string): ReactNode {
+  const paragraphs = content
+    .trim()
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  const blocks = paragraphs.length ? paragraphs : [content];
+  return (
+    <div className="space-y-3">
+      {blocks.map((paragraph, index) => (
+        <p key={`${paragraph.slice(0, 24)}-${index}`} className="text-sm leading-7 text-inherit">
+          {renderInlineContent(paragraph)}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 type DocumentAgentStreamEvent =
@@ -471,7 +544,7 @@ export function AIPanel({
                         : 'border-border bg-surface-alt'
                     )}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-6">{msg.content}</p>
+                    {renderMessageContent(msg.content)}
                     {msg.role === 'assistant' && (
                       <button
                         onClick={() => pinMessage(msg)}
