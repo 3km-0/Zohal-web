@@ -1720,6 +1720,7 @@ export type Database = {
           deleted_at: string | null
           detected_level: string | null
           detected_subject: string | null
+          document_tags: string[]
           document_type: string
           edition: string | null
           embedding_completed: boolean
@@ -1758,6 +1759,7 @@ export type Database = {
           deleted_at?: string | null
           detected_level?: string | null
           detected_subject?: string | null
+          document_tags?: string[]
           document_type?: string
           edition?: string | null
           embedding_completed?: boolean
@@ -1796,6 +1798,7 @@ export type Database = {
           deleted_at?: string | null
           detected_level?: string | null
           detected_subject?: string | null
+          document_tags?: string[]
           document_type?: string
           edition?: string | null
           embedding_completed?: boolean
@@ -6763,6 +6766,121 @@ export type Database = {
           },
         ]
       }
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          deleted_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          org_id: string | null
+          owner_id: string
+          parent_id: string | null
+          sort_index: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          org_id?: string | null
+          owner_id: string
+          parent_id?: string | null
+          sort_index?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          org_id?: string | null
+          owner_id?: string
+          parent_id?: string | null
+          sort_index?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folders_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_corpora: {
+        Row: {
+          corpus_id: string
+          corpus_kind: string
+          created_at: string
+          created_by: string | null
+          filter_json: Json
+          is_default: boolean
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          corpus_id: string
+          corpus_kind?: string
+          created_at?: string
+          created_by?: string | null
+          filter_json?: Json
+          is_default?: boolean
+          name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          corpus_id?: string
+          corpus_kind?: string
+          created_at?: string
+          created_by?: string | null
+          filter_json?: Json
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_corpora_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_corpora_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_folders: {
         Row: {
           color: string | null
@@ -6905,6 +7023,60 @@ export type Database = {
           },
         ]
       }
+      workspace_saved_views: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          filter_json: Json
+          id: string
+          is_default: boolean
+          name: string
+          sort_index: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          filter_json?: Json
+          id?: string
+          is_default?: boolean
+          name: string
+          sort_index?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          filter_json?: Json
+          id?: string
+          is_default?: boolean
+          name?: string
+          sort_index?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_saved_views_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_saved_views_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspaces: {
         Row: {
           color: string | null
@@ -6916,6 +7088,7 @@ export type Database = {
           name: string
           org_id: string | null
           owner_id: string
+          parent_folder_id: string | null
           primary_plugin_family: string | null
           sort_index: number | null
           status: string
@@ -6932,6 +7105,7 @@ export type Database = {
           name: string
           org_id?: string | null
           owner_id: string
+          parent_folder_id?: string | null
           primary_plugin_family?: string | null
           sort_index?: number | null
           status?: string
@@ -6948,6 +7122,7 @@ export type Database = {
           name?: string
           org_id?: string | null
           owner_id?: string
+          parent_folder_id?: string | null
           primary_plugin_family?: string | null
           sort_index?: number | null
           status?: string
@@ -6967,6 +7142,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspaces_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
             referencedColumns: ["id"]
           },
         ]
@@ -7344,6 +7526,7 @@ export type Database = {
           name: string
           org_id: string
           owner_id: string
+          parent_folder_id: string | null
           primary_plugin_family: string
           sort_index: number
           status: string

@@ -1257,24 +1257,24 @@
     },
     "needsReview": {
       "title": "Needs review",
-      "subtitle": "Deterministic playbook checks / verifier findings computed post-reduce."
+      "subtitle": "Deterministic template checks / verifier findings computed post-reduce."
     },
     "liveExperience": {
-      "title": "Live experience",
-      "privateDescription": "This private live view updates automatically as analysis materializes.",
-      "publicDescription": "Open the live experience for this analysis.",
-      "privateBadge": "Private live",
-      "liveBadge": "Live",
-      "canonicalPath": "Canonical path",
-      "openPrivate": "Open Private Link",
-      "openLive": "Open live experience",
-      "privateHint": "Open Private Link uses a signed entry link. The route shown here is the canonical path.",
-      "publicHint": "This route can be opened directly.",
-      "loading": "Preparing live experience link…",
-      "preparing": "The live experience URL is still being prepared.",
-      "empty": "No live experience has been created for this analysis yet.",
-      "loadFailed": "Failed to load the live experience.",
-      "openFailed": "Failed to open the live experience."
+      "title": "Live Experience",
+      "privateDescription": "This Live Experience updates automatically as analysis materializes.",
+      "publicDescription": "Open the Published Experience for this analysis.",
+      "privateBadge": "Live",
+      "liveBadge": "Published",
+      "canonicalPath": "Experience route",
+      "openPrivate": "Open Live Experience",
+      "openLive": "Open Published Experience",
+      "privateHint": "Open Live Experience uses a signed entry link. The route shown here is the stable route.",
+      "publicHint": "This Published Experience can be opened directly.",
+      "loading": "Preparing Live Experience link…",
+      "preparing": "The Live Experience URL is still being prepared.",
+      "empty": "No Live Experience has been created for this analysis yet.",
+      "loadFailed": "Failed to load the Live Experience.",
+      "openFailed": "Failed to open the experience."
     },
     "privacyMode": {
       "sanitizedTitle": "Sanitized document (Privacy Mode)",

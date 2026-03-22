@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 import { Button, Input, Card } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
-import type { Workspace, WorkspaceType } from '@/types/database';
+import type { Folder, Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { resolveIcon, isSFSymbol } from '@/lib/icon-mapping';
 
 interface WorkspaceModalProps {
   workspace?: Workspace | null;
+  initialParentFolderId?: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -25,11 +26,11 @@ const workspaceTypes: { value: WorkspaceType; icon: string }[] = [
   { value: 'other', icon: '📂' },
 ];
 
-export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalProps) {
+export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSaved }: WorkspaceModalProps) {
   const t = useTranslations('workspaces');
   const tModal = useTranslations('workspaceModal');
   const tCommon = useTranslations('common');
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [name, setName] = useState(workspace?.name || '');
   const [description, setDescription] = useState(workspace?.description || '');
@@ -46,10 +47,33 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
     return workspace.icon;
   };
   const [iconEmoji, setIconEmoji] = useState(getInitialIcon());
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [parentFolderId, setParentFolderId] = useState<string>(workspace?.parent_folder_id || initialParentFolderId || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!workspace;
+
+  useEffect(() => {
+    const loadFolders = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('folders')
+        .select('*')
+        .is('deleted_at', null)
+        .order('name');
+
+      if (!error && data) {
+        setFolders((data as Folder[]).filter((folder) => folder.owner_id === user.id || folder.org_id != null));
+      }
+    };
+
+    void loadFolders();
+  }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +95,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
             description: description.trim() || null,
             workspace_type: workspaceType,
             icon: iconEmoji.trim() || null,
+            parent_folder_id: parentFolderId || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', workspace.id);
@@ -86,6 +111,7 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
           description: description.trim() || null,
           workspace_type: workspaceType,
           icon: iconEmoji.trim() || null,
+          parent_folder_id: parentFolderId || null,
           owner_id: user.id,
           status: 'active',
         });
@@ -163,6 +189,22 @@ export function WorkspaceModal({ workspace, onClose, onSaved }: WorkspaceModalPr
             onChange={(e) => setIconEmoji(e.target.value)}
             hint={tModal('iconHint')}
           />
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">Folder</label>
+            <select
+              className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background"
+              value={parentFolderId}
+              onChange={(e) => setParentFolderId(e.target.value)}
+            >
+              <option value="">No folder</option>
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">

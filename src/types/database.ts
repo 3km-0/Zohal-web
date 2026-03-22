@@ -90,6 +90,7 @@ export interface Workspace {
   status?: string;
   color?: string | null;
   icon?: string | null;
+  parent_folder_id?: string | null;
   sort_index?: number | null;
   created_at: string;
   updated_at: string;
@@ -100,7 +101,8 @@ export interface Document {
   id: string;
   user_id: string;
   workspace_id?: string | null;
-  folder_id?: string | null;  // Folder within workspace (null = workspace root)
+  folder_id?: string | null;  // Compatibility-only in-workspace folder reference
+  document_tags?: string[] | null;
   
   // Document identity
   title: string;
@@ -162,6 +164,37 @@ export interface WorkspaceFolder {
 export interface FolderWithStats extends WorkspaceFolder {
   document_count: number;
   subfolder_count: number;
+}
+
+export interface Folder {
+  id: string;
+  owner_id: string;
+  org_id?: string | null;
+  parent_id?: string | null;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
+  sort_index?: number | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface WorkspaceSavedView {
+  id: string;
+  workspace_id: string;
+  created_by?: string | null;
+  name: string;
+  filter_json: {
+    documentType?: string | null;
+    tag?: string | null;
+    search?: string | null;
+  };
+  sort_index?: number | null;
+  is_default?: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
 }
 
 export interface DocumentChunk {

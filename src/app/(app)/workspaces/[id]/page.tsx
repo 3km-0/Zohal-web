@@ -1,43 +1,39 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
-  Upload,
+  CircleHelp,
+  Eye,
   FileText,
   MoreVertical,
-  Trash2,
-  Eye,
-  FolderPlus,
-  ChevronRight,
-  Home,
-  FolderInput,
   RefreshCcw,
+  Save,
+  Search,
   Share2,
-  CircleHelp,
+  Trash2,
+  Upload,
+  X,
 } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card, EmptyState, Spinner, Badge, ScholarActionMenu } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ScholarActionMenu, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { createClient } from '@/lib/supabase/client';
-import type { Workspace, Document, ProcessingStatus, WorkspaceFolder, FolderWithStats } from '@/types/database';
-import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
-import { shouldShowDocumentInCurrentFolder } from '@/lib/workspace-logic';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
-import { FolderIcon, CreateFolderModal } from '@/components/folder';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
+import { createClient } from '@/lib/supabase/client';
+import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
+import type { Document, ProcessingStatus, Workspace, WorkspaceSavedView } from '@/types/database';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const documentThumbnailCache = new Map<string, string>();
 
-// Processing status colors
 const statusColors: Record<ProcessingStatus, string> = {
   pending: 'bg-gray-500/10 text-gray-500',
   uploading: 'bg-blue-500/10 text-blue-500',
@@ -48,10 +44,10 @@ const statusColors: Record<ProcessingStatus, string> = {
   failed: 'bg-error/10 text-error',
 };
 
-// Drag and drop types
-type DragItem = {
-  type: 'document' | 'folder';
-  id: string;
+type SavedViewFilters = {
+  search?: string | null;
+  documentType?: string | null;
+  tag?: string | null;
 };
 
 export default function WorkspaceDetailPage() {
@@ -59,32 +55,22 @@ export default function WorkspaceDetailPage() {
   const router = useRouter();
   const workspaceId = params.id as string;
   const t = useTranslations('documents');
-  const tFolders = useTranslations('folders');
   const tCommon = useTranslations('common');
   const supabase = useMemo(() => createClient(), []);
   const { showError, showSuccess } = useToast();
 
-  // Data state
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [folders, setFolders] = useState<FolderWithStats[]>([]);
+  const [savedViews, setSavedViews] = useState<WorkspaceSavedView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState<boolean>(false);
-  
-  // Navigation state
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([]);
-  
-  // UI state
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
-  const [editingFolder, setEditingFolder] = useState<WorkspaceFolder | null>(null);
-  
-  // Drag and drop state
-  const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState(false);
 
-  // Fetch workspace data
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [activeSavedViewId, setActiveSavedViewId] = useState<string | null>(null);
+
   const fetchWorkspace = useCallback(async () => {
     const { data, error } = await supabase
       .from('workspaces')
@@ -107,7 +93,6 @@ export default function WorkspaceDetailPage() {
       return;
     }
 
-    // Fallback for shared workspaces: use RPC listing (does not rely on workspaces RLS).
     const { data: rpcData, error: rpcErr } = await supabase.rpc('list_accessible_workspaces');
     if (rpcErr || !rpcData) {
       showError(error || rpcErr, 'workspaces');
@@ -115,9 +100,8 @@ export default function WorkspaceDetailPage() {
     }
 
     const found = (rpcData as Array<Workspace & { access_role?: string; access_source?: string }>).find(
-      (w) => w.id === workspaceId
+      (item) => item.id === workspaceId
     );
-
     if (!found) {
       showError(error || rpcErr, 'workspaces');
       return;
@@ -134,62 +118,10 @@ export default function WorkspaceDetailPage() {
     } else {
       setOrgMultiUserEnabled(false);
     }
-  }, [supabase, workspaceId, showError]);
+  }, [showError, supabase, workspaceId]);
 
-  // Fetch folders with stats
-  const fetchFolders = useCallback(async () => {
-    // Fetch folders at current level
-    let query = supabase
-      .from('workspace_folders')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .is('deleted_at', null)
-      .order('name');
-
-    if (currentFolderId) {
-      query = query.eq('parent_id', currentFolderId);
-    } else {
-      query = query.is('parent_id', null);
-    }
-
-    const { data: foldersData, error: foldersError } = await query;
-
-    if (foldersError) {
-      console.error('Error fetching folders:', foldersError);
-      return;
-    }
-
-    // Get stats for each folder
-    const foldersWithStats: FolderWithStats[] = await Promise.all(
-      (foldersData || []).map(async (folder) => {
-        // Count documents
-        const { count: docCount } = await supabase
-          .from('documents')
-          .select('*', { count: 'exact', head: true })
-          .eq('folder_id', folder.id)
-          .is('deleted_at', null);
-
-        // Count subfolders
-        const { count: subCount } = await supabase
-          .from('workspace_folders')
-          .select('*', { count: 'exact', head: true })
-          .eq('parent_id', folder.id)
-          .is('deleted_at', null);
-
-        return {
-          ...folder,
-          document_count: docCount || 0,
-          subfolder_count: subCount || 0,
-        };
-      })
-    );
-
-    setFolders(foldersWithStats);
-  }, [supabase, workspaceId, currentFolderId]);
-
-  // Fetch documents
   const fetchDocuments = useCallback(async () => {
-    let query = supabase
+    const { data, error } = await supabase
       .from('documents')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -197,33 +129,37 @@ export default function WorkspaceDetailPage() {
       .neq('storage_path', 'local')
       .order('created_at', { ascending: false });
 
-    if (currentFolderId) {
-      query = query.eq('folder_id', currentFolderId);
-    } else {
-      query = query.is('folder_id', null);
-    }
-
-    const { data, error } = await query;
-
     if (error) {
       showError(error, 'documents');
-    } else if (data) {
-      setDocuments(data);
+      return;
     }
-  }, [supabase, workspaceId, currentFolderId, showError]);
+    setDocuments((data as Document[]) || []);
+  }, [showError, supabase, workspaceId]);
 
-  // Load all data
+  const fetchSavedViews = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('workspace_saved_views')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
+      .order('sort_index')
+      .order('name');
+
+    if (!error && data) {
+      setSavedViews(data as WorkspaceSavedView[]);
+    }
+  }, [supabase, workspaceId]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchWorkspace(), fetchFolders(), fetchDocuments()]);
+    await Promise.all([fetchWorkspace(), fetchDocuments(), fetchSavedViews()]);
     setLoading(false);
-  }, [fetchWorkspace, fetchFolders, fetchDocuments]);
+  }, [fetchDocuments, fetchSavedViews, fetchWorkspace]);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, [fetchData]);
 
-  // Keep document list fresh when background classification updates document_type.
   useEffect(() => {
     if (!workspaceId) return;
 
@@ -234,26 +170,17 @@ export default function WorkspaceDetailPage() {
         { event: 'UPDATE', schema: 'public', table: 'documents', filter: `workspace_id=eq.${workspaceId}` },
         (payload) => {
           const updated = payload.new as unknown as Document;
-
-          const shouldShow = shouldShowDocumentInCurrentFolder(updated, currentFolderId);
-
           setDocuments((prev) => {
-            const idx = prev.findIndex((d) => d.id === updated.id);
-
-            if (shouldShow) {
-              if (idx >= 0) {
-                const next = [...prev];
-                next[idx] = updated;
-                return next;
-              }
-              // New to this view (e.g. moved folders) — add to top.
-              return [updated, ...prev];
+            const index = prev.findIndex((doc) => doc.id === updated.id);
+            if (updated.deleted_at != null || updated.storage_path === 'local') {
+              return index >= 0 ? prev.filter((doc) => doc.id !== updated.id) : prev;
             }
-
-            if (idx >= 0) {
-              return prev.filter((d) => d.id !== updated.id);
+            if (index >= 0) {
+              const next = [...prev];
+              next[index] = updated;
+              return next;
             }
-            return prev;
+            return [updated, ...prev];
           });
         }
       )
@@ -262,80 +189,46 @@ export default function WorkspaceDetailPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, workspaceId, currentFolderId]);
+  }, [supabase, workspaceId]);
 
-  // Navigate into folder
-  const navigateToFolder = (folder: WorkspaceFolder) => {
-    setCurrentFolderId(folder.id);
-    setFolderPath([...folderPath, { id: folder.id, name: folder.name }]);
+  const applySavedView = (view: WorkspaceSavedView) => {
+    const filters = (view.filter_json || {}) as SavedViewFilters;
+    setActiveSavedViewId(view.id);
+    setSearchQuery(filters.search || '');
+    setSelectedDocumentType(filters.documentType || null);
+    setSelectedTag(filters.tag || null);
   };
 
-  // Navigate to specific folder in path
-  const navigateToPathFolder = (folderId: string | null) => {
-    if (folderId === null) {
-      setCurrentFolderId(null);
-      setFolderPath([]);
-    } else {
-      const index = folderPath.findIndex((f) => f.id === folderId);
-      if (index >= 0) {
-        setCurrentFolderId(folderId);
-        setFolderPath(folderPath.slice(0, index + 1));
-      }
-    }
+  const clearFilters = () => {
+    setActiveSavedViewId(null);
+    setSearchQuery('');
+    setSelectedDocumentType(null);
+    setSelectedTag(null);
   };
 
-  // Create folder
-  const handleCreateFolder = async (name: string) => {
-    const { error } = await supabase.from('workspace_folders').insert({
+  const saveCurrentView = async () => {
+    const name = window.prompt('Name this saved view');
+    if (!name?.trim()) return;
+
+    const { error } = await supabase.from('workspace_saved_views').insert({
       workspace_id: workspaceId,
-      parent_id: currentFolderId,
-      name,
+      name: name.trim(),
+      filter_json: {
+        search: searchQuery || null,
+        documentType: selectedDocumentType,
+        tag: selectedTag,
+      },
     });
 
     if (error) {
-      throw error;
+      showError(error, 'workspace_saved_views');
+      return;
     }
 
-    showSuccess('Folder created');
-    await fetchFolders();
+    showSuccess('Saved view created');
+    await fetchSavedViews();
   };
 
-  // Rename folder
-  const handleRenameFolder = async (name: string) => {
-    if (!editingFolder) return;
-
-    const { error } = await supabase
-      .from('workspace_folders')
-      .update({ name, updated_at: new Date().toISOString() })
-      .eq('id', editingFolder.id);
-
-    if (error) {
-      throw error;
-    }
-
-    showSuccess('Folder renamed');
-    setEditingFolder(null);
-    await fetchFolders();
-  };
-
-  // Delete folder
-  const handleDeleteFolder = async (folder: WorkspaceFolder) => {
-    if (!confirm(`Are you sure you want to delete "${folder.name}"?`)) return;
-
-    const { error } = await supabase
-      .from('workspace_folders')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', folder.id);
-
-    if (error) {
-      showError(error, 'folders');
-    } else {
-      showSuccess('Folder deleted');
-      await fetchFolders();
-    }
-  };
-
-  // Delete document
   const handleDeleteDocument = async (doc: Document) => {
     if (!confirm(`Are you sure you want to delete "${doc.title}"?`)) return;
 
@@ -346,85 +239,41 @@ export default function WorkspaceDetailPage() {
 
     if (error) {
       showError(error, 'documents');
-    } else {
-      setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-    }
-  };
-
-  // Move document to folder
-  const moveDocumentToFolder = async (documentId: string, folderId: string | null) => {
-    const { error } = await supabase
-      .from('documents')
-      .update({ folder_id: folderId, updated_at: new Date().toISOString() })
-      .eq('id', documentId);
-
-    if (error) {
-      showError(error, 'documents');
-    } else {
-      showSuccess('Document moved');
-      await fetchDocuments();
-    }
-  };
-
-  // Move folder to parent
-  const moveFolderToParent = async (folderId: string, parentId: string | null) => {
-    // Prevent moving folder into itself
-    if (folderId === parentId) return;
-
-    const { error } = await supabase
-      .from('workspace_folders')
-      .update({ parent_id: parentId, updated_at: new Date().toISOString() })
-      .eq('id', folderId);
-
-    if (error) {
-      showError(error, 'folders');
-    } else {
-      showSuccess('Folder moved');
-      await fetchFolders();
-    }
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (item: DragItem) => {
-    setDraggedItem(item);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDropTargetId(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (draggedItem && draggedItem.id !== targetId) {
-      setDropTargetId(targetId);
-    }
-  };
-
-  const handleDragLeave = () => {
-    setDropTargetId(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetFolderId: string) => {
-    e.preventDefault();
-    setDropTargetId(null);
-
-    if (!draggedItem) return;
-
-    if (draggedItem.type === 'document') {
-      await moveDocumentToFolder(draggedItem.id, targetFolderId);
-    } else if (draggedItem.type === 'folder') {
-      await moveFolderToParent(draggedItem.id, targetFolderId);
+      return;
     }
 
-    setDraggedItem(null);
+    setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
   };
+
+  const visibleDocuments = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return documents.filter((doc) => {
+      const tags = doc.document_tags || [];
+      const matchesType = selectedDocumentType ? doc.document_type === selectedDocumentType : true;
+      const matchesTag = selectedTag ? tags.includes(selectedTag) : true;
+      const matchesSearch = !query
+        ? true
+        : doc.title.toLowerCase().includes(query) ||
+          (doc.original_filename || '').toLowerCase().includes(query) ||
+          tags.some((tag) => tag.toLowerCase().includes(query));
+      return matchesType && matchesTag && matchesSearch;
+    });
+  }, [documents, searchQuery, selectedDocumentType, selectedTag]);
+
+  const documentTypes = useMemo(
+    () => Array.from(new Set(documents.map((doc) => doc.document_type).filter(Boolean))).sort(),
+    [documents]
+  );
+  const documentTags = useMemo(
+    () => Array.from(new Set(documents.flatMap((doc) => doc.document_tags || []).filter(Boolean))).sort(),
+    [documents]
+  );
 
   if (!workspace && !loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex flex-1 items-center justify-center">
         <EmptyState
-          icon={<FileText className="w-8 h-8" />}
+          icon={<FileText className="h-8 w-8" />}
           title="Workspace not found"
           description="The workspace you're looking for doesn't exist or has been deleted."
           action={{
@@ -436,17 +285,17 @@ export default function WorkspaceDetailPage() {
     );
   }
 
-  const isEmpty = folders.length === 0 && documents.length === 0;
+  const isEmpty = documents.length === 0;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden">
       <AppHeader
         title={workspace?.name || 'Loading...'}
-        subtitle={workspace?.description || undefined}
+        subtitle={workspace?.description || 'Workspace-first documents, views, and analysis'}
         leading={
           <Link href="/workspaces">
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="h-4 w-4" />
               {tCommon('back')}
             </Button>
           </Link>
@@ -467,16 +316,16 @@ export default function WorkspaceDetailPage() {
                 aria-label="Take a tour"
                 title="Take a tour"
               >
-                <CircleHelp className="w-4 h-4" />
+                <CircleHelp className="h-4 w-4" />
                 Tour
               </Button>
               <div className="flex items-center gap-2 rounded-[18px] border border-border bg-surface-alt/80 p-1">
-                <Button variant="ghost" size="sm" onClick={() => setShowCreateFolderModal(true)}>
-                  <FolderPlus className="w-4 h-4" />
-                  {tFolders('newFolder')}
+                <Button variant="ghost" size="sm" onClick={saveCurrentView}>
+                  <Save className="h-4 w-4" />
+                  Save view
                 </Button>
                 <Button size="sm" onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
-                  <Upload className="w-4 h-4" />
+                  <Upload className="h-4 w-4" />
                   {t('upload')}
                 </Button>
               </div>
@@ -490,17 +339,17 @@ export default function WorkspaceDetailPage() {
                 title={t('upload')}
                 className="min-w-[44px] px-3"
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="h-4 w-4" />
               </Button>
               <ScholarActionMenu
                 compact
                 ariaLabel={tCommon('moreActions')}
-                icon={<MoreVertical className="w-4 h-4" />}
+                icon={<MoreVertical className="h-4 w-4" />}
                 label={tCommon('moreActions')}
                 items={[
                   {
                     label: 'Tour',
-                    icon: <CircleHelp className="w-4 h-4" />,
+                    icon: <CircleHelp className="h-4 w-4" />,
                     onClick: () => {
                       window.dispatchEvent(
                         new CustomEvent('zohal:start-tour', {
@@ -510,9 +359,9 @@ export default function WorkspaceDetailPage() {
                     },
                   },
                   {
-                    label: tFolders('newFolder'),
-                    icon: <FolderPlus className="w-4 h-4" />,
-                    onClick: () => setShowCreateFolderModal(true),
+                    label: 'Save view',
+                    icon: <Save className="h-4 w-4" />,
+                    onClick: saveCurrentView,
                   },
                 ]}
               />
@@ -523,47 +372,16 @@ export default function WorkspaceDetailPage() {
 
       <WorkspaceTabs workspaceId={workspaceId} active="documents" showMembersTab={orgMultiUserEnabled} />
 
-      {/* Breadcrumb */}
-      {folderPath.length > 0 && (
-        <div className="border-b border-border bg-surface-alt/50 px-4 py-2 md:px-6">
-          <div className="flex items-center gap-1 overflow-x-auto text-sm">
-            <button
-              onClick={() => navigateToPathFolder(null)}
-              className="flex shrink-0 items-center gap-1 text-text-soft transition-colors hover:text-text"
-            >
-              <Home className="w-4 h-4" />
-              <span>{workspace?.name}</span>
-            </button>
-            {folderPath.map((folder, index) => (
-              <div key={folder.id} className="flex shrink-0 items-center gap-1">
-                <ChevronRight className="w-4 h-4 text-text-soft rtl-flip" />
-                <button
-                  onClick={() => navigateToPathFolder(folder.id)}
-                  className={cn(
-                    'hover:text-text transition-colors',
-                    index === folderPath.length - 1
-                      ? 'text-text font-medium'
-                      : 'text-text-soft'
-                  )}
-                >
-                  {folder.name}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="flex-1 overflow-auto p-4 md:p-6">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex h-64 items-center justify-center">
             <Spinner size="lg" />
           </div>
         ) : isEmpty ? (
           <EmptyState
-            icon={<FileText className="w-8 h-8" />}
-            title={currentFolderId ? tFolders('emptyFolder') : t('empty')}
-            description={currentFolderId ? tFolders('addDocumentsOrSubfolders') : t('emptyDescription')}
+            icon={<FileText className="h-8 w-8" />}
+            title={t('empty')}
+            description={t('emptyDescription')}
             action={{
               label: t('upload'),
               onClick: () => setShowUploadModal(true),
@@ -571,105 +389,150 @@ export default function WorkspaceDetailPage() {
           />
         ) : (
           <div className="space-y-8">
-            {/* Folders Section */}
-            {folders.length > 0 && (
-              <section>
-                <h2 className="text-xs font-semibold text-text-soft uppercase tracking-wider mb-4">
-                  {tFolders('title')}
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {folders.map((folder) => (
-                    <div
-                      key={folder.id}
-                      draggable
-                      onDragStart={() => handleDragStart({ type: 'folder', id: folder.id })}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(e) => handleDragOver(e, folder.id)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, folder.id)}
-                    >
-                      <FolderIcon
-                        folder={folder}
-                        onOpen={() => navigateToFolder(folder)}
-                        onRename={() => setEditingFolder(folder)}
-                        onDelete={() => handleDeleteFolder(folder)}
-                        isDragOver={dropTargetId === folder.id}
-                        isDragging={draggedItem?.type === 'folder' && draggedItem.id === folder.id}
-                      />
-                    </div>
-                  ))}
+            <section className="space-y-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="relative max-w-xl flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-soft" />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setActiveSavedViewId(null);
+                      setSearchQuery(e.target.value);
+                    }}
+                    placeholder="Search workspace documents"
+                    className="w-full rounded-scholar border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text outline-none transition-colors focus:border-accent"
+                  />
                 </div>
-              </section>
-            )}
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={saveCurrentView}>
+                    <Save className="h-4 w-4" />
+                    Save view
+                  </Button>
+                  {(searchQuery || selectedDocumentType || selectedTag || activeSavedViewId) && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <X className="h-4 w-4" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-            {/* Documents Section */}
-            {documents.length > 0 && (
+              {savedViews.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Saved views</div>
+                  <div className="flex flex-wrap gap-2">
+                    {savedViews.map((view) => (
+                      <button
+                        key={view.id}
+                        onClick={() => applySavedView(view)}
+                        className={cn(
+                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                          activeSavedViewId === view.id
+                            ? 'border-accent bg-accent/10 text-accent'
+                            : 'border-border bg-surface text-text-soft hover:text-text'
+                        )}
+                      >
+                        {view.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {documentTypes.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Types</div>
+                  <div className="flex flex-wrap gap-2">
+                    {documentTypes.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => {
+                          setActiveSavedViewId(null);
+                          setSelectedDocumentType((current) => (current === type ? null : type));
+                        }}
+                        className={cn(
+                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                          selectedDocumentType === type
+                            ? 'border-accent bg-accent/10 text-accent'
+                            : 'border-border bg-surface text-text-soft hover:text-text'
+                        )}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {documentTags.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Tags</div>
+                  <div className="flex flex-wrap gap-2">
+                    {documentTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => {
+                          setActiveSavedViewId(null);
+                          setSelectedTag((current) => (current === tag ? null : tag));
+                        }}
+                        className={cn(
+                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                          selectedTag === tag
+                            ? 'border-accent bg-accent/10 text-accent'
+                            : 'border-border bg-surface text-text-soft hover:text-text'
+                        )}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {visibleDocuments.length > 0 ? (
               <section>
-                <h2 className="text-xs font-semibold text-text-soft uppercase tracking-wider mb-4">
-                  {t('title')}
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-soft">
+                  Workspace documents
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {documents.map((doc) => (
-                    <div
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {visibleDocuments.map((doc) => (
+                    <DocumentCard
                       key={doc.id}
-                      draggable
-                      onDragStart={() => handleDragStart({ type: 'document', id: doc.id })}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <DocumentCard
-                        document={doc}
-                        workspaceId={workspaceId}
-                        folders={folders}
-                        onDelete={() => handleDeleteDocument(doc)}
-                        onMoveToFolder={(folderId) => moveDocumentToFolder(doc.id, folderId)}
-                        isDragging={draggedItem?.type === 'document' && draggedItem.id === doc.id}
-                        currentFolderId={currentFolderId}
-                      />
-                    </div>
+                      document={doc}
+                      workspaceId={workspaceId}
+                      onDelete={() => handleDeleteDocument(doc)}
+                    />
                   ))}
                 </div>
               </section>
+            ) : (
+              <EmptyState
+                icon={<FileText className="h-8 w-8" />}
+                title="No documents match this view"
+                description="Try a different saved view or clear the current filters."
+                action={{
+                  label: 'Clear filters',
+                  onClick: clearFilters,
+                }}
+              />
             )}
           </div>
         )}
       </div>
 
-      {/* Upload Modal */}
       {showUploadModal && (
         <DocumentUploadModal
           workspaceId={workspaceId}
-          folderId={currentFolderId}
           onClose={() => setShowUploadModal(false)}
           onUploaded={(documentId) => {
             setShowUploadModal(false);
             if (documentId) {
-              // Navigate to the uploaded document
               router.push(`/workspaces/${workspaceId}/documents/${documentId}`);
             } else {
-              fetchData();
+              void fetchData();
             }
           }}
-        />
-      )}
-
-      {/* Create Folder Modal */}
-      {showCreateFolderModal && (
-        <CreateFolderModal
-          workspaceId={workspaceId}
-          parentId={currentFolderId}
-          onClose={() => setShowCreateFolderModal(false)}
-          onSave={handleCreateFolder}
-        />
-      )}
-
-      {/* Edit Folder Modal */}
-      {editingFolder && (
-        <CreateFolderModal
-          workspaceId={workspaceId}
-          parentId={editingFolder.parent_id}
-          existingFolder={editingFolder}
-          onClose={() => setEditingFolder(null)}
-          onSave={handleRenameFolder}
         />
       )}
     </div>
@@ -679,18 +542,12 @@ export default function WorkspaceDetailPage() {
 interface DocumentCardProps {
   document: Document;
   workspaceId: string;
-  folders: FolderWithStats[];
   onDelete: () => void;
-  onMoveToFolder: (folderId: string | null) => void;
-  isDragging?: boolean;
-  currentFolderId: string | null;
 }
 
 function DocumentThumbnail({ document: doc }: { document: Document }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [thumbnail, setThumbnail] = useState<string | null>(
-    () => documentThumbnailCache.get(doc.id) || null
-  );
+  const [thumbnail, setThumbnail] = useState<string | null>(() => documentThumbnailCache.get(doc.id) || null);
   const [loading, setLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -740,8 +597,7 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const baseViewport = page.getViewport({ scale: 1 });
-        const targetWidth =
-          (containerRef.current?.clientWidth ?? 320) * (window.devicePixelRatio || 1);
+        const targetWidth = (containerRef.current?.clientWidth ?? 320) * (window.devicePixelRatio || 1);
         const scale = Math.min(2.0, Math.max(0.6, targetWidth / baseViewport.width));
         const viewport = page.getViewport({ scale });
 
@@ -761,25 +617,25 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
         documentThumbnailCache.set(doc.id, dataUrl);
         if (!cancelled) setThumbnail(dataUrl);
         pdf.destroy();
-      } catch (err) {
+      } catch {
         if (!cancelled) setThumbnail(null);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    loadThumbnail();
+    void loadThumbnail();
 
     return () => {
       cancelled = true;
       loadingTask?.destroy();
     };
-  }, [doc.id, doc.storage_path, doc.privacy_mode, isVisible]);
+  }, [doc.id, doc.privacy_mode, doc.storage_path, isVisible]);
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-[4/3] rounded-scholar-lg overflow-hidden bg-surface-alt border border-border"
+      className="relative aspect-[4/3] w-full overflow-hidden rounded-scholar-lg border border-border bg-surface-alt"
     >
       {thumbnail ? (
         <Image
@@ -788,28 +644,19 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
           width={400}
           height={300}
           unoptimized
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center text-text-soft">
-          {loading ? <Spinner size="sm" /> : <FileText className="w-6 h-6" />}
+          {loading ? <Spinner size="sm" /> : <FileText className="h-6 w-6" />}
         </div>
       )}
     </div>
   );
 }
 
-function DocumentCard({
-  document: doc,
-  workspaceId,
-  folders,
-  onDelete,
-  onMoveToFolder,
-  isDragging,
-  currentFolderId,
-}: DocumentCardProps) {
+function DocumentCard({ document: doc, workspaceId, onDelete }: DocumentCardProps) {
   const t = useTranslations('documents.types');
-  const tFolders = useTranslations('folders');
   const tCommon = useTranslations('common');
   const supabase = createClient();
   const { showSuccess } = useToast();
@@ -819,16 +666,16 @@ function DocumentCard({
   const isProcessing = ['pending', 'uploading', 'processing', 'chunked', 'embedding'].includes(
     doc.processing_status
   );
-
   const canRetryIndexing = doc.processing_status === 'failed' || doc.processing_status === 'pending';
+
   const handleRetryIndexing = async () => {
     try {
       await supabase.functions.invoke('enqueue-document-ingestion', {
         body: { document_id: doc.id },
       });
-      showSuccess('Queued for indexing', 'We’ll retry processing in the background.');
-    } catch (e) {
-      console.warn('enqueue-document-ingestion failed:', e);
+      showSuccess('Queued for indexing', 'We will retry processing in the background.');
+    } catch (error) {
+      console.warn('enqueue-document-ingestion failed:', error);
     } finally {
       setShowMenu(false);
     }
@@ -836,148 +683,107 @@ function DocumentCard({
 
   return (
     <Card
-      className={cn(
-        'relative group hover:-translate-y-0.5 hover:shadow-scholar transition-all duration-200',
-        isDragging && 'opacity-50 scale-95'
-      )}
+      className="relative group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-scholar"
       padding="none"
     >
-      <Link
-        href={`/workspaces/${workspaceId}/documents/${doc.id}`}
-        className="block"
-        data-tour="workspace-document-card"
-      >
+      <Link href={`/workspaces/${workspaceId}/documents/${doc.id}`} className="block" data-tour="workspace-document-card">
         <DocumentThumbnail document={doc} />
 
-        <div className="p-4 space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            {doc.document_type && (
-              <Badge size="sm">{t(doc.document_type)}</Badge>
-            )}
+        <div className="space-y-2 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {doc.document_type && <Badge size="sm">{t(doc.document_type)}</Badge>}
             <Badge
               size="sm"
               variant={doc.processing_status === 'completed' ? 'success' : 'default'}
               className={cn(statusColors[doc.processing_status])}
             >
-              {isProcessing && (
-                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse mr-1" />
-              )}
+              {isProcessing && <span className="mr-1 h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
               {doc.processing_status}
             </Badge>
           </div>
 
-          <h3 className="font-semibold text-text line-clamp-2">{doc.title}</h3>
+          <h3 className="line-clamp-2 font-semibold text-text">{doc.title}</h3>
 
-          <div className="pt-2 border-t border-border flex items-center justify-between">
+          {doc.document_tags && doc.document_tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {doc.document_tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} size="sm" variant="default">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-border pt-2">
             <p className="text-xs text-text-soft">
               {doc.page_count ? `${doc.page_count} pages • ` : ''}
               {doc.file_size_bytes ? formatFileSize(doc.file_size_bytes) : ''}
             </p>
-            <p className="text-xs text-text-soft">
-              {formatRelativeTime(doc.updated_at)}
-            </p>
+            <p className="text-xs text-text-soft">{formatRelativeTime(doc.updated_at)}</p>
           </div>
         </div>
       </Link>
 
-      {/* Menu Button */}
-      <div className={cn("absolute top-3 right-3", showMenu && "z-[100]")}>
+      <div className={cn('absolute right-3 top-3', showMenu && 'z-[100]')}>
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-all shadow-sm"
+          className="rounded-lg bg-black/50 p-2 shadow-sm transition-all hover:bg-black/70"
         >
-          <MoreVertical className="w-5 h-5 text-white" />
+          <MoreVertical className="h-5 w-5 text-white" />
         </button>
 
         {showMenu && (
           <>
-            <div
-              className="fixed inset-0 z-[99]"
-              onClick={() => setShowMenu(false)}
-            />
-            <div className="absolute right-0 mt-1 w-48 bg-surface border border-border rounded-scholar shadow-scholar-lg z-[100] overflow-hidden animate-fade-in">
+            <div className="fixed inset-0 z-[99]" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 z-[100] mt-1 w-48 overflow-hidden rounded-scholar border border-border bg-surface shadow-scholar-lg animate-fade-in">
               <Link
                 href={`/workspaces/${workspaceId}/documents/${doc.id}`}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-text transition-colors hover:bg-surface-alt"
                 onClick={() => setShowMenu(false)}
               >
-                <Eye className="w-4 h-4" />
+                <Eye className="h-4 w-4" />
                 {tCommon('open')}
               </Link>
 
               <button
-                onClick={(e) => {
-                  e.preventDefault();
+                onClick={(event) => {
+                  event.preventDefault();
                   setShowMenu(false);
                   setShowShareModal(true);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text transition-colors hover:bg-surface-alt"
               >
-                <Share2 className="w-4 h-4" />
+                <Share2 className="h-4 w-4" />
                 {tCommon('share')}
               </button>
 
               {canRetryIndexing && (
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleRetryIndexing();
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void handleRetryIndexing();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text transition-colors hover:bg-surface-alt"
                 >
-                  <RefreshCcw className="w-4 h-4" />
+                  <RefreshCcw className="h-4 w-4" />
                   Retry indexing
                 </button>
               )}
 
-              {/* Move to folder submenu */}
-              {folders.length > 0 && (
-                <div className="border-t border-border">
-                  <div className="px-3 py-1.5 text-xs text-text-soft font-medium">
-                    {tFolders('moveToFolder')}
-                  </div>
-                  {currentFolderId && (
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        onMoveToFolder(null);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
-                    >
-                      <Home className="w-4 h-4" />
-                      {tFolders('workspaceRoot')}
-                    </button>
-                  )}
-                  {folders.map((folder) => (
-                    <button
-                      key={folder.id}
-                      onClick={() => {
-                        setShowMenu(false);
-                        onMoveToFolder(folder.id);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
-                    >
-                      <FolderInput className="w-4 h-4" />
-                      {folder.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               <hr className="border-border" />
               <button
-                onClick={(e) => {
-                  e.preventDefault();
+                onClick={(event) => {
+                  event.preventDefault();
                   setShowMenu(false);
                   onDelete();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-error transition-colors hover:bg-error/10"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-4 w-4" />
                 {tCommon('delete')}
               </button>
             </div>
@@ -985,7 +791,6 @@ function DocumentCard({
         )}
       </div>
 
-      {/* Share Modal */}
       {showShareModal && (
         <ShareDocumentModal
           document={doc}

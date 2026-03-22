@@ -51,7 +51,7 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     group: 'contract_operations',
     rank: 50,
     emoji: '🛡️',
-    description: 'Deviations from playbooks, policies, and approval rules with evidence.',
+    description: 'Deviations from templates, policies, and approval rules with evidence.',
     descriptionAr: 'انحرافات عن القواعد والسياسات ومتطلبات الموافقة مع أدلة داعمة.',
   },
   {
