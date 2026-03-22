@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, FolderOpen, MoreVertical, Archive, Trash2, Edit2, Layers, Briefcase, BookOpen, User, Search, Grid3X3 } from 'lucide-react';
+import { Plus, FolderOpen, MoreVertical, Trash2, Edit2, Search } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, EmptyState, ScholarActionMenu, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -12,26 +12,7 @@ import Link from 'next/link';
 import { FolderModal } from '@/components/workspace/FolderModal';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
 
-function workspaceTypeIcon(type: WorkspaceType) {
-  switch (type) {
-    case 'project':
-      return Layers;
-    case 'case':
-    case 'client':
-      return Briefcase;
-    case 'course':
-      return BookOpen;
-    case 'personal':
-      return User;
-    case 'research':
-      return Search;
-    case 'archive':
-      return Archive;
-    case 'other':
-    default:
-      return Grid3X3;
-  }
-}
+type WorkspaceTimeFilter = 'all' | 'today' | 'lastWeek' | 'lastMonth';
 
 export default function WorkspacesPage() {
   const t = useTranslations('workspaces');
@@ -46,6 +27,9 @@ export default function WorkspacesPage() {
   const [createInFolderId, setCreateInFolderId] = useState<string | null>(null);
   const [draggedItem, setDraggedItem] = useState<{ kind: 'workspace' | 'folder'; id: string } | null>(null);
   const [activeDropFolderId, setActiveDropFolderId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState<WorkspaceType | null>(null);
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<WorkspaceTimeFilter>('all');
 
   type AccessibleWorkspaceRow = Workspace & {
     access_role?: string;
@@ -98,22 +82,35 @@ export default function WorkspacesPage() {
 
   const tCard = useTranslations('workspaceCard');
   const topLevelFolders = folders.filter((folder) => !folder.parent_id);
-  const ungroupedWorkspaces = workspaces.filter((workspace) => !workspace.parent_folder_id);
+  const availableTypes = useMemo(
+    () => Array.from(new Set(workspaces.map((workspace) => workspace.workspace_type))) as WorkspaceType[],
+    [workspaces]
+  );
+  const filteredWorkspaces = useMemo(() => {
+    return workspaces.filter((workspace) => {
+      const matchesSearch =
+        !searchQuery ||
+        workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (workspace.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = !selectedType || workspace.workspace_type === selectedType;
+      if (!matchesSearch || !matchesType) return false;
+
+      if (selectedTimeFilter === 'all') return true;
+
+      const updatedAt = new Date(workspace.updated_at).getTime();
+      const now = Date.now();
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      if (selectedTimeFilter === 'today') return updatedAt >= startOfToday.getTime();
+      if (selectedTimeFilter === 'lastWeek') return updatedAt >= now - 7 * 24 * 60 * 60 * 1000;
+      return updatedAt >= now - 30 * 24 * 60 * 60 * 1000;
+    });
+  }, [searchQuery, selectedTimeFilter, selectedType, workspaces]);
+  const ungroupedWorkspaces = filteredWorkspaces.filter((workspace) => !workspace.parent_folder_id);
   
   const handleDelete = async (workspace: Workspace) => {
     if (!confirm(tCard('confirmDelete', { name: workspace.name }))) return;
 
-    const { error } = await supabase
-      .from('workspaces')
-      .delete()
-      .eq('id', workspace.id);
-
-    if (!error) {
-      setWorkspaces((prev) => prev.filter((w) => w.id !== workspace.id));
-    }
-  };
-
-  const handleArchive = async (workspace: Workspace) => {
     const { error } = await supabase
       .from('workspaces')
       .update({ deleted_at: new Date().toISOString() })
@@ -209,6 +206,37 @@ export default function WorkspacesPage() {
           />
         ) : (
           <div className="space-y-8">
+            <section className="space-y-4">
+              <div className="relative max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-soft" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search workspaces"
+                  className="w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-4 text-sm text-text outline-none transition focus:border-accent/40 focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <FilterChip label="All Types" selected={selectedType === null} onClick={() => setSelectedType(null)} />
+                {availableTypes.map((type) => (
+                  <FilterChip
+                    key={type}
+                    label={type}
+                    selected={selectedType === type}
+                    onClick={() => setSelectedType(type)}
+                  />
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <FilterChip label="All Time" selected={selectedTimeFilter === 'all'} onClick={() => setSelectedTimeFilter('all')} />
+                <FilterChip label="Today" selected={selectedTimeFilter === 'today'} onClick={() => setSelectedTimeFilter('today')} />
+                <FilterChip label="Last Week" selected={selectedTimeFilter === 'lastWeek'} onClick={() => setSelectedTimeFilter('lastWeek')} />
+                <FilterChip label="Last Month" selected={selectedTimeFilter === 'lastMonth'} onClick={() => setSelectedTimeFilter('lastMonth')} />
+              </div>
+            </section>
+
             {topLevelFolders.length > 0 && (
               <section className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">
@@ -235,7 +263,7 @@ export default function WorkspacesPage() {
               </section>
             )}
 
-            {ungroupedWorkspaces.length > 0 && (
+            {ungroupedWorkspaces.length > 0 ? (
               <section className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">
                   Workspaces
@@ -245,16 +273,21 @@ export default function WorkspacesPage() {
                     <WorkspaceIcon
                       key={workspace.id}
                       workspace={workspace}
-                        draggable
-                        onDragStart={() => setDraggedItem({ kind: 'workspace', id: workspace.id })}
-                        onDragEnd={() => setDraggedItem(null)}
+                      draggable
+                      onDragStart={() => setDraggedItem({ kind: 'workspace', id: workspace.id })}
+                      onDragEnd={() => setDraggedItem(null)}
                       onEdit={() => setEditingWorkspace(workspace)}
-                      onArchive={() => handleArchive(workspace)}
                       onDelete={() => handleDelete(workspace)}
                     />
                   ))}
                 </div>
               </section>
+            ) : (
+              <EmptyState
+                icon={<Search className="w-8 h-8" />}
+                title="No matching workspaces"
+                description="Try changing the search or filters."
+              />
             )}
           </div>
         )}
@@ -354,7 +387,6 @@ interface WorkspaceCardProps {
   onDragStart?: () => void;
   onDragEnd?: () => void;
   onEdit: () => void;
-  onArchive: () => void;
   onDelete: () => void;
 }
 
@@ -364,7 +396,6 @@ function WorkspaceIcon({
   onDragStart,
   onDragEnd,
   onEdit,
-  onArchive,
   onDelete,
 }: WorkspaceCardProps) {
   const t = useTranslations('workspaces.types');
@@ -450,18 +481,6 @@ function WorkspaceIcon({
                 onClick={(e) => {
                   e.preventDefault();
                   setShowMenu(false);
-                  onArchive();
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
-              >
-                <Archive className="w-4 h-4" />
-                {tCard('archive')}
-              </button>
-              <hr className="border-border" />
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowMenu(false);
                   onDelete();
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
@@ -474,5 +493,30 @@ function WorkspaceIcon({
         )}
       </div>
     </div>
+  );
+}
+
+function FilterChip({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors',
+        selected
+          ? 'border-accent bg-accent text-white'
+          : 'border-border bg-surface text-text-soft hover:border-accent/30 hover:text-text'
+      )}
+    >
+      {label}
+    </button>
   );
 }
