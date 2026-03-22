@@ -303,6 +303,13 @@ export function ContractAnalysisPane({
     () => runs.find((run) => run.runId === selectedRunId) ?? null,
     [runs, selectedRunId]
   );
+  const workspaceDocumentTitleById = useMemo(
+    () =>
+      new Map(
+        workspaceDocs.map((doc) => [doc.id, doc.title || doc.id] as const)
+      ),
+    [workspaceDocs]
+  );
 
   const isHistoricalRunSelected = useMemo(() => {
     if (!selectedRun || !selectedRun.versionId || !currentVersionId) return false;
@@ -2633,6 +2640,74 @@ export function ContractAnalysisPane({
           <div className="mb-3 p-3 rounded-scholar border border-border bg-surface-alt text-sm text-text-soft">
             {t('runs.selectedStatus', { status: selectedRunStatus })}
           </div>
+        )}
+
+        {selectedRun && (selectedRun.corpusResolution || selectedRun.playbookLabel) && (
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>{t('inspector.title')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {selectedRun.playbookLabel && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">
+                    {t('inspector.recipe')}
+                  </div>
+                  <div className="mt-1 text-text">{selectedRun.playbookLabel}</div>
+                </div>
+              )}
+
+              {selectedRun.corpusResolution && (
+                <>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">
+                      {t('inspector.includedSources')}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedRun.corpusResolution.documentIds.map((documentId) => {
+                        const role =
+                          selectedRun.corpusResolution?.memberRoles.find((member) => member.documentId === documentId)?.role ||
+                          (selectedRun.corpusResolution?.primaryDocumentId === documentId ? 'primary' : 'other');
+                        return (
+                          <Badge key={documentId} size="sm" variant="default">
+                            {workspaceDocumentTitleById.get(documentId) || documentId}
+                            <span className="ml-2 text-text-soft">{role}</span>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {selectedRun.corpusResolution.primaryDocumentId && (
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">
+                        {t('inspector.primarySource')}
+                      </div>
+                      <div className="mt-1 text-text">
+                        {workspaceDocumentTitleById.get(selectedRun.corpusResolution.primaryDocumentId) ||
+                          selectedRun.corpusResolution.primaryDocumentId}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRun.corpusResolution.librarySources.length > 0 && (
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">
+                        {t('inspector.libraryReferences')}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {selectedRun.corpusResolution.librarySources.map((source) => (
+                          <Badge key={source.libraryItemId} size="sm">
+                            {source.title || source.libraryItemId}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {reportSavedMessage && (

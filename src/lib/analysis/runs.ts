@@ -1,6 +1,8 @@
 import type { Database } from '@/types/supabase';
 import type {
+  AnalysisRunCorpusResolution,
   AnalysisRunDocsetMode,
+  AnalysisRunLibrarySource,
   AnalysisRunMemberRole,
   AnalysisRunPrecedencePolicy,
   AnalysisRunScope,
@@ -135,6 +137,32 @@ function parseDocumentIds(inputConfig: unknown): string[] {
   return [];
 }
 
+function parseLibrarySources(inputConfig: unknown): AnalysisRunLibrarySource[] {
+  const config = asRecord(inputConfig);
+  const corpusResolution = asRecord(config.corpus_resolution);
+  const sourceManifest = asRecord(corpusResolution.source_manifest);
+  const raw = Array.isArray(sourceManifest.library_sources)
+    ? sourceManifest.library_sources
+    : [];
+
+  return raw
+    .map((value) => {
+      const record = value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+      const libraryItemId = asString(record.library_item_id) || asString(record.libraryItemId);
+      if (!libraryItemId) return null;
+      return {
+        libraryItemId,
+        title: asString(record.title),
+        authority: asString(record.authority),
+        jurisdiction: asString(record.jurisdiction),
+        versionLabel: asString(record.version_label) || asString(record.versionLabel),
+      };
+    })
+    .filter((value): value is AnalysisRunLibrarySource => !!value);
+}
+
 function parseMemberRoles(inputConfig: unknown, documentIds: string[], primaryDocumentId: string | null): AnalysisRunMemberRole[] {
   const config = asRecord(inputConfig);
   const bundle = asRecord(config.bundle);
@@ -194,6 +222,49 @@ function parseRememberedRelatedDocuments(runId: string, inputConfig: unknown): R
   };
 }
 
+function parseCorpusResolution(inputConfig: unknown): AnalysisRunCorpusResolution | null {
+  const config = asRecord(inputConfig);
+  const corpusResolution = asRecord(config.corpus_resolution);
+  if (Object.keys(corpusResolution).length === 0) return null;
+
+  const sourceManifest = asRecord(corpusResolution.source_manifest);
+  const documentIds = Array.isArray(sourceManifest.document_ids)
+    ? Array.from(
+      new Set(
+        sourceManifest.document_ids
+          .map((value) => asString(value))
+          .filter((value): value is string => !!value)
+      )
+    )
+    : parseDocumentIds(inputConfig);
+  const primaryDocumentId =
+    asString(sourceManifest.primary_document_id) ||
+    parsePrimaryDocumentId(inputConfig);
+  const memberRoles = Array.isArray(sourceManifest.member_roles)
+    ? parseMemberRoles({ member_roles: sourceManifest.member_roles }, documentIds, primaryDocumentId)
+    : parseMemberRoles(inputConfig, documentIds, primaryDocumentId);
+
+  return {
+    corpusId: asString(corpusResolution.corpus_id),
+    corpusKind: asString(corpusResolution.corpus_kind),
+    primaryDocumentId,
+    documentIds,
+    memberRoles,
+    precedencePolicy: normalizePrecedencePolicy(
+      asString(sourceManifest.precedence_policy) || asString(config.precedence_policy)
+    ),
+    legacyPackId:
+      asString(sourceManifest.legacy_pack_id) ||
+      asString(config.pack_id) ||
+      asString(asRecord(config.bundle).pack_id),
+    savedLabel:
+      asString(sourceManifest.saved_label) ||
+      asString(config.saved_docset_name) ||
+      asString(asRecord(config.bundle).saved_docset_name),
+    librarySources: parseLibrarySources(inputConfig),
+  };
+}
+
 export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow | null): AnalysisRunSummary {
   const config = asRecord(run.input_config);
   const outputSummary = asRecord(run.output_summary);
@@ -226,6 +297,7 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     asString(bundle.pack_id) ||
     asString(bundle.bundle_id) ||
     null;
+  const corpusResolution = parseCorpusResolution(run.input_config);
   const docsetMode = parseDocsetMode(config);
   const savedDocsetName =
     asString(bundle.saved_docset_name) ||
@@ -254,10 +326,13 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     playbookLabel,
     scope: parseScope(run.input_config),
     packId,
+    corpusId: corpusResolution?.corpusId ?? null,
+    corpusKind: corpusResolution?.corpusKind ?? null,
     docsetMode,
     savedDocsetName,
     versionId,
     verificationObjectId,
+    corpusResolution,
     rememberedRelatedDocuments,
   };
 }
@@ -294,10 +369,13 @@ export function mergeVerificationObjectFallbackRun(
     playbookLabel: asString(verificationObject?.title),
     scope: 'single',
     packId: null,
+    corpusId: null,
+    corpusKind: null,
     docsetMode: null,
     savedDocsetName: null,
     versionId,
     verificationObjectId,
+    corpusResolution: null,
     rememberedRelatedDocuments: null,
   };
 

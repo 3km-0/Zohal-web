@@ -124,6 +124,13 @@ export default function WorkspacePacksPage() {
       <WorkspaceTabs workspaceId={workspaceId} active="packs" showMembersTab={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
+        <Card className="p-4 border-dashed">
+          <div className="text-sm font-semibold text-text">Advanced source management</div>
+          <p className="mt-1 text-sm text-text-soft">
+            Packs remain available for operator, support, and migration workflows, but day-to-day analysis should prefer
+            automatic source resolution and included-sources review.
+          </p>
+        </Card>
         <Card className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
             <div className="md:col-span-4">

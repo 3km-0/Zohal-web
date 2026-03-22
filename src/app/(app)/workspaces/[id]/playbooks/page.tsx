@@ -9,6 +9,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import {
   Badge,
   Button,
+  Card,
   Input,
   Spinner,
   ScholarNotebookCard,
@@ -666,6 +667,14 @@ export default function WorkspacePlaybooksPage() {
             </div>
           </div>
         </div>
+
+        <Card className="p-4 border-dashed">
+          <div className="text-sm font-semibold text-text">Advanced recipe management</div>
+          <p className="mt-1 text-sm text-text-soft">
+            Templates stay versioned and inspectable here for operator workflows, while normal analysis flows should rely on
+            automatic recipe selection and the per-run provenance panel.
+          </p>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left: unified templates panel */}

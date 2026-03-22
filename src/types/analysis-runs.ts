@@ -12,6 +12,26 @@ export interface AnalysisRunMemberRole {
   sortOrder: number;
 }
 
+export interface AnalysisRunLibrarySource {
+  libraryItemId: string;
+  title: string | null;
+  authority: string | null;
+  jurisdiction: string | null;
+  versionLabel: string | null;
+}
+
+export interface AnalysisRunCorpusResolution {
+  corpusId: string | null;
+  corpusKind: string | null;
+  primaryDocumentId: string | null;
+  documentIds: string[];
+  memberRoles: AnalysisRunMemberRole[];
+  precedencePolicy: AnalysisRunPrecedencePolicy;
+  legacyPackId: string | null;
+  savedLabel: string | null;
+  librarySources: AnalysisRunLibrarySource[];
+}
+
 export interface RememberedRelatedDocuments {
   sourceRunId: string;
   scope: AnalysisRunScope;
@@ -31,9 +51,12 @@ export interface AnalysisRunSummary {
   playbookLabel: string | null;
   scope: AnalysisRunScope;
   packId: string | null;
+  corpusId: string | null;
+  corpusKind: string | null;
   docsetMode: AnalysisRunDocsetMode | null;
   savedDocsetName: string | null;
   versionId: string | null;
   verificationObjectId: string | null;
+  corpusResolution: AnalysisRunCorpusResolution | null;
   rememberedRelatedDocuments: RememberedRelatedDocuments | null;
 }

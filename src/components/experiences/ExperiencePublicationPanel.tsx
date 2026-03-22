@@ -63,6 +63,9 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [rememberedRelatedDocuments, setRememberedRelatedDocuments] = useState<RememberedRelatedDocuments | null>(null);
   const [documentTitlesById, setDocumentTitlesById] = useState<Record<string, string>>({});
+  const includedSourcesLabel = rememberedRelatedDocuments
+    ? `${rememberedRelatedDocuments.documentIds.length} related documents from the latest successful analysis`
+    : 'Workspace sources are resolved automatically for this publication flow.';
 
   const fetchStatus = useCallback(async () => {
     if (!experienceId.trim()) return;
@@ -226,9 +229,12 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               ) : null}
               <div className="grid gap-4 md:grid-cols-2">
                 <Input label={t('fields.experienceId')} value={experienceId} onChange={(e) => setExperienceId(e.target.value)} />
-                <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
                 <Input label={t('fields.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
+              </div>
+              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                <div className="font-semibold text-text">{t('fields.includedSources')}</div>
+                <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">

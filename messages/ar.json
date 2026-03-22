@@ -434,6 +434,7 @@
     "fields": {
       "experienceId": "معرّف التجربة",
       "corpusId": "معرّف المجموعة",
+      "includedSources": "المصادر المضمنة",
       "title": "العنوان",
       "host": "المضيف",
       "visibility": "الرؤية",
@@ -1144,7 +1145,7 @@
       "defaultLabel": "تحليل العقد",
       "scopeSingle": "مستند واحد",
       "scopeBundle": "مستندات مرتبطة",
-      "scopeDocset": "مجموعة مستندات",
+      "scopeDocset": "مستندات مرتبطة",
       "scopeDocsetSaved": "مستندات مرتبطة",
       "scopeDocsetUnsaved": "مستندات مرتبطة",
       "unsaved": "مستندات مرتبطة",
@@ -1155,7 +1156,7 @@
       "templateHelp": "اختر القالب المناسب لهذا التحليل.",
       "scopeTitle": "النطاق",
       "scopeSingle": "مستند واحد",
-      "scopeDocset": "مجموعة مستندات",
+      "scopeDocset": "مستندات مرتبطة",
       "scopeEnforced": "هذا القالب يتطلب: {scope}",
       "title": "المستندات المرتبطة",
       "help": "أضف المستندات الداعمة لهذا التشغيل. يتذكر زحل آخر مجموعة ناجحة تلقائياً.",
@@ -1190,6 +1191,13 @@
         "roleMustBeUnique": "لا يمكن تكرار هذا الدور: {role}",
         "invalidDocset": "إعداد المستندات المرتبطة غير صالح."
       }
+    },
+    "inspector": {
+      "title": "مرجعية التشغيل",
+      "recipe": "وصفة التحليل المستخدمة",
+      "includedSources": "المصادر المضمنة",
+      "primarySource": "المصدر الأساسي",
+      "libraryReferences": "مراجع المكتبة"
     },
     "tabs": {
       "overview": "نظرة عامة",

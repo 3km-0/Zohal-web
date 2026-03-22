@@ -434,6 +434,7 @@
     "fields": {
       "experienceId": "Experience ID",
       "corpusId": "Corpus ID",
+      "includedSources": "Included sources",
       "title": "Title",
       "host": "Host",
       "visibility": "Visibility",
@@ -1190,6 +1191,13 @@
         "roleMustBeUnique": "Role must be unique: {role}",
         "invalidDocset": "Related-document configuration is invalid."
       }
+    },
+    "inspector": {
+      "title": "Run provenance",
+      "recipe": "Analysis recipe used",
+      "includedSources": "Included sources",
+      "primarySource": "Primary source",
+      "libraryReferences": "Library references"
     },
     "tabs": {
       "overview": "Overview",

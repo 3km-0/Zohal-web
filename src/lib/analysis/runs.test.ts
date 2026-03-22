@@ -71,6 +71,8 @@ describe('analysis run utilities', () => {
     expect(summary.actionId).toBe('action-1');
     expect(summary.status).toBe('succeeded');
     expect(summary.scope).toBe('bundle');
+    expect(summary.corpusId).toBeNull();
+    expect(summary.corpusKind).toBeNull();
     expect(summary.docsetMode).toBe('saved');
     expect(summary.savedDocsetName).toBeNull();
     expect(summary.templateId).toBe('template-1');
@@ -166,10 +168,13 @@ describe('analysis run utilities', () => {
           playbookLabel: null,
           scope: 'single',
           packId: null,
+          corpusId: null,
+          corpusKind: null,
           docsetMode: null,
           savedDocsetName: null,
           versionId: 'v-new',
           verificationObjectId: 'vo-new',
+          corpusResolution: null,
           rememberedRelatedDocuments: null,
         },
         {
@@ -182,10 +187,13 @@ describe('analysis run utilities', () => {
           playbookLabel: null,
           scope: 'bundle',
           packId: null,
+          corpusId: null,
+          corpusKind: null,
           docsetMode: 'ephemeral',
           savedDocsetName: null,
           versionId: 'v-old',
           verificationObjectId: 'vo-old',
+          corpusResolution: null,
           rememberedRelatedDocuments: {
             sourceRunId: 'r-old',
             scope: 'bundle',
@@ -218,10 +226,13 @@ describe('analysis run utilities', () => {
           playbookLabel: null,
           scope: 'bundle',
           packId: null,
+          corpusId: null,
+          corpusKind: null,
           docsetMode: 'ephemeral',
           savedDocsetName: null,
           versionId: 'v-latest',
           verificationObjectId: 'vo-latest',
+          corpusResolution: null,
           rememberedRelatedDocuments: {
             sourceRunId: 'r-latest',
             scope: 'bundle',
@@ -254,10 +265,13 @@ describe('analysis run utilities', () => {
         playbookLabel: null,
         scope: 'single',
         packId: null,
+        corpusId: null,
+        corpusKind: null,
         docsetMode: null,
         savedDocsetName: null,
         versionId: null,
         verificationObjectId: null,
+        corpusResolution: null,
         rememberedRelatedDocuments: null,
       },
       {
@@ -270,10 +284,13 @@ describe('analysis run utilities', () => {
         playbookLabel: null,
         scope: 'single',
         packId: null,
+        corpusId: null,
+        corpusKind: null,
         docsetMode: null,
         savedDocsetName: null,
         versionId: 'v2',
         verificationObjectId: 'vo',
+        corpusResolution: null,
         rememberedRelatedDocuments: null,
       },
     ]);
@@ -314,10 +331,13 @@ describe('analysis run utilities', () => {
           playbookLabel: null,
           scope: 'single',
           packId: null,
+          corpusId: null,
+          corpusKind: null,
           docsetMode: null,
           savedDocsetName: null,
           versionId: 'version-1',
           verificationObjectId: 'vo-1',
+          corpusResolution: null,
           rememberedRelatedDocuments: null,
         },
       ],
