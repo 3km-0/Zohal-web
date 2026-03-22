@@ -422,7 +422,7 @@ function WorkspaceIcon({
         )}
       >
         <div
-          className={cn('absolute inset-x-0 top-0 h-2.5', hasCustomColor ? '' : 'bg-accent')}
+          className={cn('absolute inset-y-0 right-0 w-2.5', hasCustomColor ? '' : 'bg-accent')}
           style={hasCustomColor ? { backgroundColor: String(workspace.color) } : undefined}
           aria-hidden="true"
         />
