@@ -442,12 +442,12 @@
     "reports": "Reports",
     "pipelines": "Pipelines",
     "packs": "Packs",
-    "experiences": "Experiences",
+    "experiences": "Pages",
     "members": "Members"
   },
   "experiencesPage": {
-    "title": "Experiences",
-    "subtitle": "Compile, validate, publish, and share live document-native experiences for this workspace.",
+    "title": "Pages",
+    "subtitle": "Compile, validate, publish, and share live pages for this workspace.",
     "configure": {
       "title": "Publication configuration",
       "description": "Use the investor dashboard as the first reference template and drive the publication lifecycle from here."
