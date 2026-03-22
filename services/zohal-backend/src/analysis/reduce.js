@@ -3425,6 +3425,69 @@ function buildDocsetProgressContext(parentRun) {
     : null;
 }
 
+function buildAutomationActivity(message, extra = {}) {
+  return {
+    at: new Date().toISOString(),
+    kind: "status",
+    message,
+    ...extra,
+  };
+}
+
+async function markAutomationRunSucceededNode({
+  supabase,
+  parentRunId,
+  versionId,
+  verificationObjectId,
+}) {
+  const normalizedParentRunId = normalizeUuid(parentRunId);
+  if (!normalizedParentRunId) return;
+  const completedAt = new Date().toISOString();
+  const { data: automationRun } = await supabase
+    .from("workspace_automation_runs")
+    .select("id, automation_id, activity_json, source_fingerprint")
+    .eq("parent_run_id", normalizedParentRunId)
+    .in("status", ["queued", "running"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!automationRun?.id) return;
+  const activity = Array.isArray(automationRun.activity_json)
+    ? automationRun.activity_json
+    : [];
+  await supabase
+    .from("workspace_automation_runs")
+    .update({
+      status: "succeeded",
+      status_reason:
+        "Canonical snapshot completed on the GCP execution plane.",
+      completed_at: completedAt,
+      activity_json: [
+        ...activity,
+        buildAutomationActivity("Canonical snapshot completed.", {
+          version_id: versionId || null,
+          verification_object_id: verificationObjectId || null,
+          execution_plane: "gcp",
+        }),
+      ],
+      metadata: {
+        version_id: versionId || null,
+        verification_object_id: verificationObjectId || null,
+        execution_plane: "gcp",
+      },
+      updated_at: completedAt,
+    })
+    .eq("id", automationRun.id);
+  await supabase
+    .from("workspace_automations")
+    .update({
+      last_succeeded_at: completedAt,
+      last_source_fingerprint: automationRun.source_fingerprint || null,
+      updated_at: completedAt,
+    })
+    .eq("id", automationRun.automation_id);
+}
+
 export async function executeContractAnalysisReduce({
   supabase,
   parentRunId,
@@ -4163,6 +4226,18 @@ export async function executeContractAnalysisReduce({
     contract_id: contractId,
     verification_object_id: verificationObjectId,
     version_id: versionId,
+  });
+
+  await markAutomationRunSucceededNode({
+    supabase,
+    parentRunId,
+    versionId,
+    verificationObjectId,
+  }).catch((error) => {
+    log?.warn?.("Failed to mark automation run succeeded", {
+      parent_run_id: normalizeUuid(parentRunId),
+      error: error instanceof Error ? error.message : String(error),
+    });
   });
 
   return {

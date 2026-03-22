@@ -255,6 +255,48 @@ async function patchActionExecutionMetadata(supabase, actionId, executionPatch) 
     .eq("id", existing.id);
 }
 
+async function markAutomationRunFailedNode({
+  supabase,
+  parentRunId,
+  message,
+}) {
+  const normalizedParentRunId = normalizeUuid(parentRunId);
+  if (!normalizedParentRunId) return;
+  const failedAt = new Date().toISOString();
+  const { data: automationRun } = await supabase
+    .from("workspace_automation_runs")
+    .select("id, action_id, activity_json")
+    .eq("parent_run_id", normalizedParentRunId)
+    .in("status", ["queued", "running"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!automationRun?.id) return;
+  const activity = Array.isArray(automationRun.activity_json)
+    ? automationRun.activity_json
+    : [];
+  await supabase
+    .from("workspace_automation_runs")
+    .update({
+      status: "failed",
+      status_reason: message,
+      error_message: message,
+      completed_at: failedAt,
+      activity_json: [
+        ...activity,
+        {
+          at: failedAt,
+          kind: "status",
+          message: "Automation run failed.",
+          error: message,
+          execution_plane: "gcp",
+        },
+      ],
+      updated_at: failedAt,
+    })
+    .eq("id", automationRun.id);
+}
+
 async function markAnalysisFailed({
   supabase,
   parentRunId,
@@ -325,6 +367,12 @@ async function markAnalysisFailed({
       })
       .eq("id", actionId);
   }
+
+  await markAutomationRunFailedNode({
+    supabase,
+    parentRunId: normalizedParentRunId,
+    message,
+  }).catch(() => null);
 }
 
 export function isRetryableAnalysisError(error) {

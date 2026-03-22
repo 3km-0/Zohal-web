@@ -9,6 +9,7 @@ import {
   House,
   FolderOpen,
   Search,
+  Bot,
   Settings,
   LogOut,
   ChevronLeft,
@@ -62,6 +63,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const navItems = [
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
     { href: '/ask', label: t('ask'), icon: Search },
+    { href: '/automations', label: t('automations'), icon: Bot },
     { href: '/integrations', label: t('integrations'), icon: Link2 },
     ...(showOrgTab
       ? [{ href: '/organization', label: t('organization'), icon: Building2 }]
