@@ -212,7 +212,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                   <div className="font-semibold text-text">Related documents remembered from last analysis</div>
                   <p className="mt-1 text-text-soft">
-                    Experience publish still compiles from the primary document only in this release.
+                    Interface publication still compiles from the primary document only in this release.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {rememberedRelatedDocuments.memberRoles.map((member) => (

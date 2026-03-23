@@ -54,11 +54,11 @@ function shortenUrlLabel(url: string): string {
   try {
     const parsed = new URL(url);
     if (parsed.hostname === 'live.zohal.ai' && parsed.pathname.startsWith('/__access/redeem')) {
-      return 'Open Live Experience';
+      return 'Open Live Interface';
     }
     if (parsed.hostname === 'live.zohal.ai' && parsed.pathname.startsWith('/live/')) {
       const slug = parsed.pathname.split('/').filter(Boolean).pop() || 'live';
-      return `Live Experience URL (${slug})`;
+      return `Live Interface URL (${slug})`;
     }
     const shortPath = parsed.pathname === '/'
       ? ''
