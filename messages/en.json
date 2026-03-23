@@ -1402,13 +1402,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — AI document analysis for important work",
-      "description": "Analyze important documents with AI, verify the result, and export review-ready packs."
+      "title": "Zohal — Documents become living workspaces",
+      "description": "Turn folders of PDFs, contracts, and reports into living workspaces with source-linked answers your team can trust."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "AI document analysis for important work.",
+        "tagline": "Turn document collections into living workspaces.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -1452,8 +1452,8 @@
         }
       },
       "hero": {
-        "headline": "Document analysis you can trust.",
-        "subhead": "Extract key fields, link every result to its source, and review outputs before they go out.",
+        "headline": "Turn documents into living software.",
+        "subhead": "Transform folders of PDFs, contracts, and reports into living workspaces your team can query, update, and share with confidence.",
         "ctas": [
           {
             "type": "primary",
@@ -1466,13 +1466,13 @@
             "href": "/support"
           }
         ],
-        "proofLine": "Click back to source • Private-data controls and sanitization • Generator + verifier checks",
+        "proofLine": "Click back to source • Private-data controls and sanitization • Live answers grounded in your documents",
         "mock": {
-          "title": "Checked output",
+          "title": "Living Workspace",
           "panels": [
-            "Source Evidence",
-            "Verified Claims",
-            "Decision Pack"
+            "Source PDF",
+            "Key Facts",
+            "Action Queue"
           ]
         }
       },
@@ -1519,40 +1519,40 @@
         ]
       },
       "problem": {
-        "title": "Stop sending unchecked AI output into real workflows.",
+        "title": "Stop running operations from dead files.",
         "body": [
-          "Generic document AI can save time while quietly introducing risk. A single unsupported extraction can move into a report, filing, or payment workflow before anyone notices.",
-          "Zohal keeps the source visible, surfaces mismatches early, and makes review explicit before anything is sent out."
+          "Critical business context often lives inside contracts, reports, and supporting PDFs, but it stays trapped in static files. Teams waste time reopening folders, copying answers into spreadsheets, and rebuilding context in every handoff.",
+          "Zohal turns those document collections into living interfaces that stay linked to the source, so teams can search, review, and act without losing where each answer came from."
         ],
         "sideCard": {
-          "title": "Chat answer -> checked output",
+          "title": "Dead files -> living workspace",
           "before": [
-            "AI extracts text and the workflow keeps moving on trust",
-            "Unsupported claims slip into reports, ERPs, and shared notes",
-            "Humans re-check everything late, under time pressure"
+            "Teams hunt through folders and PDFs to answer simple operational questions",
+            "Important changes stay buried in addendums, annexes, and revised versions",
+            "Every handoff rebuilds the same context in email, slides, and spreadsheets"
           ],
           "after": [
-            "Each result links back to the exact page and source text",
-            "Discrepancies are flagged before anything is exported or handed off",
-            "Human review and overrides are explicit, recorded, and easier to defend"
+            "Answers, dates, obligations, and exceptions stay live in one shared workspace",
+            "Changes across related files surface as clear updates your team can review",
+            "Every item can link back to the exact page and source text when needed"
           ]
         }
       },
       "howItWorks": {
-        "title": "How review stays under control.",
-        "subhead": "Three steps: bring in the file, check the extracted fields against the source, and review exceptions before handoff.",
+        "title": "How documents become software.",
+        "subhead": "Three steps: bring in the document set, structure what matters, and review the live workspace before sharing it.",
         "steps": [
           {
-            "title": "Bring in the file",
-            "body": "Bring in files from uploads, WhatsApp, Google Drive, and OneDrive. Zohal handles OCR cleanup and page parsing."
+            "title": "Bring in the files",
+            "body": "Import PDFs and related files from uploads, WhatsApp, Google Drive, and OneDrive. Zohal handles OCR cleanup and page parsing."
           },
           {
-            "title": "Check against the source",
-            "body": "Zohal pulls out the important fields, links each one to the exact page and source text, and runs a second verifier pass."
+            "title": "Turn them into a living workspace",
+            "body": "Zohal maps key facts, timelines, obligations, and open questions into a source-linked interface your team can actually use."
           },
           {
-            "title": "Review only the exceptions",
-            "body": "Teams focus on mismatches, approvals, and overrides before anything is exported or handed off."
+            "title": "Review what changed and act",
+            "body": "Teams focus on updates, conflicts, and decisions before sharing, exporting, or handing work off."
           }
         ],
         "ctas": [
@@ -1615,7 +1615,7 @@
           {
             "id": "bilingual",
             "label": "Arabic + English workflows",
-          "title": "Handle bilingual documents, translation checks, and localization review in one review flow.",
+            "title": "Handle bilingual documents, translation checks, and localization review in one review flow.",
             "bullets": [
               "Bring in files from uploads, WhatsApp, Google Drive, and OneDrive",
               "Arabic and English documents can be reviewed together with translation and localization mismatches surfaced early",
@@ -1646,45 +1646,45 @@
         ]
       },
       "applications": {
-        "title": "Where teams use Zohal first.",
-        "subhead": "Three review jobs where source links and a second check matter immediately.",
+        "title": "Where teams start first.",
+        "subhead": "Three high-value workflows where static documents quickly become living workspaces.",
         "cards": [
           {
             "id": "contracts",
-            "title": "Contract & Policy Review",
-            "subtitle": "Catch renewal terms, liability language, and policy conflicts before they reach the next reviewer.",
+            "title": "Contract Workspaces",
+            "subtitle": "Turn contracts and policies into a live view of obligations, renewal terms, and risk areas your team can review together.",
             "bullets": [
-              "Clause-level source links for each flagged item",
-              "Policy and contract language checked together"
+              "Clause-level source links behind every surfaced item",
+              "Policy and contract language kept in one shared workspace"
             ],
             "cta": {
-              "label": "See contract review",
+              "label": "See contract workspaces",
               "href": "#product"
             }
           },
           {
             "id": "amendments",
-            "title": "Amendments & Related Files",
-            "subtitle": "See what changed across the document stack without re-reading every supporting file.",
+            "title": "Amendment Trackers",
+            "subtitle": "See what changed across the document stack without reopening every addendum, annex, and supporting PDF.",
             "bullets": [
-              "Primary document versus addendum and annex comparison",
-              "Conflicting terms surfaced as explicit discrepancies"
+              "Primary agreement versus addendum comparison",
+              "Conflicting terms surfaced as explicit updates"
             ],
             "cta": {
-              "label": "See amendment review",
+              "label": "See amendment trackers",
               "href": "#product"
             }
           },
           {
             "id": "bilingual-work",
-            "title": "Bilingual Approvals",
-            "subtitle": "Review Arabic and English versions together before anything is sent.",
+            "title": "Bilingual Workspaces",
+            "subtitle": "Review Arabic and English document sets together before anything is shared or approved.",
             "bullets": [
               "Side-by-side evidence across both languages",
               "Translation and localization mismatches surfaced early"
             ],
             "cta": {
-              "label": "See bilingual review",
+              "label": "See bilingual workspaces",
               "href": "#product"
             }
           }
@@ -1727,7 +1727,7 @@
       },
       "pricing": {
         "id": "pricing",
-        "title": "Pricing for solo reviewers and teams.",
+        "title": "Pricing for individuals and teams.",
         "toggleLabels": [
           "Individuals",
           "Teams"
@@ -1738,8 +1738,8 @@
             "name": "Pro",
             "price": "SAR 149 / month",
             "bullets": [
-              "Best for one person handling steady monthly review work",
-              "Core review workflow tools, discrepancy routing, and calendar sync",
+              "Best for one person turning recurring document sets into living workspaces",
+              "Core workspace builder, source-linked answers, and follow-up tracking",
               "Drive, OneDrive, and WhatsApp import included",
               "10 GiB storage, 120M metered AI tokens, and 1,500 billable ops each month"
             ],
@@ -1753,8 +1753,8 @@
             "name": "Max",
             "price": "SAR 599 / month",
             "bullets": [
-              "Best for heavier individual review and bilingual work",
-              "Advanced bilingual translation, localization, and verification workflows",
+              "Best for heavier individual workflows and bilingual document operations",
+              "Advanced Arabic/English workspace building, localization, and verification tools",
               "Priority support and Google Drive sync",
               "100 GiB storage, 500M metered AI tokens, and 6,000 billable ops each month"
             ],
@@ -1771,7 +1771,7 @@
             "price": "14-day trial",
             "bullets": [
               "Best for a first live team rollout",
-              "Shared workspaces and collaboration controls",
+              "Shared workspaces, permissions, and collaboration controls",
               "14-day trial with card setup through Moyasar",
               "250 GiB pooled storage, 1.5B metered tokens, and 20,000 pooled billable ops"
             ],
@@ -1798,7 +1798,7 @@
         ],
         "usageMeter": {
           "title": "Simple metering",
-          "body": "Plans are measured by storage, AI usage, and completed analysis or export actions. If you are unsure which tier fits your workflow, book a demo and we will help map it."
+          "body": "Plans are measured by storage, AI usage, and completed workspace or export actions. If you are unsure which tier fits your workflow, book a demo and we will help map it."
         }
       },
       "insights": {
@@ -1891,8 +1891,8 @@
         }
       },
       "finalCta": {
-        "title": "See how checked AI output fits your workflow.",
-        "subhead": "We can show you how source links, second-pass verification, privacy controls, and bilingual review work on your document types.",
+        "title": "See how your documents turn into a living workspace.",
+        "subhead": "We can show you how Zohal turns your files into a source-linked interface your team can search, review, and act on.",
         "ctas": [
           {
             "type": "primary",
@@ -1916,11 +1916,11 @@
                 "href": "#product"
               },
               {
-                "label": "Verified Facts",
+                "label": "Living Workspaces",
                 "href": "#product"
               },
               {
-                "label": "Conflict Radar",
+                "label": "Source-linked Answers",
                 "href": "#how"
               },
               {
@@ -1933,15 +1933,15 @@
             "title": "Use Cases",
             "links": [
               {
-                "label": "Contract Review",
+                "label": "Contract Workspaces",
                 "href": "#workflows"
               },
               {
-                "label": "Bilingual Contracts",
+                "label": "Bilingual Workspaces",
                 "href": "#workflows"
               },
               {
-                "label": "Amendments",
+                "label": "Amendment Trackers",
                 "href": "#workflows"
               }
             ]
@@ -1977,46 +1977,46 @@
             ]
           }
         ],
-        "legalNote": "Watd Information Technology Company provides evidence-backed workflow assistance. Your team remains responsible for legal review and final approvals."
+        "legalNote": "Watd Information Technology Company provides source-linked workflow software for document-driven operations. Your team remains responsible for legal review and final approvals."
       },
       "ui": {
-        "mentalModelLine": "For contracts, invoices, and policy review",
+        "mentalModelLine": "For contracts, reports, and document-heavy operations",
         "beforeLabel": "Without Zohal",
         "afterLabel": "With Zohal",
         "modal": {
           "openDemoLabel": "Watch demo",
-          "demoTitle": "See Zohal in action",
+          "demoTitle": "See documents become software",
           "demoPlaceholderBody": "Sample pack preview placeholder.",
           "demoShowsLabel": "In this demo",
-          "demoShowsBody": "see how Zohal extracts key fields, links them back to the source, runs a second verifier pass, and prepares checked outputs for review and handoff.",
+          "demoShowsBody": "see how Zohal turns a document collection into a living workspace with source-linked facts, live updates, and clear next actions for the team.",
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Decision Pack",
-          "samplePackTitle": "Commercial Lease Review - Arabic/English",
+          "decisionPackLabel": "Workspace Brief",
+          "samplePackTitle": "Commercial Lease Workspace - Arabic/English",
           "provisional": "Needs review",
-          "finalized": "Verified",
-          "verifiedStatus": "Verified",
-          "reviewStatus": "Check amendment",
+          "finalized": "Live",
+          "verifiedStatus": "Live",
+          "reviewStatus": "Check update",
           "sampleGoverningLawLabel": "Governing Law",
-          "sampleGoverningLawValue": "Specified in Clause 18",
-          "samplePartyALabel": "Party A",
+          "sampleGoverningLawValue": "Clause 18",
+          "samplePartyALabel": "Counterparty",
           "samplePartyAValue": "Al Noor Trading Co.",
           "sampleEffectiveDateLabel": "Effective Date",
           "sampleEffectiveDateValue": "2026-01-15",
           "sampleTermLabel": "Term",
           "sampleTermMonthsValue": "24 months",
-          "documentViewer": "Source Evidence",
-          "verifiedVariables": "Verified Claims",
-          "exports": "Governed Exports",
-          "showEvidence": "Show evidence",
-          "hideEvidence": "Hide evidence",
+          "documentViewer": "Source PDF",
+          "verifiedVariables": "Key Facts",
+          "exports": "Workspace Outputs",
+          "showEvidence": "Show source",
+          "hideEvidence": "Hide source",
           "evidence": "Evidence",
           "pageLabel": "Page {page}",
-          "highlightSnippet": "Flagged discrepancy: renewal notice terms differ across the document set.",
+          "highlightSnippet": "Flagged update: renewal notice terms do not match across related files.",
           "verificationObjectFilename": "",
-          "uiMockLabel": "Verification Preview",
-          "exceptionsQueueTitle": "Verification routed a discrepancy",
+          "uiMockLabel": "Workspace Preview",
+          "exceptionsQueueTitle": "Conflict routed for review",
           "exceptionsQueueBody": "Page 4 says \"30 days\" but Page 12 says \"60 days\".",
           "fieldEvidenceLabel": "Linked evidence",
           "claimKey": "claim",
@@ -2030,7 +2030,7 @@
             "Share-ready summary",
             "Follow-up tracker",
             "Key facts",
-            "Calendar-ready dates"
+            "Linked evidence"
           ],
           "deliverablesBody": "Ready for review, sharing, and operational follow-up."
         },
@@ -2038,7 +2038,7 @@
           "buyersCareTitle": "What governance teams ask first"
         },
         "finalCta": {
-          "previewLabel": "Pack preview"
+          "previewLabel": "Workspace preview"
         }
       }
     }
