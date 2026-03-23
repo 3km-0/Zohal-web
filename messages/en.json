@@ -1452,8 +1452,8 @@
         }
       },
       "hero": {
-        "headline": "Turn documents into living software.",
-        "subhead": "Transform folders of PDFs, contracts, and reports into living workspaces your team can query, update, and share with confidence.",
+        "headline": "One living workspace for every document set.",
+        "subhead": "Give your team one place for the answers, dates, obligations, and updates hidden across PDFs, contracts, and reports.",
         "ctas": [
           {
             "type": "primary",
@@ -1519,10 +1519,10 @@
         ]
       },
       "problem": {
-        "title": "Stop running operations from dead files.",
+        "title": "Stop piecing the work together from files.",
         "body": [
-          "Critical business context often lives inside contracts, reports, and supporting PDFs, but it stays trapped in static files. Teams waste time reopening folders, copying answers into spreadsheets, and rebuilding context in every handoff.",
-          "Zohal turns those document collections into living interfaces that stay linked to the source, so teams can search, review, and act without losing where each answer came from."
+          "Important answers are often spread across contracts, reports, annexes, and supporting PDFs. Teams end up searching, cross-checking, and rebuilding the same context every time someone needs an answer, a date, or a decision.",
+          "Zohal gives your team one live place for the facts, timelines, follow-ups, and changes that matter, with the source always one click away."
         ],
         "sideCard": {
           "title": "Dead files -> living workspace",
