@@ -1452,8 +1452,8 @@
         }
       },
       "hero": {
-        "headline": "One living workspace for every document set.",
-        "subhead": "Give your team one place for the answers, dates, obligations, and updates hidden across PDFs, contracts, and reports.",
+        "headline": "Turn static contracts, reports, and PDFs into living timelines, dashboards, and follow-ups your team can actually use.",
+        "subhead": "Zohal pulls what matters from your documents, keeps every data point linked to the source, and instantly generates a clear workspace to review, track, and act.",
         "ctas": [
           {
             "type": "primary",
