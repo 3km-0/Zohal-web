@@ -23,6 +23,14 @@ import { useRouter } from 'next/navigation';
 import { downloadLibraryPdf } from '@/lib/zohal-library';
 import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
+import {
+  ctaButtonClass,
+  type WorkspaceAgentCitation as AskCitation,
+  type WorkspaceAgentCta,
+  type WorkspaceAgentSource,
+  type WorkspaceAgentStreamEvent as StreamEvent,
+  type WorkspaceAgentTemplatePlan,
+} from '@/lib/workspace-agent';
 
 type AskConversationSummary = {
   id: string;
@@ -31,19 +39,6 @@ type AskConversationSummary = {
   updated_at: string;
   workspace_id?: string | null;
   workspace_name?: string | null;
-};
-
-type AskCitation = {
-  document_id: string;
-  document_title: string;
-  page_number: number;
-  quote: string;
-  source_kind?: 'workspace_document' | 'zohal_library';
-  workspace_id?: string | null;
-  workspace_name?: string | null;
-  library_item_id?: string | null;
-  library_object_path?: string | null;
-  library_url?: string | null;
 };
 
 type AskMessage = {
@@ -58,15 +53,6 @@ type AskAgentViewProps = {
   workspaceId?: string | null;
   workspaceName?: string | null;
 };
-
-type StreamEvent =
-  | { type: 'run_started'; conversation_id: string }
-  | { type: 'status'; message: string }
-  | { type: 'tool_activity'; message: string }
-  | { type: 'answer_delta'; delta: string }
-  | { type: 'citations'; citations: AskCitation[] }
-  | { type: 'completed'; conversation_id: string; citations: AskCitation[] }
-  | { type: 'error'; message: string };
 
 function sanitizeAskError(message: string | null | undefined, fallback: string): string {
   const trimmed = `${message ?? ''}`.trim();
@@ -98,6 +84,17 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [scopeCandidate, setScopeCandidate] = useState<{
+    included_sources: WorkspaceAgentSource[];
+    excluded_sources: WorkspaceAgentSource[];
+    primary_document_id?: string | null;
+  } | null>(null);
+  const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
+  const [ctas, setCtas] = useState<WorkspaceAgentCta[]>([]);
+  const [pendingKind, setPendingKind] = useState<string | null>(null);
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [editingSources, setEditingSources] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -135,6 +132,12 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
       setSelectedConversationId(conversationId);
       setMessages(Array.isArray(json.messages) ? json.messages : []);
       setActivities([]);
+      setScopeCandidate(null);
+      setTemplatePlan(null);
+      setCtas([]);
+      setPendingKind(null);
+      setSelectedSourceIds([]);
+      setEditingSources(false);
       setHistoryOpen(false);
       setLoadingHistory(false);
     },
@@ -180,8 +183,76 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     setSelectedConversationId(null);
     setError(null);
     setHistoryOpen(false);
+    setScopeCandidate(null);
+    setTemplatePlan(null);
+    setCtas([]);
+    setPendingKind(null);
+    setSelectedSourceIds([]);
+    setEditingSources(false);
     textareaRef.current?.focus();
   }, []);
+
+  const consumeStream = useCallback(async (
+    response: Response,
+    pendingAssistantId: string,
+    options?: { skipConversationReload?: boolean }
+  ) => {
+    if (!response.ok || !response.body) {
+      const json = await response.json().catch(() => null);
+      const uiErr = mapHttpError(response.status, json, 'workspace-agent');
+      toast.show(uiErr);
+      setError(uiErr.message);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as StreamEvent;
+          if (event.type === 'run_started') {
+            setSelectedConversationId(event.conversation_id);
+          } else if (event.type === 'status' || event.type === 'tool_activity' || event.type === 'run_progress') {
+            setActivities((prev) => [...prev, event.message]);
+          } else if (event.type === 'scope_candidate') {
+            setScopeCandidate({
+              included_sources: event.included_sources,
+              excluded_sources: event.excluded_sources,
+              primary_document_id: event.primary_document_id,
+            });
+            setSelectedSourceIds(event.included_sources.map((item) => item.document_id));
+            setEditingSources(false);
+          } else if (event.type === 'template_candidate') {
+            setTemplatePlan(event.template_plan);
+          } else if (event.type === 'pending_confirmation') {
+            setPendingKind(event.pending_kind);
+            setActivities((prev) => [...prev, event.message]);
+          } else if (event.type === 'cta_set') {
+            setCtas(event.ctas);
+          } else if (event.type === 'answer_delta') {
+            setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, content: `${m.content}${event.delta}` } : m));
+          } else if (event.type === 'citations') {
+            setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
+          } else if (event.type === 'completed') {
+            setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
+            if (!options?.skipConversationReload) void loadConversations();
+          } else if (event.type === 'error') {
+            setError(sanitizeAskError(event.message, t('errors.generic')));
+          }
+        }
+      }
+    } catch (streamError) {
+      if ((streamError as Error).name !== 'AbortError') setError(t('errors.generic'));
+    }
+  }, [loadConversations, t, toast]);
 
   const handleSubmit = useCallback(async () => {
     const trimmed = query.trim();
@@ -204,57 +275,75 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setError(t('errors.auth')); setLoading(false); return; }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-stream`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ question: trimmed, workspace_id: workspaceId ?? undefined, conversation_id: selectedConversationId ?? undefined }),
+      body: JSON.stringify({
+        question: trimmed,
+        workspace_id: workspaceId ?? undefined,
+        conversation_id: selectedConversationId ?? undefined,
+        ui_surface: 'workspace',
+      }),
       signal: abortRef.current.signal,
     });
 
-    if (!response.ok || !response.body) {
-      const json = await response.json().catch(() => null);
-      const uiErr = mapHttpError(response.status, json, 'ask-stream');
-      toast.show(uiErr);
-      setError(uiErr.message);
-      setLoading(false);
-      return;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line) as StreamEvent;
-          if (event.type === 'run_started') {
-            setSelectedConversationId(event.conversation_id);
-          } else if (event.type === 'status' || event.type === 'tool_activity') {
-            setActivities((prev) => [...prev, event.message]);
-          } else if (event.type === 'answer_delta') {
-            setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, content: `${m.content}${event.delta}` } : m));
-          } else if (event.type === 'citations') {
-            setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
-          } else if (event.type === 'completed') {
-            setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
-            void loadConversations();
-          } else if (event.type === 'error') {
-            setError(sanitizeAskError(event.message, t('errors.generic')));
-          }
-        }
-      }
-    } catch (streamError) {
-      if ((streamError as Error).name !== 'AbortError') setError(t('errors.generic'));
+      await consumeStream(response, pendingAssistantId);
     } finally {
       setLoading(false);
     }
-  }, [loadConversations, loading, query, selectedConversationId, supabase, t, toast, workspaceId]);
+  }, [consumeStream, loading, query, selectedConversationId, supabase, t, workspaceId]);
+
+  const handleAgentAction = useCallback(async (action: WorkspaceAgentCta) => {
+    if (!selectedConversationId || !workspaceId || loading || actionLoadingId) return;
+
+    if (action.action_id === 'edit_sources' && !editingSources) {
+      setEditingSources(true);
+      return;
+    }
+
+    setError(null);
+    setActionLoadingId(action.action_id);
+    setActivities([]);
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    const pendingAssistantId = crypto.randomUUID();
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: 'user', content: action.label, created_at: new Date().toISOString() },
+      { id: pendingAssistantId, role: 'assistant', content: '', citations: [] },
+    ]);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setError(t('errors.auth')); setActionLoadingId(null); return; }
+
+    const payload = action.action_id === 'edit_sources'
+      ? { included_document_ids: selectedSourceIds }
+      : action.payload;
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        workspace_id: workspaceId,
+        conversation_id: selectedConversationId,
+        ui_surface: 'workspace',
+        agent_action: {
+          action_id: action.action_id,
+          ...(payload ? { payload } : {}),
+        },
+      }),
+      signal: abortRef.current.signal,
+    });
+
+    try {
+      await consumeStream(response, pendingAssistantId, { skipConversationReload: false });
+      if (action.action_id === 'edit_sources') setEditingSources(false);
+    } finally {
+      setActionLoadingId(null);
+    }
+  }, [actionLoadingId, consumeStream, editingSources, loading, selectedConversationId, selectedSourceIds, supabase, t, workspaceId]);
 
   const cancelRun = useCallback(() => {
     abortRef.current?.abort();
@@ -262,6 +351,15 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     setLoading(false);
     setActivities((prev) => [...prev, t('cancelled')]);
   }, [t]);
+
+  const toggleSourceSelection = useCallback((documentId: string) => {
+    if (!editingSources) return;
+    setSelectedSourceIds((prev) =>
+      prev.includes(documentId)
+        ? prev.filter((item) => item !== documentId)
+        : [...prev, documentId]
+    );
+  }, [editingSources]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -507,6 +605,104 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
                 ) : null}
               </div>
             </details>
+          )}
+
+          {(scopeCandidate || templatePlan || ctas.length > 0) && (
+            <div className="mt-5 rounded-2xl border border-border bg-surface-alt p-4">
+              {scopeCandidate ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Included sources</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {scopeCandidate.included_sources.map((source) => {
+                        const selected = selectedSourceIds.includes(source.document_id);
+                        return (
+                          <button
+                            key={source.document_id}
+                            type="button"
+                            onClick={() => toggleSourceSelection(source.document_id)}
+                            className={cn(
+                              'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                              editingSources
+                                ? selected
+                                  ? 'border-accent bg-accent/10 text-accent'
+                                  : 'border-border bg-surface text-text-soft'
+                                : 'border-accent/20 bg-accent/10 text-accent'
+                            )}
+                          >
+                            {source.title}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {scopeCandidate.excluded_sources.length > 0 ? (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Excluded sources</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {scopeCandidate.excluded_sources.slice(0, 8).map((source) => {
+                          const selected = selectedSourceIds.includes(source.document_id);
+                          return (
+                            <button
+                              key={source.document_id}
+                              type="button"
+                              onClick={() => toggleSourceSelection(source.document_id)}
+                              className={cn(
+                                'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                                editingSources
+                                  ? selected
+                                    ? 'border-accent bg-accent/10 text-accent'
+                                    : 'border-border bg-surface text-text-soft'
+                                  : 'border-border bg-surface text-text-soft'
+                              )}
+                            >
+                              {source.title}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {templatePlan ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Analysis recipe</p>
+                  <p className="mt-2 text-sm text-text">
+                    {templatePlan.selected_template_name
+                      ? `Using existing template: ${templatePlan.selected_template_name}`
+                      : templatePlan.draft_summary || `Planned template: ${templatePlan.planned_template_name ?? 'Workspace Analysis'}`}
+                  </p>
+                  {templatePlan.reason ? (
+                    <p className="mt-1 text-xs text-text-soft">{templatePlan.reason}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {pendingKind ? (
+                <p className="mt-4 text-xs font-medium text-text-soft">Pending step: {pendingKind.replaceAll('_', ' ')}</p>
+              ) : null}
+
+              {ctas.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {ctas.map((cta) => (
+                    <button
+                      key={cta.action_id}
+                      type="button"
+                      onClick={() => void handleAgentAction(cta)}
+                      disabled={Boolean(actionLoadingId) || (cta.action_id === 'edit_sources' && editingSources && selectedSourceIds.length === 0)}
+                      className={cn(
+                        'rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                        ctaButtonClass(cta.kind)
+                      )}
+                    >
+                      {actionLoadingId === cta.action_id ? <Loader2 className="h-4 w-4 animate-spin" /> : cta.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
 

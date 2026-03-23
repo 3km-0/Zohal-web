@@ -26,6 +26,13 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
+import {
+  ctaButtonClass,
+  type WorkspaceAgentCta,
+  type WorkspaceAgentSource,
+  type WorkspaceAgentStreamEvent as DocumentAgentStreamEvent,
+  type WorkspaceAgentTemplatePlan,
+} from '@/lib/workspace-agent';
 
 interface AIPanelProps {
   documentId: string;
@@ -113,19 +120,6 @@ function renderMessageContent(content: string): ReactNode {
   );
 }
 
-type DocumentAgentStreamEvent =
-  | { type: 'run_started'; conversation_id: string }
-  | { type: 'status'; message: string }
-  | { type: 'tool_activity'; message: string }
-  | { type: 'action_accepted'; message: string }
-  | { type: 'candidate_ready'; message: string }
-  | { type: 'run_status'; message: string }
-  | { type: 'promotion_result'; message: string }
-  | { type: 'answer_delta'; delta: string }
-  | { type: 'citations'; citations: Array<Record<string, unknown>> }
-  | { type: 'completed'; conversation_id: string }
-  | { type: 'error'; message: string };
-
 export function AIPanel({
   documentId,
   workspaceId,
@@ -146,6 +140,16 @@ export function AIPanel({
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [agentActivities, setAgentActivities] = useState<string[]>([]);
+  const [scopeCandidate, setScopeCandidate] = useState<{
+    included_sources: WorkspaceAgentSource[];
+    excluded_sources: WorkspaceAgentSource[];
+  } | null>(null);
+  const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
+  const [ctas, setCtas] = useState<WorkspaceAgentCta[]>([]);
+  const [pendingKind, setPendingKind] = useState<string | null>(null);
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [editingSources, setEditingSources] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -184,6 +188,12 @@ export function AIPanel({
     setChatHistory([]);
     setCurrentConversationId(null);
     setAgentActivities([]);
+    setScopeCandidate(null);
+    setTemplatePlan(null);
+    setCtas([]);
+    setPendingKind(null);
+    setSelectedSourceIds([]);
+    setEditingSources(false);
     setError(null);
     setLoading(false);
     setLoadingConversation(false);
@@ -192,7 +202,7 @@ export function AIPanel({
     chatSeqRef.current++;
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
-  }, [documentId]);
+  }, [workspaceId]);
 
   useEffect(() => {
     onConversationStateChange?.(currentConversationId);
@@ -241,7 +251,7 @@ export function AIPanel({
 
         if (!session) throw new Error('Not authenticated');
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/document-ai-agent`,
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`,
           {
             method: 'POST',
             headers: {
@@ -251,14 +261,13 @@ export function AIPanel({
             signal: controller.signal,
             body: JSON.stringify({
               question: message,
-              document_id: documentId,
               workspace_id: workspaceId,
+              opened_document_id: documentId,
               conversation_id: conversationIdAtSend,
               current_page: currentPage,
               selected_text: selectedText?.trim() || undefined,
-              options: {
-                top_k: 8,
-              },
+              ui_surface: 'document',
+              top_k: 8,
             }),
           }
         );
@@ -303,15 +312,34 @@ export function AIPanel({
               continue;
             }
 
-            if (
-              event.type === 'status' ||
-              event.type === 'tool_activity' ||
-              event.type === 'action_accepted' ||
-              event.type === 'candidate_ready' ||
-              event.type === 'run_status' ||
-              event.type === 'promotion_result'
-            ) {
+            if (event.type === 'status' || event.type === 'tool_activity' || event.type === 'run_progress') {
               setAgentActivities((prev) => [...prev, event.message]);
+              continue;
+            }
+
+            if (event.type === 'scope_candidate') {
+              setScopeCandidate({
+                included_sources: event.included_sources,
+                excluded_sources: event.excluded_sources,
+              });
+              setSelectedSourceIds(event.included_sources.map((item) => item.document_id));
+              setEditingSources(false);
+              continue;
+            }
+
+            if (event.type === 'template_candidate') {
+              setTemplatePlan(event.template_plan);
+              continue;
+            }
+
+            if (event.type === 'pending_confirmation') {
+              setPendingKind(event.pending_kind);
+              setAgentActivities((prev) => [...prev, event.message]);
+              continue;
+            }
+
+            if (event.type === 'cta_set') {
+              setCtas(event.ctas);
               continue;
             }
 
@@ -437,6 +465,12 @@ export function AIPanel({
           setChatHistory(messages);
           setCurrentConversationId(conversationId);
           setAgentActivities([]);
+          setScopeCandidate(null);
+          setTemplatePlan(null);
+          setCtas([]);
+          setPendingKind(null);
+          setSelectedSourceIds([]);
+          setEditingSources(false);
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
@@ -462,8 +496,172 @@ export function AIPanel({
     setLoadingConversation(false);
     setChatInput('');
     setAgentActivities([]);
+    setScopeCandidate(null);
+    setTemplatePlan(null);
+    setCtas([]);
+    setPendingKind(null);
+    setSelectedSourceIds([]);
+    setEditingSources(false);
     resizeTextarea();
   }, [resizeTextarea]);
+
+  const toggleSourceSelection = useCallback((documentIdToToggle: string) => {
+    if (!editingSources) return;
+    setSelectedSourceIds((prev) =>
+      prev.includes(documentIdToToggle)
+        ? prev.filter((item) => item !== documentIdToToggle)
+        : [...prev, documentIdToToggle]
+    );
+  }, [editingSources]);
+
+  const handleAgentAction = useCallback(async (action: WorkspaceAgentCta) => {
+    if (!currentConversationId || loading || loadingConversation || actionLoadingId) return;
+
+    if (action.action_id === 'edit_sources' && !editingSources) {
+      setEditingSources(true);
+      return;
+    }
+
+    setActionLoadingId(action.action_id);
+    setError(null);
+    setAgentActivities([]);
+
+    chatAbortRef.current?.abort();
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+
+    const pendingAssistantIndex = chatHistory.length + 1;
+    setChatHistory((prev) => [
+      ...prev,
+      { role: 'user', content: action.label, timestamp: new Date().toISOString() },
+      { role: 'assistant', content: '', timestamp: new Date().toISOString() },
+    ]);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) throw new Error('Not authenticated');
+
+      const payload = action.action_id === 'edit_sources'
+        ? { included_document_ids: selectedSourceIds }
+        : action.payload;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            workspace_id: workspaceId,
+            conversation_id: currentConversationId,
+            opened_document_id: documentId,
+            ui_surface: 'document',
+            agent_action: {
+              action_id: action.action_id,
+              ...(payload ? { payload } : {}),
+            },
+          }),
+        }
+      );
+
+      if (!response.ok || !response.body) {
+        const json = await response.json().catch(() => null);
+        const uiErr = mapHttpError(response.status, json, 'workspace-agent');
+        toast.show(uiErr);
+        setError(uiErr.message);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as DocumentAgentStreamEvent;
+
+          if (event.type === 'run_started') {
+            setCurrentConversationId(event.conversation_id);
+            continue;
+          }
+          if (event.type === 'status' || event.type === 'tool_activity' || event.type === 'run_progress') {
+            setAgentActivities((prev) => [...prev, event.message]);
+            continue;
+          }
+          if (event.type === 'scope_candidate') {
+            setScopeCandidate({
+              included_sources: event.included_sources,
+              excluded_sources: event.excluded_sources,
+            });
+            setSelectedSourceIds(event.included_sources.map((item) => item.document_id));
+            setEditingSources(false);
+            continue;
+          }
+          if (event.type === 'template_candidate') {
+            setTemplatePlan(event.template_plan);
+            continue;
+          }
+          if (event.type === 'pending_confirmation') {
+            setPendingKind(event.pending_kind);
+            setAgentActivities((prev) => [...prev, event.message]);
+            continue;
+          }
+          if (event.type === 'cta_set') {
+            setCtas(event.ctas);
+            continue;
+          }
+          if (event.type === 'answer_delta') {
+            setChatHistory((prev) =>
+              prev.map((item, index) =>
+                index === pendingAssistantIndex
+                  ? { ...item, content: `${item.content}${event.delta}` }
+                  : item
+              )
+            );
+            continue;
+          }
+          if (event.type === 'completed') {
+            setCurrentConversationId(event.conversation_id);
+            continue;
+          }
+          if (event.type === 'error') {
+            setError(event.message);
+          }
+        }
+      }
+    } catch (err) {
+      if (!(err instanceof Error && err.name === 'AbortError')) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      }
+    } finally {
+      setActionLoadingId(null);
+    }
+  }, [
+    actionLoadingId,
+    chatHistory.length,
+    currentConversationId,
+    documentId,
+    editingSources,
+    loading,
+    loadingConversation,
+    selectedSourceIds,
+    supabase,
+    toast,
+    workspaceId,
+  ]);
 
   useEffect(() => {
     const handleConversationSelect = (event: Event) => {
@@ -533,6 +731,112 @@ export function AIPanel({
                     {activity}
                   </div>
                 ))}
+
+                {(scopeCandidate || templatePlan || ctas.length > 0) && (
+                  <div className="rounded-2xl border border-border bg-surface-alt p-4">
+                    {scopeCandidate ? (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                            Included sources
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {scopeCandidate.included_sources.map((source) => {
+                              const selected = selectedSourceIds.includes(source.document_id);
+                              return (
+                                <button
+                                  key={source.document_id}
+                                  type="button"
+                                  onClick={() => toggleSourceSelection(source.document_id)}
+                                  className={cn(
+                                    'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                                    editingSources
+                                      ? selected
+                                        ? 'border-accent bg-accent/10 text-accent'
+                                        : 'border-border bg-surface text-text-soft'
+                                      : 'border-accent/20 bg-accent/10 text-accent'
+                                  )}
+                                >
+                                  {source.title}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {scopeCandidate.excluded_sources.length > 0 ? (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                              Excluded sources
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {scopeCandidate.excluded_sources.slice(0, 8).map((source) => {
+                                const selected = selectedSourceIds.includes(source.document_id);
+                                return (
+                                  <button
+                                    key={source.document_id}
+                                    type="button"
+                                    onClick={() => toggleSourceSelection(source.document_id)}
+                                    className={cn(
+                                      'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                                      editingSources
+                                        ? selected
+                                          ? 'border-accent bg-accent/10 text-accent'
+                                          : 'border-border bg-surface text-text-soft'
+                                        : 'border-border bg-surface text-text-soft'
+                                    )}
+                                  >
+                                    {source.title}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {templatePlan ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Analysis recipe
+                        </p>
+                        <p className="mt-2 text-sm text-text">
+                          {templatePlan.selected_template_name
+                            ? `Using existing template: ${templatePlan.selected_template_name}`
+                            : templatePlan.draft_summary || `Planned template: ${templatePlan.planned_template_name ?? 'Workspace Analysis'}`}
+                        </p>
+                        {templatePlan.reason ? (
+                          <p className="mt-1 text-xs text-text-soft">{templatePlan.reason}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {pendingKind ? (
+                      <p className="mt-4 text-xs font-medium text-text-soft">
+                        Pending step: {pendingKind.replaceAll('_', ' ')}
+                      </p>
+                    ) : null}
+
+                    {ctas.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {ctas.map((cta) => (
+                          <button
+                            key={cta.action_id}
+                            type="button"
+                            onClick={() => void handleAgentAction(cta)}
+                            disabled={Boolean(actionLoadingId)}
+                            className={cn(
+                              'rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                              ctaButtonClass(cta.kind)
+                            )}
+                          >
+                            {actionLoadingId === cta.action_id ? <Spinner size="sm" /> : cta.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 {chatHistory.map((msg, i) => (
                   <div
