@@ -1402,13 +1402,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Documents become living workspaces",
-      "description": "Turn folders of PDFs, contracts, and reports into living workspaces with source-linked answers your team can trust."
+      "title": "Zohal — Turn files into workspaces",
+      "description": "Turn contracts, reports, and PDFs into source-linked workspaces with timelines, dashboards, and follow-ups your team can use."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Turn document collections into living workspaces.",
+        "tagline": "Source-linked workspaces from your documents.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -1452,8 +1452,8 @@
         }
       },
       "hero": {
-        "headline": "Turn static contracts, reports, and PDFs into living timelines, dashboards, and follow-ups your team can actually use.",
-        "subhead": "Zohal pulls what matters from your documents, keeps every data point linked to the source, and instantly generates a clear workspace to review, track, and act.",
+        "headline": "Turn files into workspaces.",
+        "subhead": "Timelines, dashboards, and follow-ups from your contracts, reports, and PDFs.",
         "ctas": [
           {
             "type": "primary",
@@ -1466,7 +1466,7 @@
             "href": "/support"
           }
         ],
-        "proofLine": "Click back to source • Private-data controls and sanitization • Live answers grounded in your documents",
+        "proofLine": "Source-linked answers • Private-data controls • Arabic + English",
         "mock": {
           "title": "Living Workspace",
           "panels": [
@@ -1519,10 +1519,10 @@
         ]
       },
       "problem": {
-        "title": "Stop piecing the work together from files.",
+        "title": "Stop digging through files.",
         "body": [
-          "Important answers are often spread across contracts, reports, annexes, and supporting PDFs. Teams end up searching, cross-checking, and rebuilding the same context every time someone needs an answer, a date, or a decision.",
-          "Zohal gives your team one live place for the facts, timelines, follow-ups, and changes that matter, with the source always one click away."
+          "Dates, obligations, and changes are usually scattered across contracts, annexes, reports, and PDFs.",
+          "Zohal pulls them into one clear workspace with source-linked answers, live timelines, and follow-ups your team can use immediately."
         ],
         "sideCard": {
           "title": "Dead files -> living workspace",
@@ -1539,20 +1539,20 @@
         }
       },
       "howItWorks": {
-        "title": "How documents become software.",
-        "subhead": "Three steps: bring in the document set, structure what matters, and review the live workspace before sharing it.",
+        "title": "What your team gets.",
+        "subhead": "Bring in the files, and Zohal returns a workspace built around the facts, dates, changes, and follow-ups that matter.",
         "steps": [
           {
             "title": "Bring in the files",
-            "body": "Import PDFs and related files from uploads, WhatsApp, Google Drive, and OneDrive. Zohal handles OCR cleanup and page parsing."
+            "body": "Upload PDFs and related files from uploads, WhatsApp, Google Drive, and OneDrive."
           },
           {
-            "title": "Turn them into a living workspace",
-            "body": "Zohal maps key facts, timelines, obligations, and open questions into a source-linked interface your team can actually use."
+            "title": "Get the workspace",
+            "body": "Zohal turns them into timelines, dashboards, source-linked facts, and follow-up views."
           },
           {
-            "title": "Review what changed and act",
-            "body": "Teams focus on updates, conflicts, and decisions before sharing, exporting, or handing work off."
+            "title": "Review and move",
+            "body": "Your team checks what changed, resolves exceptions, and moves work forward."
           }
         ],
         "ctas": [
@@ -1646,13 +1646,13 @@
         ]
       },
       "applications": {
-        "title": "Where teams start first.",
-        "subhead": "Three high-value workflows where static documents quickly become living workspaces.",
+        "title": "Where teams start.",
+        "subhead": "Three early workflows where static files become something teams can actually work from.",
         "cards": [
           {
             "id": "contracts",
             "title": "Contract Workspaces",
-            "subtitle": "Turn contracts and policies into a live view of obligations, renewal terms, and risk areas your team can review together.",
+            "subtitle": "See obligations, renewal terms, and risk areas in one place instead of across PDFs and policy docs.",
             "bullets": [
               "Clause-level source links behind every surfaced item",
               "Policy and contract language kept in one shared workspace"
@@ -1665,7 +1665,7 @@
           {
             "id": "amendments",
             "title": "Amendment Trackers",
-            "subtitle": "See what changed across the document stack without reopening every addendum, annex, and supporting PDF.",
+            "subtitle": "See what changed across the main agreement, addendums, and annexes without rereading everything.",
             "bullets": [
               "Primary agreement versus addendum comparison",
               "Conflicting terms surfaced as explicit updates"
@@ -1678,7 +1678,7 @@
           {
             "id": "bilingual-work",
             "title": "Bilingual Workspaces",
-            "subtitle": "Review Arabic and English document sets together before anything is shared or approved.",
+            "subtitle": "Review Arabic and English versions together, with differences surfaced early.",
             "bullets": [
               "Side-by-side evidence across both languages",
               "Translation and localization mismatches surfaced early"
@@ -1891,8 +1891,8 @@
         }
       },
       "finalCta": {
-        "title": "See how your documents turn into a living workspace.",
-        "subhead": "We can show you how Zohal turns your files into a source-linked interface your team can search, review, and act on.",
+        "title": "See your files as a workspace.",
+        "subhead": "We can show you what this looks like on your contracts, reports, and document sets.",
         "ctas": [
           {
             "type": "primary",
