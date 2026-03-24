@@ -45,16 +45,78 @@ export type WorkspaceAgentTemplatePlan = {
   }>;
 };
 
+export type WorkspaceAgentUserIntent = {
+  request_text: string;
+  summary: string;
+  requested_focus: string[];
+  requested_outputs: string[];
+  experience_goal?: string | null;
+  publish_requested?: boolean;
+};
+
+export type WorkspaceAgentExecutionPlan = {
+  summary: string;
+  source_summary: string;
+  extraction_targets: string[];
+  output_shape: string[];
+  experience_intent: string;
+  review_policy: 'manual_verifier';
+  compat_playbook_binding?: {
+    mode: 'reuse_existing' | 'create_new';
+    playbook_id?: string | null;
+    playbook_version_id?: string | null;
+    template_name?: string | null;
+  } | null;
+};
+
+export type WorkspaceAgentCanonicalOutput = {
+  canonical_store: 'verification_object_versions.snapshot_json';
+  primary_document_id?: string | null;
+  expected_sections: string[];
+  compatibility_mode: 'playbook_runtime';
+  latest_verification_object_id?: string | null;
+  latest_verification_object_version_id?: string | null;
+};
+
+export type WorkspaceAgentPreheatStatus = {
+  status: string;
+  summary: string;
+  metadata?: Record<string, unknown> | null;
+  live_scaffold?: {
+    experience_id?: string | null;
+    candidate_id?: string | null;
+    revision_id?: string | null;
+    public_url?: string | null;
+  } | null;
+};
+
+export type WorkspaceAgentReviewState = {
+  policy: 'manual_only';
+  signals: Array<{
+    kind: 'low_confidence' | 'needs_review' | 'exception' | 'conflict';
+    severity: 'info' | 'warning';
+    message: string;
+  }>;
+  verifier_available: boolean;
+  last_manual_run_ref?: Record<string, unknown> | null;
+};
+
 export type WorkspaceAgentStreamEvent =
   | { type: 'run_started'; conversation_id: string; workspace_id?: string; opened_document_id?: string | null }
   | { type: 'status'; message: string }
   | { type: 'tool_activity'; message: string }
+  | { type: 'intent_candidate'; user_intent: WorkspaceAgentUserIntent }
+  | { type: 'analysis_plan'; analysis_plan: WorkspaceAgentExecutionPlan }
+  | { type: 'canonical_output'; canonical_output: WorkspaceAgentCanonicalOutput }
+  | { type: 'preheat_status'; preheat: WorkspaceAgentPreheatStatus }
+  | { type: 'review_signals'; review: WorkspaceAgentReviewState }
   | { type: 'scope_candidate'; included_sources: WorkspaceAgentSource[]; excluded_sources: WorkspaceAgentSource[]; primary_document_id?: string | null }
   | { type: 'template_candidate'; template_plan: WorkspaceAgentTemplatePlan }
   | { type: 'pending_confirmation'; conversation_id: string; pending_kind: string; message: string }
   | { type: 'cta_set'; ctas: WorkspaceAgentCta[] }
   | { type: 'run_progress'; message: string; run_ref?: Record<string, unknown> | null }
   | { type: 'live_experience_ready'; live_experience: Record<string, unknown> }
+  | { type: 'published_interface_ready'; published_interface: Record<string, unknown> }
   | { type: 'answer_delta'; delta: string }
   | { type: 'citations'; citations: WorkspaceAgentCitation[] }
   | { type: 'completed'; conversation_id: string; citations: WorkspaceAgentCitation[]; run_ref?: Record<string, unknown> | null }

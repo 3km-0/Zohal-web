@@ -28,10 +28,15 @@ import { mapHttpError } from '@/lib/errors';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
 import {
   ctaButtonClass,
+  type WorkspaceAgentCanonicalOutput,
   type WorkspaceAgentCta,
+  type WorkspaceAgentExecutionPlan,
+  type WorkspaceAgentPreheatStatus,
+  type WorkspaceAgentReviewState,
   type WorkspaceAgentSource,
   type WorkspaceAgentStreamEvent as DocumentAgentStreamEvent,
   type WorkspaceAgentTemplatePlan,
+  type WorkspaceAgentUserIntent,
 } from '@/lib/workspace-agent';
 
 interface AIPanelProps {
@@ -144,7 +149,14 @@ export function AIPanel({
     included_sources: WorkspaceAgentSource[];
     excluded_sources: WorkspaceAgentSource[];
   } | null>(null);
+  const [userIntent, setUserIntent] = useState<WorkspaceAgentUserIntent | null>(null);
+  const [executionPlan, setExecutionPlan] = useState<WorkspaceAgentExecutionPlan | null>(null);
+  const [canonicalOutput, setCanonicalOutput] = useState<WorkspaceAgentCanonicalOutput | null>(null);
+  const [preheatStatus, setPreheatStatus] = useState<WorkspaceAgentPreheatStatus | null>(null);
+  const [reviewState, setReviewState] = useState<WorkspaceAgentReviewState | null>(null);
   const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
+  const [liveExperience, setLiveExperience] = useState<Record<string, unknown> | null>(null);
+  const [publishedInterface, setPublishedInterface] = useState<Record<string, unknown> | null>(null);
   const [ctas, setCtas] = useState<WorkspaceAgentCta[]>([]);
   const [pendingKind, setPendingKind] = useState<string | null>(null);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
@@ -189,7 +201,14 @@ export function AIPanel({
     setCurrentConversationId(null);
     setAgentActivities([]);
     setScopeCandidate(null);
+    setUserIntent(null);
+    setExecutionPlan(null);
+    setCanonicalOutput(null);
+    setPreheatStatus(null);
+    setReviewState(null);
     setTemplatePlan(null);
+    setLiveExperience(null);
+    setPublishedInterface(null);
     setCtas([]);
     setPendingKind(null);
     setSelectedSourceIds([]);
@@ -327,6 +346,31 @@ export function AIPanel({
               continue;
             }
 
+            if (event.type === 'intent_candidate') {
+              setUserIntent(event.user_intent);
+              continue;
+            }
+
+            if (event.type === 'analysis_plan') {
+              setExecutionPlan(event.analysis_plan);
+              continue;
+            }
+
+            if (event.type === 'canonical_output') {
+              setCanonicalOutput(event.canonical_output);
+              continue;
+            }
+
+            if (event.type === 'preheat_status') {
+              setPreheatStatus(event.preheat);
+              continue;
+            }
+
+            if (event.type === 'review_signals') {
+              setReviewState(event.review);
+              continue;
+            }
+
             if (event.type === 'template_candidate') {
               setTemplatePlan(event.template_plan);
               continue;
@@ -356,6 +400,16 @@ export function AIPanel({
 
             if (event.type === 'completed') {
               setCurrentConversationId(event.conversation_id);
+              continue;
+            }
+
+            if (event.type === 'live_experience_ready') {
+              setLiveExperience(event.live_experience);
+              continue;
+            }
+
+            if (event.type === 'published_interface_ready') {
+              setPublishedInterface(event.published_interface);
               continue;
             }
 
@@ -466,7 +520,14 @@ export function AIPanel({
           setCurrentConversationId(conversationId);
           setAgentActivities([]);
           setScopeCandidate(null);
+          setUserIntent(null);
+          setExecutionPlan(null);
+          setCanonicalOutput(null);
+          setPreheatStatus(null);
+          setReviewState(null);
           setTemplatePlan(null);
+          setLiveExperience(null);
+          setPublishedInterface(null);
           setCtas([]);
           setPendingKind(null);
           setSelectedSourceIds([]);
@@ -497,7 +558,14 @@ export function AIPanel({
     setChatInput('');
     setAgentActivities([]);
     setScopeCandidate(null);
+    setUserIntent(null);
+    setExecutionPlan(null);
+    setCanonicalOutput(null);
+    setPreheatStatus(null);
+    setReviewState(null);
     setTemplatePlan(null);
+    setLiveExperience(null);
+    setPublishedInterface(null);
     setCtas([]);
     setPendingKind(null);
     setSelectedSourceIds([]);
@@ -610,6 +678,26 @@ export function AIPanel({
             setEditingSources(false);
             continue;
           }
+          if (event.type === 'intent_candidate') {
+            setUserIntent(event.user_intent);
+            continue;
+          }
+          if (event.type === 'analysis_plan') {
+            setExecutionPlan(event.analysis_plan);
+            continue;
+          }
+          if (event.type === 'canonical_output') {
+            setCanonicalOutput(event.canonical_output);
+            continue;
+          }
+          if (event.type === 'preheat_status') {
+            setPreheatStatus(event.preheat);
+            continue;
+          }
+          if (event.type === 'review_signals') {
+            setReviewState(event.review);
+            continue;
+          }
           if (event.type === 'template_candidate') {
             setTemplatePlan(event.template_plan);
             continue;
@@ -635,6 +723,14 @@ export function AIPanel({
           }
           if (event.type === 'completed') {
             setCurrentConversationId(event.conversation_id);
+            continue;
+          }
+          if (event.type === 'live_experience_ready') {
+            setLiveExperience(event.live_experience);
+            continue;
+          }
+          if (event.type === 'published_interface_ready') {
+            setPublishedInterface(event.published_interface);
             continue;
           }
           if (event.type === 'error') {
@@ -732,8 +828,58 @@ export function AIPanel({
                   </div>
                 ))}
 
-                {(scopeCandidate || templatePlan || ctas.length > 0) && (
+                {(scopeCandidate || userIntent || executionPlan || canonicalOutput || preheatStatus || reviewState || templatePlan || liveExperience || publishedInterface || ctas.length > 0) && (
                   <div className="rounded-2xl border border-border bg-surface-alt p-4">
+                    {userIntent ? (
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          User intent
+                        </p>
+                        <p className="mt-2 text-sm text-text">{userIntent.summary}</p>
+                        {userIntent.requested_focus?.length ? (
+                          <p className="mt-1 text-xs text-text-soft">
+                            Focus: {userIntent.requested_focus.join(', ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {executionPlan ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Agent analysis plan
+                        </p>
+                        <p className="mt-2 text-sm text-text">{executionPlan.summary}</p>
+                        <p className="mt-1 text-xs text-text-soft">
+                          Output: {executionPlan.output_shape.join(', ')}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {canonicalOutput ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Canonical output
+                        </p>
+                        <p className="mt-2 text-sm text-text">{canonicalOutput.canonical_store}</p>
+                        <p className="mt-1 text-xs text-text-soft">
+                          Sections: {canonicalOutput.expected_sections.join(', ')}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {preheatStatus ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Workspace preheat
+                        </p>
+                        <p className="mt-2 text-sm text-text">{preheatStatus.summary}</p>
+                        <p className="mt-1 text-xs text-text-soft">
+                          Status: {preheatStatus.status}
+                        </p>
+                      </div>
+                    ) : null}
+
                     {scopeCandidate ? (
                       <div className="space-y-3">
                         <div>
@@ -808,6 +954,43 @@ export function AIPanel({
                         {templatePlan.reason ? (
                           <p className="mt-1 text-xs text-text-soft">{templatePlan.reason}</p>
                         ) : null}
+                      </div>
+                    ) : null}
+
+                    {reviewState ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Review signals
+                        </p>
+                        <div className="mt-2 space-y-1">
+                          {reviewState.signals.map((signal, index) => (
+                            <p key={`${signal.kind}-${index}`} className="text-xs text-text-soft">
+                              {signal.message}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {liveExperience ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Live interface
+                        </p>
+                        <p className="mt-2 text-sm text-text">
+                          {String(liveExperience.redeem_url || liveExperience.live_url || liveExperience.public_url || 'Live interface is prepared.')}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {publishedInterface ? (
+                      <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                          Published interface
+                        </p>
+                        <p className="mt-2 text-sm text-text">
+                          {String(publishedInterface.url || 'Published interface is ready.')}
+                        </p>
                       </div>
                     ) : null}
 

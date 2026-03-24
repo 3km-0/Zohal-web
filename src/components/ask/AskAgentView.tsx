@@ -24,12 +24,17 @@ import { downloadLibraryPdf } from '@/lib/zohal-library';
 import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
 import {
+  type WorkspaceAgentCanonicalOutput,
   ctaButtonClass,
   type WorkspaceAgentCitation as AskCitation,
   type WorkspaceAgentCta,
+  type WorkspaceAgentExecutionPlan,
+  type WorkspaceAgentPreheatStatus,
+  type WorkspaceAgentReviewState,
   type WorkspaceAgentSource,
   type WorkspaceAgentStreamEvent as StreamEvent,
   type WorkspaceAgentTemplatePlan,
+  type WorkspaceAgentUserIntent,
 } from '@/lib/workspace-agent';
 
 type AskConversationSummary = {
@@ -89,7 +94,14 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     excluded_sources: WorkspaceAgentSource[];
     primary_document_id?: string | null;
   } | null>(null);
+  const [userIntent, setUserIntent] = useState<WorkspaceAgentUserIntent | null>(null);
+  const [executionPlan, setExecutionPlan] = useState<WorkspaceAgentExecutionPlan | null>(null);
+  const [canonicalOutput, setCanonicalOutput] = useState<WorkspaceAgentCanonicalOutput | null>(null);
+  const [preheatStatus, setPreheatStatus] = useState<WorkspaceAgentPreheatStatus | null>(null);
+  const [reviewState, setReviewState] = useState<WorkspaceAgentReviewState | null>(null);
   const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
+  const [liveExperience, setLiveExperience] = useState<Record<string, unknown> | null>(null);
+  const [publishedInterface, setPublishedInterface] = useState<Record<string, unknown> | null>(null);
   const [ctas, setCtas] = useState<WorkspaceAgentCta[]>([]);
   const [pendingKind, setPendingKind] = useState<string | null>(null);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
@@ -133,7 +145,14 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
       setMessages(Array.isArray(json.messages) ? json.messages : []);
       setActivities([]);
       setScopeCandidate(null);
+      setUserIntent(null);
+      setExecutionPlan(null);
+      setCanonicalOutput(null);
+      setPreheatStatus(null);
+      setReviewState(null);
       setTemplatePlan(null);
+      setLiveExperience(null);
+      setPublishedInterface(null);
       setCtas([]);
       setPendingKind(null);
       setSelectedSourceIds([]);
@@ -184,7 +203,14 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     setError(null);
     setHistoryOpen(false);
     setScopeCandidate(null);
+    setUserIntent(null);
+    setExecutionPlan(null);
+    setCanonicalOutput(null);
+    setPreheatStatus(null);
+    setReviewState(null);
     setTemplatePlan(null);
+    setLiveExperience(null);
+    setPublishedInterface(null);
     setCtas([]);
     setPendingKind(null);
     setSelectedSourceIds([]);
@@ -230,6 +256,16 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
             });
             setSelectedSourceIds(event.included_sources.map((item) => item.document_id));
             setEditingSources(false);
+          } else if (event.type === 'intent_candidate') {
+            setUserIntent(event.user_intent);
+          } else if (event.type === 'analysis_plan') {
+            setExecutionPlan(event.analysis_plan);
+          } else if (event.type === 'canonical_output') {
+            setCanonicalOutput(event.canonical_output);
+          } else if (event.type === 'preheat_status') {
+            setPreheatStatus(event.preheat);
+          } else if (event.type === 'review_signals') {
+            setReviewState(event.review);
           } else if (event.type === 'template_candidate') {
             setTemplatePlan(event.template_plan);
           } else if (event.type === 'pending_confirmation') {
@@ -244,6 +280,10 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
           } else if (event.type === 'completed') {
             setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
             if (!options?.skipConversationReload) void loadConversations();
+          } else if (event.type === 'live_experience_ready') {
+            setLiveExperience(event.live_experience);
+          } else if (event.type === 'published_interface_ready') {
+            setPublishedInterface(event.published_interface);
           } else if (event.type === 'error') {
             setError(sanitizeAskError(event.message, t('errors.generic')));
           }
@@ -607,8 +647,42 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
             </details>
           )}
 
-          {(scopeCandidate || templatePlan || ctas.length > 0) && (
+          {(scopeCandidate || userIntent || executionPlan || canonicalOutput || preheatStatus || reviewState || templatePlan || liveExperience || publishedInterface || ctas.length > 0) && (
             <div className="mt-5 rounded-2xl border border-border bg-surface-alt p-4">
+              {userIntent ? (
+                <div className="rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">User intent</p>
+                  <p className="mt-2 text-sm text-text">{userIntent.summary}</p>
+                  {userIntent.requested_focus?.length ? (
+                    <p className="mt-1 text-xs text-text-soft">Focus: {userIntent.requested_focus.join(', ')}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {executionPlan ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Agent analysis plan</p>
+                  <p className="mt-2 text-sm text-text">{executionPlan.summary}</p>
+                  <p className="mt-1 text-xs text-text-soft">Output: {executionPlan.output_shape.join(', ')}</p>
+                </div>
+              ) : null}
+
+              {canonicalOutput ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Canonical output</p>
+                  <p className="mt-2 text-sm text-text">{canonicalOutput.canonical_store}</p>
+                  <p className="mt-1 text-xs text-text-soft">Sections: {canonicalOutput.expected_sections.join(', ')}</p>
+                </div>
+              ) : null}
+
+              {preheatStatus ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Workspace preheat</p>
+                  <p className="mt-2 text-sm text-text">{preheatStatus.summary}</p>
+                  <p className="mt-1 text-xs text-text-soft">Status: {preheatStatus.status}</p>
+                </div>
+              ) : null}
+
               {scopeCandidate ? (
                 <div className="space-y-3">
                   <div>
@@ -677,6 +751,33 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
                   {templatePlan.reason ? (
                     <p className="mt-1 text-xs text-text-soft">{templatePlan.reason}</p>
                   ) : null}
+                </div>
+              ) : null}
+
+              {reviewState ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Review signals</p>
+                  <div className="mt-2 space-y-1">
+                    {reviewState.signals.map((signal, index) => (
+                      <p key={`${signal.kind}-${index}`} className="text-xs text-text-soft">{signal.message}</p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {liveExperience ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Live interface</p>
+                  <p className="mt-2 text-sm text-text">
+                    {String(liveExperience.redeem_url || liveExperience.live_url || liveExperience.public_url || 'Live interface is prepared.')}
+                  </p>
+                </div>
+              ) : null}
+
+              {publishedInterface ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Published interface</p>
+                  <p className="mt-2 text-sm text-text">{String(publishedInterface.url || 'Published interface is ready.')}</p>
                 </div>
               ) : null}
 
