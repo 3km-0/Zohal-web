@@ -159,7 +159,7 @@ export default function PrivacyPage() {
               {
                 title: 'When it is sent',
                 description:
-                  'Only when you choose AI-assisted features such as chat, Explain, OCR, or contract analysis.',
+                  'Only when you choose AI-assisted features such as chat, Explain, OCR, or document analysis.',
               },
               {
                 title: 'Permission',

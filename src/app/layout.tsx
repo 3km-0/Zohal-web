@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   keywords: [
     'document analysis',
     'document verification',
-    'contract analysis',
+    'structured document analysis',
     'evidence-based review',
     'Arabic English document review',
     'invoice verification',
