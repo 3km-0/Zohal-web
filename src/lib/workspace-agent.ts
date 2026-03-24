@@ -90,6 +90,26 @@ export type WorkspaceAgentPreheatStatus = {
   } | null;
 };
 
+export type WorkspaceAgentPipelineStage = {
+  id:
+    | 'workspace_preheat'
+    | 'document_ingestion'
+    | 'chunking'
+    | 'canonical_output'
+    | 'live_interface'
+    | 'publish_preflight';
+  label: string;
+  status: 'ready' | 'pending' | 'running' | 'blocked' | 'not_started';
+  summary: string;
+  details?: Record<string, unknown> | null;
+};
+
+export type WorkspaceAgentPipelineStatus = {
+  summary: string;
+  updated_at: string;
+  stages: WorkspaceAgentPipelineStage[];
+};
+
 export type WorkspaceAgentLiveExperience = {
   experience_id?: string | null;
   candidate_id?: string | null;
@@ -126,6 +146,7 @@ export type WorkspaceAgentStreamEvent =
   | { type: 'analysis_plan'; analysis_plan: WorkspaceAgentExecutionPlan }
   | { type: 'canonical_output'; canonical_output: WorkspaceAgentCanonicalOutput }
   | { type: 'preheat_status'; preheat: WorkspaceAgentPreheatStatus }
+  | { type: 'pipeline_status'; pipeline_status: WorkspaceAgentPipelineStatus }
   | { type: 'review_signals'; review: WorkspaceAgentReviewState }
   | { type: 'scope_candidate'; included_sources: WorkspaceAgentSource[]; excluded_sources: WorkspaceAgentSource[]; primary_document_id?: string | null }
   | { type: 'template_candidate'; template_plan: WorkspaceAgentTemplatePlan }

@@ -37,6 +37,7 @@ import {
   type WorkspaceAgentCta,
   type WorkspaceAgentExecutionPlan,
   type WorkspaceAgentLiveExperience,
+  type WorkspaceAgentPipelineStatus,
   type WorkspaceAgentPreheatStatus,
   type WorkspaceAgentPublishedInterface,
   type WorkspaceAgentReviewState,
@@ -107,6 +108,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
   const [executionPlan, setExecutionPlan] = useState<WorkspaceAgentExecutionPlan | null>(null);
   const [canonicalOutput, setCanonicalOutput] = useState<WorkspaceAgentCanonicalOutput | null>(null);
   const [preheatStatus, setPreheatStatus] = useState<WorkspaceAgentPreheatStatus | null>(null);
+  const [pipelineStatus, setPipelineStatus] = useState<WorkspaceAgentPipelineStatus | null>(null);
   const [reviewState, setReviewState] = useState<WorkspaceAgentReviewState | null>(null);
   const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
   const [liveExperience, setLiveExperience] = useState<WorkspaceAgentLiveExperience | null>(null);
@@ -159,6 +161,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
       setExecutionPlan(null);
       setCanonicalOutput(null);
       setPreheatStatus(null);
+      setPipelineStatus(null);
       setReviewState(null);
       setTemplatePlan(null);
       setLiveExperience(null);
@@ -177,6 +180,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     setMessages([]);
     setActivities([]);
     setSelectedConversationId(null);
+    setPipelineStatus(null);
     void loadConversations();
   }, [loadConversations]);
 
@@ -217,6 +221,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     setExecutionPlan(null);
     setCanonicalOutput(null);
     setPreheatStatus(null);
+    setPipelineStatus(null);
     setReviewState(null);
     setTemplatePlan(null);
     setLiveExperience(null);
@@ -274,6 +279,8 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
             setCanonicalOutput(event.canonical_output);
           } else if (event.type === 'preheat_status') {
             setPreheatStatus(event.preheat);
+          } else if (event.type === 'pipeline_status') {
+            setPipelineStatus(event.pipeline_status);
           } else if (event.type === 'review_signals') {
             setReviewState(event.review);
           } else if (event.type === 'template_candidate') {
@@ -425,6 +432,8 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
               setCanonicalOutput(event.canonical_output);
             } else if (event.type === 'preheat_status') {
               setPreheatStatus(event.preheat);
+            } else if (event.type === 'pipeline_status') {
+              setPipelineStatus(event.pipeline_status);
             } else if (event.type === 'review_signals') {
               setReviewState(event.review);
             } else if (event.type === 'template_candidate') {
@@ -740,7 +749,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
             </details>
           )}
 
-          {(scopeCandidate || userIntent || executionPlan || canonicalOutput || preheatStatus || reviewState || templatePlan || liveExperience || publishedInterface || ctas.length > 0) && (
+          {(scopeCandidate || userIntent || executionPlan || canonicalOutput || preheatStatus || pipelineStatus || reviewState || templatePlan || liveExperience || publishedInterface || ctas.length > 0) && (
             <div className="mt-5 rounded-2xl border border-border bg-surface-alt p-4">
               {userIntent ? (
                 <div className="rounded-xl border border-border bg-surface p-3">
@@ -773,6 +782,35 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Workspace preheat</p>
                   <p className="mt-2 text-sm text-text">{preheatStatus.summary}</p>
                   <p className="mt-1 text-xs text-text-soft">Status: {preheatStatus.status}</p>
+                </div>
+              ) : null}
+
+              {pipelineStatus ? (
+                <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Pipeline status</p>
+                  <p className="mt-2 text-sm text-text">{pipelineStatus.summary}</p>
+                  <div className="mt-3 space-y-2">
+                    {pipelineStatus.stages.map((stage) => (
+                      <div key={stage.id} className="rounded-lg border border-border/70 px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-medium text-text">{stage.label}</p>
+                          <span className={cn(
+                            'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]',
+                            stage.status === 'ready'
+                              ? 'bg-emerald-500/15 text-emerald-600'
+                              : stage.status === 'blocked'
+                              ? 'bg-rose-500/15 text-rose-600'
+                              : stage.status === 'running'
+                              ? 'bg-amber-500/15 text-amber-700'
+                              : 'bg-muted text-text-soft'
+                          )}>
+                            {stage.status.replaceAll('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-text-soft">{stage.summary}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
