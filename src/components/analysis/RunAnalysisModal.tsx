@@ -107,7 +107,7 @@ export function RunAnalysisModal(props: {
         .select('id,status,created_at,updated_at,input_config,output_summary,extraction_type,document_id,workspace_id,user_id,completed_at,error,model,prompt_version,started_at')
         .eq('workspace_id', workspaceId)
         .eq('document_id', documentId)
-        .eq('extraction_type', 'contract_analysis')
+        .in('extraction_type', ['contract_analysis', 'document_analysis'])
         .order('created_at', { ascending: false })
         .limit(20);
       if (error || !runs) return;
@@ -529,7 +529,7 @@ export function RunAnalysisModal(props: {
           }))
         : [];
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-contract`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-document`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

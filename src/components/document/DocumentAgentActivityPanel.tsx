@@ -83,7 +83,7 @@ export function DocumentAgentActivityPanel({
           .from('verification_objects')
           .select('id, title, state, created_at, updated_at, current_version_id')
           .eq('document_id', documentId)
-          .eq('object_type', 'contract_analysis')
+          .in('object_type', ['contract_analysis', 'document_analysis'])
           .maybeSingle(),
       ]);
 

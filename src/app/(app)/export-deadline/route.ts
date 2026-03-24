@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     .from('verification_objects')
     .select('id, current_version_id')
     .eq('document_id', documentId)
-    .eq('object_type', 'contract_analysis')
+    .in('object_type', ['contract_analysis', 'document_analysis'])
     .maybeSingle();
   if (verificationObjectErr) {
     return NextResponse.json({ error: verificationObjectErr.message }, { status: 500 });

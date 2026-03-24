@@ -1157,17 +1157,17 @@ export function ContractAnalysisPane({
       const [{ data, error }, { data: verificationObject }] = await Promise.all([
         supabase
           .from('extraction_runs')
-          .select('id, status, created_at, updated_at, input_config, output_summary')
+          .select('id, status, created_at, updated_at, input_config, output_summary, extraction_type')
           .eq('workspace_id', workspaceId)
           .eq('document_id', documentId)
-          .eq('extraction_type', 'contract_analysis')
+          .in('extraction_type', ['contract_analysis', 'document_analysis'])
           .order('created_at', { ascending: false })
           .limit(30),
         supabase
           .from('verification_objects')
           .select('id, title, state, created_at, updated_at, current_version_id')
           .eq('document_id', documentId)
-          .eq('object_type', 'contract_analysis')
+          .in('object_type', ['contract_analysis', 'document_analysis'])
           .maybeSingle(),
       ]);
       if (error || !data) {
@@ -1209,7 +1209,7 @@ export function ContractAnalysisPane({
               ...row,
               input_config: row.input_config ?? null,
               output_summary: row.output_summary ?? null,
-              extraction_type: 'contract_analysis',
+              extraction_type: row.extraction_type ?? 'document_analysis',
               document_id: documentId,
               workspace_id: workspaceId,
               user_id: '',
@@ -1338,7 +1338,7 @@ export function ContractAnalysisPane({
         .from('verification_objects')
         .select('id, current_version_id, state, finalized_at')
         .eq('document_id', documentId)
-        .eq('object_type', 'contract_analysis')
+        .in('object_type', ['contract_analysis', 'document_analysis'])
         .maybeSingle();
 
       if (verificationObjectError) throw verificationObjectError;
@@ -1883,7 +1883,7 @@ export function ContractAnalysisPane({
         ? Array.from(new Set(normalizedDocsetMembers.map((m) => m.document_id)))
         : [];
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-contract`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-document`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1916,7 +1916,7 @@ export function ContractAnalysisPane({
 
       // Handle 4xx/5xx errors (except 202)
       if (!res.ok && res.status !== 202) {
-        const uiErr = mapHttpError(res.status, json, 'analyze-contract');
+        const uiErr = mapHttpError(res.status, json, 'analyze-document');
         toast.show(uiErr);
         setError(uiErr.message);
         setIsAnalyzing(false);

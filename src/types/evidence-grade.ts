@@ -433,7 +433,7 @@ export function convertLegacySnapshot(legacy: LegacyContractSnapshot, documentId
   
   return {
     schema_version: '2.0',
-    template: 'contract_analysis',
+    template: 'document_analysis',
     variables,
     clauses,
     obligations,

@@ -314,7 +314,7 @@ function toMetadata(record: Record<string, unknown>, omit: Set<string>) {
 
 export function getSnapshotTemplateId(snapshot: EvidenceGradeSnapshot | null | undefined): string {
   const pack = asObject(snapshot?.pack);
-  return asString(pack.template_id) || asString(snapshot?.template) || 'contract_analysis';
+  return asString(pack.template_id) || asString(snapshot?.template) || 'document_analysis';
 }
 
 export function isContractOverviewTemplate(templateId: string | null | undefined): boolean {
