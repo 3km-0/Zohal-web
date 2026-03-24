@@ -90,6 +90,23 @@ export type WorkspaceAgentPreheatStatus = {
   } | null;
 };
 
+export type WorkspaceAgentLiveExperience = {
+  experience_id?: string | null;
+  candidate_id?: string | null;
+  revision_id?: string | null;
+  live_url?: string | null;
+  redeem_url?: string | null;
+  public_url?: string | null;
+  materialization_status?: string | null;
+};
+
+export type WorkspaceAgentPublishedInterface = {
+  experience_id?: string | null;
+  candidate_id?: string | null;
+  url?: string | null;
+  promoted_revision_id?: string | null;
+};
+
 export type WorkspaceAgentReviewState = {
   policy: 'manual_only';
   signals: Array<{
@@ -115,8 +132,8 @@ export type WorkspaceAgentStreamEvent =
   | { type: 'pending_confirmation'; conversation_id: string; pending_kind: string; message: string }
   | { type: 'cta_set'; ctas: WorkspaceAgentCta[] }
   | { type: 'run_progress'; message: string; run_ref?: Record<string, unknown> | null }
-  | { type: 'live_experience_ready'; live_experience: Record<string, unknown> }
-  | { type: 'published_interface_ready'; published_interface: Record<string, unknown> }
+  | { type: 'live_experience_ready'; live_experience: WorkspaceAgentLiveExperience }
+  | { type: 'published_interface_ready'; published_interface: WorkspaceAgentPublishedInterface }
   | { type: 'answer_delta'; delta: string }
   | { type: 'citations'; citations: WorkspaceAgentCitation[] }
   | { type: 'completed'; conversation_id: string; citations: WorkspaceAgentCitation[]; run_ref?: Record<string, unknown> | null }

@@ -6,6 +6,7 @@ import {
   Brain,
   ChevronRight,
   Clock,
+  ExternalLink,
   FileText,
   Globe2,
   Loader2,
@@ -22,6 +23,12 @@ import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { downloadLibraryPdf } from '@/lib/zohal-library';
 import { mapHttpError } from '@/lib/errors';
+import {
+  describeLiveExperienceLink,
+  describePublishedInterfaceLink,
+  openLiveExperience,
+  openPublishedInterface,
+} from '@/lib/experience-links';
 import { useToast } from '@/components/ui/Toast';
 import {
   type WorkspaceAgentCanonicalOutput,
@@ -29,7 +36,9 @@ import {
   type WorkspaceAgentCitation as AskCitation,
   type WorkspaceAgentCta,
   type WorkspaceAgentExecutionPlan,
+  type WorkspaceAgentLiveExperience,
   type WorkspaceAgentPreheatStatus,
+  type WorkspaceAgentPublishedInterface,
   type WorkspaceAgentReviewState,
   type WorkspaceAgentSource,
   type WorkspaceAgentStreamEvent as StreamEvent,
@@ -100,13 +109,14 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
   const [preheatStatus, setPreheatStatus] = useState<WorkspaceAgentPreheatStatus | null>(null);
   const [reviewState, setReviewState] = useState<WorkspaceAgentReviewState | null>(null);
   const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
-  const [liveExperience, setLiveExperience] = useState<Record<string, unknown> | null>(null);
-  const [publishedInterface, setPublishedInterface] = useState<Record<string, unknown> | null>(null);
+  const [liveExperience, setLiveExperience] = useState<WorkspaceAgentLiveExperience | null>(null);
+  const [publishedInterface, setPublishedInterface] = useState<WorkspaceAgentPublishedInterface | null>(null);
   const [ctas, setCtas] = useState<WorkspaceAgentCta[]>([]);
   const [pendingKind, setPendingKind] = useState<string | null>(null);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [editingSources, setEditingSources] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [surfaceOpeningId, setSurfaceOpeningId] = useState<'live' | 'published' | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -349,6 +359,8 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     abortRef.current = new AbortController();
 
     const pendingAssistantId = crypto.randomUUID();
+    let nextLiveExperience = liveExperience;
+    let nextPublishedInterface = publishedInterface;
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: 'user', content: action.label, created_at: new Date().toISOString() },
@@ -378,12 +390,93 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     });
 
     try {
-      await consumeStream(response, pendingAssistantId, { skipConversationReload: false });
+      const reader = response.body?.getReader();
+      if (!response.ok || !reader) {
+        await consumeStream(response, pendingAssistantId, { skipConversationReload: false });
+      } else {
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line) as StreamEvent;
+            if (event.type === 'run_started') {
+              setSelectedConversationId(event.conversation_id);
+            } else if (event.type === 'status' || event.type === 'tool_activity' || event.type === 'run_progress') {
+              setActivities((prev) => [...prev, event.message]);
+            } else if (event.type === 'scope_candidate') {
+              setScopeCandidate({
+                included_sources: event.included_sources,
+                excluded_sources: event.excluded_sources,
+                primary_document_id: event.primary_document_id,
+              });
+              setSelectedSourceIds(event.included_sources.map((item) => item.document_id));
+              setEditingSources(false);
+            } else if (event.type === 'intent_candidate') {
+              setUserIntent(event.user_intent);
+            } else if (event.type === 'analysis_plan') {
+              setExecutionPlan(event.analysis_plan);
+            } else if (event.type === 'canonical_output') {
+              setCanonicalOutput(event.canonical_output);
+            } else if (event.type === 'preheat_status') {
+              setPreheatStatus(event.preheat);
+            } else if (event.type === 'review_signals') {
+              setReviewState(event.review);
+            } else if (event.type === 'template_candidate') {
+              setTemplatePlan(event.template_plan);
+            } else if (event.type === 'pending_confirmation') {
+              setPendingKind(event.pending_kind);
+              setActivities((prev) => [...prev, event.message]);
+            } else if (event.type === 'cta_set') {
+              setCtas(event.ctas);
+            } else if (event.type === 'answer_delta') {
+              setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, content: `${m.content}${event.delta}` } : m));
+            } else if (event.type === 'citations') {
+              setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
+            } else if (event.type === 'completed') {
+              setMessages((prev) => prev.map((m) => m.id === pendingAssistantId ? { ...m, citations: event.citations } : m));
+              void loadConversations();
+            } else if (event.type === 'live_experience_ready') {
+              setLiveExperience(event.live_experience);
+              nextLiveExperience = event.live_experience;
+            } else if (event.type === 'published_interface_ready') {
+              setPublishedInterface(event.published_interface);
+              nextPublishedInterface = event.published_interface;
+            } else if (event.type === 'error') {
+              setError(sanitizeAskError(event.message, t('errors.generic')));
+            }
+          }
+        }
+      }
+
+      if (action.action_id === 'open_live_experience' && nextLiveExperience) {
+        setSurfaceOpeningId('live');
+        try {
+          await openLiveExperience(nextLiveExperience);
+        } finally {
+          setSurfaceOpeningId(null);
+        }
+      }
+
+      if (action.action_id === 'open_published_interface' && nextPublishedInterface) {
+        setSurfaceOpeningId('published');
+        try {
+          await openPublishedInterface(nextPublishedInterface);
+        } finally {
+          setSurfaceOpeningId(null);
+        }
+      }
+
       if (action.action_id === 'edit_sources') setEditingSources(false);
     } finally {
       setActionLoadingId(null);
     }
-  }, [actionLoadingId, consumeStream, editingSources, loading, selectedConversationId, selectedSourceIds, supabase, t, workspaceId]);
+  }, [actionLoadingId, consumeStream, editingSources, liveExperience, loading, loadConversations, publishedInterface, selectedConversationId, selectedSourceIds, supabase, t, workspaceId]);
 
   const cancelRun = useCallback(() => {
     abortRef.current?.abort();
@@ -769,15 +862,43 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
                 <div className="mt-4 rounded-xl border border-border bg-surface p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Live interface</p>
                   <p className="mt-2 text-sm text-text">
-                    {String(liveExperience.redeem_url || liveExperience.live_url || liveExperience.public_url || 'Live interface is prepared.')}
+                    {describeLiveExperienceLink(liveExperience)}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSurfaceOpeningId('live');
+                      void openLiveExperience(liveExperience)
+                        .catch((err) => setError(err instanceof Error ? err.message : t('errors.generic')))
+                        .finally(() => setSurfaceOpeningId(null));
+                    }}
+                    disabled={surfaceOpeningId !== null}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/30 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {surfaceOpeningId === 'live' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                    Open Live Interface
+                  </button>
                 </div>
               ) : null}
 
               {publishedInterface ? (
                 <div className="mt-4 rounded-xl border border-border bg-surface p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Published interface</p>
-                  <p className="mt-2 text-sm text-text">{String(publishedInterface.url || 'Published interface is ready.')}</p>
+                  <p className="mt-2 text-sm text-text">{describePublishedInterfaceLink(publishedInterface)}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSurfaceOpeningId('published');
+                      void openPublishedInterface(publishedInterface)
+                        .catch((err) => setError(err instanceof Error ? err.message : t('errors.generic')))
+                        .finally(() => setSurfaceOpeningId(null));
+                    }}
+                    disabled={surfaceOpeningId !== null}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent/30 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {surfaceOpeningId === 'published' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                    Open Published Interface
+                  </button>
                 </div>
               ) : null}
 

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Code2,
+  ExternalLink,
   FileText,
   Globe2,
   Hammer,
@@ -27,11 +28,19 @@ import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
 import {
+  describeLiveExperienceLink,
+  describePublishedInterfaceLink,
+  openLiveExperience,
+  openPublishedInterface,
+} from '@/lib/experience-links';
+import {
   ctaButtonClass,
   type WorkspaceAgentCanonicalOutput,
   type WorkspaceAgentCta,
   type WorkspaceAgentExecutionPlan,
+  type WorkspaceAgentLiveExperience,
   type WorkspaceAgentPreheatStatus,
+  type WorkspaceAgentPublishedInterface,
   type WorkspaceAgentReviewState,
   type WorkspaceAgentSource,
   type WorkspaceAgentStreamEvent as DocumentAgentStreamEvent,
@@ -155,13 +164,14 @@ export function AIPanel({
   const [preheatStatus, setPreheatStatus] = useState<WorkspaceAgentPreheatStatus | null>(null);
   const [reviewState, setReviewState] = useState<WorkspaceAgentReviewState | null>(null);
   const [templatePlan, setTemplatePlan] = useState<WorkspaceAgentTemplatePlan | null>(null);
-  const [liveExperience, setLiveExperience] = useState<Record<string, unknown> | null>(null);
-  const [publishedInterface, setPublishedInterface] = useState<Record<string, unknown> | null>(null);
+  const [liveExperience, setLiveExperience] = useState<WorkspaceAgentLiveExperience | null>(null);
+  const [publishedInterface, setPublishedInterface] = useState<WorkspaceAgentPublishedInterface | null>(null);
   const [ctas, setCtas] = useState<WorkspaceAgentCta[]>([]);
   const [pendingKind, setPendingKind] = useState<string | null>(null);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [editingSources, setEditingSources] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [surfaceOpeningId, setSurfaceOpeningId] = useState<'live' | 'published' | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -599,6 +609,8 @@ export function AIPanel({
     chatAbortRef.current = controller;
 
     const pendingAssistantIndex = chatHistory.length + 1;
+    let nextLiveExperience = liveExperience;
+    let nextPublishedInterface = publishedInterface;
     setChatHistory((prev) => [
       ...prev,
       { role: 'user', content: action.label, timestamp: new Date().toISOString() },
@@ -727,15 +739,35 @@ export function AIPanel({
           }
           if (event.type === 'live_experience_ready') {
             setLiveExperience(event.live_experience);
+            nextLiveExperience = event.live_experience;
             continue;
           }
           if (event.type === 'published_interface_ready') {
             setPublishedInterface(event.published_interface);
+            nextPublishedInterface = event.published_interface;
             continue;
           }
           if (event.type === 'error') {
             setError(event.message);
           }
+        }
+      }
+
+      if (action.action_id === 'open_live_experience' && nextLiveExperience) {
+        setSurfaceOpeningId('live');
+        try {
+          await openLiveExperience(nextLiveExperience);
+        } finally {
+          setSurfaceOpeningId(null);
+        }
+      }
+
+      if (action.action_id === 'open_published_interface' && nextPublishedInterface) {
+        setSurfaceOpeningId('published');
+        try {
+          await openPublishedInterface(nextPublishedInterface);
+        } finally {
+          setSurfaceOpeningId(null);
         }
       }
     } catch (err) {
@@ -751,8 +783,10 @@ export function AIPanel({
     currentConversationId,
     documentId,
     editingSources,
+    liveExperience,
     loading,
     loadingConversation,
+    publishedInterface,
     selectedSourceIds,
     supabase,
     toast,
@@ -978,8 +1012,24 @@ export function AIPanel({
                           Live interface
                         </p>
                         <p className="mt-2 text-sm text-text">
-                          {String(liveExperience.redeem_url || liveExperience.live_url || liveExperience.public_url || 'Live interface is prepared.')}
+                          {describeLiveExperienceLink(liveExperience)}
                         </p>
+                        <div className="mt-3">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setSurfaceOpeningId('live');
+                              void openLiveExperience(liveExperience)
+                                .catch((err) => setError(err instanceof Error ? err.message : 'Failed to open the live interface.'))
+                                .finally(() => setSurfaceOpeningId(null));
+                            }}
+                            disabled={surfaceOpeningId !== null}
+                          >
+                            {surfaceOpeningId === 'live' ? <Spinner size="sm" /> : <ExternalLink className="h-4 w-4" />}
+                            Open Live Interface
+                          </Button>
+                        </div>
                       </div>
                     ) : null}
 
@@ -989,8 +1039,24 @@ export function AIPanel({
                           Published interface
                         </p>
                         <p className="mt-2 text-sm text-text">
-                          {String(publishedInterface.url || 'Published interface is ready.')}
+                          {describePublishedInterfaceLink(publishedInterface)}
                         </p>
+                        <div className="mt-3">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setSurfaceOpeningId('published');
+                              void openPublishedInterface(publishedInterface)
+                                .catch((err) => setError(err instanceof Error ? err.message : 'Failed to open the published interface.'))
+                                .finally(() => setSurfaceOpeningId(null));
+                            }}
+                            disabled={surfaceOpeningId !== null}
+                          >
+                            {surfaceOpeningId === 'published' ? <Spinner size="sm" /> : <ExternalLink className="h-4 w-4" />}
+                            Open Published Interface
+                          </Button>
+                        </div>
                       </div>
                     ) : null}
 
