@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, FolderOpen, MoreVertical, Trash2, Edit2, Search } from 'lucide-react';
+import { Plus, FolderOpen, MoreVertical, Trash2, Edit2, Search, ArrowRight } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, EmptyState, ScholarActionMenu, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -206,19 +206,19 @@ export default function WorkspacesPage() {
           />
         ) : (
           <div className="space-y-8">
-            <section className="space-y-4">
-              <div className="relative max-w-md">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-soft" />
+            <section className="space-y-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                 <input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search workspaces"
-                  className="w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-4 text-sm text-text outline-none transition focus:border-accent/40 focus:ring-2 focus:ring-accent/20"
+                  placeholder="Search workspaces…"
+                  className="w-full rounded-lg border border-border/60 bg-surface-alt py-2.5 pl-10 pr-4 text-sm text-text outline-none transition placeholder:text-text-muted focus:border-accent/40 focus:ring-2 focus:ring-accent/10"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <FilterChip label="All Types" selected={selectedType === null} onClick={() => setSelectedType(null)} />
+              <div className="flex flex-wrap items-center gap-1">
+                <FilterChip label="All types" selected={selectedType === null} onClick={() => setSelectedType(null)} />
                 {availableTypes.map((type) => (
                   <FilterChip
                     key={type}
@@ -227,22 +227,22 @@ export default function WorkspacesPage() {
                     onClick={() => setSelectedType(type)}
                   />
                 ))}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <FilterChip label="All Time" selected={selectedTimeFilter === 'all'} onClick={() => setSelectedTimeFilter('all')} />
+                {availableTypes.length > 0 && (
+                  <span className="mx-1.5 inline-block h-3.5 w-px bg-border" aria-hidden="true" />
+                )}
+                <FilterChip label="All time" selected={selectedTimeFilter === 'all'} onClick={() => setSelectedTimeFilter('all')} />
                 <FilterChip label="Today" selected={selectedTimeFilter === 'today'} onClick={() => setSelectedTimeFilter('today')} />
-                <FilterChip label="Last Week" selected={selectedTimeFilter === 'lastWeek'} onClick={() => setSelectedTimeFilter('lastWeek')} />
-                <FilterChip label="Last Month" selected={selectedTimeFilter === 'lastMonth'} onClick={() => setSelectedTimeFilter('lastMonth')} />
+                <FilterChip label="Last week" selected={selectedTimeFilter === 'lastWeek'} onClick={() => setSelectedTimeFilter('lastWeek')} />
+                <FilterChip label="Last month" selected={selectedTimeFilter === 'lastMonth'} onClick={() => setSelectedTimeFilter('lastMonth')} />
               </div>
             </section>
 
             {topLevelFolders.length > 0 && (
               <section className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">
+                <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted">
                   Folders
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
                   {topLevelFolders.map((folder) => (
                     <FolderTile
                       key={folder.id}
@@ -265,10 +265,10 @@ export default function WorkspacesPage() {
 
             {ungroupedWorkspaces.length > 0 ? (
               <section className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">
+                <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted">
                   Workspaces
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
                   {ungroupedWorkspaces.map((workspace) => (
                     <WorkspaceIcon
                       key={workspace.id}
@@ -366,17 +366,19 @@ function FolderTile({
         onDrop?.();
       }}
       className={cn(
-        'flex flex-col items-center gap-2 rounded-xl p-3 transition-all duration-200',
-        'hover:bg-surface-alt/60 hover:shadow-md active:scale-95',
-        isDropTarget && 'bg-accent/10 ring-2 ring-accent/40',
+        'group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/80 bg-surface p-5 transition-all duration-200',
+        'hover:border-accent/25 hover:shadow-[0_0_0_1px_rgba(196,164,90,0.08),0_8px_32px_rgba(0,0,0,0.24)] active:scale-[0.99]',
+        isDropTarget && 'border-accent/30 bg-accent/5',
         'focus:outline-none focus:ring-2 focus:ring-accent/50',
-        'mx-auto w-[160px]'
+        'min-h-[130px]'
       )}
     >
-      <FolderOpen className="h-12 w-12 text-accent" />
-      <span className="line-clamp-2 max-w-full px-1 text-center text-sm font-semibold text-text">
-        {folder.name}
-      </span>
+      <div className="absolute inset-x-0 top-0 h-[2px] bg-border" aria-hidden="true" />
+      <div className="space-y-1">
+        <FolderOpen className="mb-2 h-5 w-5 text-text-muted" />
+        <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-muted">Folder</div>
+        <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-text">{folder.name}</div>
+      </div>
     </Link>
   );
 }
@@ -402,10 +404,10 @@ function WorkspaceIcon({
   const tCard = useTranslations('workspaceCard');
   const tCommon = useTranslations('common');
   const [showMenu, setShowMenu] = useState(false);
-  const hasCustomColor = Boolean(workspace.color);
+  const accentColor = workspace.color ? String(workspace.color) : 'var(--accent)';
 
   return (
-    <div className="relative group">
+    <div className="group relative">
       <Link
         href={`/workspaces/${workspace.id}`}
         draggable={draggable}
@@ -415,66 +417,64 @@ function WorkspaceIcon({
         }}
         onDragEnd={() => onDragEnd?.()}
         className={cn(
-          'relative block overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-surface to-surface-alt/40 p-4 transition-all duration-200',
-          'hover:border-accent/20 hover:shadow-lg hover:shadow-accent/5 active:scale-[0.99]',
+          'relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/80 bg-surface p-5 transition-all duration-200',
+          'hover:border-accent/25 hover:shadow-[0_0_0_1px_rgba(196,164,90,0.08),0_8px_32px_rgba(0,0,0,0.24)] active:scale-[0.99]',
           'focus:outline-none focus:ring-2 focus:ring-accent/50',
-          'min-h-[132px] mx-auto w-full max-w-[228px]'
+          'min-h-[130px]'
         )}
       >
+        {/* Top accent line */}
         <div
-          className={cn('absolute inset-y-0 right-0 w-2.5', hasCustomColor ? '' : 'bg-accent')}
-          style={hasCustomColor ? { backgroundColor: String(workspace.color) } : undefined}
+          className="absolute inset-x-0 top-0 h-[2px]"
+          style={{ backgroundColor: accentColor }}
           aria-hidden="true"
         />
 
-        <div className="pt-1">
-          <div className="min-w-0">
-            <div className="line-clamp-2 text-sm font-semibold leading-5 text-text">{workspace.name}</div>
-            <div className="mt-2 inline-flex rounded-full border border-border bg-surface px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-              {t(workspace.workspace_type)}
-            </div>
+        <div className="space-y-1">
+          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-muted">
+            {t(workspace.workspace_type)}
+          </div>
+          <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-text">
+            {workspace.name}
           </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-between text-[11px] text-text-soft">
-          <span className="truncate">Open workspace</span>
-          <span className="font-medium">
+        <div className="mt-5 flex items-center justify-between">
+          <span className="text-[11px] text-text-muted">
             {new Date(workspace.updated_at).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
             })}
           </span>
+          <ArrowRight className="h-3.5 w-3.5 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
         </div>
       </Link>
 
-      {/* Menu Button */}
-      <div className="absolute top-2 right-2">
+      {/* Context menu */}
+      <div className="absolute right-2.5 top-2.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <button
           onClick={(e) => {
             e.preventDefault();
             setShowMenu(!showMenu);
           }}
-          className="rounded-lg p-1.5 opacity-0 transition-all hover:bg-surface-alt group-hover:opacity-100"
+          className="rounded-md p-1 hover:bg-surface-alt transition-colors"
         >
-          <MoreVertical className="w-4 h-4 text-text-soft" />
+          <MoreVertical className="h-3.5 w-3.5 text-text-muted" />
         </button>
 
         {showMenu && (
           <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowMenu(false)}
-            />
-            <div className="absolute right-0 mt-1 w-40 bg-surface border border-border rounded-scholar shadow-scholar-lg z-50 overflow-hidden animate-fade-in">
+            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadowMd)] z-50 animate-fade-in">
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   setShowMenu(false);
                   onEdit();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-text hover:bg-surface-alt transition-colors"
               >
-                <Edit2 className="w-4 h-4" />
+                <Edit2 className="h-3.5 w-3.5" />
                 {tCard('edit')}
               </button>
               <button
@@ -483,9 +483,9 @@ function WorkspaceIcon({
                   setShowMenu(false);
                   onDelete();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-error hover:bg-error/10 transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-3.5 w-3.5" />
                 {tCommon('delete')}
               </button>
             </div>
@@ -510,10 +510,10 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors',
+        'rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150',
         selected
-          ? 'border-accent bg-accent text-white'
-          : 'border-border bg-surface text-text-soft hover:border-accent/30 hover:text-text'
+          ? 'bg-accent/10 text-accent'
+          : 'text-text-soft hover:bg-surface-alt hover:text-text'
       )}
     >
       {label}

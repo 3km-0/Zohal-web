@@ -54,30 +54,31 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
   ];
 
   return (
-    <div className={cn('border-b border-border bg-surface px-4 py-3 md:px-6', className)} data-tour="workspace-tabs">
-      <div className="max-w-full overflow-x-auto">
-        <div className="inline-flex min-w-max items-center gap-1 rounded-[20px] border border-border bg-surface-alt p-1 shadow-[var(--shadowSm)]">
-        {tabs.map((tab) => {
-          const isActive = resolved === tab.key;
-          const Icon = tab.icon;
-          return (
-            <Link
-              key={tab.key}
-              href={tab.href}
-              aria-current={isActive ? 'page' : undefined}
-              className={cn(
-                'inline-flex items-center gap-2 whitespace-nowrap rounded-[16px] px-3.5 py-2 text-sm font-semibold transition-colors',
-                isActive
-                  ? 'bg-accent text-white shadow-[var(--shadowSm)]'
-                  : 'text-text-soft hover:bg-surface hover:text-text'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </Link>
-          );
-        })}
+    <div className={cn('relative border-b border-border bg-surface', className)} data-tour="workspace-tabs">
+      <div className="relative overflow-x-auto">
+        <div className="flex items-end px-4 md:px-6 min-w-max">
+          {tabs.map((tab) => {
+            const isActive = resolved === tab.key;
+            const Icon = tab.icon;
+            return (
+              <Link
+                key={tab.key}
+                href={tab.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-sm font-medium transition-all duration-150 border-b-2 -mb-px',
+                  isActive
+                    ? 'border-accent text-text'
+                    : 'border-transparent text-text-soft hover:text-text hover:border-border'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                {tab.label}
+              </Link>
+            );
+          })}
         </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent" aria-hidden="true" />
       </div>
     </div>
   );
