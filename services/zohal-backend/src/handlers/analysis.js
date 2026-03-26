@@ -26,27 +26,33 @@ const CONTRACT_ANALYSIS_WORKFLOWS_LOCATION = String(
   process.env.GCP_WORKFLOWS_LOCATION || "",
 ).trim();
 
-const PHASE3_TEMPLATE_IDS = new Set([
-  "contract_analysis",
-  "renewal_pack",
-  "amendment_conflict_review",
-  "obligations_tracker",
-  "playbook_compliance_review",
-  "lease_pack",
-]);
-
 export function normalizeUuid(id) {
   return String(id || "").trim().toLowerCase();
 }
 
-export function isPhase3TemplateId(templateId) {
-  return PHASE3_TEMPLATE_IDS.has(String(templateId || "").trim());
+function resolveAnalysisRuntime(extractionType) {
+  const normalized = String(extractionType || "contract_analysis").trim();
+  if (normalized === "document_analysis") {
+    return {
+      batchTaskKind: "document_analysis_batch",
+      reduceTaskKind: "document_analysis_reduce",
+      acceptedMessage:
+        "Document analysis queued. Progress will update as batches complete.",
+    };
+  }
+  return {
+    batchTaskKind: "contract_analysis_batch",
+    reduceTaskKind: "contract_analysis_reduce",
+    acceptedMessage:
+      "Contract analysis queued. Progress will update as batches complete.",
+  };
 }
 
 export function buildAnalyzeAcceptedPayload({
   requestId,
   actionId,
   runId,
+  message = "Contract analysis queued. Progress will update as batches complete.",
   workflowExecutionId = null,
   deferred = false,
   alreadyEnqueued = false,
@@ -55,7 +61,7 @@ export function buildAnalyzeAcceptedPayload({
     accepted: true,
     action_id: actionId || null,
     run_id: runId,
-    message: "Contract analysis queued. Progress will update as batches complete.",
+    message,
     workflow_execution_id: workflowExecutionId,
     deferred,
     already_enqueued: alreadyEnqueued,
@@ -453,6 +459,7 @@ async function startAnalysisWorkflow({
     queue_provider: "cloud_tasks",
     queue_name: CONTRACT_ANALYSIS_TASK_QUEUE,
   };
+  const runtime = resolveAnalysisRuntime(parentRun.extraction_type);
 
   await patchRunExecutionMetadata(supabase, parentRun, executionPatch);
   for (const batchRun of batchRuns) {
@@ -474,7 +481,7 @@ async function startAnalysisWorkflow({
       req,
       requestId,
       payload: {
-        kind: "contract_analysis_batch",
+        kind: runtime.batchTaskKind,
         batch_run_id: batchRun.id,
         parent_run_id: parentRun.id,
         request_id: requestId,
@@ -486,7 +493,7 @@ async function startAnalysisWorkflow({
     req,
     requestId,
     payload: {
-      kind: "contract_analysis_reduce",
+      kind: runtime.reduceTaskKind,
       parent_run_id: parentRun.id,
       request_id: requestId,
     },
@@ -522,14 +529,9 @@ async function handleStart(req, res, { requestId, log, readJsonBody }) {
     "template_id",
   ]);
 
-  if (!isPhase3TemplateId(payload.template_id)) {
-    const error = new Error(`Unsupported contract analysis template: ${payload.template_id}`);
-    error.statusCode = 400;
-    throw error;
-  }
-
   const parentRun = await fetchRunOrThrow(supabase, payload.parent_run_id);
   const batchRuns = await fetchBatchRuns(supabase, payload.batch_run_ids);
+  const runtime = resolveAnalysisRuntime(parentRun.extraction_type);
 
   if (normalizeUuid(parentRun.workspace_id) !== payload.workspace_id) {
     const error = new Error("workspace_id does not match parent run");
@@ -578,6 +580,7 @@ async function handleStart(req, res, { requestId, log, readJsonBody }) {
       requestId,
       actionId: payload.action_id,
       runId: payload.parent_run_id,
+      message: runtime.acceptedMessage,
       workflowExecutionId: launch.workflow_execution_id || null,
       deferred: launch.deferred === true,
       alreadyEnqueued: launch.already_enqueued === true,
@@ -602,7 +605,10 @@ async function handleTask(req, res, { requestId, log, readJsonBody }) {
   }
 
   try {
-    if (payload.kind === "contract_analysis_batch") {
+    if (
+      payload.kind === "contract_analysis_batch" ||
+      payload.kind === "document_analysis_batch"
+    ) {
       const result = await executeContractAnalysisBatch({
         supabase,
         batchRunId: payload.batch_run_id,
@@ -618,7 +624,10 @@ async function handleTask(req, res, { requestId, log, readJsonBody }) {
       }));
     }
 
-    if (payload.kind === "contract_analysis_reduce") {
+    if (
+      payload.kind === "contract_analysis_reduce" ||
+      payload.kind === "document_analysis_reduce"
+    ) {
       const result = await executeContractAnalysisReduce({
         supabase,
         parentRunId: payload.parent_run_id,
@@ -641,6 +650,22 @@ async function handleTask(req, res, { requestId, log, readJsonBody }) {
     error.statusCode = 400;
     throw error;
   } catch (error) {
+    if (
+      Number(error?.statusCode || error?.status || 0) === 404 &&
+      String(error?.message || "").includes("Parent run not found")
+    ) {
+      log.warn("Dropping orphaned analysis task", {
+        kind: payload.kind,
+        parent_run_id: payload.parent_run_id,
+        batch_run_id: payload.batch_run_id || null,
+      });
+      return sendJson(res, 200, buildEnvelope(requestId, {
+        success: true,
+        orphaned_parent_run: true,
+        kind: payload.kind,
+        parent_run_id: payload.parent_run_id,
+      }));
+    }
     if (isRetryableAnalysisError(error)) {
       log.warn("Retryable analysis task failure", {
         kind: payload.kind,

@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildAnalyzeAcceptedPayload,
-  isPhase3TemplateId,
   isRetryableAnalysisError,
   normalizeUuid,
 } from "../src/handlers/analysis.js";
@@ -27,25 +26,20 @@ test("normalizeUuid lowercases and trims analysis ids", () => {
   assert.equal(normalizeUuid(" ABC-123 "), "abc-123");
 });
 
-test("phase 3 template guard allows only regulated contract templates", () => {
-  assert.equal(isPhase3TemplateId("renewal_pack"), true);
-  assert.equal(isPhase3TemplateId("lease_pack"), true);
-  assert.equal(isPhase3TemplateId("vendor_invoice_exceptions"), false);
-});
-
 test("analysis accepted payload preserves backward-compatible queue response shape", () => {
   assert.deepEqual(
     buildAnalyzeAcceptedPayload({
       requestId: "req-123",
       actionId: "action-1",
       runId: "run-1",
+      message: "Document analysis queued. Progress will update as batches complete.",
       workflowExecutionId: "wf-1",
     }),
     {
       accepted: true,
       action_id: "action-1",
       run_id: "run-1",
-      message: "Contract analysis queued. Progress will update as batches complete.",
+      message: "Document analysis queued. Progress will update as batches complete.",
       workflow_execution_id: "wf-1",
       deferred: false,
       already_enqueued: false,

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { allowedVariableNamesForTemplate } from "./batch.js";
+import { ensurePrivateLiveExperienceRefresh } from "./private-live.js";
 
 function normalizeUuid(value) {
   return String(value || "").trim().toLowerCase();
@@ -306,6 +307,86 @@ async function createChatCompletion(payload, options = {}) {
     throw error;
   }
   return json;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeModuleError(error) {
+  const status = Number(error?.statusCode || error?.status || 0);
+  if (status > 0) return `ai_http_${status}`;
+  const message = String(error?.message || "").trim();
+  return message || "unknown_error";
+}
+
+function isTransientModuleErrorCode(code) {
+  const normalized = String(code || "").trim().toLowerCase();
+  return (
+    normalized === "ai_http_429" ||
+    normalized === "ai_http_500" ||
+    normalized === "ai_http_502" ||
+    normalized === "ai_http_503" ||
+    normalized === "ai_http_504"
+  );
+}
+
+async function createModuleChatCompletion({
+  primaryPayload,
+  fallbackPayload,
+  workspaceId,
+  requestId,
+  primaryProviderOverride,
+}) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await createChatCompletion(primaryPayload, {
+        workspaceId,
+        requestId,
+        providerOverride: primaryProviderOverride,
+      });
+    } catch (error) {
+      lastError = error;
+      const status = Number(error?.statusCode || error?.status || 0);
+      if (status !== 429 && status < 500) break;
+      await delay(250 * (attempt + 1));
+    }
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await createChatCompletion(fallbackPayload, {
+        workspaceId,
+        requestId,
+        providerOverride: "openai",
+      });
+    } catch (error) {
+      lastError = error;
+      const status = Number(error?.statusCode || error?.status || 0);
+      if (status !== 429 && status < 500) break;
+      await delay(400 * (attempt + 1));
+    }
+  }
+
+  throw lastError || new Error("module_completion_failed");
+}
+
+function assertNoTransientModuleCollapse(moduleOutputs, expectedCount, label) {
+  if (!Array.isArray(moduleOutputs) || expectedCount <= 0) return;
+  if (moduleOutputs.length !== expectedCount) return;
+  const errors = moduleOutputs
+    .map((item) => String(item?.error || "").trim())
+    .filter(Boolean);
+  if (errors.length !== expectedCount) return;
+  if (!errors.every(isTransientModuleErrorCode)) return;
+  const distinctCodes = Array.from(new Set(errors));
+  const error = new Error(
+    `${label}_transient_module_failure:${distinctCodes.join(",")}`,
+  );
+  error.statusCode = 503;
+  throw error;
 }
 
 function safeJsonParse(raw) {
@@ -2566,9 +2647,8 @@ async function runCustomModules({ chunks, modules, language, workspaceId, reques
       `JSON SCHEMA FOR result:\n${JSON.stringify(moduleDef.json_schema || {})}\n`;
 
     try {
-      let json;
-      try {
-        json = await createChatCompletion({
+      const json = await createModuleChatCompletion({
+        primaryPayload: {
           model,
           messages: [
             { role: "system", content: system },
@@ -2577,13 +2657,8 @@ async function runCustomModules({ chunks, modules, language, workspaceId, reques
           temperature: 0,
           max_tokens: 2500,
           response_format: { type: "json_object" },
-        }, {
-          workspaceId,
-          requestId,
-          providerOverride: generatorConfig.providerOverride,
-        });
-      } catch {
-        json = await createChatCompletion({
+        },
+        fallbackPayload: {
           model: verifierConfig.model || "gpt-5.2",
           messages: [
             { role: "system", content: system },
@@ -2592,12 +2667,11 @@ async function runCustomModules({ chunks, modules, language, workspaceId, reques
           temperature: 0,
           max_tokens: 2500,
           response_format: { type: "json_object" },
-        }, {
-          workspaceId,
-          requestId,
-          providerOverride: "openai",
-        });
-      }
+        },
+        workspaceId,
+        requestId,
+        primaryProviderOverride: generatorConfig.providerOverride,
+      });
 
       const content = json?.choices?.[0]?.message?.content;
       if (!content) {
@@ -2627,7 +2701,7 @@ async function runCustomModules({ chunks, modules, language, workspaceId, reques
         id,
         title,
         status: "error",
-        error: error?.message || "unknown_error",
+        error: normalizeModuleError(error),
         show_in_report: showInReport,
       });
     }
@@ -2696,9 +2770,8 @@ async function runModulesV2({
       `JSON SCHEMA FOR result:\n${JSON.stringify(moduleDef.json_schema || {})}\n`;
 
     try {
-      let json;
-      try {
-        json = await createChatCompletion({
+      const json = await createModuleChatCompletion({
+        primaryPayload: {
           model,
           messages: [
             { role: "system", content: system },
@@ -2707,13 +2780,8 @@ async function runModulesV2({
           temperature: 0,
           max_tokens: 2500,
           response_format: { type: "json_object" },
-        }, {
-          workspaceId,
-          requestId,
-          providerOverride: generatorConfig.providerOverride,
-        });
-      } catch {
-        json = await createChatCompletion({
+        },
+        fallbackPayload: {
           model: verifierConfig.model || "gpt-5.2",
           messages: [
             { role: "system", content: system },
@@ -2722,12 +2790,11 @@ async function runModulesV2({
           temperature: 0,
           max_tokens: 2500,
           response_format: { type: "json_object" },
-        }, {
-          workspaceId,
-          requestId,
-          providerOverride: "openai",
-        });
-      }
+        },
+        workspaceId,
+        requestId,
+        primaryProviderOverride: generatorConfig.providerOverride,
+      });
       const content = json?.choices?.[0]?.message?.content;
       if (!content) {
         outputs.push({ id, title, status: "error", error: "no_content", show_in_report: showInReport });
@@ -2756,7 +2823,7 @@ async function runModulesV2({
         id,
         title,
         status: "error",
-        error: error?.message || "unknown_error",
+        error: normalizeModuleError(error),
         show_in_report: showInReport,
       });
     }
@@ -2910,11 +2977,12 @@ function computeEvidenceCoverage(snapshotJson) {
 }
 
 async function upsertVerificationSnapshot({ supabase, parentRun, snapshotJson }) {
+  const runtime = resolveNativeAnalysisRuntime(parentRun?.extraction_type);
   const { data: existingVO } = await supabase
     .from("verification_objects")
     .select("*")
     .eq("document_id", parentRun.document_id)
-    .eq("object_type", "contract_analysis")
+    .eq("object_type", runtime.objectType)
     .maybeSingle();
 
   let verificationObjectId;
@@ -2926,7 +2994,7 @@ async function upsertVerificationSnapshot({ supabase, parentRun, snapshotJson })
         workspace_id: parentRun.workspace_id,
         document_id: parentRun.document_id,
         user_id: parentRun.user_id,
-        object_type: "contract_analysis",
+        object_type: runtime.objectType,
         state: "provisional",
         visibility: "private",
       })
@@ -3318,11 +3386,12 @@ async function fetchParentAndBatches(supabase, parentRunId) {
     wrapped.statusCode = 404;
     throw wrapped;
   }
+  const runtime = resolveNativeAnalysisRuntime(parentRun.extraction_type);
 
   const { data: batchRuns, error: batchErr } = await supabase
     .from("extraction_runs")
     .select("id,status,output_summary,created_at,completed_at")
-    .eq("extraction_type", "contract_analysis_batch")
+    .eq("extraction_type", runtime.batchExtractionType)
     .contains("input_config", { parent_run_id: normalizeUuid(parentRunId) });
   if (batchErr) {
     const wrapped = new Error(`Failed to load batch runs: ${batchErr.message}`);
@@ -3399,6 +3468,19 @@ function mergeBatchCandidates(batchRuns) {
   };
 }
 
+function resolveNativeAnalysisRuntime(extractionType) {
+  const normalized = String(
+    extractionType || "contract_analysis",
+  ).trim() || "contract_analysis";
+  const isDocument = normalized === "document_analysis";
+  return {
+    objectType: isDocument ? "document_analysis" : "contract_analysis",
+    batchExtractionType: isDocument
+      ? "document_analysis_batch"
+      : "contract_analysis_batch",
+  };
+}
+
 function buildDocsetProgressContext(parentRun) {
   const input = parentRun?.input_config && typeof parentRun.input_config === "object"
     ? parentRun.input_config
@@ -3439,6 +3521,8 @@ async function markAutomationRunSucceededNode({
   parentRunId,
   versionId,
   verificationObjectId,
+  experienceId = null,
+  materialized = false,
 }) {
   const normalizedParentRunId = normalizeUuid(parentRunId);
   if (!normalizedParentRunId) return;
@@ -3467,12 +3551,16 @@ async function markAutomationRunSucceededNode({
         buildAutomationActivity("Canonical snapshot completed.", {
           version_id: versionId || null,
           verification_object_id: verificationObjectId || null,
+          experience_id: experienceId || null,
+          materialized,
           execution_plane: "gcp",
         }),
       ],
       metadata: {
         version_id: versionId || null,
         verification_object_id: verificationObjectId || null,
+        experience_id: experienceId || null,
+        materialized,
         execution_plane: "gcp",
       },
       updated_at: completedAt,
@@ -3757,6 +3845,11 @@ export async function executeContractAnalysisReduce({
           }
           : undefined,
       });
+      assertNoTransientModuleCollapse(
+        moduleOutputs,
+        modulesV2.length,
+        "modules_v2",
+      );
       const enabledIds = modulesV2.filter((item) => item.enabled !== false).map((item) => item.id);
       const mergedModulesEnabled = Array.from(new Set([...orderedModulesEnabled, ...enabledIds]));
       const modulesMap = {};
@@ -3856,6 +3949,11 @@ export async function executeContractAnalysisReduce({
           }
           : undefined,
       });
+      assertNoTransientModuleCollapse(
+        customOutputs,
+        customModules.filter((item) => item.enabled !== false).length,
+        "custom_modules",
+      );
       snapshotJson = {
         ...snapshotJson,
         pack: {
@@ -4183,6 +4281,38 @@ export async function executeContractAnalysisReduce({
     })
     .eq("id", normalizeUuid(parentRunId));
 
+  let privateLiveResult = null;
+  try {
+    privateLiveResult = await ensurePrivateLiveExperienceRefresh({
+      supabase,
+      requestId,
+      workspaceId: normalizeUuid(parentRun.workspace_id),
+      userId: normalizeUuid(parentRun.user_id),
+      documentId: primaryDocumentId,
+      templateId,
+      analysisTemplateId: templateId,
+      title: playbookMeta?.name ||
+        (String(templateId || "").trim() === "contract_analysis"
+          ? "Contract analysis"
+          : "Document analysis"),
+      subtitle: "Private live experience",
+      summary:
+        "Structured analysis completed. This private live experience now reflects the latest canonical snapshot.",
+      verificationObjectId,
+      verificationObjectVersionId: versionId,
+      snapshot: snapshotJson,
+      updatedAfterVerification: Boolean(verifierEnabled && verifier),
+      defaultVerificationStatus: verifierEnabled && verifier
+        ? "verified"
+        : "generated",
+    });
+  } catch (error) {
+    log?.warn?.("private live materialization failed on GCP", {
+      parent_run_id: normalizeUuid(parentRunId),
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   if (actionId) {
     const { data: existingAction } = await supabase
       .from("actions")
@@ -4233,6 +4363,8 @@ export async function executeContractAnalysisReduce({
     parentRunId,
     versionId,
     verificationObjectId,
+    experienceId: privateLiveResult?.experience_id || null,
+    materialized: Boolean(privateLiveResult),
   }).catch((error) => {
     log?.warn?.("Failed to mark automation run succeeded", {
       parent_run_id: normalizeUuid(parentRunId),

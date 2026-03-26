@@ -54,6 +54,7 @@ Notes:
 Example:
 
 ```bash
+SUPABASE_URL=https://vqsyxrgvyxcbejhhgomf.supabase.co \
 SET_SECRETS='SUPABASE_SERVICE_ROLE_KEY=supabase-service-role:latest,INTERNAL_FUNCTION_JWT=internal-function-jwt:latest,MATHPIX_APP_ID=mathpix-app-id:latest,MATHPIX_APP_KEY=mathpix-app-key:latest' \
 UPDATE_ENV_VARS='SUPABASE_URL=https://your-project.supabase.co,GCS_BUCKET_NAME=zohal-documents,GCS_PROJECT_ID=asens-ai,VECTOR_PROJECT_URL=https://your-vector-project.supabase.co' \
 bash infra/gcp/zohal-backend/deploy.sh

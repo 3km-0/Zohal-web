@@ -785,6 +785,9 @@ export async function executeContractAnalysisBatch({
   const input = run.input_config && typeof run.input_config === "object"
     ? run.input_config
     : {};
+  const batchExtractionType = String(
+    run.extraction_type || "contract_analysis_batch",
+  ).trim() || "contract_analysis_batch";
   const parentRunId = normalizeUuid(input.parent_run_id);
   const batchIndex = Number(input.batch_index || 0);
   const totalBatches = Number(input.total_batches || 0);
@@ -896,7 +899,7 @@ export async function executeContractAnalysisBatch({
     const { count } = await supabase
       .from("extraction_runs")
       .select("*", { count: "exact", head: true })
-      .eq("extraction_type", "contract_analysis_batch")
+      .eq("extraction_type", batchExtractionType)
       .contains("input_config", { parent_run_id: parentRunId })
       .in("status", ["completed", "failed"]);
 
