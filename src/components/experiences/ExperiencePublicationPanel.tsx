@@ -3,48 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Spinner } from '@/components/ui';
-import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
+import { PortalDiagnosticsConsole } from '@/components/experiences/PortalDiagnosticsConsole';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import type { RememberedRelatedDocuments } from '@/types/analysis-runs';
+import type { PortalDiagnosticsEnvelope } from '@/lib/portal-diagnostics';
 
 interface ExperiencePublicationPanelProps {
   workspaceId: string;
 }
-
-type PublicationStatus = {
-  active_revision: {
-    host: string;
-    active_revision_id: string;
-    previous_revision_id?: string | null;
-    publication_status: string;
-    visibility: string;
-  } | null;
-  latest_candidate: {
-    candidate_id: string;
-    revision_id: string;
-    status: string;
-    validation_report?: {
-      status: string;
-      summary?: {
-        fail_count: number;
-        warning_count: number;
-      };
-    } | null;
-    failure?: { message?: string } | null;
-  } | null;
-  latest_run: {
-    run_id: string;
-    status: string;
-  } | null;
-  recent_events: Array<{
-    event_kind: string;
-    created_at: string;
-  }>;
-};
 
 export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicationPanelProps) {
   const t = useTranslations('experiencesPage');
@@ -53,11 +24,11 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const documentId = searchParams.get('document_id');
   const [experienceId, setExperienceId] = useState(`exp_${workspaceId.replace(/-/g, '_')}_investor_dashboard`);
   const [corpusId, setCorpusId] = useState(`corpus_${workspaceId.replace(/-/g, '_')}_investor_dashboard`);
-  const [title, setTitle] = useState('Investor Dashboard');
+  const [title, setTitle] = useState('Investor Portal');
   const [host, setHost] = useState('live.zohal.ai');
   const [visibility, setVisibility] = useState('public_unlisted');
   const [password, setPassword] = useState('');
-  const [status, setStatus] = useState<PublicationStatus | null>(null);
+  const [diagnosticsEnvelope, setDiagnosticsEnvelope] = useState<PortalDiagnosticsEnvelope | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
@@ -67,28 +38,34 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     ? `${rememberedRelatedDocuments.documentIds.length} related documents from the latest successful analysis`
     : 'Workspace sources are resolved automatically for this publication flow.';
 
-  const fetchStatus = useCallback(async () => {
-    if (!experienceId.trim()) return;
-    const response = await fetch(`/api/experiences/v1/experiences/publications/${encodeURIComponent(experienceId)}/status`);
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.message || t('errors.statusFailed'));
-    }
-    setStatus({
-      active_revision: data.active_revision,
-      latest_candidate: data.latest_candidate,
-      latest_run: data.latest_run,
-      recent_events: data.recent_events || [],
-    });
-  }, [experienceId, t]);
+  const fetchDiagnostics = useCallback(
+    async (options?: { refreshProbe?: boolean; candidateId?: string | null }) => {
+      if (!experienceId.trim()) return;
+      const url = new URL(
+        `/api/experiences/v1/experiences/publications/${encodeURIComponent(experienceId)}/diagnostics`,
+        window.location.origin
+      );
+      if (options?.refreshProbe) url.searchParams.set('refresh_probe', '1');
+      if (options?.candidateId) url.searchParams.set('candidate_id', options.candidateId);
+
+      const response = await fetch(url.pathname + url.search);
+      const data = (await response.json()) as PortalDiagnosticsEnvelope & { message?: string };
+      if (!response.ok) {
+        throw new Error(data?.message || t('errors.statusFailed'));
+      }
+      setDiagnosticsEnvelope(data);
+      return data;
+    },
+    [experienceId, t]
+  );
 
   useEffect(() => {
-    fetchStatus().catch((err) => setError(err instanceof Error ? err.message : t('errors.statusFailed')));
+    fetchDiagnostics().catch((err) => setError(err instanceof Error ? err.message : t('errors.statusFailed')));
     const timer = window.setInterval(() => {
-      fetchStatus().catch(() => {});
-    }, 5000);
+      fetchDiagnostics().catch(() => {});
+    }, 10000);
     return () => window.clearInterval(timer);
-  }, [fetchStatus, t]);
+  }, [fetchDiagnostics, t]);
 
   useEffect(() => {
     if (!documentId) {
@@ -160,6 +137,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
       corpus_id: corpusId,
       experience_id: experienceId,
       template_id: 'investor_dashboard',
+      experience_template_id: 'investor_dashboard',
       host,
       visibility,
       password: password || undefined,
@@ -181,7 +159,24 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
         if (!response.ok) {
           throw new Error(data?.message || t('errors.actionFailed'));
         }
-        await fetchStatus();
+        if (label === 'promote') {
+          if (data?.diagnostics) {
+            setDiagnosticsEnvelope((current) =>
+              current
+                ? { ...current, diagnostics: data.diagnostics }
+                : {
+                    ok: true,
+                    experience_id: experienceId,
+                    candidate_id: data?.candidate_id || null,
+                    diagnostics: data.diagnostics,
+                  }
+            );
+          } else {
+            await fetchDiagnostics({ refreshProbe: true, candidateId: data?.candidate_id || null });
+          }
+        } else {
+          await fetchDiagnostics({ candidateId: data?.candidate_id || null });
+        }
         return data;
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errors.actionFailed'));
@@ -190,18 +185,19 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
         setBusy(null);
       }
     },
-    [fetchStatus, t]
+    [experienceId, fetchDiagnostics, t]
   );
 
-  const latestCandidateId = status?.latest_candidate?.candidate_id;
+  const latestCandidateId = diagnosticsEnvelope?.candidate_id || diagnosticsEnvelope?.diagnostics?.candidate?.candidate_id || null;
+  const diagnostics = diagnosticsEnvelope?.diagnostics || null;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
       <WorkspaceTabs workspaceId={workspaceId} active="experiences" />
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <Card variant="elevated">
             <CardHeader>
               <CardTitle>{t('configure.title')}</CardTitle>
@@ -210,10 +206,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
             <CardContent className="space-y-4">
               {rememberedRelatedDocuments ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">Related documents remembered from last analysis</div>
-                  <p className="mt-1 text-text-soft">
-                    Interface publication still compiles from the primary document only in this release.
-                  </p>
+                  <div className="font-semibold text-text">{t('configure.relatedDocumentsTitle')}</div>
+                  <p className="mt-1 text-text-soft">{t('configure.relatedDocumentsDescription')}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {rememberedRelatedDocuments.memberRoles.map((member) => (
                       <span
@@ -231,6 +225,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <Input label={t('fields.experienceId')} value={experienceId} onChange={(e) => setExperienceId(e.target.value)} />
                 <Input label={t('fields.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
+                <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
               </div>
               <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
@@ -327,59 +322,6 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('status.title')}</CardTitle>
-              <CardDescription>{t('status.description')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {!status ? (
-                <div className="flex items-center gap-2 text-text-soft">
-                  <Spinner size="sm" />
-                  {t('status.loading')}
-                </div>
-              ) : (
-                <>
-                  <div className="rounded-scholar border border-border bg-surface-alt p-4">
-                    <div className="text-text-soft">{t('status.activeRevision')}</div>
-                    <div className="mt-1 font-semibold text-text">{status.active_revision?.active_revision_id || t('status.none')}</div>
-                    <div className="mt-2 text-text-soft">{status.active_revision?.host || host}</div>
-                  </div>
-                  <div className="rounded-scholar border border-border bg-surface-alt p-4">
-                    <div className="text-text-soft">{t('status.latestCandidate')}</div>
-                    <div className="mt-1 font-semibold text-text">{status.latest_candidate?.status || t('status.none')}</div>
-                    <div className="mt-2 text-text-soft">{status.latest_candidate?.candidate_id || '—'}</div>
-                  </div>
-                  <div className="rounded-scholar border border-border bg-surface-alt p-4">
-                    <div className="text-text-soft">{t('status.validation')}</div>
-                    <div className="mt-1 font-semibold text-text">{status.latest_candidate?.validation_report?.status || 'pending'}</div>
-                    <div className="mt-2 text-text-soft">
-                      {status.latest_candidate?.validation_report?.summary
-                        ? t('status.validationSummary', {
-                            fails: status.latest_candidate.validation_report.summary.fail_count,
-                            warnings: status.latest_candidate.validation_report.summary.warning_count,
-                          })
-                        : t('status.noValidation')}
-                    </div>
-                  </div>
-                  {status.active_revision?.host ? (
-                    <a
-                      href={`https://${status.active_revision.host}/`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 text-sm font-semibold text-accent"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      {t('actions.openLive')}
-                    </a>
-                  ) : null}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <CardHeader>
               <CardTitle>{t('sharing.title')}</CardTitle>
               <CardDescription>{t('sharing.description')}</CardDescription>
             </CardHeader>
@@ -433,33 +375,55 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   </a>
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('events.title')}</CardTitle>
-              <CardDescription>{t('events.description')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {status?.recent_events?.length ? (
-                status.recent_events.map((event) => (
-                  <div key={`${event.event_kind}-${event.created_at}`} className="rounded-scholar border border-border bg-surface-alt p-4">
-                    <div className="font-semibold text-text">{event.event_kind}</div>
-                    <div className="mt-1 text-sm text-text-soft">{new Date(event.created_at).toLocaleString()}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
-                  {t('events.empty')}
-                </div>
-              )}
+              {diagnostics?.summary.live_url ? (
+                <a
+                  href={diagnostics.summary.live_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-accent"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {t('actions.openPortal')}
+                </a>
+              ) : null}
             </CardContent>
           </Card>
         </div>
 
+        <PortalDiagnosticsConsole
+          diagnostics={diagnostics}
+          isLoading={busy === 'refresh'}
+          onRefresh={() => {
+            setBusy('refresh');
+            fetchDiagnostics({ refreshProbe: true })
+              .catch((err) => setError(err instanceof Error ? err.message : t('errors.statusFailed')))
+              .finally(() => setBusy(null));
+          }}
+        />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('events.title')}</CardTitle>
+            <CardDescription>{t('events.description')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {diagnostics?.recent_events?.length ? (
+              diagnostics.recent_events.map((event) => (
+                <div key={`${event.event_kind}-${event.created_at}`} className="rounded-scholar border border-border bg-surface-alt p-4">
+                  <div className="font-semibold text-text">{event.event_kind}</div>
+                  <div className="mt-1 text-sm text-text-soft">{new Date(event.created_at).toLocaleString()}</div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
+                {t('events.empty')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {error ? (
-          <div className="mt-6 rounded-scholar border border-error/30 bg-error/10 p-4 text-sm text-error">
+          <div className="rounded-scholar border border-error/30 bg-error/10 p-4 text-sm text-error">
             {error}
           </div>
         ) : null}

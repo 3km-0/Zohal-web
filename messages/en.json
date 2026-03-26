@@ -173,7 +173,7 @@
     "workspaceLabel": "Workspace",
     "workspacePlaceholder": "Select a workspace",
     "presetTitle": "Analyze workspace uploads",
-    "presetDescription": "Run approved analysis after ingestion completes and keep the private live interface current.",
+    "presetDescription": "Run approved analysis after ingestion completes and keep the private live Portal current.",
     "enabled": "Enabled",
     "enabledCaption": "Turn this automation preset on or off for the selected workspace.",
     "triggerOnIngestion": "Run after ingestion completes",
@@ -183,7 +183,7 @@
     "privateLive": "Private live refresh",
     "privateLiveCaption": "Keep updates private-only in v1. No auto-publish side effects.",
     "autoRefreshPrivateLive": "Auto-refresh private live",
-    "autoRefreshPrivateLiveCaption": "Refresh the workspace live interface after canonical snapshot writes complete.",
+    "autoRefreshPrivateLiveCaption": "Refresh the workspace live Portal after canonical snapshot writes complete.",
     "manualRunEnabled": "Allow Run now",
     "manualRunEnabledCaption": "Permit operators to trigger this preset manually.",
     "scheduleTime": "Daily refresh time",
@@ -442,15 +442,17 @@
     "reports": "Reports",
     "pipelines": "Pipelines",
     "packs": "Packs",
-    "experiences": "Interfaces",
+    "experiences": "Portals",
     "members": "Members"
   },
   "experiencesPage": {
-    "title": "Interfaces",
-    "subtitle": "Compile, validate, publish, and share live interfaces for this workspace.",
+    "title": "Portals",
+    "subtitle": "Compile, validate, publish, and share live Portals for this workspace.",
     "configure": {
-      "title": "Publication configuration",
-      "description": "Use the investor dashboard as the first reference template and drive the publication lifecycle from here."
+      "title": "Portal configuration",
+      "description": "Use the investor dashboard as the first reference template and drive the Portal lifecycle from here.",
+      "relatedDocumentsTitle": "Related documents remembered from last analysis",
+      "relatedDocumentsDescription": "Portal publication still compiles from the primary document only in this release."
     },
     "status": {
       "title": "Publication status",
@@ -470,11 +472,11 @@
     },
     "events": {
       "title": "Recent events",
-      "description": "A lightweight view of publication activity for this interface.",
+      "description": "A lightweight view of publication activity for this Portal.",
       "empty": "No publication events yet."
     },
     "fields": {
-      "experienceId": "Interface ID",
+      "experienceId": "Portal ID",
       "corpusId": "Corpus ID",
       "includedSources": "Included sources",
       "title": "Title",
@@ -497,15 +499,46 @@
       "rollback": "Rollback",
       "issueLink": "Issue expiring link",
       "openRestrictedPreview": "Open restricted preview",
-      "openLive": "Open live interface"
+      "openLive": "Open live Portal",
+      "openPortal": "Open Portal",
+      "refreshPortal": "Refresh diagnostics"
     },
     "defaults": {
       "subtitle": "Evidence-grounded investor dashboard",
-      "summary": "Compile verified workspace truth into a live investor interface."
+      "summary": "Compile verified workspace truth into a live investor Portal."
     },
     "errors": {
       "statusFailed": "Failed to load publication status.",
       "actionFailed": "The publication action failed."
+    },
+    "portalConsole": {
+      "title": "Portal operator console",
+      "description": "Review the current candidate, publish trace, deploy state, and live probe from one place.",
+      "loading": "Loading Portal diagnostics…",
+      "summaryTitle": "Portal summary",
+      "failureClass": "Failure class",
+      "activeRevision": "Active revision",
+      "qualityScore": "Portal quality",
+      "qualitySummary": "{rendered}/{required} required routes rendered",
+      "traceTitle": "Publish trace",
+      "traceDescription": "Track compile, stage, validate, deploy, promote, and live probe as separate stages.",
+      "liveProbeTitle": "Live probe",
+      "liveProbeDescription": "Compact render and evidence checks from the resolved Portal URL.",
+      "httpStatus": "HTTP status",
+      "evidenceMarkers": "Evidence markers",
+      "liveProbeFlags": "Fallback shell: {fallback} • Unresolved dynamic links: {unresolved}",
+      "candidateTitle": "Candidate diagnostics",
+      "candidateDescription": "Inspect the generated worker strategy, validation summary, and generation failures.",
+      "validationSummary": "{fails} fails, {warnings} warnings, quality {quality}",
+      "generationFailures": "Generation failures",
+      "stageNames": {
+        "compile": "Compile",
+        "stage": "Stage",
+        "validate": "Validate",
+        "deploy": "Deploy",
+        "promote": "Promote",
+        "live_probe": "Live probe"
+      }
     }
   },
   "workspaceCard": {
@@ -1310,21 +1343,21 @@
       "subtitle": "Deterministic template checks / verifier findings computed post-reduce."
     },
     "liveExperience": {
-      "title": "Live Interface",
-      "privateDescription": "This Live Interface updates automatically as analysis materializes.",
-      "publicDescription": "Open the Published Interface for this analysis.",
+      "title": "Live Portal",
+      "privateDescription": "This Live Portal updates automatically as analysis materializes.",
+      "publicDescription": "Open the Published Portal for this analysis.",
       "privateBadge": "Live",
       "liveBadge": "Published",
-      "canonicalPath": "Interface route",
-      "openPrivate": "Open Live Interface",
-      "openLive": "Open Published Interface",
-      "privateHint": "Open Live Interface uses a signed entry link. The route shown here is the stable route.",
-      "publicHint": "This Published Interface can be opened directly.",
-      "loading": "Preparing Live Interface link…",
-      "preparing": "The Live Interface URL is still being prepared.",
-      "empty": "No Live Interface has been created for this analysis yet.",
-      "loadFailed": "Failed to load the Live Interface.",
-      "openFailed": "Failed to open the interface."
+      "canonicalPath": "Portal route",
+      "openPrivate": "Open Live Portal",
+      "openLive": "Open Published Portal",
+      "privateHint": "Open Live Portal uses a signed entry link. The route shown here is the stable route.",
+      "publicHint": "This Published Portal can be opened directly.",
+      "loading": "Preparing Live Portal link…",
+      "preparing": "The Live Portal URL is still being prepared.",
+      "empty": "No Live Portal has been created for this analysis yet.",
+      "loadFailed": "Failed to load the Live Portal.",
+      "openFailed": "Failed to open the Portal."
     },
     "privacyMode": {
       "sanitizedTitle": "Sanitized document (Privacy Mode)",
