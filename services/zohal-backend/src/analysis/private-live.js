@@ -134,11 +134,12 @@ async function updatePrivateLiveRegistryState({
   title,
   summary,
   canonicalVersionId,
+  materializationStatus = "materialized",
 }) {
   const patch = {
     updated_at: new Date().toISOString(),
     scaffold_status: "scaffolded",
-    materialization_status: "materialized",
+    materialization_status: materializationStatus,
     ...(title ? { title } : {}),
     ...(summary ? { description: summary } : {}),
     ...(canonicalVersionId ? { last_canonical_version_id: canonicalVersionId } : {}),
@@ -284,10 +285,12 @@ export async function ensurePrivateLiveExperienceRefresh({
     title,
     summary,
     canonicalVersionId: verificationObjectVersionId,
+    materializationStatus: "pending",
   });
 
   return {
     experience_id: record.experience_id,
+    run_id: response?.run?.run_id || response?.compile?.run_id || null,
     candidate_id: response?.compile?.candidate_id || null,
     revision_id: response?.compile?.revision_id || null,
     public_url: response?.compile?.public_url || null,
