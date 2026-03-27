@@ -4,6 +4,7 @@ export type SurfaceOpenResult = {
 
 export type LiveExperienceLinkState = {
   experience_id?: string | null;
+  experience_url?: string | null;
   live_url?: string | null;
   redeem_url?: string | null;
   public_url?: string | null;
@@ -32,7 +33,11 @@ function openExternal(url: string): SurfaceOpenResult {
 }
 
 export function describeLiveExperienceLink(state: LiveExperienceLinkState | null): string {
-  return safeTrim(state?.redeem_url) || safeTrim(state?.live_url) || safeTrim(state?.public_url) || 'Live interface is prepared.';
+  return resolveCanonicalLiveExperienceUrl(state) || 'Live Experience is prepared.';
+}
+
+export function resolveCanonicalLiveExperienceUrl(state: LiveExperienceLinkState | null): string {
+  return safeTrim(state?.experience_url) || safeTrim(state?.live_url) || safeTrim(state?.public_url);
 }
 
 export function describePublishedInterfaceLink(state: PublishedInterfaceLinkState | null): string {
@@ -52,13 +57,14 @@ export async function openLiveExperience(state: LiveExperienceLinkState | null):
     });
     const json = await response.json().catch(() => null);
     const openedRedeemUrl = safeTrim(json?.redeem_url);
-    if (!response.ok || !openedRedeemUrl) {
+    const openedExperienceUrl = safeTrim(json?.experience_url) || safeTrim(json?.live_url);
+    if (!response.ok || (!openedRedeemUrl && !openedExperienceUrl)) {
       throw new Error(safeTrim(json?.message) || 'Failed to open the live interface.');
     }
-    return openExternal(openedRedeemUrl);
+    return openExternal(openedRedeemUrl || openedExperienceUrl);
   }
 
-  const fallbackUrl = safeTrim(state?.live_url) || safeTrim(state?.public_url);
+  const fallbackUrl = resolveCanonicalLiveExperienceUrl(state);
   if (fallbackUrl) return openExternal(fallbackUrl);
   throw new Error('Live interface is not ready yet.');
 }

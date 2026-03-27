@@ -54,6 +54,7 @@ interface AIPanelProps {
   selectedText?: string;
   currentPage?: number;
   onConversationStateChange?: (conversationId: string | null) => void;
+  onLiveExperienceChange?: (liveExperience: WorkspaceAgentLiveExperience | null) => void;
 }
 
 interface ChatMessage {
@@ -140,6 +141,7 @@ export function AIPanel({
   selectedText,
   currentPage,
   onConversationStateChange,
+  onLiveExperienceChange,
 }: AIPanelProps) {
   // IMPORTANT: Memoize the Supabase client. If we recreate it every render,
   // any callbacks depending on it will change every render, which can re-trigger
@@ -236,6 +238,10 @@ export function AIPanel({
   useEffect(() => {
     onConversationStateChange?.(currentConversationId);
   }, [currentConversationId, onConversationStateChange]);
+
+  useEffect(() => {
+    onLiveExperienceChange?.(liveExperience);
+  }, [liveExperience, onLiveExperienceChange]);
 
   const filteredModelOptions = useMemo(() => {
     const query = modelSearch.trim().toLowerCase();

@@ -297,6 +297,11 @@
     "saveToNotes": "Save to Notes",
     "savedToNotesTitle": "Saved to Notes",
     "savedToNotesBody": "This response is now available in workspace Notes.",
+    "experienceUrlLabel": "Experience URL",
+    "openExperienceUrl": "Open",
+    "copyExperienceUrl": "Copy URL",
+    "experienceUrlCopiedTitle": "Experience URL copied",
+    "experienceUrlCopiedBody": "The canonical Live Experience URL is now on your clipboard.",
     "conversationFallback": "Conversation",
     "quickActions": {
       "analysis": "Analysis",

@@ -297,6 +297,11 @@
     "saveToNotes": "حفظ في الملاحظات",
     "savedToNotesTitle": "تم الحفظ في الملاحظات",
     "savedToNotesBody": "أصبحت هذه الإجابة متاحة الآن في ملاحظات مساحة العمل.",
+    "experienceUrlLabel": "رابط التجربة",
+    "openExperienceUrl": "فتح",
+    "copyExperienceUrl": "نسخ الرابط",
+    "experienceUrlCopiedTitle": "تم نسخ رابط التجربة",
+    "experienceUrlCopiedBody": "أصبح رابط التجربة الحية الأساسي الآن في الحافظة.",
     "conversationFallback": "محادثة",
     "quickActions": {
       "analysis": "التحليل",

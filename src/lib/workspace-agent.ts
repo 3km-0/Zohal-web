@@ -114,6 +114,7 @@ export type WorkspaceAgentLiveExperience = {
   experience_id?: string | null;
   candidate_id?: string | null;
   revision_id?: string | null;
+  experience_url?: string | null;
   live_url?: string | null;
   redeem_url?: string | null;
   public_url?: string | null;

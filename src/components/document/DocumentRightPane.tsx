@@ -2,17 +2,49 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, Clock3, FileText, Globe2, X } from 'lucide-react';
+import { ChevronDown, Clock3, Copy, ExternalLink, FileText, Globe2, Link2, X } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
 import { DocumentAgentActivityPanel } from '@/components/document/DocumentAgentActivityPanel';
+import {
+  openLiveExperience,
+  resolveCanonicalLiveExperienceUrl,
+} from '@/lib/experience-links';
+import type { WorkspaceAgentLiveExperience } from '@/lib/workspace-agent';
 import type { DocumentType } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
 import { useRouter } from 'next/navigation';
 
 const MIN_PANE_WIDTH = 280;
 const MAX_PANE_WIDTH_VW = 0.75;
+
+type WorkspaceExperienceSummary = {
+  experience_id: string;
+  experience_lane?: string | null;
+  public_url?: string | null;
+  host?: string | null;
+  path_family?: string | null;
+  path_key?: string | null;
+  document_id?: string | null;
+  corpus_id?: string | null;
+  updated_at: string;
+};
+
+type WorkspaceExperiencesEnvelope = {
+  ok: boolean;
+  experiences: WorkspaceExperienceSummary[];
+  message?: string;
+};
+
+function resolveWorkspaceExperienceUrl(experience: WorkspaceExperienceSummary): string | null {
+  if (experience.public_url?.trim()) return experience.public_url.trim();
+  if (experience.host?.trim() && experience.path_family?.trim() && experience.path_key?.trim()) {
+    return `https://${experience.host.trim()}/${experience.path_family.trim()}/${experience.path_key.trim()}`;
+  }
+  return null;
+}
 
 interface DocumentRightPaneProps {
   documentId: string;
@@ -40,6 +72,7 @@ export function DocumentRightPane({
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
   const router = useRouter();
+  const toast = useToast();
   const topBarItemClass =
     'inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-text-soft transition-colors hover:bg-surface hover:text-text';
   const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
@@ -47,9 +80,89 @@ export function DocumentRightPane({
   const [analysisMenuOpen, setAnalysisMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [runConfigOpen, setRunConfigOpen] = useState(false);
+  const [liveExperience, setLiveExperience] = useState<WorkspaceAgentLiveExperience | null>(null);
+  const [isOpeningExperience, setIsOpeningExperience] = useState(false);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const analysisOpen = mode === 'analysis';
+  const canonicalExperienceUrl = resolveCanonicalLiveExperienceUrl(liveExperience);
+
+  const syncLiveExperience = useCallback((next: WorkspaceAgentLiveExperience | null) => {
+    if (!next) return;
+    setLiveExperience((current) => ({ ...current, ...next }));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLiveExperience(null);
+
+    async function loadLiveExperience() {
+      try {
+        const response = await fetch(
+          `/api/experiences/v1/experiences/workspaces/${encodeURIComponent(workspaceId)}/experiences`
+        );
+        const data = (await response.json().catch(() => null)) as WorkspaceExperiencesEnvelope | null;
+        if (!response.ok) {
+          throw new Error(data?.message || 'Failed to load the current Live Experience.');
+        }
+        const experiences = Array.isArray(data?.experiences) ? data!.experiences : [];
+        const matching = experiences
+          .filter((experience) => experience.document_id === documentId || experience.corpus_id === documentId)
+          .sort((left, right) => {
+            const leftPrivate = left.experience_lane === 'private_live';
+            const rightPrivate = right.experience_lane === 'private_live';
+            if (leftPrivate !== rightPrivate) return leftPrivate ? -1 : 1;
+            return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
+          });
+        const current = matching[0];
+        if (cancelled) return;
+        if (!current) {
+          setLiveExperience(null);
+          return;
+        }
+        const canonicalUrl = resolveWorkspaceExperienceUrl(current);
+        setLiveExperience((existing) => ({
+          ...existing,
+          experience_id: current.experience_id,
+          experience_url: canonicalUrl,
+          live_url: canonicalUrl,
+          public_url: current.public_url ?? canonicalUrl,
+        }));
+      } catch {
+        if (!cancelled) {
+          setLiveExperience(null);
+        }
+      }
+    }
+
+    void loadLiveExperience();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, workspaceId]);
+
+  const handleOpenExperience = useCallback(() => {
+    if (!liveExperience) return;
+    setIsOpeningExperience(true);
+    void openLiveExperience(liveExperience)
+      .catch((error) => {
+        toast.showError(error, 'experiences');
+      })
+      .finally(() => {
+        setIsOpeningExperience(false);
+      });
+  }, [liveExperience, toast]);
+
+  const handleCopyExperienceUrl = useCallback(() => {
+    if (!canonicalExperienceUrl) return;
+    void navigator.clipboard.writeText(canonicalExperienceUrl)
+      .then(() => {
+        toast.showSuccess(t('experienceUrlCopiedTitle'), t('experienceUrlCopiedBody'));
+      })
+      .catch((error) => {
+        toast.showError(error, 'experiences');
+      });
+  }, [canonicalExperienceUrl, t, toast]);
 
   const handleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -215,6 +328,37 @@ export function DocumentRightPane({
               <X className="h-4 w-4" />
             </button>
           </div>
+          {canonicalExperienceUrl ? (
+            <div className="mt-3 rounded-2xl border border-border bg-surface px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Link2 className="h-3.5 w-3.5 flex-none text-accent" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
+                    {t('experienceUrlLabel')}
+                  </p>
+                  <p className="truncate text-sm font-medium text-text">{canonicalExperienceUrl}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyExperienceUrl}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text"
+                  aria-label={t('copyExperienceUrl')}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">{t('copyExperienceUrl')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenExperience}
+                  disabled={isOpeningExperience}
+                  className="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1.5 text-xs font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-wait disabled:opacity-70"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>{t('openExperienceUrl')}</span>
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="h-full">
@@ -223,6 +367,7 @@ export function DocumentRightPane({
             workspaceId={workspaceId}
             selectedText={selectedText}
             currentPage={currentPage}
+            onLiveExperienceChange={syncLiveExperience}
           />
         </div>
 
