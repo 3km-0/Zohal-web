@@ -25,6 +25,9 @@ const messages = {
       candidateTitle: 'Candidate diagnostics',
       candidateDescription: 'Candidate description',
       validationSummary: '{fails} fails, {warnings} warnings, quality {quality}',
+      customizationSummary: 'Customization strategy: {strategy} • Result: {result}',
+      previousRevision: 'Previous revision',
+      preservedLive: 'The previous Live Portal stayed active because the recomposition attempt did not fully replace it.',
       generationFailures: 'Generation failures',
       stageNames: {
         compile: 'Compile',
@@ -152,6 +155,10 @@ function diagnostics(overrides: Partial<PortalDiagnostics> = {}): PortalDiagnost
       rendered_required_route_count: 1,
       rendered_route_ids: ['overview'],
     },
+    customization_strategy: null,
+    customization_result: null,
+    previous_revision_id: null,
+    preserved_live_on_failure: false,
     recent_events: [],
     stale_serving_reason: null,
     ...overrides,
@@ -203,5 +210,24 @@ describe('PortalDiagnosticsConsole', () => {
     expect(screen.getByTestId('portal-stage-deploy')).toHaveTextContent('Failed');
     expect(screen.getByText('Generation failures')).toBeInTheDocument();
     expect(screen.getByText('Cloudflare deploy rejected the worker module.')).toBeInTheDocument();
+  });
+
+  it('renders customization strategy details when recomposition is tracked', () => {
+    render(
+      <PortalDiagnosticsConsole
+        diagnostics={diagnostics({
+          customization_strategy: 'recompose',
+          customization_result: 'preserved_live',
+          previous_revision_id: 'rev_prev',
+          preserved_live_on_failure: true,
+        })}
+        isLoading={false}
+        onRefresh={() => {}}
+      />
+    );
+
+    expect(screen.getByText('Customization strategy: Recompose • Result: Preserved Live')).toBeInTheDocument();
+    expect(screen.getByText('Previous revision: rev_prev')).toBeInTheDocument();
+    expect(screen.getByText('The previous Live Portal stayed active because the recomposition attempt did not fully replace it.')).toBeInTheDocument();
   });
 });

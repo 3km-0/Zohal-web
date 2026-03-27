@@ -535,6 +535,9 @@
       "candidateTitle": "تشخيص المرشح",
       "candidateDescription": "راجع استراتيجية العامل المولّد وملخص التحقق وإخفاقات التوليد.",
       "validationSummary": "{fails} إخفاقات، {warnings} تحذيرات، الجودة {quality}",
+      "customizationSummary": "استراتيجية التخصيص: {strategy} • النتيجة: {result}",
+      "previousRevision": "النسخة السابقة",
+      "preservedLive": "بقيت البوابة الحية السابقة نشطة لأن محاولة إعادة التأليف لم تستبدلها بالكامل.",
       "generationFailures": "إخفاقات التوليد",
       "stageNames": {
         "compile": "البناء",

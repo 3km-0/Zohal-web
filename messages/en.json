@@ -535,6 +535,9 @@
       "candidateTitle": "Candidate diagnostics",
       "candidateDescription": "Inspect the generated worker strategy, validation summary, and generation failures.",
       "validationSummary": "{fails} fails, {warnings} warnings, quality {quality}",
+      "customizationSummary": "Customization strategy: {strategy} • Result: {result}",
+      "previousRevision": "Previous revision",
+      "preservedLive": "The previous Live Portal stayed active because the recomposition attempt did not fully replace it.",
       "generationFailures": "Generation failures",
       "stageNames": {
         "compile": "Compile",

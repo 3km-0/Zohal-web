@@ -204,6 +204,22 @@ export function PortalDiagnosticsConsole({
                       quality: diagnostics.candidate?.validation_summary?.generation_quality_score ?? 0,
                     })}
                   </div>
+                  {diagnostics.customization_strategy ? (
+                    <div className="mt-3 text-text-soft">
+                      {t('portalConsole.customizationSummary', {
+                        strategy: humanizeFailureClass(diagnostics.customization_strategy),
+                        result: humanizeFailureClass(diagnostics.customization_result || 'pending'),
+                      })}
+                    </div>
+                  ) : null}
+                  {diagnostics.previous_revision_id ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.previousRevision')}: {diagnostics.previous_revision_id}
+                    </div>
+                  ) : null}
+                  {diagnostics.preserved_live_on_failure ? (
+                    <div className="mt-2 text-text-soft">{t('portalConsole.preservedLive')}</div>
+                  ) : null}
                 </div>
                 {diagnostics.candidate?.generation_failures?.length ? (
                   <div className="rounded-scholar border border-error/30 bg-error/10 p-4 text-error">

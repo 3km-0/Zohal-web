@@ -86,6 +86,10 @@ export type PortalDiagnostics = {
     rendered_required_route_count: number;
     rendered_route_ids: string[];
   };
+  customization_strategy: string | null;
+  customization_result: string | null;
+  previous_revision_id: string | null;
+  preserved_live_on_failure: boolean;
   recent_events: Array<{
     event_kind: string;
     created_at: string;
