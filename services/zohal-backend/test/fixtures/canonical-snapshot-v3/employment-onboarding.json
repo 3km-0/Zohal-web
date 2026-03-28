@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_employment_event_1",
+      "provenance_class": "extracted",
+      "structural_facet": "event",
+      "display_name": "Start date",
+      "payload": { "event_type": "start_date", "date": "2026-04-10" },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-employment", "page_number": 1, "chunk_id": "chunk-2", "snippet": "Start Date: April 10, 2026" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_employment_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "event",
+      "display_name": "Onboarding readiness",
+      "payload": { "status": "attention_needed" },
+      "confidence": "medium",
+      "verification_state": "needs_review",
+      "derivation": { "input_item_ids": ["item_employment_event_1"], "method": "llm_reasoning", "rationale": "Start date exists but no dependent onboarding milestones were extracted.", "verifier_outcome": "skipped" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [{ "id": "link_employment_1", "type": "supports", "from_item_id": "item_employment_event_1", "to_item_id": "item_employment_derived_1" }]
+}
+

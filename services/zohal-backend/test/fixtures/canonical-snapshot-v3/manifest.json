@@ -1,0 +1,14 @@
+{
+  "schema_version": "3.0",
+  "fixtures": [
+    "contract-bundle.json",
+    "invoice-expense.json",
+    "policy-compliance.json",
+    "employment-onboarding.json",
+    "financial-report.json",
+    "logistics-shipping.json",
+    "medical-lab.json",
+    "mixed-workspace.json"
+  ]
+}
+

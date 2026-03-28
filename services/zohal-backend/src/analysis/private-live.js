@@ -1,4 +1,10 @@
 import { getExpectedInternalToken } from "../runtime/internal-auth.js";
+import {
+  filterItemsForProjection,
+  getTemplateIntent,
+  isSnapshotV3,
+  summarizeSnapshotForLive,
+} from "./canonical.js";
 
 const DEFAULT_PUBLICATION_API_BASE_URL =
   "https://experiences-publication-api.zohal.ai";
@@ -31,26 +37,17 @@ function getInternalHeaders(requestId, userId) {
 
 function normalizeExperienceTemplateId(templateId) {
   const normalized = String(templateId || "").trim().toLowerCase();
-  if (
-    !normalized || normalized === "contract" ||
-    normalized === "contract_document"
-  ) {
-    return "contract_analysis";
-  }
-  if (normalized === "contract_analysis") return normalized;
-  return "document_analysis";
+  return normalized || "document_analysis";
 }
 
-function resolveExperienceSourceKind(templateId) {
-  return normalizeExperienceTemplateId(templateId) === "contract_analysis"
-    ? "contract_document"
-    : "verification_document";
+function resolveExperienceSourceKind() {
+  return "verification_document";
 }
 
 function defaultExperienceTitle(templateId) {
-  return normalizeExperienceTemplateId(templateId) === "contract_analysis"
-    ? "Contract analysis"
-    : "Document analysis";
+  return normalizeExperienceTemplateId(templateId) === "document_analysis"
+    ? "Document analysis"
+    : normalizeExperienceTemplateId(templateId);
 }
 
 async function resolveWorkspaceDefaultCorpusId(supabase, workspaceId) {
@@ -151,43 +148,77 @@ async function updatePrivateLiveRegistryState({
     .eq("experience_id", experienceId);
 }
 
-function defaultRouteGraphForTemplate(templateId) {
-  if (normalizeExperienceTemplateId(templateId) === "contract_analysis") {
-    return ["overview", "obligations", "deadlines", "risks"];
+function buildProjectionManifest(snapshot, projectionIntents) {
+  if (Array.isArray(projectionIntents) && projectionIntents.length > 0) {
+    return projectionIntents.map((projection) => ({
+      route_id: projection.route_id,
+      title: projection.title,
+      view_kind: projection.view_kind || "list",
+      item_count: filterItemsForProjection(snapshot?.items || [], projection).length,
+      data_contract: {
+        route_id: projection.route_id,
+        proof_path: Array.isArray(projection.provenance_classes) &&
+            projection.provenance_classes.length === 1 &&
+            projection.provenance_classes[0] === "extracted"
+          ? "show_source"
+          : Array.isArray(projection.provenance_classes) &&
+              projection.provenance_classes.length === 1 &&
+              projection.provenance_classes[0] === "derived"
+          ? "why_this_exists"
+          : "mixed",
+      },
+    }));
   }
-  return ["overview", "facts", "findings", "actions", "review"];
+  return [
+    {
+      route_id: "overview",
+      title: "Overview",
+      view_kind: "overview",
+      item_count: Array.isArray(snapshot?.items) ? snapshot.items.length : 0,
+      data_contract: { route_id: "overview", proof_path: "mixed" },
+    },
+  ];
 }
 
-function buildPlannerPayload(templateId, title, summary, snapshot) {
+function buildPlannerPayload(templateId, title, summary, snapshot, projectionIntents) {
   const resolvedTemplateId = normalizeExperienceTemplateId(templateId);
-  const routeGraph = defaultRouteGraphForTemplate(resolvedTemplateId);
+  const projectionManifest = buildProjectionManifest(snapshot, projectionIntents);
+  const routeGraph = projectionManifest.map((projection) => projection.route_id);
+  const liveSummary = summarizeSnapshotForLive(snapshot);
   return {
-    program_version: "experience-program/v1",
+    program_version: "experience-program/v3",
     title: title || defaultExperienceTitle(resolvedTemplateId),
     summary: summary || "Private live planner scaffold.",
     route_graph: routeGraph,
-    route_views: routeGraph.map((routeId) => ({
-      route_id: routeId,
-      view_kind: routeId === "deadlines" ? "timeline" : "overview",
-      model_refs: routeId === "overview" ? ["route"] : [`route.${routeId}`],
-      data_contract: { route_id: routeId },
+    route_views: projectionManifest.map((projection) => ({
+      route_id: projection.route_id,
+      view_kind: projection.view_kind,
+      model_refs: projection.route_id === "overview" ? ["route"] : [`route.${projection.route_id}`],
+      data_contract: projection.data_contract,
     })),
     capability_profile: {
-      search: false,
-      filters: false,
+      search: true,
+      filters: true,
       compare: false,
-      graph: false,
-      timeline: routeGraph.includes("deadlines"),
+      graph: liveSummary.facets.includes("relationship"),
+      timeline: liveSummary.facets.includes("event"),
       diff: false,
       citations: true,
       evidence: true,
       bookmarks: false,
       saved_filters: false,
       alerts: false,
-      tasks: routeGraph.includes("obligations"),
-      charts: Array.isArray(snapshot?.variables),
+      tasks: liveSummary.facets.includes("event"),
+      charts: liveSummary.facets.includes("measure"),
       quizzes: false,
       flashcards: false,
+    },
+    proof_manifest: {
+      extracted_path_label: "Show source",
+      derived_path_label: "Why this exists",
+      extracted_count: liveSummary.extracted_count,
+      derived_count: liveSummary.derived_count,
+      failed_anchor_count: liveSummary.failed_anchor_count,
     },
     sandbox_blocks: [],
   };
@@ -225,6 +256,7 @@ export async function ensurePrivateLiveExperienceRefresh({
   verificationObjectId,
   verificationObjectVersionId,
   snapshot,
+  projectionIntents,
   updatedAfterVerification = false,
   defaultVerificationStatus = "generated",
 }) {
@@ -238,8 +270,13 @@ export async function ensurePrivateLiveExperienceRefresh({
   });
   const resolvedTemplateId = normalizeExperienceTemplateId(templateId);
   const resolvedAnalysisTemplateId = String(
-    analysisTemplateId || snapshot?.template || "",
+    analysisTemplateId || snapshot?.template_id || snapshot?.template || "",
   ).trim();
+  const resolvedProjectionIntents = Array.isArray(projectionIntents) && projectionIntents.length > 0
+    ? projectionIntents
+    : isSnapshotV3(snapshot)
+    ? getTemplateIntent({}, resolvedTemplateId).projectionIntents
+    : null;
   const response = await callPublicationApi({
     requestId,
     userId,
@@ -262,6 +299,7 @@ export async function ensurePrivateLiveExperienceRefresh({
         title,
         summary,
         snapshot,
+        resolvedProjectionIntents,
       ),
       title: title || defaultExperienceTitle(resolvedTemplateId),
       subtitle: subtitle || "Private live experience",

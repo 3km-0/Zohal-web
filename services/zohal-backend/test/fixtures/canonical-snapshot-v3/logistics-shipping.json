@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_logistics_relationship_1",
+      "provenance_class": "extracted",
+      "structural_facet": "relationship",
+      "display_name": "Carrier assigned to shipment",
+      "payload": { "relationship_type": "assignment", "subject": "Carrier A", "object": "Shipment 204" },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-logistics", "page_number": 1, "chunk_id": "chunk-3", "snippet": "Carrier A assigned to Shipment 204" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_logistics_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "event",
+      "display_name": "Potential delivery dependency",
+      "payload": { "status": "watch" },
+      "confidence": "medium",
+      "verification_state": "needs_review",
+      "derivation": { "input_item_ids": ["item_logistics_relationship_1"], "method": "llm_reasoning", "rationale": "Single carrier assignment can become a delivery dependency.", "verifier_outcome": "skipped" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [{ "id": "link_logistics_1", "type": "supports", "from_item_id": "item_logistics_relationship_1", "to_item_id": "item_logistics_derived_1" }]
+}
+

@@ -76,7 +76,7 @@ function deriveTemplateSourceText(spec: Partial<PlaybookSpecV1> | Record<string,
 
   const lines: string[] = [];
   const metaName = typeof (meta as { name?: unknown }).name === 'string' ? String((meta as { name?: string }).name).trim() : fallbackName;
-  const metaKind = typeof (meta as { kind?: unknown }).kind === 'string' ? String((meta as { kind?: string }).kind).trim() : 'contract';
+  const metaKind = typeof (meta as { kind?: unknown }).kind === 'string' ? String((meta as { kind?: string }).kind).trim() : 'document';
   const metaDescription = typeof (meta as { description?: unknown }).description === 'string'
     ? String((meta as { description?: string }).description).trim()
     : '';
@@ -131,7 +131,7 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
   const base = input && typeof input === 'object' && !Array.isArray(input) ? { ...input } : {};
   const baseMeta = input?.meta && typeof input.meta === 'object' && !Array.isArray(input.meta) ? { ...input.meta } : {};
   const metaName = typeof input?.meta?.name === 'string' ? input.meta.name : fallbackName;
-  const metaKind = typeof input?.meta?.kind === 'string' ? input.meta.kind : 'contract';
+  const metaKind = typeof input?.meta?.kind === 'string' ? input.meta.kind : 'document';
   const optionsRaw = input?.options && typeof input.options === 'object' ? input.options : null;
   const options: PlaybookSpecV1['options'] =
     optionsRaw
@@ -198,7 +198,7 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
 
   // Migration path: if modules_v2 is absent, derive it from legacy modules + custom_modules.
   if (!modules_v2 || modules_v2.length === 0) {
-    const legacy = Array.isArray(modules) && modules.length ? modules : Array.from(CORE_MODULE_ORDER);
+    const legacy = Array.isArray(modules) && modules.length ? modules : [];
     const derived: NonNullable<PlaybookSpecV1['modules_v2']> = [];
     const seen = new Set<string>();
     for (const id of legacy) {
@@ -300,9 +300,89 @@ function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
     })
     .filter(Boolean) as PlaybookSpecV1['checks'];
 
+  const rawIntent = input?.intent && typeof input.intent === 'object' && !Array.isArray(input.intent)
+    ? input.intent
+    : {};
+  const intent: PlaybookSpecV1['intent'] = {
+    source_scope_rules:
+      rawIntent.source_scope_rules && typeof rawIntent.source_scope_rules === 'object' && !Array.isArray(rawIntent.source_scope_rules)
+        ? {
+            mode:
+              rawIntent.source_scope_rules.mode === 'single_document'
+                ? 'single_document'
+                : rawIntent.source_scope_rules.mode === 'bundle'
+                ? 'bundle'
+                : 'workspace',
+            allowed_roles: Array.isArray(rawIntent.source_scope_rules.allowed_roles)
+              ? rawIntent.source_scope_rules.allowed_roles.map((x: any) => String(x).trim()).filter(Boolean)
+              : undefined,
+            required_document_ids: Array.isArray(rawIntent.source_scope_rules.required_document_ids)
+              ? rawIntent.source_scope_rules.required_document_ids.map((x: any) => String(x).trim()).filter(Boolean)
+              : undefined,
+          }
+        : undefined,
+    extraction_targets: Array.isArray(rawIntent.extraction_targets)
+      ? rawIntent.extraction_targets
+          .map((target: any, index: number) => ({
+            id: String(target?.id || `target_${index + 1}`).trim(),
+            label: String(target?.label || target?.id || `Target ${index + 1}`).trim(),
+            description: typeof target?.description === 'string' ? target.description : undefined,
+            structural_facet: typeof target?.structural_facet === 'string' ? target.structural_facet : undefined,
+            required: target?.required === true,
+            source_scope: typeof target?.source_scope === 'string' ? target.source_scope : undefined,
+            source_scopes: Array.isArray(target?.source_scopes) ? target.source_scopes.map((x: any) => String(x).trim()).filter(Boolean) : undefined,
+            examples: Array.isArray(target?.examples) ? target.examples.map((x: any) => String(x).trim()).filter(Boolean) : undefined,
+          }))
+          .filter((target: any) => !!target.id && !!target.label)
+      : [],
+    derivation_intents: Array.isArray(rawIntent.derivation_intents)
+      ? rawIntent.derivation_intents
+          .map((intentRow: any, index: number) => ({
+            id: String(intentRow?.id || `derived_${index + 1}`).trim(),
+            label: String(intentRow?.label || intentRow?.id || `Derived ${index + 1}`).trim(),
+            description: String(intentRow?.description || '').trim(),
+            structural_facet: typeof intentRow?.structural_facet === 'string' ? intentRow.structural_facet : undefined,
+            required: intentRow?.required === true,
+            input_target_ids: Array.isArray(intentRow?.input_target_ids) ? intentRow.input_target_ids.map((x: any) => String(x).trim()).filter(Boolean) : undefined,
+            method: typeof intentRow?.method === 'string' ? intentRow.method : undefined,
+          }))
+          .filter((intentRow: any) => !!intentRow.id && !!intentRow.label && !!intentRow.description)
+      : [],
+    projection_intents: Array.isArray(rawIntent.projection_intents)
+      ? rawIntent.projection_intents
+          .map((projection: any, index: number) => ({
+            route_id: String(projection?.route_id || `route_${index + 1}`).trim(),
+            title: String(projection?.title || projection?.route_id || `Route ${index + 1}`).trim(),
+            description: typeof projection?.description === 'string' ? projection.description : undefined,
+            view_kind: typeof projection?.view_kind === 'string' ? projection.view_kind : undefined,
+            structural_facets: Array.isArray(projection?.structural_facets) ? projection.structural_facets.map((x: any) => String(x).trim()).filter(Boolean) : undefined,
+            provenance_classes: Array.isArray(projection?.provenance_classes) ? projection.provenance_classes.filter((x: any) => x === 'extracted' || x === 'derived') : undefined,
+          }))
+          .filter((projection: any) => !!projection.route_id && !!projection.title)
+      : [],
+    review_policy:
+      rawIntent.review_policy && typeof rawIntent.review_policy === 'object' && !Array.isArray(rawIntent.review_policy)
+        ? {
+            enable_verifier: rawIntent.review_policy.enable_verifier === true,
+            selective: rawIntent.review_policy.selective !== false,
+            high_impact_only: rawIntent.review_policy.high_impact_only === true,
+            require_anchor_verification: rawIntent.review_policy.require_anchor_verification !== false,
+          }
+        : undefined,
+    presentation_hints:
+      rawIntent.presentation_hints && typeof rawIntent.presentation_hints === 'object' && !Array.isArray(rawIntent.presentation_hints)
+        ? {
+            default_title: typeof rawIntent.presentation_hints.default_title === 'string' ? rawIntent.presentation_hints.default_title : undefined,
+            default_summary: typeof rawIntent.presentation_hints.default_summary === 'string' ? rawIntent.presentation_hints.default_summary : undefined,
+            preferred_locale: typeof rawIntent.presentation_hints.preferred_locale === 'string' ? rawIntent.presentation_hints.preferred_locale : undefined,
+          }
+        : undefined,
+  };
+
   return syncLegacyFromModulesV2({
     ...base,
     meta: { ...baseMeta, name: metaName, kind: metaKind },
+    intent,
     options,
     scope,
     bundle_schema,
@@ -340,19 +420,23 @@ export default function WorkspacePlaybooksPage() {
   // Draft editor state
   const [newName, setNewName] = useState('');
   const [spec, setSpec] = useState<PlaybookSpecV1>({
-    meta: { name: '', kind: 'contract' },
+    meta: { name: '', kind: 'document' },
     options: { strictness: 'default', enable_verifier: false, language: 'en' },
     scope: 'either',
     modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
     outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
-    modules_v2: Array.from(CORE_MODULE_ORDER).map((id) => ({
-      id,
-      title: defaultModuleTitle(id),
-      prompt: defaultModulePrompt(id),
-      json_schema: defaultModuleSchema(id),
-      enabled: true,
-      show_in_report: true,
-    })),
+    intent: {
+      extraction_targets: [],
+      derivation_intents: [],
+      projection_intents: [],
+      review_policy: {
+        enable_verifier: false,
+        selective: true,
+        high_impact_only: false,
+        require_anchor_verification: true,
+      },
+    },
+    modules_v2: [],
     variables: [],
     checks: [],
   });
@@ -417,7 +501,7 @@ export default function WorkspacePlaybooksPage() {
           template_name: (spec.meta.name || selected.name || '').trim(),
           template_source_text: templateSourceText,
           language: spec.options?.language === 'ar' ? 'ar' : 'en',
-          document_type: spec.meta.kind || 'contract',
+          document_type: spec.meta.kind || 'document',
           publish,
           changelog: publish ? 'Published from template source' : 'Saved from template source',
         },
@@ -464,7 +548,7 @@ export default function WorkspacePlaybooksPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('playbooks-list', {
-        body: { workspace_id: workspaceId, kind: 'contract' }, // no status filter
+        body: { workspace_id: workspaceId, kind: 'document' }, // no status filter
       });
       if (error) throw error;
       if (data?.ok && Array.isArray(data.playbooks)) {
@@ -507,18 +591,22 @@ export default function WorkspacePlaybooksPage() {
     setSaving(true);
     try {
       const minimal: PlaybookSpecV1 = {
-        meta: { name: newName.trim(), kind: 'contract' },
+        meta: { name: newName.trim(), kind: 'document' },
         options: { strictness: 'default', enable_verifier: false, language: 'en' },
-        modules: ['variables', 'clauses', 'obligations', 'risks', 'deadlines'],
-        outputs: ['overview', 'variables', 'clauses', 'obligations', 'risks', 'deadlines'],
-        modules_v2: Array.from(CORE_MODULE_ORDER).map((id) => ({
-          id,
-          title: defaultModuleTitle(id),
-          prompt: defaultModulePrompt(id),
-          json_schema: defaultModuleSchema(id),
-          enabled: true,
-          show_in_report: true,
-        })),
+        intent: {
+          extraction_targets: [],
+          derivation_intents: [],
+          projection_intents: [],
+          review_policy: {
+            enable_verifier: false,
+            selective: true,
+            high_impact_only: false,
+            require_anchor_verification: true,
+          },
+        },
+        modules: [],
+        outputs: ['overview'],
+        modules_v2: [],
         variables: [],
         checks: [],
       };
@@ -526,7 +614,7 @@ export default function WorkspacePlaybooksPage() {
         body: {
           workspace_id: workspaceId,
           name: newName.trim(),
-          kind: 'contract',
+          kind: 'document',
           initial_spec_json: minimal,
           changelog: 'Initial draft',
         },
@@ -576,13 +664,13 @@ export default function WorkspacePlaybooksPage() {
         : spec) as PlaybookSpecV1;
       const duplicatedSpec = {
         ...sourceSpec,
-        meta: { ...(sourceSpec.meta || { kind: 'contract' }), name: `${selected.name} (Copy)` },
+        meta: { ...(sourceSpec.meta || { kind: 'document' }), name: `${selected.name} (Copy)` },
       };
       const { data, error } = await supabase.functions.invoke('playbooks-create', {
         body: {
           workspace_id: workspaceId,
           name: `${selected.name} (Copy)`,
-          kind: 'contract',
+          kind: 'document',
           initial_spec_json: duplicatedSpec,
           changelog: `Duplicated from "${selected.name}"`,
         },
