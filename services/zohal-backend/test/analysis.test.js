@@ -14,6 +14,11 @@ import {
   parseStructuredJsonResponse,
 } from "../src/analysis/canonical.js";
 import {
+  getAIStageConfig,
+  normalizeChatPayloadForProvider,
+  remapModelForProvider,
+} from "../src/analysis/ai-provider.js";
+import {
   attachPackMetadata,
   normalizeDerivedItems,
   shouldNativeReduceRun,
@@ -123,6 +128,56 @@ test("structured AI JSON parser returns fallback for empty output and throws ret
       return true;
     },
   );
+});
+
+test("shared AI stage config resolves generator and verifier overrides independently", () => {
+  const previousGeneratorModel = process.env.GENERATOR_MODEL;
+  const previousVerifierModel = process.env.VERIFIER_MODEL;
+  const previousGeneratorProvider = process.env.GENERATOR_PROVIDER;
+  const previousVerifierProvider = process.env.VERIFIER_PROVIDER;
+
+  process.env.GENERATOR_MODEL = "gpt-5.2";
+  process.env.VERIFIER_MODEL = "gpt-5.2-mini";
+  process.env.GENERATOR_PROVIDER = "openai";
+  process.env.VERIFIER_PROVIDER = "vertex";
+
+  try {
+    assert.deepEqual(getAIStageConfig("generator"), {
+      providerOverride: "openai",
+      model: "gpt-5.2",
+    });
+    assert.deepEqual(getAIStageConfig("verifier"), {
+      providerOverride: "vertex",
+      model: "gpt-5.2-mini",
+    });
+  } finally {
+    process.env.GENERATOR_MODEL = previousGeneratorModel;
+    process.env.VERIFIER_MODEL = previousVerifierModel;
+    process.env.GENERATOR_PROVIDER = previousGeneratorProvider;
+    process.env.VERIFIER_PROVIDER = previousVerifierProvider;
+  }
+});
+
+test("shared AI provider helpers preserve model remapping and OpenAI token normalization", () => {
+  const previousContractModel = process.env.OPENAI_CONTRACT_MODEL;
+  const previousVertexChatModel = process.env.VERTEX_MODEL_CHAT;
+
+  process.env.OPENAI_CONTRACT_MODEL = "gpt-5.2";
+  process.env.VERTEX_MODEL_CHAT = "google/gemini-2.5-flash";
+
+  try {
+    assert.deepEqual(
+      remapModelForProvider("vertex", { model: "gpt-5.2", max_tokens: 100 }),
+      { model: "google/gemini-2.5-flash", max_tokens: 100 },
+    );
+    assert.deepEqual(
+      normalizeChatPayloadForProvider("openai", { model: "gpt-5.2", max_tokens: 100 }),
+      { model: "gpt-5.2", max_completion_tokens: 100 },
+    );
+  } finally {
+    process.env.OPENAI_CONTRACT_MODEL = previousContractModel;
+    process.env.VERTEX_MODEL_CHAT = previousVertexChatModel;
+  }
 });
 
 test("native reduce guard requires a parent run and at least one batch", () => {
