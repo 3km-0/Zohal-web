@@ -18,6 +18,8 @@ export type SourceAnchor = {
   page_number: number;
   chunk_id?: string;
   snippet: string;
+  // Optional forward-compatible sub-page precision.
+  // These are preserved when present but are not required by the current extractor contract.
   char_start?: number;
   char_end?: number;
   bbox?: BoundingBox;

@@ -30,6 +30,8 @@ function findChunkForQuote(chunks, pageNumber, sourceQuote) {
 function buildSourceAnchor(candidate, chunk, documentId) {
   const quote = String(candidate?.source_quote || candidate?.snippet || "").trim();
   const snippet = quote || String(chunk?.content_text || "").slice(0, 160).trim();
+  // Preserve optional sub-page precision if a future extractor supplies it.
+  // The current extraction schema does not require these fields yet.
   const charStart = Number.isFinite(Number(candidate?.char_start))
     ? Number(candidate.char_start)
     : undefined;

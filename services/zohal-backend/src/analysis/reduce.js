@@ -99,6 +99,8 @@ function normalizeExtractedItems(extractedItems, chunksByDoc, fallbackDocumentId
       ? item.source_anchor
       : {};
     const chunk = findMatchingChunk(chunksByDoc, sourceAnchor, fallbackDocumentId);
+    // Preserve optional sub-page precision when present.
+    // Verification still keys off snippet/chunk matching today, not char offsets or bbox.
     const normalizedAnchor = {
       document_id: normalizeUuid(sourceAnchor.document_id || fallbackDocumentId),
       page_number: Number(sourceAnchor.page_number || chunk?.page_number || 1),
