@@ -196,6 +196,9 @@ export interface CanonicalSourceAnchor {
   page_number: number
   chunk_id?: string
   snippet: string
+  char_start?: number
+  char_end?: number
+  bbox?: BoundingBox
 }
 
 export interface CanonicalItemV3 {
@@ -512,6 +515,9 @@ function canonicalAnchorToEvidence(anchor?: CanonicalSourceAnchor): EvidenceAnch
     page_number: anchor.page_number,
     chunk_id: anchor.chunk_id,
     snippet: anchor.snippet,
+    char_start: anchor.char_start,
+    char_end: anchor.char_end,
+    bbox: anchor.bbox,
   }
 }
 

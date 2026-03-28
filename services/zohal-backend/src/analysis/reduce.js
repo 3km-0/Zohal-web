@@ -88,6 +88,9 @@ function normalizeExtractedItems(extractedItems, chunksByDoc, fallbackDocumentId
       item?.source_anchor?.document_id || fallbackDocumentId,
       item?.source_anchor?.page_number,
       item?.source_anchor?.snippet,
+      item?.source_anchor?.char_start ?? null,
+      item?.source_anchor?.char_end ?? null,
+      item?.source_anchor?.bbox ?? null,
       item?.payload || null,
     ]),
   );
@@ -101,6 +104,15 @@ function normalizeExtractedItems(extractedItems, chunksByDoc, fallbackDocumentId
       page_number: Number(sourceAnchor.page_number || chunk?.page_number || 1),
       chunk_id: String(sourceAnchor.chunk_id || chunk?.id || "").trim() || undefined,
       snippet: String(sourceAnchor.snippet || "").trim(),
+      ...(Number.isFinite(Number(sourceAnchor.char_start))
+        ? { char_start: Number(sourceAnchor.char_start) }
+        : {}),
+      ...(Number.isFinite(Number(sourceAnchor.char_end))
+        ? { char_end: Number(sourceAnchor.char_end) }
+        : {}),
+      ...(sourceAnchor?.bbox && typeof sourceAnchor.bbox === "object"
+        ? { bbox: sourceAnchor.bbox }
+        : {}),
     };
     const anchorIntegrity = verifyAnchorIntegrity(normalizedAnchor, chunksByDoc, fallbackDocumentId);
     const id = deterministicId(

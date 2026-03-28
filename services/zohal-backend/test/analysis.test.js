@@ -239,6 +239,14 @@ test("canonical snapshot builder emits schema 3.0 with proof and source manifest
                 page_number: 2,
                 chunk_id: "chunk-1",
                 snippet: "Acme LLC",
+                char_start: 12,
+                char_end: 20,
+                bbox: {
+                  x: 0.1,
+                  y: 0.2,
+                  width: 0.3,
+                  height: 0.05,
+                },
               },
             ],
             anchor_integrity: "verified",
@@ -306,4 +314,12 @@ test("canonical snapshot builder emits schema 3.0 with proof and source manifest
   assert.equal(snapshot.proof_manifest.counts.extracted_items, 1);
   assert.equal(snapshot.proof_manifest.counts.derived_items, 1);
   assert.equal(snapshot.source_manifest.document_count, 1);
+  assert.equal(snapshot.items[0].source_anchors?.[0]?.char_start, 12);
+  assert.equal(snapshot.items[0].source_anchors?.[0]?.char_end, 20);
+  assert.deepEqual(snapshot.items[0].source_anchors?.[0]?.bbox, {
+    x: 0.1,
+    y: 0.2,
+    width: 0.3,
+    height: 0.05,
+  });
 });

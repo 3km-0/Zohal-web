@@ -6,11 +6,21 @@ export type CanonicalVerificationState =
   | 'verified'
   | 'finalized';
 
+export type BoundingBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type SourceAnchor = {
   document_id?: string;
   page_number: number;
   chunk_id?: string;
   snippet: string;
+  char_start?: number;
+  char_end?: number;
+  bbox?: BoundingBox;
 };
 
 export type CanonicalDerivation = {

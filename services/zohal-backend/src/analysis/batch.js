@@ -30,11 +30,23 @@ function findChunkForQuote(chunks, pageNumber, sourceQuote) {
 function buildSourceAnchor(candidate, chunk, documentId) {
   const quote = String(candidate?.source_quote || candidate?.snippet || "").trim();
   const snippet = quote || String(chunk?.content_text || "").slice(0, 160).trim();
+  const charStart = Number.isFinite(Number(candidate?.char_start))
+    ? Number(candidate.char_start)
+    : undefined;
+  const charEnd = Number.isFinite(Number(candidate?.char_end))
+    ? Number(candidate.char_end)
+    : undefined;
+  const bbox = candidate?.bbox && typeof candidate.bbox === "object"
+    ? candidate.bbox
+    : undefined;
   return {
     document_id: normalizeUuid(candidate?.document_id || documentId),
     page_number: Number(candidate?.page_number || chunk?.page_number || 1),
     chunk_id: chunk?.id ? String(chunk.id) : undefined,
     snippet,
+    ...(charStart !== undefined ? { char_start: charStart } : {}),
+    ...(charEnd !== undefined ? { char_end: charEnd } : {}),
+    ...(bbox ? { bbox } : {}),
   };
 }
 
