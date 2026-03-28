@@ -211,10 +211,11 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
     }
 
     if (conversionQuota && conversionQuota.allowed === false) {
-      return sendJson(res, 429, buildConvertError({
-        message: "Included conversion usage has been reached for this billing period.",
-        requestId,
-      }));
+      const quotaError = new Error(
+        "Included conversion usage has been reached for this billing period.",
+      );
+      quotaError.statusCode = 429;
+      throw quotaError;
     }
 
     let sourceDownloadUrl = proxyInputs.sourceDownloadUrl;
