@@ -7,6 +7,7 @@ import {
   normalizeConfidence,
   normalizeStructuralFacet,
   normalizeUuid,
+  parseStructuredJsonResponse,
 } from "./canonical.js";
 import { ensurePrivateLiveExperienceRefresh } from "./private-live.js";
 
@@ -355,7 +356,10 @@ async function deriveItemsWithOpenAI({
   });
 
   const outputText = extractOutputText(response);
-  return JSON.parse(outputText || "{\"derived_items\":[]}");
+  return parseStructuredJsonResponse(outputText, {
+    fallback: { derived_items: [] },
+    errorCode: "invalid_derived_items_json",
+  });
 }
 
 async function selectivelyVerifyDerivedItems({
@@ -437,7 +441,10 @@ async function selectivelyVerifyDerivedItems({
     requestId,
   });
   const outputText = extractOutputText(response);
-  const parsed = JSON.parse(outputText || "{\"outcomes\":[]}");
+  const parsed = parseStructuredJsonResponse(outputText, {
+    fallback: { outcomes: [] },
+    errorCode: "invalid_derived_verifier_json",
+  });
   const outcomes = new Map(
     (Array.isArray(parsed?.outcomes) ? parsed.outcomes : []).map((outcome) => [
       String(outcome?.id || "").trim(),
@@ -462,7 +469,7 @@ async function selectivelyVerifyDerivedItems({
   });
 }
 
-function normalizeDerivedItems(rawDerived, extractedItems) {
+export function normalizeDerivedItems(rawDerived, extractedItems) {
   const now = new Date().toISOString();
   const extractedIds = new Set(extractedItems.map((item) => item.id));
   return dedupeByKey(rawDerived || [], (item) => JSON.stringify([
@@ -491,7 +498,7 @@ function normalizeDerivedItems(rawDerived, extractedItems) {
         ? item.payload
         : { value: item?.payload ?? null },
       confidence: normalizeConfidence(item?.confidence),
-      verification_state: "extracted",
+      verification_state: "needs_review",
       derivation: {
         input_item_ids: inputItemIds,
         method: String(item?.method || item?.derivation_id || "llm_reasoning").trim() || "llm_reasoning",

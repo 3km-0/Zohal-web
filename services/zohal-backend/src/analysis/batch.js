@@ -4,6 +4,7 @@ import {
   normalizeConfidence,
   normalizeStructuralFacet,
   normalizeUuid,
+  parseStructuredJsonResponse,
 } from "./canonical.js";
 
 function getAIStageConfig() {
@@ -274,7 +275,10 @@ async function analyzeBatchWithOpenAI({
   });
 
   const outputText = extractOutputText(response);
-  return JSON.parse(outputText || "{\"extracted_items\":[]}");
+  return parseStructuredJsonResponse(outputText, {
+    fallback: { extracted_items: [] },
+    errorCode: "invalid_extracted_items_json",
+  });
 }
 
 async function fetchBatchRunOrThrow(supabase, batchRunId) {

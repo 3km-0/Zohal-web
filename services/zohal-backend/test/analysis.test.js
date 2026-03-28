@@ -9,9 +9,13 @@ import {
   addStableCandidateIds,
   buildBatchText,
 } from "../src/analysis/batch.js";
-import { getTemplateIntent } from "../src/analysis/canonical.js";
+import {
+  getTemplateIntent,
+  parseStructuredJsonResponse,
+} from "../src/analysis/canonical.js";
 import {
   attachPackMetadata,
+  normalizeDerivedItems,
   shouldNativeReduceRun,
   toSnapshot,
 } from "../src/analysis/reduce.js";
@@ -98,6 +102,29 @@ test("generic template intent falls back to document-agnostic extraction targets
   assert.equal(intent.projectionIntents.length, 3);
 });
 
+test("structured AI JSON parser returns fallback for empty output and throws retryable errors for malformed JSON", () => {
+  assert.deepEqual(
+    parseStructuredJsonResponse("", {
+      fallback: { extracted_items: [] },
+      errorCode: "invalid_extracted_items_json",
+    }),
+    { extracted_items: [] },
+  );
+
+  assert.throws(
+    () => parseStructuredJsonResponse("{not-json", {
+      fallback: { extracted_items: [] },
+      errorCode: "invalid_extracted_items_json",
+    }),
+    (error) => {
+      assert.equal(error.statusCode, 502);
+      assert.equal(error.retryable, true);
+      assert.match(error.message, /invalid_extracted_items_json/);
+      return true;
+    },
+  );
+});
+
 test("native reduce guard requires a parent run and at least one batch", () => {
   assert.deepEqual(
     shouldNativeReduceRun(
@@ -111,6 +138,31 @@ test("native reduce guard requires a parent run and at least one batch", () => {
     shouldNativeReduceRun({}, []),
     { ok: false, reason: "missing_parent_run" },
   );
+});
+
+test("derived items start in needs_review until verifier outcomes are applied", () => {
+  const derived = normalizeDerivedItems(
+    [
+      {
+        derivation_id: "summary",
+        display_name: "Analysis summary",
+        structural_facet: "annotation",
+        payload: { summary: "Important derived insight" },
+        confidence: "medium",
+        input_item_ids: ["item-extracted-1"],
+      },
+    ],
+    [
+      {
+        id: "item-extracted-1",
+      },
+    ],
+  );
+
+  assert.equal(derived.length, 1);
+  assert.equal(derived[0].provenance_class, "derived");
+  assert.equal(derived[0].verification_state, "needs_review");
+  assert.deepEqual(derived[0].derivation.input_item_ids, ["item-extracted-1"]);
 });
 
 test("canonical snapshot builder emits schema 3.0 with proof and source manifests", () => {

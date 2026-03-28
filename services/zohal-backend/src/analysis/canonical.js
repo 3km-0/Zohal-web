@@ -22,6 +22,21 @@ export function normalizeStructuralFacet(value) {
   return raw.replace(/[^a-z0-9_]+/g, "_");
 }
 
+export function parseStructuredJsonResponse(outputText, { fallback, errorCode = "invalid_ai_response" } = {}) {
+  const normalizedOutput = String(outputText || "").trim();
+  if (!normalizedOutput) return fallback;
+  try {
+    return JSON.parse(normalizedOutput);
+  } catch (error) {
+    const wrapped = new Error(`${errorCode}: model returned invalid JSON`);
+    wrapped.statusCode = 502;
+    wrapped.retryable = true;
+    wrapped.cause = error;
+    wrapped.outputPreview = normalizedOutput.slice(0, 240);
+    throw wrapped;
+  }
+}
+
 export function isSnapshotV3(snapshot) {
   return String(snapshot?.schema_version || "").split(".")[0] === "3";
 }
