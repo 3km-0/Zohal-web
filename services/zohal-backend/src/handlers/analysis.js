@@ -13,16 +13,20 @@ import {
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 
-const CONTRACT_ANALYSIS_TASK_QUEUE = String(
-  process.env.GCP_CONTRACT_ANALYSIS_TASK_QUEUE || "contract-analysis-jobs",
+const DOCUMENT_ANALYSIS_TASK_QUEUE = String(
+  process.env.GCP_DOCUMENT_ANALYSIS_TASK_QUEUE ||
+    process.env.GCP_CONTRACT_ANALYSIS_TASK_QUEUE ||
+    "document-analysis-jobs",
 ).trim();
-const CONTRACT_ANALYSIS_TASKS_LOCATION = String(
+const DOCUMENT_ANALYSIS_TASKS_LOCATION = String(
   process.env.GCP_TASKS_LOCATION || process.env.GCP_WORKFLOWS_LOCATION || "",
 ).trim();
-const CONTRACT_ANALYSIS_WORKFLOW = String(
-  process.env.GCP_CONTRACT_ANALYSIS_WORKFLOW || "contract-analysis-v1",
+const DOCUMENT_ANALYSIS_WORKFLOW = String(
+  process.env.GCP_DOCUMENT_ANALYSIS_WORKFLOW ||
+    process.env.GCP_CONTRACT_ANALYSIS_WORKFLOW ||
+    "document-analysis-v1",
 ).trim();
-const CONTRACT_ANALYSIS_WORKFLOWS_LOCATION = String(
+const DOCUMENT_ANALYSIS_WORKFLOWS_LOCATION = String(
   process.env.GCP_WORKFLOWS_LOCATION || "",
 ).trim();
 
@@ -44,7 +48,7 @@ function resolveAnalysisRuntime(extractionType) {
     batchTaskKind: "contract_analysis_batch",
     reduceTaskKind: "contract_analysis_reduce",
     acceptedMessage:
-      "Contract analysis queued. Progress will update as batches complete.",
+      "Document analysis queued. Progress will update as batches complete.",
   };
 }
 
@@ -52,7 +56,7 @@ export function buildAnalyzeAcceptedPayload({
   requestId,
   actionId,
   runId,
-  message = "Contract analysis queued. Progress will update as batches complete.",
+  message = "Document analysis queued. Progress will update as batches complete.",
   workflowExecutionId = null,
   deferred = false,
   alreadyEnqueued = false,
@@ -112,13 +116,13 @@ async function scheduleAnalysisTask({
   payload,
   delaySeconds = 0,
 }) {
-  if (!CONTRACT_ANALYSIS_TASKS_LOCATION) {
+  if (!DOCUMENT_ANALYSIS_TASKS_LOCATION) {
     throw new Error("GCP_TASKS_LOCATION not configured");
   }
 
   return await createHttpTask({
-    queueName: CONTRACT_ANALYSIS_TASK_QUEUE,
-    location: CONTRACT_ANALYSIS_TASKS_LOCATION,
+    queueName: DOCUMENT_ANALYSIS_TASK_QUEUE,
+    location: DOCUMENT_ANALYSIS_TASKS_LOCATION,
     url: `${buildAnalysisServiceBaseUrl(req)}/analysis/tasks`,
     payload,
     delaySeconds,
@@ -426,7 +430,7 @@ async function startAnalysisWorkflow({
     };
   }
 
-  if (!CONTRACT_ANALYSIS_WORKFLOWS_LOCATION) {
+  if (!DOCUMENT_ANALYSIS_WORKFLOWS_LOCATION) {
     throw new Error("GCP_WORKFLOWS_LOCATION not configured");
   }
 
@@ -436,8 +440,8 @@ async function startAnalysisWorkflow({
   }
 
   const execution = await startWorkflowExecution({
-    workflowName: CONTRACT_ANALYSIS_WORKFLOW,
-    location: CONTRACT_ANALYSIS_WORKFLOWS_LOCATION,
+    workflowName: DOCUMENT_ANALYSIS_WORKFLOW,
+    location: DOCUMENT_ANALYSIS_WORKFLOWS_LOCATION,
     argument: {
       service_base_url: buildAnalysisServiceBaseUrl(req),
       parent_run_id: parentRun.id,
@@ -457,7 +461,7 @@ async function startAnalysisWorkflow({
     request_id: requestId,
     workflow_execution_id: workflowExecutionId,
     queue_provider: "cloud_tasks",
-    queue_name: CONTRACT_ANALYSIS_TASK_QUEUE,
+    queue_name: DOCUMENT_ANALYSIS_TASK_QUEUE,
   };
   const runtime = resolveAnalysisRuntime(parentRun.extraction_type);
 
@@ -687,7 +691,7 @@ async function handleTask(req, res, { requestId, log, readJsonBody }) {
       message: error instanceof Error ? error.message : String(error),
       executionMetadata: {
         request_id: requestId,
-        queue_name: CONTRACT_ANALYSIS_TASK_QUEUE,
+        queue_name: DOCUMENT_ANALYSIS_TASK_QUEUE,
       },
     });
 

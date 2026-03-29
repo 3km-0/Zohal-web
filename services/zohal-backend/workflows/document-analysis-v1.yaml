@@ -1,0 +1,10 @@
+main:
+  params: [args]
+  steps:
+    - started:
+        return:
+          success: true
+          status: "started"
+          parent_run_id: ${args.parent_run_id}
+          batch_run_ids: ${default(args.batch_run_ids, [])}
+          request_id: ${args.request_id}

@@ -7,8 +7,8 @@ Resources managed here:
 - Cloud Run service: `zohal-backend`
 - Cloud Workflow: `document-ingestion-v1`
 - Cloud Tasks queue: `document-ingestion-jobs`
-- Cloud Workflow: `contract-analysis-v1`
-- Cloud Tasks queue: `contract-analysis-jobs`
+- Cloud Workflow: `document-analysis-v1`
+- Cloud Tasks queue: `document-analysis-jobs`
 
 Deploy:
 
@@ -26,10 +26,16 @@ ORCHESTRATION_REGION=us-central1 \
 SERVICE_NAME=zohal-backend \
 INGESTION_WORKFLOW_NAME=document-ingestion-v1 \
 INGESTION_TASK_QUEUE_NAME=document-ingestion-jobs \
-ANALYSIS_WORKFLOW_NAME=contract-analysis-v1 \
-ANALYSIS_TASK_QUEUE_NAME=contract-analysis-jobs \
+ANALYSIS_WORKFLOW_NAME=document-analysis-v1 \
+ANALYSIS_TASK_QUEUE_NAME=document-analysis-jobs \
 bash infra/gcp/zohal-backend/deploy.sh
 ```
+
+Compatibility note:
+- the deploy script still sets legacy `GCP_CONTRACT_ANALYSIS_*` env vars to the
+  same values as the new `GCP_DOCUMENT_ANALYSIS_*` names
+- this keeps older compatibility paths readable while new runs emit
+  `document-analysis` resource names
 
 Notes:
 - The script deploys Cloud Run from `services/zohal-backend/`.
