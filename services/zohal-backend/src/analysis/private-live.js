@@ -29,28 +29,38 @@ function getInternalHeaders(requestId, userId) {
   };
 }
 
-function normalizeExperienceTemplateId(templateId) {
+export function normalizeExperienceTemplateId(templateId) {
   const normalized = String(templateId || "").trim().toLowerCase();
   if (
     !normalized || normalized === "contract" ||
-    normalized === "contract_document"
+    normalized === "contract_document" ||
+    normalized === "contract_analysis"
   ) {
-    return "contract_analysis";
+    return "document_analysis";
   }
-  if (normalized === "contract_analysis") return normalized;
   return "document_analysis";
 }
 
+export function pickCanonicalPrivateLiveExperienceRecord(records, templateId) {
+  if (!Array.isArray(records) || records.length === 0) return null;
+  const normalizedTemplateId = normalizeExperienceTemplateId(templateId);
+  const exactMatch = records.find((record) =>
+    String(record?.template_id || "").trim().toLowerCase() === normalizedTemplateId
+  );
+  if (exactMatch) return exactMatch;
+  return records.find((record) =>
+    normalizeExperienceTemplateId(record?.template_id) === normalizedTemplateId
+  ) || records[0] || null;
+}
+
 function resolveExperienceSourceKind(templateId) {
-  return normalizeExperienceTemplateId(templateId) === "contract_analysis"
-    ? "contract_document"
-    : "verification_document";
+  return normalizeExperienceTemplateId(templateId) === "document_analysis"
+    ? "verification_document"
+    : "contract_document";
 }
 
 function defaultExperienceTitle(templateId) {
-  return normalizeExperienceTemplateId(templateId) === "contract_analysis"
-    ? "Contract analysis"
-    : "Document analysis";
+  return "Document analysis";
 }
 
 async function resolveWorkspaceDefaultCorpusId(supabase, workspaceId) {
@@ -72,18 +82,21 @@ async function resolvePrivateLiveExperienceRecord({
   const normalizedWorkspaceId = normalizeUuid(workspaceId);
   const normalizedDocumentId = normalizeUuid(documentId);
   const normalizedTemplateId = normalizeExperienceTemplateId(templateId);
+  const templateLookupIds = normalizedTemplateId === "document_analysis"
+    ? ["document_analysis", "contract_analysis"]
+    : [normalizedTemplateId];
   const defaultCorpusId = await resolveWorkspaceDefaultCorpusId(
     supabase,
     normalizedWorkspaceId,
   );
 
-  const { data: existing, error } = await supabase
+  const { data: existingRows, error } = await supabase
     .from("experience_registry")
     .select(
-      "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id",
+      "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id",
     )
     .eq("workspace_id", normalizedWorkspaceId)
-    .eq("template_id", normalizedTemplateId)
+    .in("template_id", templateLookupIds)
     .eq("experience_lane", "private_live")
     .or(
       [
@@ -93,11 +106,33 @@ async function resolvePrivateLiveExperienceRecord({
       ].join(","),
     )
     .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
 
   if (error) throw new Error(error.message);
-  if (existing?.experience_id) return existing;
+  const existing = pickCanonicalPrivateLiveExperienceRecord(
+    existingRows,
+    normalizedTemplateId,
+  );
+  if (existing?.experience_id) {
+    const existingTemplateId = String(existing.template_id || "").trim().toLowerCase();
+    if (existingTemplateId && existingTemplateId !== normalizedTemplateId) {
+      const { data: normalizedExisting, error: normalizeError } = await supabase
+        .from("experience_registry")
+        .update({
+          template_id: normalizedTemplateId,
+          template_version: "1.0.0",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("experience_id", String(existing.experience_id))
+        .select(
+          "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id",
+        )
+        .single();
+      if (normalizeError) throw new Error(normalizeError.message);
+      return normalizedExisting;
+    }
+    return existing;
+  }
 
   const experienceId = globalThis.crypto.randomUUID();
   const { data: created, error: insertError } = await supabase
@@ -152,9 +187,6 @@ async function updatePrivateLiveRegistryState({
 }
 
 function defaultRouteGraphForTemplate(templateId) {
-  if (normalizeExperienceTemplateId(templateId) === "contract_analysis") {
-    return ["overview", "obligations", "deadlines", "risks"];
-  }
   return ["overview", "facts", "findings", "actions", "review"];
 }
 

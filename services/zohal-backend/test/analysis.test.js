@@ -21,9 +21,28 @@ import {
   shouldNativeReduceRun,
   toSnapshot,
 } from "../src/analysis/reduce.js";
+import {
+  normalizeExperienceTemplateId,
+  pickCanonicalPrivateLiveExperienceRecord,
+} from "../src/analysis/private-live.js";
 
 test("normalizeUuid lowercases and trims analysis ids", () => {
   assert.equal(normalizeUuid(" ABC-123 "), "abc-123");
+});
+
+test("private live helpers collapse legacy contract aliases into document_analysis", () => {
+  assert.equal(normalizeExperienceTemplateId("contract_analysis"), "document_analysis");
+  assert.equal(normalizeExperienceTemplateId("contract_document"), "document_analysis");
+  assert.equal(normalizeExperienceTemplateId("investor_reporting_dashboard"), "document_analysis");
+});
+
+test("private live record picker prefers the canonical document-analysis row", () => {
+  const picked = pickCanonicalPrivateLiveExperienceRecord([
+    { experience_id: "legacy", template_id: "contract_analysis" },
+    { experience_id: "canonical", template_id: "document_analysis" },
+  ], "contract_analysis");
+
+  assert.equal(picked?.experience_id, "canonical");
 });
 
 test("analysis accepted payload preserves backward-compatible queue response shape", () => {
