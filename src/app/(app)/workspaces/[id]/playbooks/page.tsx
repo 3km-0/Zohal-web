@@ -1,5 +1,11 @@
 'use client';
 
+// NOTE: This page remains a compatibility/operator editing surface while Zohal
+// converges on template-first, agent-compiled authoring. The long-term default
+// user flow should be "choose a Zohal template or Custom -> describe the
+// desired analysis/portal -> let the agent compile the template intent", not
+// manual editing of modules/variables/rules.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
