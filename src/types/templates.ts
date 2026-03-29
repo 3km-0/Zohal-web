@@ -24,6 +24,102 @@ export type TemplateOptions = {
   language?: 'en' | 'ar';
 };
 
+export type TemplateExtractionTarget = {
+  id: string;
+  label: string;
+  description?: string;
+  structural_facet?: string;
+  required?: boolean;
+  source_scope?: string;
+  source_scopes?: string[];
+  examples?: string[];
+};
+
+export type TemplateDerivationIntent = {
+  id: string;
+  label: string;
+  description: string;
+  structural_facet?: string;
+  required?: boolean;
+  input_target_ids?: string[];
+  method?: string;
+};
+
+export type TemplateProjectionIntent = {
+  route_id: string;
+  title: string;
+  description?: string;
+  view_kind?: string;
+  structural_facets?: string[];
+  provenance_classes?: Array<'extracted' | 'derived'>;
+};
+
+export type TemplateReviewPolicy = {
+  enable_verifier?: boolean;
+  selective?: boolean;
+  high_impact_only?: boolean;
+  require_anchor_verification?: boolean;
+};
+
+export type TemplatePresentationHints = {
+  default_title?: string;
+  default_summary?: string;
+  preferred_locale?: string;
+};
+
+export type TemplateIdentity = {
+  template_id?: string;
+  display_name?: string;
+  icon_emoji?: string;
+  aliases?: string[];
+};
+
+export type TemplatePositioning = {
+  purpose?: string;
+  ideal_users?: string[];
+  typical_inputs?: string[];
+  recommended_document_types?: string[];
+  specialization_of?: string;
+};
+
+export type TemplateEvolution = {
+  profile_version?: string;
+  status?: 'active' | 'specialization' | 'deprecated' | string;
+  notes?: string;
+};
+
+export type TemplateCompatibility = {
+  runtime_template_id?: string;
+  legacy_field_strategy?: 'temporary_adapter' | 'legacy_only' | string;
+  delete_after?: string;
+};
+
+export type TemplateCanonicalProfile = {
+  schema_version?: 'canonical-template-profile/v1' | string;
+  identity?: TemplateIdentity;
+  positioning?: TemplatePositioning;
+  source_scope_rules?: TemplateIntent['source_scope_rules'];
+  extraction_intent?: TemplateExtractionTarget[];
+  derivation_intent?: TemplateDerivationIntent[];
+  projection_intent?: TemplateProjectionIntent[];
+  review_policy?: TemplateReviewPolicy;
+  presentation_hints?: TemplatePresentationHints;
+  evolution?: TemplateEvolution;
+};
+
+export type TemplateIntent = {
+  source_scope_rules?: {
+    mode?: 'single_document' | 'workspace' | 'bundle';
+    allowed_roles?: string[];
+    required_document_ids?: string[];
+  };
+  extraction_targets?: TemplateExtractionTarget[];
+  derivation_intents?: TemplateDerivationIntent[];
+  projection_intents?: TemplateProjectionIntent[];
+  review_policy?: TemplateReviewPolicy;
+  presentation_hints?: TemplatePresentationHints;
+};
+
 export type TemplateVariable = {
   key: string;
   type: string;
@@ -81,8 +177,12 @@ export type TemplateSource = {
 
 export type TemplateSpecV1 = {
   template_id?: string;
+  template_profile?: 'canonical_intent_v1' | string;
   template_source?: TemplateSource;
   meta: { name: string; kind: string } & Record<string, unknown>;
+  canonical_profile?: TemplateCanonicalProfile;
+  compatibility?: TemplateCompatibility;
+  intent?: TemplateIntent;
   options?: TemplateOptions;
   scope?: TemplateScope;
   bundle_schema?: TemplateBundleSchema;
@@ -90,7 +190,7 @@ export type TemplateSpecV1 = {
   outputs?: string[];
   modules_v2?: TemplateModuleV2[];
   custom_modules?: TemplateModuleV2[];
-  variables: TemplateVariable[];
+  variables?: TemplateVariable[];
   record_types?: TemplateRecordType[];
   rules?: TemplateRule[];
   checks?: TemplateCheck[];

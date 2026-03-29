@@ -1,5 +1,10 @@
 import type { DocumentType } from '@/types/database';
-import { playbookMatchesName, sortSystemPlaybooks } from '@/lib/template-library';
+import {
+  getTemplateGroup,
+  getTemplateRecommendedDocumentTypes,
+  playbookMatchesName,
+  sortSystemPlaybooks,
+} from '@/lib/template-library';
 import type { TemplateLibraryPlaybookLike, TemplateRecord } from '@/types/templates';
 
 type PlaybookLike = TemplateLibraryPlaybookLike & Pick<TemplateRecord, 'id' | 'current_version_id'>;
@@ -124,6 +129,22 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {
   const systemPlaybooks = sortSystemPlaybooks(playbooks.filter((playbook) => playbook.is_system_preset));
+  const normalizedDocumentType = String(metadata.documentType || '').trim().toLowerCase();
+  if (normalizedDocumentType) {
+    const metadataRecommended = [...systemPlaybooks]
+      .map((playbook) => {
+        const recommendedTypes = getTemplateRecommendedDocumentTypes(playbook);
+        if (!recommendedTypes.includes(normalizedDocumentType)) return { playbook, score: -1 };
+        const group = getTemplateGroup(playbook);
+        return {
+          playbook,
+          score: group === 'specializations' ? 200 : 100,
+        };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+    if (metadataRecommended[0]) return metadataRecommended[0].playbook;
+  }
   const preferredNames = recommendedSystemPlaybookNames(metadata);
 
   for (const name of preferredNames) {

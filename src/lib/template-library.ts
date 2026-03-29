@@ -199,6 +199,28 @@ function specMeta(playbook: TemplateLibraryPlaybookLike): Record<string, unknown
     : {};
 }
 
+function canonicalProfile(playbook: TemplateLibraryPlaybookLike): Record<string, unknown> {
+  return playbook.current_version?.spec_json?.canonical_profile &&
+    typeof playbook.current_version.spec_json.canonical_profile === 'object' &&
+    !Array.isArray(playbook.current_version.spec_json.canonical_profile)
+    ? (playbook.current_version.spec_json.canonical_profile as Record<string, unknown>)
+    : {};
+}
+
+function canonicalIdentity(playbook: TemplateLibraryPlaybookLike): Record<string, unknown> {
+  const profile = canonicalProfile(playbook);
+  return profile.identity && typeof profile.identity === 'object' && !Array.isArray(profile.identity)
+    ? (profile.identity as Record<string, unknown>)
+    : {};
+}
+
+function canonicalPositioning(playbook: TemplateLibraryPlaybookLike): Record<string, unknown> {
+  const profile = canonicalProfile(playbook);
+  return profile.positioning && typeof profile.positioning === 'object' && !Array.isArray(profile.positioning)
+    ? (profile.positioning as Record<string, unknown>)
+    : {};
+}
+
 function metaLibrarySection(playbook: TemplateLibraryPlaybookLike): string {
   return String(specMeta(playbook).library_section || '').trim().toLowerCase();
 }
@@ -222,11 +244,15 @@ export function resolveTemplateDefinition(playbookOrName: TemplateLibraryPlayboo
 
 export function getTemplateAliases(playbook: TemplateLibraryPlaybookLike): string[] {
   const metaAliases = specMeta(playbook).aliases;
+  const canonicalAliases = canonicalIdentity(playbook).aliases;
   const aliases = Array.isArray(metaAliases)
     ? metaAliases.map((value) => String(value || '').trim()).filter(Boolean)
     : [];
+  const canonical = Array.isArray(canonicalAliases)
+    ? canonicalAliases.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
   const mapped = resolveTemplateDefinition(playbook)?.aliases || [];
-  return Array.from(new Set([playbook.name, ...aliases, ...mapped]));
+  return Array.from(new Set([playbook.name, ...aliases, ...canonical, ...mapped]));
 }
 
 export function playbookMatchesName(playbook: TemplateLibraryPlaybookLike, candidate: string): boolean {
@@ -240,6 +266,8 @@ export function getTemplateGroup(playbook: TemplateLibraryPlaybookLike): Templat
   if (section === 'zohal_templates') return 'zohal_templates';
   if (section === 'specializations') return 'specializations';
   if (section === 'deprecated') return 'specializations';
+  const specializationOf = String(canonicalPositioning(playbook).specialization_of || '').trim();
+  if (specializationOf) return 'specializations';
   const meta = specMeta(playbook);
   const fromMeta = String(meta.library_group || '').trim().toLowerCase();
   if (fromMeta === 'zohal_templates' || fromMeta === 'specializations') {
@@ -271,6 +299,8 @@ export function getTemplateRank(playbook: TemplateLibraryPlaybookLike): number {
 
 export function getTemplateEmoji(playbook: TemplateLibraryPlaybookLike): string {
   if (!playbook.is_system_preset) return '📝';
+  const canonicalEmoji = String(canonicalIdentity(playbook).icon_emoji || '').trim();
+  if (canonicalEmoji) return canonicalEmoji;
   return resolveTemplateDefinition(playbook)?.emoji || '📋';
 }
 
@@ -281,9 +311,26 @@ export function getTemplateDescription(playbook: TemplateLibraryPlaybookLike, lo
   const meta = specMeta(playbook);
   const localizedMeta = locale === 'ar' ? meta.description_ar : meta.description;
   if (typeof localizedMeta === 'string' && localizedMeta.trim()) return localizedMeta.trim();
+  const positioning = canonicalPositioning(playbook);
+  const canonicalPurpose = locale === 'ar'
+    ? String(positioning.purpose_ar || '').trim()
+    : String(positioning.purpose || '').trim();
+  if (canonicalPurpose) return canonicalPurpose;
   const definition = resolveTemplateDefinition(playbook);
   if (!definition) return locale === 'ar' ? 'استخراج بدرجة دليل لهذا النوع من المستندات.' : 'Evidence-grade extraction for this document type.';
   return locale === 'ar' ? definition.descriptionAr : definition.description;
+}
+
+export function getTemplateRecommendedDocumentTypes(playbook: TemplateLibraryPlaybookLike): string[] {
+  const positioningTypes = canonicalPositioning(playbook).recommended_document_types;
+  if (Array.isArray(positioningTypes)) {
+    return positioningTypes.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+  }
+  const metaTypes = specMeta(playbook).recommended_document_types;
+  if (Array.isArray(metaTypes)) {
+    return metaTypes.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+  }
+  return [];
 }
 
 export function getTemplateGroupLabel(group: TemplateLibraryGroup, locale: 'en' | 'ar'): string {

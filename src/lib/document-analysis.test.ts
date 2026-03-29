@@ -130,4 +130,48 @@ describe('document analysis template recommendations', () => {
 
     expect(playbook?.name).toBe('Renewal Radar');
   });
+
+  it('prefers stored recommendation metadata before name heuristics', () => {
+    const playbook = selectRecommendedPlaybook(
+      [
+        {
+          id: 'pb-investor',
+          name: 'Investor Reporting Dashboard',
+          is_system_preset: true,
+          current_version: {
+            id: 'v-investor',
+            version_number: 1,
+            spec_json: {
+              template_id: 'investor_reporting_dashboard',
+              meta: { name: 'Investor Reporting Dashboard', kind: 'document' },
+              canonical_profile: {
+                positioning: {
+                  recommended_document_types: ['financial_report'],
+                },
+              },
+            },
+          },
+        },
+        {
+          id: 'pb-contract',
+          name: 'Contract Compliance Workspace',
+          is_system_preset: true,
+          current_version: {
+            id: 'v-contract',
+            version_number: 1,
+            spec_json: {
+              template_id: 'contract_analysis',
+              meta: { name: 'Contract Compliance Workspace', kind: 'document' },
+            },
+          },
+        },
+      ],
+      {
+        documentType: 'financial_report',
+        title: 'FY2025 Annual Report',
+      }
+    );
+
+    expect(playbook?.name).toBe('Investor Reporting Dashboard');
+  });
 });
