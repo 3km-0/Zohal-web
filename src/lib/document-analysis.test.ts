@@ -16,6 +16,15 @@ describe('document analysis template recommendations', () => {
     ).toBe('Renewal Radar');
   });
 
+  it('prefers contract compliance workspace as the broad default contract template', () => {
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'contract',
+        title: 'Master Services Agreement',
+      })[0]
+    ).toBe('Contract Compliance Workspace');
+  });
+
   it('matches renamed templates via aliases when selecting a playbook', () => {
     const playbook = selectRecommendedPlaybook(
       [
@@ -59,8 +68,26 @@ describe('document analysis template recommendations', () => {
     ).toBe('Vendor Onboarding Review');
   });
 
+  it('routes financial reports and research corpora into the new top-level templates', () => {
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'financial_report',
+        title: 'FY2025 Annual Report',
+      })[0]
+    ).toBe('Investor Reporting Dashboard');
+
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'paper',
+        title: 'Meta-analysis of cardiovascular outcomes',
+      })[0]
+    ).toBe('Research Synthesis Site');
+  });
+
   it('marks onboarding documents as structured-analysis capable', () => {
     expect(supportsStructuredAnalysis('onboarding_doc')).toBe(true);
+    expect(supportsStructuredAnalysis('paper')).toBe(true);
+    expect(supportsStructuredAnalysis('textbook')).toBe(true);
   });
 
   it('uses classifier-ranked template ids before heuristic fallback', () => {

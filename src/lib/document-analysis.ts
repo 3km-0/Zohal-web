@@ -58,15 +58,7 @@ export function getAnalysisLabelKey(documentType?: string | null) {
 
 export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): string[] {
   const { documentType } = metadata;
-  if (
-    documentType !== 'contract' &&
-    documentType !== 'legal_filing' &&
-    documentType !== 'policy' &&
-    documentType !== 'invoice' &&
-    documentType !== 'onboarding_doc'
-  ) {
-    return [];
-  }
+  if (!documentType) return [];
 
   const searchableText = normalizedDocumentText(metadata);
   const leaseKeywords = ['lease', 'tenant', 'landlord', 'rent', 'rental', 'property', 'real estate', 'tenancy', 'premises', 'sublease'];
@@ -80,41 +72,54 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   const onboardingKeywords = ['vendor onboarding', 'supplier onboarding', 'trade license', 'registration', 'vat certificate', 'iban', 'bank details', 'compliance certificate'];
   const ksaKeywords = ['ksa', 'saudi', 'saudi arabia', 'riyadh', 'jeddah', 'sar', 'المملكة', 'السعودية', 'وزارة', 'هيئة'];
 
+  if (documentType === 'financial_report') {
+    return ['Investor Reporting Dashboard'];
+  }
+  if (documentType === 'paper' || documentType === 'research') {
+    return ['Research Synthesis Site'];
+  }
+  if (documentType === 'textbook' || documentType === 'lecture_notes' || documentType === 'problem_set') {
+    return ['Course Learning Portal'];
+  }
   if (documentType === 'invoice') {
-    return ['Vendor Invoice Exceptions', 'General Contract Analysis'];
+    return ['Vendor Invoice Exceptions', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (documentType === 'onboarding_doc' || containsAny(searchableText, onboardingKeywords)) {
-    return ['Vendor Onboarding Review', 'General Contract Analysis'];
+    return ['Vendor Onboarding Review', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (documentType === 'policy' || containsAny(searchableText, complianceKeywords)) {
-    return ['Playbook / Compliance Review', 'Policy & Regulatory Compliance Review', 'General Contract Analysis'];
+    return ['Policy & Regulatory Portal', 'Policy & Regulatory Compliance Review', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, amendmentKeywords)) {
-    return ['Amendment Conflict Review', 'General Contract Analysis'];
+    return ['Amendment Conflict Review', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, renewalKeywords)) {
-    return ['Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)', 'General Contract Analysis'];
+    return ['Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, obligationKeywords)) {
-    return ['Obligations Tracker', 'General Contract Analysis'];
+    return ['Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, leaseKeywords)) {
-    return ['Commercial Lease Review', 'Lease Review', 'General Contract Analysis'];
+    return ['Commercial Lease Review', 'Lease Review', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, employmentKeywords)) {
-    return ['Employment Document Review', 'General Contract Analysis'];
+    return ['Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, insuranceKeywords)) {
-    return ['Insurance Claims & Policy Review', 'General Contract Analysis'];
+    return ['Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, vendorKeywords)) {
-    return ['General Contract Analysis', 'Vendor / SaaS Contract Review'];
+    return ['Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis', 'Vendor / SaaS Contract Review'];
   }
   if (documentType === 'legal_filing' || containsAny(searchableText, ksaKeywords)) {
-    return ['KSA Contract Checklist (Contract-Only)', 'General Contract Analysis'];
+    return ['KSA Contract Checklist (Contract-Only)', 'Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis'];
   }
 
-  return ['General Contract Analysis', 'Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)'];
+  if (documentType === 'contract' || documentType === 'legal_filing' || documentType === 'policy') {
+    return ['Contract Compliance Workspace', 'Contract Compliance Review', 'General Contract Analysis', 'Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)'];
+  }
+
+  return [];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {
@@ -161,6 +166,11 @@ export function supportsStructuredAnalysis(documentType?: DocumentType | string 
     documentType === 'financial_report' ||
     documentType === 'invoice' ||
     documentType === 'meeting_notes' ||
-    documentType === 'onboarding_doc'
+    documentType === 'onboarding_doc' ||
+    documentType === 'paper' ||
+    documentType === 'research' ||
+    documentType === 'textbook' ||
+    documentType === 'lecture_notes' ||
+    documentType === 'problem_set'
   );
 }

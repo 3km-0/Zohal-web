@@ -205,10 +205,8 @@ export function RunAnalysisModal(props: {
     (
       key:
         | 'all'
-        | 'contract_operations'
-        | 'finance_operations'
-        | 'adjacent_domains'
-        | 'variants'
+        | 'zohal_templates'
+        | 'specializations'
         | 'custom'
         | 'systemLabel'
         | 'search'
@@ -218,10 +216,8 @@ export function RunAnalysisModal(props: {
     ) => {
       const ar = {
         all: 'الكل',
-        contract_operations: 'عمليات العقود',
-        finance_operations: 'المالية والعمليات',
-        adjacent_domains: 'مجالات مجاورة',
-        variants: 'النسخ المتخصصة',
+        zohal_templates: 'قوالب زحل',
+        specializations: 'التخصصات',
         custom: 'مخصص',
         systemLabel: 'من زحل',
         search: 'ابحث في القوالب…',
@@ -230,10 +226,8 @@ export function RunAnalysisModal(props: {
       } as const;
       const en = {
         all: 'All',
-        contract_operations: 'Contract Ops',
-        finance_operations: 'Finance Ops',
-        adjacent_domains: 'Adjacent',
-        variants: 'Variants',
+        zohal_templates: 'Zohal Templates',
+        specializations: 'Specializations',
         custom: 'Custom',
         systemLabel: 'System',
         search: 'Search templates…',
@@ -255,14 +249,10 @@ export function RunAnalysisModal(props: {
       switch (category) {
         case 'all':
           return localizedTemplateText('all');
-        case 'contract_operations':
-          return localizedTemplateText('contract_operations');
-        case 'finance_operations':
-          return localizedTemplateText('finance_operations');
-        case 'adjacent_domains':
-          return localizedTemplateText('adjacent_domains');
-        case 'variants':
-          return localizedTemplateText('variants');
+        case 'zohal_templates':
+          return localizedTemplateText('zohal_templates');
+        case 'specializations':
+          return localizedTemplateText('specializations');
         case 'custom':
           return localizedTemplateText('custom');
       }
@@ -638,7 +628,7 @@ export function RunAnalysisModal(props: {
                       placeholder={localizedTemplateText('search')}
                     />
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                      {(['all', 'contract_operations', 'finance_operations', 'adjacent_domains', 'variants', 'custom'] as TemplateFilter[]).map((filter) => (
+                      {(['all', 'zohal_templates', 'specializations', 'custom'] as TemplateFilter[]).map((filter) => (
                         <button
                           key={filter}
                           type="button"

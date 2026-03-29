@@ -1,8 +1,6 @@
 export type TemplateLibraryGroup =
-  | 'contract_operations'
-  | 'finance_operations'
-  | 'adjacent_domains'
-  | 'variants'
+  | 'zohal_templates'
+  | 'specializations'
   | 'custom';
 
 export type TemplateFilter = 'all' | TemplateLibraryGroup;
