@@ -81,40 +81,40 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   const ksaKeywords = ['ksa', 'saudi', 'saudi arabia', 'riyadh', 'jeddah', 'sar', 'المملكة', 'السعودية', 'وزارة', 'هيئة'];
 
   if (documentType === 'invoice') {
-    return ['Vendor Invoice Exceptions', 'General Contract Analysis'];
+    return ['Vendor Invoice Exceptions', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (documentType === 'onboarding_doc' || containsAny(searchableText, onboardingKeywords)) {
-    return ['Vendor Onboarding Review', 'General Contract Analysis'];
+    return ['Vendor Onboarding Review', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (documentType === 'policy' || containsAny(searchableText, complianceKeywords)) {
-    return ['Playbook / Compliance Review', 'Policy & Regulatory Compliance Review', 'General Contract Analysis'];
+    return ['Playbook / Compliance Review', 'Policy & Regulatory Compliance Review', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, amendmentKeywords)) {
-    return ['Amendment Conflict Review', 'General Contract Analysis'];
+    return ['Amendment Conflict Review', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, renewalKeywords)) {
-    return ['Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)', 'General Contract Analysis'];
+    return ['Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, obligationKeywords)) {
-    return ['Obligations Tracker', 'General Contract Analysis'];
+    return ['Obligations Tracker', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, leaseKeywords)) {
-    return ['Commercial Lease Review', 'Lease Review', 'General Contract Analysis'];
+    return ['Commercial Lease Review', 'Lease Review', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, employmentKeywords)) {
-    return ['Employment Document Review', 'General Contract Analysis'];
+    return ['Employment Document Review', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, insuranceKeywords)) {
-    return ['Insurance Claims & Policy Review', 'General Contract Analysis'];
+    return ['Insurance Claims & Policy Review', 'Contract Compliance Review', 'General Contract Analysis'];
   }
   if (containsAny(searchableText, vendorKeywords)) {
-    return ['General Contract Analysis', 'Vendor / SaaS Contract Review'];
+    return ['Contract Compliance Review', 'General Contract Analysis', 'Vendor / SaaS Contract Review'];
   }
   if (documentType === 'legal_filing' || containsAny(searchableText, ksaKeywords)) {
-    return ['KSA Contract Checklist (Contract-Only)', 'General Contract Analysis'];
+    return ['KSA Contract Checklist (Contract-Only)', 'Contract Compliance Review', 'General Contract Analysis'];
   }
 
-  return ['General Contract Analysis', 'Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)'];
+  return ['Contract Compliance Review', 'General Contract Analysis', 'Renewal Radar', 'Renewal Pack', 'Default (Renewal Pack)'];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {

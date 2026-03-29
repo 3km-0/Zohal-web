@@ -16,6 +16,15 @@ describe('document analysis template recommendations', () => {
     ).toBe('Renewal Radar');
   });
 
+  it('prefers contract compliance review as the broad default contract template', () => {
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'contract',
+        title: 'Master Services Agreement',
+      })[0]
+    ).toBe('Contract Compliance Review');
+  });
+
   it('matches renamed templates via aliases when selecting a playbook', () => {
     const playbook = selectRecommendedPlaybook(
       [

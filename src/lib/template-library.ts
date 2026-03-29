@@ -14,12 +14,13 @@ type TemplateDefinition = {
 
 const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   {
-    canonicalName: 'General Contract Analysis',
+    canonicalName: 'Contract Compliance Review',
     group: 'contract_operations',
     rank: 10,
     emoji: '📋',
-    description: 'Broad contract review with verified facts, clause coverage, obligations, and risk flags.',
-    descriptionAr: 'مراجعة عامة للعقود مع حقائق موثقة وتغطية للبنود والالتزامات والمخاطر.',
+    description: 'Broad contract review focused on verified obligations, compliance gaps, key terms, and review priorities.',
+    descriptionAr: 'مراجعة شاملة للعقود تركز على الالتزامات الموثقة وفجوات الامتثال والشروط الأساسية وأولويات المراجعة.',
+    aliases: ['General Contract Analysis'],
   },
   {
     canonicalName: 'Renewal Radar',
@@ -100,8 +101,8 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     group: 'variants',
     rank: 200,
     emoji: '💻',
-    description: 'A vendor-focused specialization of general contract analysis.',
-    descriptionAr: 'تخصص يركز على عقود الموردين والبرمجيات بوصفه امتداداً لمراجعة العقود العامة.',
+    description: 'A vendor-focused specialization of the broad contract compliance review workflow.',
+    descriptionAr: 'تخصص يركز على عقود الموردين والبرمجيات بوصفه امتداداً لمسار مراجعة امتثال العقود.',
     variant: true,
   },
   {
@@ -109,8 +110,8 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     group: 'variants',
     rank: 210,
     emoji: '🇸🇦',
-    description: 'A Saudi-specific checklist layered on the general contract-analysis spine.',
-    descriptionAr: 'قائمة تحقق سعودية مبنية على مسار مراجعة العقود العامة.',
+    description: 'A Saudi-specific checklist layered on the contract compliance review spine.',
+    descriptionAr: 'قائمة تحقق سعودية مبنية على مسار مراجعة امتثال العقود.',
     variant: true,
   },
   {
