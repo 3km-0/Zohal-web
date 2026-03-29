@@ -133,6 +133,23 @@ function summarizeCompiledSpec(spec: PlaybookSpecV1) {
   };
 }
 
+function summarizeIntentSpec(spec: PlaybookSpecV1) {
+  const intent = spec.intent || {};
+  const extractionTargets = Array.isArray(intent.extraction_targets) ? intent.extraction_targets : [];
+  const derivationIntents = Array.isArray(intent.derivation_intents) ? intent.derivation_intents : [];
+  const projectionIntents = Array.isArray(intent.projection_intents) ? intent.projection_intents : [];
+  const version = spec.template_source?.version || spec.current_version_id || null;
+  return {
+    extractionCount: extractionTargets.length,
+    derivationCount: derivationIntents.length,
+    projectionCount: projectionIntents.length,
+    extractionLabels: extractionTargets.map((target) => target.label || target.id).filter(Boolean).slice(0, 8),
+    derivationLabels: derivationIntents.map((target) => target.label || target.id).filter(Boolean).slice(0, 8),
+    projectionLabels: projectionIntents.map((projection) => projection.title || projection.route_id).filter(Boolean).slice(0, 8),
+    version,
+  };
+}
+
 function normalizeSpec(input: any, fallbackName: string): PlaybookSpecV1 {
   const base = input && typeof input === 'object' && !Array.isArray(input) ? { ...input } : {};
   const baseMeta = input?.meta && typeof input.meta === 'object' && !Array.isArray(input.meta) ? { ...input.meta } : {};
@@ -407,6 +424,7 @@ export default function WorkspacePlaybooksPage() {
   const searchParams = useSearchParams();
   const workspaceId = params.id as string;
   const requestedReturnTo = searchParams.get('returnTo');
+  const operatorMode = searchParams.get('operator') === '1';
   const backHref =
     requestedReturnTo && requestedReturnTo.startsWith('/')
       ? requestedReturnTo
@@ -425,6 +443,7 @@ export default function WorkspacePlaybooksPage() {
 
   // Draft editor state
   const [newName, setNewName] = useState('');
+  const [customBrief, setCustomBrief] = useState('');
   const [spec, setSpec] = useState<PlaybookSpecV1>({
     meta: { name: '', kind: 'document' },
     options: { strictness: 'default', enable_verifier: false, language: 'en' },
@@ -490,6 +509,7 @@ export default function WorkspacePlaybooksPage() {
   const isSystemPreset = selected?.is_system_preset === true;
   const isReadOnly = isSystemPreset;
   const [duplicating, setDuplicating] = useState(false);
+  const [creatingCustom, setCreatingCustom] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -592,43 +612,26 @@ export default function WorkspacePlaybooksPage() {
     }
   }
 
-  async function createPlaybook() {
-    if (!newName.trim()) return;
-    setSaving(true);
+  async function createCustomTemplate() {
+    if (!newName.trim() || !customBrief.trim()) return;
+    setCreatingCustom(true);
     try {
-      const minimal: PlaybookSpecV1 = {
-        meta: { name: newName.trim(), kind: 'document' },
-        options: { strictness: 'default', enable_verifier: false, language: 'en' },
-        intent: {
-          extraction_targets: [],
-          derivation_intents: [],
-          projection_intents: [],
-          review_policy: {
-            enable_verifier: false,
-            selective: true,
-            high_impact_only: false,
-            require_anchor_verification: true,
-          },
-        },
-        modules: [],
-        outputs: ['overview'],
-        modules_v2: [],
-        variables: [],
-        checks: [],
-      };
-      const { data, error } = await supabase.functions.invoke('playbooks-create', {
+      const { data, error } = await supabase.functions.invoke('playbooks-save-draft', {
         body: {
           workspace_id: workspaceId,
-          name: newName.trim(),
-          kind: 'document',
-          initial_spec_json: minimal,
-          changelog: 'Initial draft',
+          template_name: newName.trim(),
+          template_source_text: customBrief.trim(),
+          language: 'en',
+          document_type: 'document',
+          publish: false,
+          changelog: 'Initial custom template draft',
         },
       });
       if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || 'Failed to create playbook');
-      showSuccess('Playbook created');
+      if (!data?.ok) throw new Error(data?.message || 'Failed to create custom template');
+      showSuccess('Custom template created');
       setNewName('');
+      setCustomBrief('');
       const rows = await loadPlaybooks();
       const createdId = String(data.playbook?.id || '').trim();
       if (createdId) {
@@ -643,7 +646,7 @@ export default function WorkspacePlaybooksPage() {
     } catch (e) {
       showError(e, 'playbooks');
     } finally {
-      setSaving(false);
+      setCreatingCustom(false);
     }
   }
 
@@ -763,29 +766,42 @@ export default function WorkspacePlaybooksPage() {
         </div>
 
         <Card className="p-4 border-dashed">
-          <div className="text-sm font-semibold text-text">Advanced recipe management</div>
+          <div className="text-sm font-semibold text-text">Template-first authoring</div>
           <p className="mt-1 text-sm text-text-soft">
-            Templates stay versioned and inspectable here for operator workflows, while normal analysis flows should rely on
-            automatic recipe selection and the per-run provenance panel.
+            Normal users should choose a Zohal template or describe a custom experience in natural language. The agent compiles that into versioned
+            extraction, derivation, and projection intent behind the scenes.
           </p>
+          {operatorMode && (
+            <p className="mt-2 text-xs text-text-soft">
+              Operator mode is enabled, so the deprecated low-level recipe editor is available below for compatibility work only.
+            </p>
+          )}
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left: unified templates panel */}
           <div className="lg:col-span-1">
             <ScholarNotebookCard header={t('list.title')}>
-              {/* Create new - inline at top */}
+              {/* Create custom */}
               <div className="p-3 border-b border-border bg-surface-alt/50">
-                <div className="flex gap-2">
+                <div className="space-y-2">
                   <Input
-                    placeholder={t('list.newNamePlaceholder')}
+                    placeholder="Custom template name"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    disabled={saving}
+                    disabled={creatingCustom}
                     className="text-sm"
                   />
-                  <Button onClick={createPlaybook} disabled={saving || !newName.trim()} size="sm">
-                    <Plus className="w-4 h-4" />
+                  <textarea
+                    className="w-full min-h-[120px] rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+                    placeholder="Describe the analysis and portal you want. Example: Build a vendor onboarding workspace that extracts supplier identity, bank details, compliance documents, expiry dates, and then derives onboarding blockers and a route-based portal with overview, extracted evidence, and blockers."
+                    value={customBrief}
+                    onChange={(e) => setCustomBrief(e.target.value)}
+                    disabled={creatingCustom}
+                  />
+                  <Button onClick={createCustomTemplate} disabled={creatingCustom || !newName.trim() || !customBrief.trim()} size="sm">
+                    {creatingCustom ? <Spinner size="sm" /> : <Plus className="w-4 h-4" />}
+                    Create Custom
                   </Button>
                 </div>
               </div>
@@ -794,46 +810,59 @@ export default function WorkspacePlaybooksPage() {
               {playbooks.length === 0 ? (
                 <div className="p-4 text-sm text-text-soft">{t('list.empty')}</div>
               ) : (
-                <div className="divide-y divide-border">
-                  {playbooks.map((pb) => (
-                    <button
-                      key={pb.id}
-                      onClick={() => selectPlaybook(pb.id)}
-                      className={cn(
-                        'w-full text-left px-4 py-3 transition-colors relative',
-                        pb.id === selectedId
-                          ? 'bg-accent/10 border-l-2 border-l-accent'
-                          : 'hover:bg-surface-alt border-l-2 border-l-transparent'
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {pb.is_system_preset && (
-                            <Lock className="w-3.5 h-3.5 text-text-soft flex-shrink-0" />
-                          )}
-                          <span className={cn(
-                            'font-semibold truncate',
-                            pb.id === selectedId ? 'text-accent' : 'text-text'
-                          )}>{pb.name}</span>
+                <div>
+                  {[
+                    { title: 'Zohal templates', rows: playbooks.filter((pb) => pb.is_system_preset) },
+                    { title: 'Workspace custom', rows: playbooks.filter((pb) => !pb.is_system_preset) },
+                  ].map((group) =>
+                    group.rows.length > 0 ? (
+                      <div key={group.title} className="border-t border-border first:border-t-0">
+                        <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-text-soft bg-surface-alt/30">
+                          {group.title}
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {pb.is_system_preset ? (
-                            <span className="px-2 py-0.5 rounded-scholar text-xs font-medium bg-surface-alt text-text-soft">
-                              System
-                            </span>
-                          ) : (
-                            statusBadge(pb.status || 'draft')
-                          )}
+                        <div className="divide-y divide-border">
+                          {group.rows.map((pb) => (
+                            <button
+                              key={pb.id}
+                              onClick={() => selectPlaybook(pb.id)}
+                              className={cn(
+                                'w-full text-left px-4 py-3 transition-colors relative',
+                                pb.id === selectedId
+                                  ? 'bg-accent/10 border-l-2 border-l-accent'
+                                  : 'hover:bg-surface-alt border-l-2 border-l-transparent'
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {pb.is_system_preset && (
+                                    <Lock className="w-3.5 h-3.5 text-text-soft flex-shrink-0" />
+                                  )}
+                                  <span className={cn('font-semibold truncate', pb.id === selectedId ? 'text-accent' : 'text-text')}>
+                                    {pb.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {pb.is_system_preset ? (
+                                    <span className="px-2 py-0.5 rounded-scholar text-xs font-medium bg-surface-alt text-text-soft">
+                                      Zohal
+                                    </span>
+                                  ) : (
+                                    statusBadge(pb.status || 'draft')
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-xs text-text-soft mt-1 pl-5">
+                                {pb.is_system_preset ? `Version ${pb.current_version?.version_number ?? '—'} • Duplicate to customize` : `Version ${pb.current_version?.version_number ?? '—'}`}
+                              </div>
+                              {pb.id === selectedId && (
+                                <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent rtl-flip" />
+                              )}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      <div className="text-xs text-text-soft mt-1 pl-5">
-                        {pb.is_system_preset ? 'Read-only • Duplicate to customize' : `v${pb.current_version?.version_number ?? '—'}`}
-                      </div>
-                      {pb.id === selectedId && (
-                        <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent rtl-flip" />
-                      )}
-                    </button>
-                  ))}
+                    ) : null
+                  )}
                 </div>
               )}
             </ScholarNotebookCard>
@@ -909,11 +938,10 @@ export default function WorkspacePlaybooksPage() {
                         </button>
                       )}
                       {!isSystemPreset && statusBadge(selected.status || 'draft')}
-                      {!isSystemPreset && (
-                        <span className="text-xs text-text-soft">
-                          {isSaving ? t('builder.saving') : lastSaved ? `${t('builder.saved')} ${lastSaved.toLocaleTimeString()}` : ''}
-                        </span>
-                      )}
+                      <span className="text-xs text-text-soft">
+                        Version {selected.current_version?.version_number ?? '—'}
+                        {!isSystemPreset && (isSaving ? ` • ${t('builder.saving')}` : lastSaved ? ` • ${t('builder.saved')} ${lastSaved.toLocaleTimeString()}` : '')}
+                      </span>
                     </div>
                     {isSystemPreset ? (
                       <Button onClick={duplicateTemplate} disabled={duplicating} variant="primary" size="sm">
@@ -934,7 +962,7 @@ export default function WorkspacePlaybooksPage() {
                     )}
                   </div>
 
-                  <div className="p-4 space-y-4 border-t border-border">
+                    <div className="p-4 space-y-4 border-t border-border">
                     <div className="rounded-scholar border border-border bg-surface-alt/40 p-4 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium text-text">
                         <ShieldCheck className="w-4 h-4" />
@@ -952,22 +980,22 @@ export default function WorkspacePlaybooksPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {(() => {
-                        const summary = summarizeCompiledSpec(spec);
+                        const summary = summarizeIntentSpec(spec);
                         return (
                           <>
                             <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Variables</div>
-                              <div className="mt-2 text-2xl font-semibold text-text">{summary.variableCount}</div>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Extraction</div>
+                              <div className="mt-2 text-2xl font-semibold text-text">{summary.extractionCount}</div>
                             </div>
                             <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Modules</div>
-                              <div className="mt-2 text-2xl font-semibold text-text">{summary.moduleCount}</div>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Derived insights</div>
+                              <div className="mt-2 text-2xl font-semibold text-text">{summary.derivationCount}</div>
                             </div>
                             <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Scope</div>
-                              <div className="mt-2 text-2xl font-semibold text-text capitalize">{summary.scope}</div>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Views</div>
+                              <div className="mt-2 text-2xl font-semibold text-text">{summary.projectionCount}</div>
                             </div>
                           </>
                         );
@@ -977,678 +1005,88 @@ export default function WorkspacePlaybooksPage() {
                     <div className="rounded-scholar border border-border bg-surface-alt/30 p-4 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium text-text">
                         <Layers className="w-4 h-4" />
-                        <span>Latest compiled output</span>
+                        <span>Latest compiled intent</span>
                       </div>
-                      {(spec.modules_v2 || []).length === 0 ? (
-                        <p className="text-sm text-text-soft">
-                          Save the draft to compile this source into a runnable template.
-                        </p>
-                      ) : (
-                        <>
-                          <div className="flex flex-wrap gap-2">
-                            {summarizeCompiledSpec(spec).moduleTitles.map((title) => (
-                              <Badge key={title} variant="accent">{title}</Badge>
-                            ))}
-                          </div>
-                          {(spec.variables || []).length > 0 && (
+                      {(() => {
+                        const summary = summarizeIntentSpec(spec);
+                        const hasIntent = summary.extractionCount > 0 || summary.derivationCount > 0 || summary.projectionCount > 0;
+                        if (!hasIntent) {
+                          return (
                             <p className="text-sm text-text-soft">
-                              {(spec.variables || []).slice(0, 8).map((variable) => variable.key).join(', ')}
+                              Save the draft to compile this source into extraction, derivation, and projection intent.
                             </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                {/* Legacy builder kept hidden while source-first flow rolls out */}
-                <div className="hidden flex border-t border-border bg-surface-alt/30">
-                  {[
-                      { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length, active: activeSection === 'modules' },
-                      { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length, active: activeSection === 'variables' },
-                      { id: 'configuration' as const, label: 'Context', icon: Shield, count: (spec.bundle_schema?.roles || []).length + (spec.scope && spec.scope !== 'either' ? 1 : 0), active: isConfigurationSection },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveSection(tab.id === 'configuration' ? 'scope' : tab.id)}
-                        className={cn(
-                          'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-b-2',
-                          tab.active
-                            ? 'text-accent border-accent bg-accent/5'
-                            : 'text-text-soft border-transparent hover:text-text hover:bg-surface-alt/50'
-                        )}
-                      >
-                        <tab.icon className="w-4 h-4" />
-                        <span className="hidden sm:inline">{tab.label}</span>
-                        {tab.count !== undefined && tab.count > 0 && (
-                          <span className={cn(
-                            'text-xs px-1.5 py-0.5 rounded-full',
-                            tab.active ? 'bg-accent/20 text-accent' : 'bg-surface-alt text-text-soft'
-                          )}>
-                            {tab.count}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Section content */}
-                <div className="hidden p-4 space-y-4">
-                  {isConfigurationSection && (
-                    <div className="rounded-scholar border border-border bg-surface-alt/40 p-3 space-y-3">
-                      <p className="text-xs text-text-soft">
-                        Context controls where this template can run and which document roles it expects. Legacy rules/checks are preserved in the saved spec but are no longer a primary authoring surface.
-                      </p>
-                      <div className="grid grid-cols-1 gap-2">
-                        {[
-                          { id: 'scope' as const, icon: Globe, label: 'Scope & Roles', subtitle: 'Define whether the template runs on one document or a bundle, and which document roles are required.' },
-                        ].map((section) => (
-                          <button
-                            key={section.id}
-                            onClick={() => setActiveSection(section.id)}
-                            className={cn(
-                              'rounded-scholar border px-3 py-2 text-left transition-colors',
-                              activeSection === section.id
-                                ? 'border-accent bg-accent/10'
-                                : 'border-border hover:border-accent/40 hover:bg-surface'
+                          );
+                        }
+                        return (
+                          <div className="space-y-3">
+                            {summary.extractionLabels.length > 0 && (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Extraction targets</div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {summary.extractionLabels.map((label) => (
+                                    <Badge key={label} variant="accent">{label}</Badge>
+                                  ))}
+                                </div>
+                              </div>
                             )}
-                          >
-                            <div className="flex items-center gap-2 text-sm font-medium text-text">
-                              <section.icon className="w-4 h-4" />
-                              <span>{section.label}</span>
-                            </div>
-                            <p className="mt-1 text-xs text-text-soft">{section.subtitle}</p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Modules section */}
-                  {activeSection === 'modules' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-text-soft">
-                          {isSystemPreset 
-                            ? 'View the modules defined in this system template.'
-                            : 'Modules tell the AI what to produce and how to structure it. Each module should return schema-shaped records with evidence.'}
-                        </p>
-                        {!isSystemPreset && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              setSpec((p) => {
-                                const id = `module_${crypto.randomUUID().replace(/-/g, '')}`;
-                                const mod = {
-                                  id,
-                                  title: 'New Module',
-                                  prompt: defaultModulePrompt(id),
-                                  json_schema: { type: 'object', properties: {}, required: [] } as Record<string, unknown>,
-                                  enabled: true,
-                                  show_in_report: true,
-                                };
-                                return syncLegacyFromModulesV2({ ...p, modules_v2: [...(p.modules_v2 || []), mod] });
-                              })
-                            }
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add Module
-                          </Button>
-                        )}
-                      </div>
-
-                      {(spec.modules_v2 || []).length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
-                          No modules yet. Click &ldquo;Add Module&rdquo; to create one.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {(spec.modules_v2 || []).map((m, idx) => (
-                            <div key={`${m.id}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 space-y-1">
-                                  <Input
-                                    value={m.title}
-                                    disabled={isReadOnly}
-                                    onChange={(e) =>
-                                      setSpec((p) => {
-                                        const mods = (p.modules_v2 || []).slice();
-                                        mods[idx] = { ...mods[idx], title: e.target.value };
-                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                      })
-                                    }
-                                    placeholder="Module title"
-                                    className="font-semibold"
-                                  />
-                                  <div className="text-xs text-text-soft">{m.id}</div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <ScholarToggle
-                                    label="Enabled"
-                                    checked={m.enabled !== false}
-                                    disabled={isReadOnly}
-                                    onCheckedChange={(checked) =>
-                                      setSpec((p) => {
-                                        const mods = (p.modules_v2 || []).slice();
-                                        mods[idx] = { ...mods[idx], enabled: checked };
-                                        return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                      })
-                                    }
-                                  />
-                                  {!isSystemPreset && (
-                                    <Button
-                                      variant="danger"
-                                      size="sm"
-                                      onClick={() => {
-                                        if (!window.confirm(t('builder.confirmRemoveModule'))) return;
-                                        setSpec((p) => {
-                                          const mods = (p.modules_v2 || []).filter((_, i) => i !== idx);
-                                          return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                        });
-                                      }}
-                                    >
-                                      Remove
-                                    </Button>
-                                  )}
+                            {summary.derivationLabels.length > 0 && (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Derived insights</div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {summary.derivationLabels.map((label) => (
+                                    <Badge key={label} variant="warning">{label}</Badge>
+                                  ))}
                                 </div>
                               </div>
-
-                              <div className="space-y-1">
-                                <label className="text-sm font-semibold text-text-soft">Prompt</label>
-                                <textarea
-                                  className="w-full min-h-[80px] px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
-                                  value={m.prompt}
-                                  disabled={isReadOnly}
-                                  onChange={(e) =>
-                                    setSpec((p) => {
-                                      const mods = (p.modules_v2 || []).slice();
-                                      mods[idx] = { ...mods[idx], prompt: e.target.value };
-                                      return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                    })
-                                  }
-                                  placeholder="Extraction instructions for this module..."
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setExpandedSchemaIds((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(m.id)) next.delete(m.id);
-                                      else next.add(m.id);
-                                      return next;
-                                    })
-                                  }
-                                  className="flex items-center gap-2 text-sm text-text-soft hover:text-text transition-colors"
-                                >
-                                  {expandedSchemaIds.has(m.id) ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4 rtl-flip" />
-                                  )}
-                                  <span className="font-semibold">JSON Schema</span>
-                                </button>
-
-                                {expandedSchemaIds.has(m.id) && (
-                                  <div className="pl-6 space-y-2">
-                                    <textarea
-                                      className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
-                                      value={customSchemaTextById[m.id] ?? JSON.stringify(m.json_schema || {}, null, 2)}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => {
-                                        const text = e.target.value;
-                                        setCustomSchemaTextById((prev) => ({ ...prev, [m.id]: text }));
-                                        try {
-                                          const parsed = JSON.parse(text);
-                                          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                                            throw new Error('schema_must_be_object');
-                                          }
-                                          setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: '' }));
-                                          setSpec((p) => {
-                                            const mods = (p.modules_v2 || []).slice();
-                                            mods[idx] = { ...mods[idx], json_schema: parsed };
-                                            return syncLegacyFromModulesV2({ ...p, modules_v2: mods });
-                                          });
-                                        } catch {
-                                          setCustomSchemaErrorById((prev) => ({ ...prev, [m.id]: 'Invalid JSON' }));
-                                        }
-                                      }}
-                                    />
-                                    {customSchemaErrorById[m.id] && (
-                                      <div className="text-xs text-error">{customSchemaErrorById[m.id]}</div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Variables section */}
-                  {activeSection === 'variables' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-text-soft">
-                          {isSystemPreset 
-                            ? 'View the variables defined in this system template.'
-                            : 'Variables are the canonical facts you want extracted and verified.'}
-                        </p>
-                        {!isSystemPreset && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              setSpec((p) => ({
-                                ...p,
-                                variables: [...p.variables, { key: `var_${p.variables.length + 1}`, type: 'text', required: false }],
-                              }))
-                            }
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add Variable
-                          </Button>
-                        )}
-                      </div>
-
-                      {spec.variables.length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
-                          No variables yet. Click &ldquo;Add Variable&rdquo; to create one.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {spec.variables.map((v, idx) => (
-                            <div key={`${v.key}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-xs font-semibold text-text-soft">Key</label>
-                                  <Input
-                                    value={v.key}
-                                    disabled={isReadOnly}
-                                    onChange={(e) =>
-                                      setSpec((p) => {
-                                        const vars = p.variables.slice();
-                                        vars[idx] = { ...vars[idx], key: e.target.value };
-                                        return { ...p, variables: vars };
-                                      })
-                                    }
-                                    placeholder="e.g. effective_date"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-xs font-semibold text-text-soft">Type</label>
-                                  <Input
-                                    value={v.type}
-                                    disabled={isReadOnly}
-                                    onChange={(e) =>
-                                      setSpec((p) => {
-                                        const vars = p.variables.slice();
-                                        vars[idx] = { ...vars[idx], type: e.target.value };
-                                        return { ...p, variables: vars };
-                                      })
-                                    }
-                                    placeholder="text|date|number|..."
-                                  />
-                                </div>
-                                <div className="flex items-end justify-between gap-2">
-                                  <ScholarToggle
-                                    label="Required"
-                                    caption="Flag if missing"
-                                    checked={v.required === true}
-                                    disabled={isReadOnly}
-                                    onCheckedChange={(checked) =>
-                                      setSpec((p) => {
-                                        const vars = p.variables.slice();
-                                        vars[idx] = { ...vars[idx], required: checked };
-                                        return { ...p, variables: vars };
-                                      })
-                                    }
-                                  />
-                                  {!isSystemPreset && (
-                                    <Button
-                                      variant="danger"
-                                      size="sm"
-                                      onClick={() => {
-                                        if (!window.confirm(t('builder.confirmRemoveVariable'))) return;
-                                        setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }));
-                                      }}
-                                    >
-                                      Remove
-                                    </Button>
-                                  )}
+                            )}
+                            {summary.projectionLabels.length > 0 && (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Views</div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {summary.projectionLabels.map((label) => (
+                                    <Badge key={label}>{label}</Badge>
+                                  ))}
                                 </div>
                               </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <Input
-                                  placeholder="min (number)"
-                                  value={v.constraints?.min ?? ''}
-                                  disabled={isReadOnly}
-                                  onChange={(e) => {
-                                    const val = e.target.value.trim();
-                                    setSpec((p) => {
-                                      const vars = p.variables.slice();
-                                      const constraints = { ...(vars[idx].constraints || {}) };
-                                      constraints.min = val === '' ? undefined : Number(val);
-                                      vars[idx] = { ...vars[idx], constraints };
-                                      return { ...p, variables: vars };
-                                    });
-                                  }}
-                                />
-                                <Input
-                                  placeholder="max (number)"
-                                  value={v.constraints?.max ?? ''}
-                                  disabled={isReadOnly}
-                                  onChange={(e) => {
-                                    const val = e.target.value.trim();
-                                    setSpec((p) => {
-                                      const vars = p.variables.slice();
-                                      const constraints = { ...(vars[idx].constraints || {}) };
-                                      constraints.max = val === '' ? undefined : Number(val);
-                                      vars[idx] = { ...vars[idx], constraints };
-                                      return { ...p, variables: vars };
-                                    });
-                                  }}
-                                />
-                                <Input
-                                  placeholder="allowed values (comma-separated)"
-                                  value={(v.constraints?.allowed_values || []).join(', ')}
-                                  disabled={isReadOnly}
-                                  onChange={(e) => {
-                                    const parts = e.target.value
-                                      .split(',')
-                                      .map((s) => s.trim())
-                                      .filter(Boolean);
-                                    setSpec((p) => {
-                                      const vars = p.variables.slice();
-                                      const constraints = { ...(vars[idx].constraints || {}) };
-                                      constraints.allowed_values = parts.length ? parts : undefined;
-                                      vars[idx] = { ...vars[idx], constraints };
-                                      return { ...p, variables: vars };
-                                    });
-                                  }}
-                                />
-                              </div>
-
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Rules section (Analysis V3 additive) */}
-                  {activeSection === 'rules' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-text-soft">{t('builder.rules.description')}</p>
-                        {!isSystemPreset && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              setSpec((p) => ({
-                                ...p,
-                                rules: [
-                                  ...(p.rules || []),
-                                  {
-                                    id: `rule_${(p.rules || []).length + 1}`,
-                                    type: 'required',
-                                    severity: 'warning',
-                                  },
-                                ],
-                              }))
-                            }
-                          >
-                            <Plus className="w-4 h-4" />
-                            {t('builder.rules.add')}
-                          </Button>
-                        )}
-                      </div>
-
-                      {(spec.rules || []).length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
-                          {t('builder.rules.empty')}
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {(spec.rules || []).map((rule, idx) => {
-                            const r = (rule || {}) as Record<string, unknown>;
-                            const ruleId = String(r.id || `rule_${idx + 1}`);
-                            return (
-                              <div key={`${ruleId}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                  <Input
-                                    placeholder="rule id"
-                                    value={String(r.id || '')}
-                                    disabled={isReadOnly}
-                                    onChange={(e) => {
-                                      const val = e.target.value.trim();
-                                      setSpec((p) => {
-                                        const rows = (p.rules || []).slice();
-                                        rows[idx] = { ...(rows[idx] as any), id: val };
-                                        return { ...p, rules: rows };
-                                      });
-                                    }}
-                                  />
-                                  <Input
-                                    placeholder="rule type"
-                                    value={String(r.type || '')}
-                                    disabled={isReadOnly}
-                                    onChange={(e) => {
-                                      const val = e.target.value.trim();
-                                      setSpec((p) => {
-                                        const rows = (p.rules || []).slice();
-                                        rows[idx] = { ...(rows[idx] as any), type: val };
-                                        return { ...p, rules: rows };
-                                      });
-                                    }}
-                                  />
-                                  <Input
-                                    placeholder="severity (warning|blocker)"
-                                    value={String(r.severity || '')}
-                                    disabled={isReadOnly}
-                                    onChange={(e) => {
-                                      const val = e.target.value.trim();
-                                      setSpec((p) => {
-                                        const rows = (p.rules || []).slice();
-                                        rows[idx] = { ...(rows[idx] as any), severity: val || undefined };
-                                        return { ...p, rules: rows };
-                                      });
-                                    }}
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <label className="text-xs font-semibold text-text-soft">{t('builder.rules.jsonLabel')}</label>
-                                  <textarea
-                                    className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
-                                    value={ruleTextById[ruleId] ?? JSON.stringify(r, null, 2)}
-                                    disabled={isReadOnly}
-                                    onChange={(e) => {
-                                      const text = e.target.value;
-                                      setRuleTextById((prev) => ({ ...prev, [ruleId]: text }));
-                                      try {
-                                        const parsed = JSON.parse(text);
-                                        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid_rule_json');
-                                        const pid = String((parsed as any).id || '').trim();
-                                        const ptype = String((parsed as any).type || '').trim();
-                                        if (!pid || !ptype) throw new Error('missing_id_or_type');
-                                        setRuleErrorById((prev) => ({ ...prev, [ruleId]: '' }));
-                                        setSpec((p) => {
-                                          const rows = (p.rules || []).slice();
-                                          rows[idx] = parsed as Record<string, unknown>;
-                                          return { ...p, rules: rows };
-                                        });
-                                      } catch {
-                                        setRuleErrorById((prev) => ({ ...prev, [ruleId]: t('builder.rules.invalidJson') }));
-                                      }
-                                    }}
-                                  />
-                                  {ruleErrorById[ruleId] && <div className="text-xs text-error">{ruleErrorById[ruleId]}</div>}
-                                </div>
-
-                                {!isSystemPreset && (
-                                  <div className="flex justify-end pt-2 border-t border-border">
-                                    <Button
-                                      variant="danger"
-                                      size="sm"
-                                      onClick={() =>
-                                        setSpec((p) => ({
-                                          ...p,
-                                          rules: (p.rules || []).filter((_, i) => i !== idx),
-                                        }))
-                                      }
-                                    >
-                                      Remove
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Scope & roles section */}
-                  {activeSection === 'scope' && (
-                    <div className="space-y-4">
-                      <p className="text-sm text-text-soft">Context defines source boundaries: whether the template runs on a single document or a bundle, and which document roles are expected.</p>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-text-soft">{t('builder.scope.scopeLabel')}</label>
-                        <select
-                          className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
-                          disabled={isReadOnly}
-                          value={spec.scope || 'either'}
-                          onChange={(e) => setSpec((p) => ({ ...p, scope: e.target.value as PlaybookSpecV1['scope'] }))}
-                        >
-                          <option value="single">{t('builder.scope.single')}</option>
-                          <option value="bundle">{t('builder.scope.bundle')}</option>
-                          <option value="either">{t('builder.scope.either')}</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-semibold text-text-soft">{t('builder.scope.rolesTitle')}</label>
-                          {!isSystemPreset && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                setSpec((p) => {
-                                  const roles = (p.bundle_schema?.roles || []).slice();
-                                  roles.push({ role: `role_${roles.length + 1}`, required: true, multiple: false });
-                                  return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
-                                })
-                              }
-                            >
-                              <Plus className="w-4 h-4" />
-                              {t('builder.scope.addRole')}
-                            </Button>
-                          )}
-                        </div>
-
-                        {(spec.bundle_schema?.roles || []).length === 0 ? (
-                          <div className="text-sm text-text-soft py-6 text-center border border-dashed border-border rounded-scholar">
-                            {t('builder.scope.emptyRoles')}
+                            )}
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {(spec.bundle_schema?.roles || []).map((role, idx) => (
-                              <div key={`${role.role}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
-                                <Input
-                                  value={role.role}
-                                  disabled={isReadOnly}
-                                  placeholder="vendor_contract"
-                                  onChange={(e) => {
-                                    const val = e.target.value.trim();
-                                    setSpec((p) => {
-                                      const roles = (p.bundle_schema?.roles || []).slice();
-                                      roles[idx] = { ...roles[idx], role: val };
-                                      return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
-                                    });
-                                  }}
-                                />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <ScholarToggle
-                                    label={t('builder.scope.required')}
-                                    checked={role.required === true}
-                                    disabled={isReadOnly}
-                                    onCheckedChange={(checked) =>
-                                      setSpec((p) => {
-                                        const roles = (p.bundle_schema?.roles || []).slice();
-                                        roles[idx] = { ...roles[idx], required: checked };
-                                        return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
-                                      })
-                                    }
-                                  />
-                                  <ScholarToggle
-                                    label={t('builder.scope.multiple')}
-                                    checked={role.multiple === true}
-                                    disabled={isReadOnly}
-                                    onCheckedChange={(checked) =>
-                                      setSpec((p) => {
-                                        const roles = (p.bundle_schema?.roles || []).slice();
-                                        roles[idx] = { ...roles[idx], multiple: checked };
-                                        return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
-                                      })
-                                    }
-                                  />
-                                </div>
-                                {!isSystemPreset && (
-                                  <div className="flex justify-end">
-                                    <Button
-                                      variant="danger"
-                                      size="sm"
-                                      onClick={() =>
-                                        setSpec((p) => {
-                                          const roles = (p.bundle_schema?.roles || []).filter((_, i) => i !== idx);
-                                          return { ...p, bundle_schema: { ...(p.bundle_schema || {}), roles } };
-                                        })
-                                      }
-                                    >
-                                      Remove
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-text-soft">{t('builder.scope.allowedTypes')}</label>
-                        <Input
-                          value={(spec.bundle_schema?.allowed_document_types || []).join(', ')}
-                          disabled={isReadOnly}
-                          placeholder={t('builder.scope.allowedTypesPlaceholder')}
-                          onChange={(e) => {
-                            const parts = e.target.value
-                              .split(',')
-                              .map((s) => s.trim())
-                              .filter(Boolean);
-                            setSpec((p) => ({
-                              ...p,
-                              bundle_schema: {
-                                ...(p.bundle_schema || {}),
-                                allowed_document_types: parts.length ? parts : undefined,
-                              },
-                            }));
-                          }}
-                        />
-                      </div>
+                        );
+                      })()}
                     </div>
-                  )}
 
-                </div>
+                    {operatorMode && (
+                      <div className="rounded-scholar border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+                        <div className="text-sm font-semibold text-text">Deprecated operator recipe editor</div>
+                        <p className="text-sm text-text-soft">
+                          This low-level editor is kept for compatibility and migration work only. The recommended product path is template selection or a
+                          custom natural-language brief compiled by the agent.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                {operatorMode ? (
+                  <div className="border-t border-border bg-surface-alt/20 p-4">
+                    <div className="rounded-scholar border border-border bg-surface-alt/40 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-text">
+                        <Shield className="w-4 h-4" />
+                        <span>Operator compatibility surface</span>
+                      </div>
+                      <p className="text-sm text-text-soft">
+                        Low-level template fields are deprecated. They remain persisted for compatibility, but normal authoring should happen through the
+                        natural-language template source above. This operator view is intentionally read-only and shows the raw compiled template contract
+                        that still ships with the current record.
+                      </p>
+                      <textarea
+                        className="w-full min-h-[320px] rounded-scholar border border-border bg-surface px-3 py-3 font-mono text-xs text-text"
+                        value={JSON.stringify(spec, null, 2)}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
+            </div>
             )}
           </div>
         </div>

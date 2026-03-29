@@ -1402,7 +1402,7 @@ export function ContractAnalysisPane({
       if (!session) return;
 
       const { data, error } = await supabase.functions.invoke('playbooks-list', {
-        body: { workspace_id: workspaceId, kind: 'contract' },
+        body: { workspace_id: workspaceId, kind: 'document' },
       });
       if (error) return;
       if (data?.ok && Array.isArray(data.playbooks)) {
