@@ -37,7 +37,12 @@ function getInternalHeaders(requestId, userId) {
 
 function normalizeExperienceTemplateId(templateId) {
   const normalized = String(templateId || "").trim().toLowerCase();
-  return normalized || "document_analysis";
+  if (!normalized) return "document_analysis";
+  // Legacy analysis template ids should still materialize through the
+  // document-native experience runtime rather than the deprecated
+  // contract-shaped experience shell.
+  if (normalized === "contract_analysis") return "document_analysis";
+  return normalized;
 }
 
 function resolveExperienceSourceKind() {
