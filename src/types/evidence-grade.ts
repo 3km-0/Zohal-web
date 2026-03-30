@@ -191,6 +191,59 @@ export interface AnalysisRecord {
   provenance?: Record<string, unknown>
 }
 
+export interface CanonicalSourceAnchor {
+  document_id?: string
+  page_number: number
+  chunk_id?: string
+  snippet: string
+  char_start?: number
+  char_end?: number
+  bbox?: BoundingBox
+}
+
+export interface CanonicalItemV3 {
+  id: string
+  provenance_class: 'extracted' | 'derived'
+  structural_facet: string
+  display_name: string
+  payload: Record<string, unknown>
+  confidence: AIConfidence
+  verification_state: ItemVerificationState
+  source_anchors?: CanonicalSourceAnchor[]
+  anchor_integrity?: 'verified' | 'unverified' | 'failed'
+  derivation?: {
+    input_item_ids: string[]
+    method: string
+    rationale?: string
+    verifier_outcome?: 'confirmed' | 'disputed' | 'skipped'
+  }
+  created_at: string
+  updated_at?: string
+  template_target_id?: string
+}
+
+export interface CanonicalSnapshotV3 {
+  schema_version: '3.0'
+  run_id?: string | null
+  workspace_id?: string | null
+  corpus_revision_id?: string | null
+  template_id: string
+  template_version?: string
+  document_id?: string
+  source_manifest?: Record<string, unknown>
+  items: CanonicalItemV3[]
+  links: Array<{
+    id: string
+    type: string
+    from_item_id: string
+    to_item_id: string
+    metadata?: Record<string, unknown>
+  }>
+  proof_manifest?: Record<string, unknown>
+  stage_trace?: Record<string, unknown>
+  analyzed_at: string
+}
+
 // =============================================================================
 // Evidence Grade Snapshot
 // =============================================================================
@@ -444,6 +497,116 @@ export function convertLegacySnapshot(legacy: LegacyContractSnapshot, documentId
   }
 }
 
+function inferVariableTypeFromCanonicalItem(item: CanonicalItemV3): VariableType {
+  const facet = String(item.structural_facet || '').toLowerCase()
+  const payload = item.payload || {}
+  if (typeof payload.value === 'boolean') return 'boolean'
+  if (typeof payload.value === 'number') return 'number'
+  if (typeof payload.amount === 'number') return 'money'
+  if (typeof payload.date === 'string' || typeof payload.due_at === 'string') return 'date'
+  if (facet === 'measure') return 'number'
+  return 'text'
+}
+
+function canonicalAnchorToEvidence(anchor?: CanonicalSourceAnchor): EvidenceAnchor | undefined {
+  if (!anchor) return undefined
+  return {
+    document_id: anchor.document_id,
+    page_number: anchor.page_number,
+    chunk_id: anchor.chunk_id,
+    snippet: anchor.snippet,
+    char_start: anchor.char_start,
+    char_end: anchor.char_end,
+    bbox: anchor.bbox,
+  }
+}
+
+export function convertCanonicalSnapshotV3(snapshot: CanonicalSnapshotV3, documentId: string): EvidenceGradeSnapshot {
+  const extractedItems = Array.isArray(snapshot.items)
+    ? snapshot.items.filter((item) => item.provenance_class === 'extracted')
+    : []
+  const derivedItems = Array.isArray(snapshot.items)
+    ? snapshot.items.filter((item) => item.provenance_class === 'derived')
+    : []
+
+  const variables: VerifiedVariable[] = extractedItems.map((item) => ({
+    id: item.id,
+    name: item.template_target_id || item.display_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+    display_name: item.display_name,
+    type: inferVariableTypeFromCanonicalItem(item),
+    value:
+      (item.payload?.value as string | number | boolean | null | undefined) ??
+      (item.payload?.text as string | undefined) ??
+      (item.payload?.summary as string | undefined) ??
+      null,
+    verification_state: item.verification_state,
+    evidence: canonicalAnchorToEvidence(item.source_anchors?.[0]),
+    ai_confidence: item.confidence,
+    verifier:
+      item.anchor_integrity === 'verified'
+        ? { status: 'green', reasons: ['Source anchor verified'] }
+        : item.anchor_integrity === 'failed'
+        ? { status: 'red', reasons: ['Source anchor failed verification'] }
+        : undefined,
+  }))
+
+  const obligations: ObligationWithEvidence[] = extractedItems
+    .filter((item) => String(item.structural_facet || '').toLowerCase() === 'event')
+    .map((item) => ({
+      id: item.id,
+      obligation_type: String(item.payload?.type || item.display_name || 'event'),
+      summary: String(item.payload?.summary || item.display_name || ''),
+      action: typeof item.payload?.action === 'string' ? item.payload.action : undefined,
+      condition: typeof item.payload?.condition === 'string' ? item.payload.condition : undefined,
+      responsible_party: typeof item.payload?.responsible_party === 'string' ? item.payload.responsible_party : undefined,
+      due_at: typeof item.payload?.due_at === 'string' ? item.payload.due_at : undefined,
+      recurrence: typeof item.payload?.recurrence === 'string' ? item.payload.recurrence : undefined,
+      verification_state: item.verification_state,
+      evidence: canonicalAnchorToEvidence(item.source_anchors?.[0]),
+      ai_confidence: item.confidence,
+    }))
+
+  const clauses: ClauseWithEvidence[] = extractedItems
+    .filter((item) => String(item.structural_facet || '').toLowerCase() === 'relationship')
+    .map((item) => ({
+      id: item.id,
+      clause_type: String(item.payload?.type || item.display_name || 'relationship'),
+      clause_title: item.display_name,
+      text: String(item.payload?.text || item.payload?.summary || item.display_name || ''),
+      risk_level: 'low',
+      verification_state: item.verification_state,
+      evidence: canonicalAnchorToEvidence(item.source_anchors?.[0]),
+    }))
+
+  const risks: RiskWithEvidence[] = derivedItems.map((item) => ({
+    id: item.id,
+    severity: (String(item.payload?.severity || '').toLowerCase() as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+    description: String(item.payload?.summary || item.payload?.description || item.display_name || 'Derived insight'),
+    explanation:
+      typeof item.derivation?.rationale === 'string'
+        ? item.derivation.rationale
+        : typeof item.payload?.explanation === 'string'
+        ? item.payload.explanation
+        : undefined,
+    evidence: undefined,
+    resolved: false,
+  }))
+
+  return {
+    schema_version: '2.0',
+    template: snapshot.template_id || 'document_analysis',
+    variables,
+    clauses,
+    obligations,
+    risks,
+    analyzed_at: snapshot.analyzed_at || new Date().toISOString(),
+    chunks_analyzed: Array.isArray(snapshot.source_manifest?.documents)
+      ? snapshot.source_manifest.documents.reduce((sum: number, doc: any) => sum + Number(doc?.chunk_count || 0), 0)
+      : 0,
+    document_id: snapshot.document_id || documentId,
+  }
+}
+
 /** Parse snapshot from raw object, handling both v1 and v2 formats */
 export function parseSnapshot(raw: unknown, documentId: string): EvidenceGradeSnapshot | null {
   if (!raw || typeof raw !== 'object') return null
@@ -451,6 +614,10 @@ export function parseSnapshot(raw: unknown, documentId: string): EvidenceGradeSn
   const obj = raw as Record<string, unknown>
   const schemaVersion = obj.schema_version as string | undefined
   
+  if (typeof schemaVersion === 'string' && schemaVersion.split('.')[0] === '3') {
+    return convertCanonicalSnapshotV3(raw as CanonicalSnapshotV3, documentId)
+  }
+
   if (typeof schemaVersion === 'string' && schemaVersion.split('.')[0] === '2') {
     // Already v2 format
     return raw as EvidenceGradeSnapshot

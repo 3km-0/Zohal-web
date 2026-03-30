@@ -6,18 +6,21 @@ import {
   normalizeUuid,
 } from "../src/handlers/analysis.js";
 import {
-  buildExportSuccessEnvelope,
-  renderContractExportHtml,
-} from "../src/analysis/export-report.js";
-import {
   addStableCandidateIds,
-  allowedVariableNamesForTemplate,
   buildBatchText,
 } from "../src/analysis/batch.js";
 import {
-  addComputedNoticeDeadlineIfPossible,
+  getTemplateIntent,
+  parseStructuredJsonResponse,
+} from "../src/analysis/canonical.js";
+import {
+  getAIStageConfig,
+  normalizeChatPayloadForProvider,
+  remapModelForProvider,
+} from "../src/analysis/ai-provider.js";
+import {
   attachPackMetadata,
-  buildFocusedModuleChunks,
+  normalizeDerivedItems,
   shouldNativeReduceRun,
   toSnapshot,
 } from "../src/analysis/reduce.js";
@@ -83,144 +86,6 @@ test("retry classifier treats reduce-not-ready and upstream faults as retryable"
   );
 });
 
-test("native export success envelope preserves legacy top-level fields with gcp metadata", () => {
-  assert.deepEqual(
-    buildExportSuccessEnvelope("req-export", {
-      html: "<html></html>",
-      export_artifact: { storage_path: "exports/path.json" },
-    }),
-    {
-      ok: true,
-      data: {
-        html: "<html></html>",
-        export_artifact: { storage_path: "exports/path.json" },
-        execution_plane: "gcp",
-      },
-      request_id: "req-export",
-      html: "<html></html>",
-      export_artifact: { storage_path: "exports/path.json" },
-      execution_plane: "gcp",
-    },
-  );
-});
-
-test("native export renderer produces generic evidence-grade sections for regulated templates", () => {
-  const html = renderContractExportHtml({
-    snapshot: {
-      schema_version: "2.2.0",
-      template: "renewal_pack",
-      variables: [
-        {
-          id: "var-1",
-          name: "counterparty_name",
-          display_name: "Counterparty",
-          value: "Acme LLC",
-          type: "string",
-        },
-      ],
-      clauses: [
-        {
-          id: "clause-1",
-          clause_title: "Termination",
-          clause_type: "termination",
-          description: "Either party may terminate with notice.",
-        },
-      ],
-      obligations: [],
-      risks: [],
-      pack: {},
-    },
-    documentTitle: "Master Services Agreement",
-    state: "provisional",
-    versionNumber: 3,
-    finalizedAt: null,
-    reviewerName: null,
-    settings: {
-      customTitle: "",
-      customSubtitle: "",
-      primaryColor: "#2d8878",
-      template: "decision_pack",
-      language: "en",
-    },
-  });
-
-  assert.match(html, /Master Services Agreement/);
-  assert.match(html, /renewal pack/i);
-  assert.match(html, /Counterparty/);
-  assert.match(html, /Termination/);
-});
-
-test("native export renderer prefers record-backed module sections and hides rejected records", () => {
-  const html = renderContractExportHtml({
-    snapshot: {
-      schema_version: "2.2.0",
-      template: "contract_analysis",
-      variables: [],
-      clauses: [],
-      obligations: [],
-      risks: [],
-      pack: {
-        review: {
-          rejected: {
-            records: ["record-hidden"],
-          },
-        },
-        records: [
-          {
-            id: "record-visible",
-            module_id: "exam_questions",
-            module_title: "Exam Questions",
-            record_type: "question",
-            title: "Question 1",
-            summary: "What is the contract term?",
-            status: "proposed",
-            show_in_report: true,
-            evidence: [{ page_number: 2, source_quote: "The initial term is 12 months." }],
-          },
-          {
-            id: "record-hidden",
-            module_id: "exam_questions",
-            module_title: "Exam Questions",
-            record_type: "question",
-            title: "Question 2",
-            summary: "Hidden record",
-            status: "proposed",
-            show_in_report: true,
-          },
-        ],
-        modules: {
-          exam_questions: {
-            id: "exam_questions",
-            title: "Exam Questions",
-            status: "ok",
-            show_in_report: true,
-            result: {
-              questions: [{ title: "Raw blob fallback should stay hidden" }],
-            },
-          },
-        },
-      },
-    },
-    documentTitle: "Exam Questions Export",
-    state: "provisional",
-    versionNumber: 1,
-    finalizedAt: null,
-    reviewerName: null,
-    settings: {
-      customTitle: "",
-      customSubtitle: "",
-      primaryColor: "#2d8878",
-      template: "contract_analysis",
-      language: "en",
-    },
-  });
-
-  assert.match(html, /Exam Questions/);
-  assert.match(html, /Question 1/);
-  assert.doesNotMatch(html, /Question 2/);
-  assert.doesNotMatch(html, /Raw blob fallback should stay hidden/);
-});
-
 test("native batch text builder preserves ordered page markers", () => {
   const text = buildBatchText([
     { page_number: 2, content_text: "Second page" },
@@ -234,138 +99,246 @@ test("native batch text builder preserves ordered page markers", () => {
   );
 });
 
-test("native batch candidate ids stay deterministic across item categories", () => {
+test("batch candidate ids stay deterministic for extracted items", () => {
   const output = addStableCandidateIds({
     result: {
-      extracted_variables: [{ name: "counterparty_name", value: "Acme" }],
-      clauses: [{ clause_type: "termination", text: "Termination clause" }],
-      obligations: [{ obligation_type: "notice", summary: "Give notice" }],
-      risks: [{ severity: "high", description: "Short notice" }],
+      extracted_items: [
+        { display_name: "Counterparty" },
+        { display_name: "Effective Date" },
+      ],
     },
     documentId: "12345678-90ab-cdef-1234-567890abcdef",
     batchIndex: 2,
   });
 
-  assert.equal(output.extracted_variables[0].candidate_id, "d12345678-b2-v0");
-  assert.equal(output.clauses[0].candidate_id, "d12345678-b2-c0");
-  assert.equal(output.obligations[0].candidate_id, "d12345678-b2-o0");
-  assert.equal(output.risks[0].candidate_id, "d12345678-b2-r0");
+  assert.equal(output.extracted_items[0].candidate_id, "d12345678-b2-i0");
+  assert.equal(output.extracted_items[1].candidate_id, "d12345678-b2-i1");
 });
 
-test("native batch template fallback keeps regulated allowed-variable sets", () => {
-  const leaseVariables = allowedVariableNamesForTemplate("lease_pack");
-  const unknownVariables = allowedVariableNamesForTemplate("unknown_template");
+test("generic template intent falls back to document-agnostic extraction targets", () => {
+  const intent = getTemplateIntent({}, "document_analysis");
 
-  assert.equal(leaseVariables.has("rent_amount"), true);
-  assert.equal(unknownVariables.has("governing_law"), true);
-  assert.equal(unknownVariables.has("rent_amount"), false);
+  assert.deepEqual(
+    intent.extractionTargets.map((target) => target.structural_facet),
+    ["entity", "event", "measure", "relationship", "annotation"],
+  );
+  assert.equal(intent.derivationIntents.length, 1);
+  assert.equal(intent.projectionIntents.length, 3);
 });
 
-test("native reduce guard keeps docset and advanced lanes on native path", () => {
-  const support = shouldNativeReduceRun(
-    {
-      id: "run-1",
-      workspace_id: "ws-1",
-      input_config: {
-        bundle: {
-          document_ids: ["doc-1", "doc-2"],
-        },
-        context: {
-          document_ids: ["ctx-1"],
-        },
-        playbook_spec: {
-          custom_modules: [{ id: "risk_summary" }],
-          modules: ["variables", "clauses", "obligations", "risks", "deadlines", "violations"],
-        },
+test("structured AI JSON parser returns fallback for empty output and throws retryable errors for malformed JSON", () => {
+  assert.deepEqual(
+    parseStructuredJsonResponse("", {
+      fallback: { extracted_items: [] },
+      errorCode: "invalid_extracted_items_json",
+    }),
+    { extracted_items: [] },
+  );
+
+  assert.throws(
+    () => parseStructuredJsonResponse("{not-json", {
+      fallback: { extracted_items: [] },
+      errorCode: "invalid_extracted_items_json",
+    }),
+    (error) => {
+      assert.equal(error.statusCode, 502);
+      assert.equal(error.retryable, true);
+      assert.match(error.message, /invalid_extracted_items_json/);
+      return true;
+    },
+  );
+});
+
+test("shared AI stage config resolves generator and verifier overrides independently", () => {
+  const previousGeneratorModel = process.env.GENERATOR_MODEL;
+  const previousVerifierModel = process.env.VERIFIER_MODEL;
+  const previousGeneratorProvider = process.env.GENERATOR_PROVIDER;
+  const previousVerifierProvider = process.env.VERIFIER_PROVIDER;
+
+  process.env.GENERATOR_MODEL = "gpt-5.2";
+  process.env.VERIFIER_MODEL = "gpt-5.2-mini";
+  process.env.GENERATOR_PROVIDER = "openai";
+  process.env.VERIFIER_PROVIDER = "vertex";
+
+  try {
+    assert.deepEqual(getAIStageConfig("generator"), {
+      providerOverride: "openai",
+      model: "gpt-5.2",
+    });
+    assert.deepEqual(getAIStageConfig("verifier"), {
+      providerOverride: "vertex",
+      model: "gpt-5.2-mini",
+    });
+  } finally {
+    process.env.GENERATOR_MODEL = previousGeneratorModel;
+    process.env.VERIFIER_MODEL = previousVerifierModel;
+    process.env.GENERATOR_PROVIDER = previousGeneratorProvider;
+    process.env.VERIFIER_PROVIDER = previousVerifierProvider;
+  }
+});
+
+test("shared AI provider helpers preserve model remapping and OpenAI token normalization", () => {
+  const previousContractModel = process.env.OPENAI_CONTRACT_MODEL;
+  const previousVertexChatModel = process.env.VERTEX_MODEL_CHAT;
+
+  process.env.OPENAI_CONTRACT_MODEL = "gpt-5.2";
+  process.env.VERTEX_MODEL_CHAT = "google/gemini-2.5-flash";
+
+  try {
+    assert.deepEqual(
+      remapModelForProvider("vertex", { model: "gpt-5.2", max_tokens: 100 }),
+      { model: "google/gemini-2.5-flash", max_tokens: 100 },
+    );
+    assert.deepEqual(
+      normalizeChatPayloadForProvider("openai", { model: "gpt-5.2", max_tokens: 100 }),
+      { model: "gpt-5.2", max_completion_tokens: 100 },
+    );
+  } finally {
+    process.env.OPENAI_CONTRACT_MODEL = previousContractModel;
+    process.env.VERTEX_MODEL_CHAT = previousVertexChatModel;
+  }
+});
+
+test("native reduce guard requires a parent run and at least one batch", () => {
+  assert.deepEqual(
+    shouldNativeReduceRun(
+      { id: "run-1" },
+      [{ id: "batch-1", status: "completed" }],
+    ),
+    { ok: true },
+  );
+
+  assert.deepEqual(
+    shouldNativeReduceRun({}, []),
+    { ok: false, reason: "missing_parent_run" },
+  );
+});
+
+test("derived items start in needs_review until verifier outcomes are applied", () => {
+  const derived = normalizeDerivedItems(
+    [
+      {
+        derivation_id: "summary",
+        display_name: "Analysis summary",
+        structural_facet: "annotation",
+        payload: { summary: "Important derived insight" },
+        confidence: "medium",
+        input_item_ids: ["item-extracted-1"],
       },
-    },
-    [{ id: "batch-1", status: "completed" }],
+    ],
+    [
+      {
+        id: "item-extracted-1",
+      },
+    ],
   );
 
-  assert.deepEqual(support, {
-    ok: true,
-    reason: "supported",
-  });
+  assert.equal(derived.length, 1);
+  assert.equal(derived[0].provenance_class, "derived");
+  assert.equal(derived[0].verification_state, "needs_review");
+  assert.deepEqual(derived[0].derivation.input_item_ids, ["item-extracted-1"]);
 });
 
-test("native reduce snapshot computes notice deadline and pack metadata", () => {
-  let snapshot = toSnapshot(
-    {
-      extracted_variables: [
-        {
-          name: "end_date",
-          type: "date",
-          value: "2026-08-31",
-          ai_confidence: "high",
-          page_number: 4,
-          source_quote: "This agreement ends on August 31, 2026.",
-        },
-        {
-          name: "notice_period_days",
-          type: "duration",
-          value: 30,
-          unit: "days",
-          ai_confidence: "high",
-          page_number: 4,
-          source_quote: "Thirty days prior written notice is required.",
-        },
-      ],
-      clauses: [],
-      obligations: [],
-      risks: [],
-    },
-    {
-      "doc-1": [
-        {
-          id: "chunk-1",
-          document_id: "doc-1",
-          page_number: 4,
-          chunk_index: 0,
-          content_text:
-            "This agreement ends on August 31, 2026. Thirty days prior written notice is required.",
-        },
-      ],
-    },
-    "doc-1",
-    "renewal_pack",
-    new Set(["variables", "deadlines"]),
-  );
-  snapshot = addComputedNoticeDeadlineIfPossible(snapshot);
-  snapshot = attachPackMetadata(snapshot, "renewal_pack");
-
-  const noticeDeadline = snapshot.variables.find((item) => item.name === "notice_deadline");
-  assert.equal(noticeDeadline.value, "2026-08-01");
-  assert.deepEqual(snapshot.pack.modules_activated, ["renewal_actions"]);
-});
-
-test("compliance deviations module focuses on evidence-seeded chunks for large docsets", () => {
-  const chunks = Array.from({ length: 90 }, (_, index) => ({
-    id: `chunk-${index}`,
-    document_id: "doc-1",
-    page_number: Math.floor(index / 6) + 1,
-    chunk_index: index % 6,
-    content_text: `Chunk ${index} content`,
-  }));
-  const focused = buildFocusedModuleChunks({
-    moduleId: "compliance_deviations",
-    chunks,
-    snapshotJson: {
-      risks: [
-        {
-          evidence: {
-            document_id: "doc-1",
-            page_number: 5,
-            chunk_id: "chunk-24",
+test("canonical snapshot builder emits schema 3.0 with proof and source manifests", () => {
+  const snapshot = attachPackMetadata(
+    toSnapshot(
+      {
+        extracted_items: [
+          {
+            id: "item-extracted-1",
+            provenance_class: "extracted",
+            structural_facet: "entity",
+            display_name: "Counterparty",
+            payload: { value: "Acme LLC" },
+            confidence: "high",
+            verification_state: "verified",
+            source_anchors: [
+              {
+                document_id: "doc-1",
+                page_number: 2,
+                chunk_id: "chunk-1",
+                snippet: "Acme LLC",
+                char_start: 12,
+                char_end: 20,
+                bbox: {
+                  x: 0.1,
+                  y: 0.2,
+                  width: 0.3,
+                  height: 0.05,
+                },
+              },
+            ],
+            anchor_integrity: "verified",
+            created_at: "2026-03-28T00:00:00.000Z",
           },
-        },
-      ],
-    },
-    primaryDocumentId: "doc-1",
-  });
+        ],
+        derived_items: [
+          {
+            id: "item-derived-1",
+            provenance_class: "derived",
+            structural_facet: "annotation",
+            display_name: "Analysis summary",
+            payload: { summary: "Main conclusion" },
+            confidence: "medium",
+            verification_state: "verified",
+            derivation: {
+              input_item_ids: ["item-extracted-1"],
+              method: "llm_reasoning",
+              rationale: "Based on the extracted counterparty.",
+              verifier_outcome: "confirmed",
+            },
+            created_at: "2026-03-28T00:00:00.000Z",
+          },
+        ],
+        links: [
+          {
+            id: "link-1",
+            type: "supports",
+            from_item_id: "item-extracted-1",
+            to_item_id: "item-derived-1",
+          },
+        ],
+      },
+      {
+        "doc-1": [
+          {
+            id: "chunk-1",
+            document_id: "doc-1",
+            page_number: 2,
+            chunk_index: 0,
+            content_text: "Acme LLC",
+          },
+        ],
+      },
+      "doc-1",
+      "document_analysis",
+      {
+        run_id: "run-1",
+        workspace_id: "ws-1",
+        corpus_revision_id: "workspace:ws-1:document:doc-1",
+        template_version: "3.0.0",
+        review_policy: { enable_verifier: true },
+        stage_entries: [
+          { stage: "extract", status: "completed", at: "2026-03-28T00:00:00.000Z" },
+        ],
+      },
+    ),
+    "document_analysis",
+  );
 
-  assert.ok(focused.length < chunks.length);
-  assert.ok(focused.some((chunk) => chunk.id === "chunk-24"));
-  assert.ok(focused.some((chunk) => chunk.id === "chunk-25"));
-  assert.ok(focused.some((chunk) => chunk.page_number === 5));
-  assert.ok(focused.every((chunk) => chunk.page_number >= 4 && chunk.page_number <= 6));
+  assert.equal(snapshot.schema_version, "3.0");
+  assert.equal(snapshot.template_id, "document_analysis");
+  assert.equal(snapshot.items.length, 2);
+  assert.equal(snapshot.links.length, 1);
+  assert.equal(snapshot.proof_manifest.counts.extracted_items, 1);
+  assert.equal(snapshot.proof_manifest.counts.derived_items, 1);
+  assert.equal(snapshot.source_manifest.document_count, 1);
+  assert.equal(snapshot.items[0].source_anchors?.[0]?.char_start, 12);
+  assert.equal(snapshot.items[0].source_anchors?.[0]?.char_end, 20);
+  assert.deepEqual(snapshot.items[0].source_anchors?.[0]?.bbox, {
+    x: 0.1,
+    y: 0.2,
+    width: 0.3,
+    height: 0.05,
+  });
 });

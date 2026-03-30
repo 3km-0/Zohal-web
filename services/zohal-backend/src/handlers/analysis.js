@@ -175,7 +175,7 @@ function ensureFields(payload, fields) {
 async function fetchRunOrThrow(supabase, runId) {
   const { data, error } = await supabase
     .from("extraction_runs")
-    .select("id, workspace_id, user_id, document_id, status, input_config, updated_at")
+    .select("id, workspace_id, user_id, document_id, extraction_type, status, input_config, updated_at")
     .eq("id", normalizeUuid(runId))
     .single();
 
@@ -504,7 +504,7 @@ async function startAnalysisWorkflow({
     delaySeconds: reduceDelaySeconds,
   });
 
-  log.info("Started contract analysis workflow", {
+  log.info("Started analysis workflow", {
     parent_run_id: parentRun.id,
     workflow_execution_id: workflowExecutionId,
     batch_count: batchRuns.length,

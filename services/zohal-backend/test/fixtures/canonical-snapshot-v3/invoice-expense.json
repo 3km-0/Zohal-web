@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_invoice_measure_1",
+      "provenance_class": "extracted",
+      "structural_facet": "measure",
+      "display_name": "Subtotal = 1250.00",
+      "payload": { "measure_type": "money", "currency": "USD", "value": 1250.0 },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-invoice", "page_number": 1, "chunk_id": "chunk-1", "snippet": "Subtotal 1250.00" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_invoice_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "measure",
+      "display_name": "Invoice appears internally consistent",
+      "payload": { "status": "pass" },
+      "confidence": "medium",
+      "verification_state": "verified",
+      "derivation": { "input_item_ids": ["item_invoice_measure_1"], "method": "deterministic_formula", "rationale": "Derived totals matched extracted line-item amounts.", "verifier_outcome": "confirmed" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [{ "id": "link_invoice_1", "type": "supports", "from_item_id": "item_invoice_measure_1", "to_item_id": "item_invoice_derived_1" }]
+}
+

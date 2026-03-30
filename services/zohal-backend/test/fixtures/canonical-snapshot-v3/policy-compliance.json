@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_policy_annotation_1",
+      "provenance_class": "extracted",
+      "structural_facet": "annotation",
+      "display_name": "Retention requirement",
+      "payload": { "text": "Records must be retained for 7 years." },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-policy", "page_number": 2, "chunk_id": "chunk-7", "snippet": "retained for 7 years" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_policy_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "annotation",
+      "display_name": "Potential retention control gap",
+      "payload": { "severity": "medium" },
+      "confidence": "medium",
+      "verification_state": "needs_review",
+      "derivation": { "input_item_ids": ["item_policy_annotation_1"], "method": "llm_reasoning", "rationale": "Policy specifies retention but no operational owner is stated.", "verifier_outcome": "skipped" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [{ "id": "link_policy_1", "type": "supports", "from_item_id": "item_policy_annotation_1", "to_item_id": "item_policy_derived_1" }]
+}
+

@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_financial_measure_1",
+      "provenance_class": "extracted",
+      "structural_facet": "measure",
+      "display_name": "Revenue = 8400000",
+      "payload": { "measure_type": "money", "currency": "SAR", "value": 8400000 },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-financial", "page_number": 4, "chunk_id": "chunk-11", "snippet": "Revenue 8,400,000" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_financial_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "annotation",
+      "display_name": "Revenue concentration note",
+      "payload": { "severity": "low" },
+      "confidence": "medium",
+      "verification_state": "verified",
+      "derivation": { "input_item_ids": ["item_financial_measure_1"], "method": "llm_reasoning", "rationale": "Revenue was extracted cleanly but no comparative segment context was present.", "verifier_outcome": "confirmed" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [{ "id": "link_financial_1", "type": "supports", "from_item_id": "item_financial_measure_1", "to_item_id": "item_financial_derived_1" }]
+}
+

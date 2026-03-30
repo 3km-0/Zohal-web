@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_contract_entity_1",
+      "provenance_class": "extracted",
+      "structural_facet": "entity",
+      "display_name": "Acme LLC",
+      "payload": { "entity_type": "party" },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-contract", "page_number": 1, "chunk_id": "chunk-1", "snippet": "Acme LLC" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_contract_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "annotation",
+      "display_name": "Counterparty concentration risk",
+      "payload": { "severity": "medium" },
+      "confidence": "medium",
+      "verification_state": "needs_review",
+      "derivation": { "input_item_ids": ["item_contract_entity_1"], "method": "llm_reasoning", "rationale": "Single named counterparty controls delivery.", "verifier_outcome": "skipped" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [{ "id": "link_contract_1", "type": "supports", "from_item_id": "item_contract_entity_1", "to_item_id": "item_contract_derived_1" }]
+}
+

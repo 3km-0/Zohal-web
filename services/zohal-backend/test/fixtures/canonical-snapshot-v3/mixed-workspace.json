@@ -1,0 +1,45 @@
+{
+  "schema_version": "3.0",
+  "template_id": "document_analysis",
+  "items": [
+    {
+      "id": "item_mixed_entity_1",
+      "provenance_class": "extracted",
+      "structural_facet": "entity",
+      "display_name": "Vendor A",
+      "payload": { "entity_type": "organization" },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-mixed-1", "page_number": 1, "chunk_id": "chunk-1", "snippet": "Vendor A" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_mixed_measure_1",
+      "provenance_class": "extracted",
+      "structural_facet": "measure",
+      "display_name": "Invoice amount = 9200",
+      "payload": { "measure_type": "money", "currency": "USD", "value": 9200 },
+      "confidence": "high",
+      "verification_state": "verified",
+      "source_anchors": [{ "document_id": "doc-mixed-2", "page_number": 1, "chunk_id": "chunk-2", "snippet": "Total Due 9200" }],
+      "anchor_integrity": "verified",
+      "created_at": "2026-03-28T00:00:00.000Z"
+    },
+    {
+      "id": "item_mixed_derived_1",
+      "provenance_class": "derived",
+      "structural_facet": "annotation",
+      "display_name": "Cross-document vendor exposure",
+      "payload": { "severity": "medium" },
+      "confidence": "medium",
+      "verification_state": "verified",
+      "derivation": { "input_item_ids": ["item_mixed_entity_1", "item_mixed_measure_1"], "method": "cross_document_reconciliation", "rationale": "Vendor identity and invoice amount combine into a single exposure note.", "verifier_outcome": "confirmed" },
+      "created_at": "2026-03-28T00:00:00.000Z"
+    }
+  ],
+  "links": [
+    { "id": "link_mixed_1", "type": "supports", "from_item_id": "item_mixed_entity_1", "to_item_id": "item_mixed_derived_1" },
+    { "id": "link_mixed_2", "type": "supports", "from_item_id": "item_mixed_measure_1", "to_item_id": "item_mixed_derived_1" }
+  ]
+}
