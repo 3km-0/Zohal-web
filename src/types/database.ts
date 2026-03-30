@@ -52,6 +52,7 @@ export interface Profile {
   id: string;
   email?: string | null;
   display_name?: string | null;  // Note: DB uses display_name, not full_name
+  whatsapp_phone_number?: string | null;
   avatar_url?: string | null;
   user_type?: string;
   education_level?: string | null;

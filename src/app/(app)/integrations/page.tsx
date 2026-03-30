@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link2, CheckCircle } from 'lucide-react';
+import { Link2, CheckCircle, MessageCircle } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card, Spinner } from '@/components/ui';
+import { Button, Card, Input, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -12,6 +12,13 @@ interface IntegrationAccount {
   provider: string;
   status: string;
   connected_at: string;
+}
+
+function normalizeWhatsappPhoneInput(value: string): string | null {
+  const digits = value.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  if (digits.length < 8) return null;
+  return `+${digits}`;
 }
 
 export default function IntegrationsPage() {
@@ -23,18 +30,32 @@ export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<IntegrationAccount[]>([]);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [savingWhatsappPhone, setSavingWhatsappPhone] = useState(false);
+  const [whatsappPhoneError, setWhatsappPhoneError] = useState('');
+  const [whatsappPhoneSuccess, setWhatsappPhoneSuccess] = useState('');
 
   useEffect(() => {
     async function fetchIntegrations() {
       if (!user) return;
 
-      const { data } = await supabase
-        .from('integration_accounts')
-        .select('provider, status, connected_at')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
+      const [integrationsResult, profileResult] = await Promise.all([
+        supabase
+          .from('integration_accounts')
+          .select('provider, status, connected_at')
+          .eq('user_id', user.id)
+          .eq('status', 'active'),
+        supabase
+          .from('profiles')
+          .select('whatsapp_phone_number')
+          .eq('id', user.id)
+          .single(),
+      ]);
 
-      if (data) setIntegrations(data);
+      if (integrationsResult.data) setIntegrations(integrationsResult.data);
+      if (profileResult.data?.whatsapp_phone_number) {
+        setWhatsappPhone(profileResult.data.whatsapp_phone_number);
+      }
       setLoading(false);
     }
 
@@ -43,6 +64,38 @@ export default function IntegrationsPage() {
 
   const isConnected = (provider: string) =>
     integrations.some((i) => i.provider === provider);
+
+  const saveWhatsappPhone = async () => {
+    if (!user) return;
+
+    setSavingWhatsappPhone(true);
+    setWhatsappPhoneError('');
+    setWhatsappPhoneSuccess('');
+
+    const normalizedPhone = normalizeWhatsappPhoneInput(whatsappPhone);
+    if (normalizedPhone === null) {
+      setSavingWhatsappPhone(false);
+      setWhatsappPhoneError(t('whatsappPhoneInvalid'));
+      return;
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        whatsapp_phone_number: normalizedPhone || null,
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      setSavingWhatsappPhone(false);
+      setWhatsappPhoneError(t('whatsappPhoneSaveError'));
+      return;
+    }
+
+    setWhatsappPhone(normalizedPhone || '');
+    setSavingWhatsappPhone(false);
+    setWhatsappPhoneSuccess(t('whatsappPhoneSaveSuccess'));
+  };
 
   const connectIntegration = async (provider: 'google_drive' | 'onedrive') => {
     setConnectingProvider(provider);
@@ -107,6 +160,45 @@ export default function IntegrationsPage() {
             <p className="text-sm text-text-soft mb-4">{t('description')}</p>
 
             <div className="space-y-3">
+              <div className="p-4 bg-surface-alt rounded-scholar border border-border space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-scholar bg-[#25D366]/10 border border-[#25D366]/20">
+                    <MessageCircle className="w-5 h-5 text-[#25D366]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-text">{t('whatsapp')}</p>
+                    <p className="text-xs text-text-soft">{t('whatsappDesc')}</p>
+                  </div>
+                </div>
+
+                <Input
+                  label={t('whatsappPhoneLabel')}
+                  value={whatsappPhone}
+                  onChange={(e) => {
+                    setWhatsappPhone(e.target.value);
+                    setWhatsappPhoneError('');
+                    setWhatsappPhoneSuccess('');
+                  }}
+                  placeholder={t('whatsappPhonePlaceholder')}
+                  hint={t('whatsappPhoneHint')}
+                  error={whatsappPhoneError || undefined}
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+
+                {whatsappPhoneSuccess ? (
+                  <div className="rounded-scholar border border-success/30 bg-success/5 p-3 text-sm text-success">
+                    {whatsappPhoneSuccess}
+                  </div>
+                ) : null}
+
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={saveWhatsappPhone} isLoading={savingWhatsappPhone}>
+                    {t('whatsappPhoneSave')}
+                  </Button>
+                </div>
+              </div>
+
               {/* Google Integration */}
               <div className="flex items-center justify-between p-4 bg-surface-alt rounded-scholar border border-border">
                 <div className="flex items-center gap-3">
