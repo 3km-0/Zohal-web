@@ -400,6 +400,7 @@ export default function WorkspacePlaybooksPage() {
   const selected = useMemo(() => playbooks.find((p) => p.id === selectedId) || null, [playbooks, selectedId]);
   const isSystemPreset = selected?.is_system_preset === true;
   const isReadOnly = isSystemPreset;
+  const specVariables = Array.isArray(spec.variables) ? spec.variables : [];
   const [duplicating, setDuplicating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
@@ -911,7 +912,7 @@ export default function WorkspacePlaybooksPage() {
                 <div className="hidden flex border-t border-border bg-surface-alt/30">
                   {[
                       { id: 'modules' as const, label: t('builder.sections.modules'), icon: Layers, count: (spec.modules_v2 || []).length, active: activeSection === 'modules' },
-                      { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: spec.variables.length, active: activeSection === 'variables' },
+                      { id: 'variables' as const, label: t('builder.sections.variables'), icon: Variable, count: (spec.variables || []).length, active: activeSection === 'variables' },
                       { id: 'configuration' as const, label: 'Context', icon: Shield, count: (spec.bundle_schema?.roles || []).length + (spec.scope && spec.scope !== 'either' ? 1 : 0), active: isConfigurationSection },
                     ].map((tab) => (
                       <button
@@ -1152,7 +1153,14 @@ export default function WorkspacePlaybooksPage() {
                             onClick={() =>
                               setSpec((p) => ({
                                 ...p,
-                                variables: [...p.variables, { key: `var_${p.variables.length + 1}`, type: 'text', required: false }],
+                                variables: [
+                                  ...(Array.isArray(p.variables) ? p.variables : []),
+                                  {
+                                    key: `var_${(Array.isArray(p.variables) ? p.variables : []).length + 1}`,
+                                    type: 'text',
+                                    required: false,
+                                  },
+                                ],
                               }))
                             }
                           >
@@ -1162,13 +1170,13 @@ export default function WorkspacePlaybooksPage() {
                         )}
                       </div>
 
-                      {spec.variables.length === 0 ? (
+                      {specVariables.length === 0 ? (
                         <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
                           No variables yet. Click &ldquo;Add Variable&rdquo; to create one.
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {spec.variables.map((v, idx) => (
+                          {specVariables.map((v, idx) => (
                             <div key={`${v.key}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div className="space-y-1">
@@ -1178,7 +1186,7 @@ export default function WorkspacePlaybooksPage() {
                                     disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
-                                        const vars = p.variables.slice();
+                                        const vars = Array.isArray(p.variables) ? p.variables.slice() : [];
                                         vars[idx] = { ...vars[idx], key: e.target.value };
                                         return { ...p, variables: vars };
                                       })
@@ -1193,7 +1201,7 @@ export default function WorkspacePlaybooksPage() {
                                     disabled={isReadOnly}
                                     onChange={(e) =>
                                       setSpec((p) => {
-                                        const vars = p.variables.slice();
+                                        const vars = Array.isArray(p.variables) ? p.variables.slice() : [];
                                         vars[idx] = { ...vars[idx], type: e.target.value };
                                         return { ...p, variables: vars };
                                       })
@@ -1209,7 +1217,7 @@ export default function WorkspacePlaybooksPage() {
                                     disabled={isReadOnly}
                                     onCheckedChange={(checked) =>
                                       setSpec((p) => {
-                                        const vars = p.variables.slice();
+                                        const vars = Array.isArray(p.variables) ? p.variables.slice() : [];
                                         vars[idx] = { ...vars[idx], required: checked };
                                         return { ...p, variables: vars };
                                       })
@@ -1221,7 +1229,10 @@ export default function WorkspacePlaybooksPage() {
                                       size="sm"
                                       onClick={() => {
                                         if (!window.confirm(t('builder.confirmRemoveVariable'))) return;
-                                        setSpec((p) => ({ ...p, variables: p.variables.filter((_, i) => i !== idx) }));
+                                        setSpec((p) => ({
+                                          ...p,
+                                          variables: (Array.isArray(p.variables) ? p.variables : []).filter((_, i) => i !== idx),
+                                        }));
                                       }}
                                     >
                                       Remove
@@ -1238,7 +1249,7 @@ export default function WorkspacePlaybooksPage() {
                                   onChange={(e) => {
                                     const val = e.target.value.trim();
                                     setSpec((p) => {
-                                      const vars = p.variables.slice();
+                                      const vars = Array.isArray(p.variables) ? p.variables.slice() : [];
                                       const constraints = { ...(vars[idx].constraints || {}) };
                                       constraints.min = val === '' ? undefined : Number(val);
                                       vars[idx] = { ...vars[idx], constraints };
@@ -1253,7 +1264,7 @@ export default function WorkspacePlaybooksPage() {
                                   onChange={(e) => {
                                     const val = e.target.value.trim();
                                     setSpec((p) => {
-                                      const vars = p.variables.slice();
+                                      const vars = Array.isArray(p.variables) ? p.variables.slice() : [];
                                       const constraints = { ...(vars[idx].constraints || {}) };
                                       constraints.max = val === '' ? undefined : Number(val);
                                       vars[idx] = { ...vars[idx], constraints };
@@ -1271,7 +1282,7 @@ export default function WorkspacePlaybooksPage() {
                                       .map((s) => s.trim())
                                       .filter(Boolean);
                                     setSpec((p) => {
-                                      const vars = p.variables.slice();
+                                      const vars = Array.isArray(p.variables) ? p.variables.slice() : [];
                                       const constraints = { ...(vars[idx].constraints || {}) };
                                       constraints.allowed_values = parts.length ? parts : undefined;
                                       vars[idx] = { ...vars[idx], constraints };
