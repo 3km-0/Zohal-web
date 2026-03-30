@@ -118,9 +118,10 @@ function deriveTemplateSourceText(spec: Partial<PlaybookSpecV1> | Record<string,
 }
 
 function summarizeCompiledSpec(spec: PlaybookSpecV1) {
+  const variables = Array.isArray(spec.variables) ? spec.variables : [];
   const enabledModules = (spec.modules_v2 || []).filter((module) => module.enabled !== false);
   return {
-    variableCount: spec.variables.length,
+    variableCount: variables.length,
     moduleCount: enabledModules.length,
     scope: spec.scope || 'either',
     moduleTitles: enabledModules.map((module) => module.title || module.id).slice(0, 6),
