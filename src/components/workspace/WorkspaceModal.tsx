@@ -8,6 +8,16 @@ import { createClient } from '@/lib/supabase/client';
 import type { Folder, Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { resolveIcon, isSFSymbol } from '@/lib/icon-mapping';
+import { isHiddenSystemPlaybook, getTemplateEmoji, getTemplateDescription } from '@/lib/template-library';
+
+interface PlaybookRecord {
+  id: string;
+  name: string;
+  is_system_preset: boolean | null;
+  current_version?: {
+    spec_json?: Record<string, unknown> | null;
+  } | null;
+}
 
 interface WorkspaceModalProps {
   workspace?: Workspace | null;
@@ -51,6 +61,11 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
   const [parentFolderId, setParentFolderId] = useState<string>(workspace?.parent_folder_id || initialParentFolderId || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    workspace?.default_playbook_id || null
+  );
+  const [availableTemplates, setAvailableTemplates] = useState<PlaybookRecord[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const isEditing = !!workspace;
 
@@ -75,6 +90,33 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
     void loadFolders();
   }, [supabase]);
 
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('playbooks-list', {
+          body: {
+            workspace_id: '00000000-0000-0000-0000-000000000000',
+            kind: 'document',
+            status: 'published',
+          },
+        });
+        if (!error && data?.playbooks) {
+          const visible = (data.playbooks as PlaybookRecord[]).filter(
+            (p) => !p.is_system_preset || !isHiddenSystemPlaybook(p as Parameters<typeof isHiddenSystemPlaybook>[0])
+          );
+          setAvailableTemplates(visible);
+        }
+      } catch {
+        // Non-fatal — template picker is optional
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    void loadTemplates();
+  }, [supabase]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -96,6 +138,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
             workspace_type: workspaceType,
             icon: iconEmoji.trim() || null,
             parent_folder_id: parentFolderId || null,
+            default_playbook_id: selectedTemplateId || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', workspace.id);
@@ -114,6 +157,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
           parent_folder_id: parentFolderId || null,
           owner_id: user.id,
           status: 'active',
+          default_playbook_id: selectedTemplateId || null,
         });
 
         if (error) throw error;
@@ -217,6 +261,69 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </div>
+
+          {/* Template picker */}
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">
+              Template <span className="text-text-soft font-normal">(optional)</span>
+            </label>
+            <p className="text-xs text-text-soft mb-2">
+              Choose a starting template. You can change it anytime.
+            </p>
+            {loadingTemplates ? (
+              <div className="text-xs text-text-soft">Loading templates…</div>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {/* None option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTemplateId(null)}
+                  className={cn(
+                    'flex flex-col items-center gap-1 p-2 rounded-scholar border transition-all flex-shrink-0 w-16',
+                    selectedTemplateId === null
+                      ? 'border-accent bg-accent/10'
+                      : 'border-border hover:border-accent/50'
+                  )}
+                >
+                  <span className="text-lg">✕</span>
+                  <span className="text-[10px] text-text-soft text-center leading-tight">None</span>
+                </button>
+
+                {availableTemplates.map((tpl) => {
+                  const tplAny = tpl as Parameters<typeof getTemplateEmoji>[0];
+                  const emoji = getTemplateEmoji(tplAny);
+                  const isSelected = selectedTemplateId === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      title={getTemplateDescription(tplAny, 'en')}
+                      onClick={() => setSelectedTemplateId(tpl.id)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 p-2 rounded-scholar border transition-all flex-shrink-0 w-16',
+                        isSelected
+                          ? 'border-accent bg-accent/10'
+                          : 'border-border hover:border-accent/50'
+                      )}
+                    >
+                      <span className="text-lg">{emoji}</span>
+                      <span className="text-[10px] text-text-soft text-center leading-tight line-clamp-2">
+                        {tpl.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {selectedTemplateId && availableTemplates.length > 0 && (() => {
+              const sel = availableTemplates.find((t) => t.id === selectedTemplateId);
+              if (!sel) return null;
+              const desc = getTemplateDescription(sel as Parameters<typeof getTemplateDescription>[0], 'en');
+              return desc ? (
+                <p className="mt-2 text-xs text-text-soft">{desc}</p>
+              ) : null;
+            })()}
           </div>
 
           {error && (
