@@ -14,7 +14,7 @@ interface IntegrationAccount {
   connected_at: string;
 }
 
-function normalizeWhatsappPhoneInput(value: string): string | null {
+function normalizeWhatsappPhoneInput(value: string): string | null | '' {
   const digits = value.replace(/[^\d]/g, '');
   if (!digits) return '';
   if (digits.length < 8) return null;

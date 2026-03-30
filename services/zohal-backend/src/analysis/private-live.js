@@ -331,3 +331,89 @@ export async function ensurePrivateLiveExperienceRefresh({
     bundle_revision_id: response?.bundle_revision_id || null,
   };
 }
+
+export async function openPrivateLiveExperienceLink({
+  requestId,
+  userId,
+  experienceId,
+}) {
+  const response = await callPublicationApi({
+    requestId,
+    userId,
+    path: "/v1/experiences/private-live/open",
+    body: { experience_id: normalizeUuid(experienceId) },
+  });
+  return {
+    experience_url: response?.experience_url
+      ? String(response.experience_url)
+      : null,
+    live_url: response?.live_url ? String(response.live_url) : null,
+    redeem_url: response?.redeem_url ? String(response.redeem_url) : null,
+  };
+}
+
+export async function createPrivateLiveAccessLink({
+  requestId,
+  userId,
+  experienceId,
+  ttlSeconds = 60 * 60,
+}) {
+  const openResult = await openPrivateLiveExperienceLink({
+    requestId,
+    userId,
+    experienceId,
+  });
+  const experienceUrl = String(openResult?.experience_url || openResult?.live_url || "").trim();
+  if (!experienceUrl) {
+    return {
+      short_url: null,
+      redeem_url: String(openResult?.redeem_url || "").trim() || null,
+      experience_url: null,
+    };
+  }
+
+  let host = "";
+  let nextPath = "/";
+  try {
+    const parsed = new URL(experienceUrl);
+    host = String(parsed.host || "").trim().toLowerCase();
+    nextPath = String(parsed.pathname || "/").trim() || "/";
+  } catch {
+    return {
+      short_url: null,
+      redeem_url: String(openResult?.redeem_url || "").trim() || null,
+      experience_url: experienceUrl,
+    };
+  }
+
+  const response = await callPublicationApi({
+    requestId,
+    userId,
+    path: "/v1/experiences/access/links",
+    body: {
+      experience_id: normalizeUuid(experienceId),
+      host,
+      ttl_seconds: ttlSeconds,
+      next_path: nextPath,
+      metadata: {
+        next_path: nextPath,
+        source: "whatsapp_automation_completion",
+      },
+    },
+  });
+
+  return {
+    short_url: response?.short_url ? String(response.short_url) : null,
+    redeem_url: response?.redeem_url ? String(response.redeem_url) : null,
+    experience_url: experienceUrl,
+  };
+}
+
+export function preferredPrivateLiveExperienceUrl(openResult) {
+  const experienceUrl = String(openResult?.experience_url || "").trim();
+  if (experienceUrl) return experienceUrl;
+  const liveUrl = String(openResult?.live_url || "").trim();
+  if (liveUrl) return liveUrl;
+  const redeemUrl = String(openResult?.redeem_url || "").trim();
+  return redeemUrl || null;
+}
