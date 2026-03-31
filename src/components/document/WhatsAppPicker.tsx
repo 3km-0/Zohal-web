@@ -87,7 +87,7 @@ export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
       setLoading(false);
       return;
     }
-    if (profileResult.error || workspaceResult.error) {
+    if (profileResult.error || workspaceResult.error || bindingResult.error) {
       setError(t('whatsappStatusLoadError'));
       setLoading(false);
       return;

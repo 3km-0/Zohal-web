@@ -87,6 +87,7 @@ export interface Workspace {
   name: string;
   description?: string | null;
   workspace_type: WorkspaceType;
+  default_playbook_id?: string | null;
   primary_plugin_family?: string | null;
   status?: string;
   color?: string | null;
