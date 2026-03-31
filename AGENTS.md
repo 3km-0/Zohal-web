@@ -45,8 +45,13 @@ This file is the repo-local workflow guide for `Zohal-web`.
 
 - `main` is the shipping truth.
 - `development` is the only allowed long-lived non-`main` branch.
+- `development` is a temporary integration branch, not a dumping ground for
+  unrelated web or backend work.
 - Any other branch must be short-lived and scoped to one task.
 - Do not leave stale feature branches or stale worktrees behind.
+- If `development` starts drifting or collecting mixed work, stop using it,
+  merge or cherry-pick the approved changes, delete it, and recreate it from
+  fresh `main`.
 
 ## Merge policy
 
