@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
@@ -53,7 +53,10 @@ type SavedViewFilters = {
 export default function WorkspaceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
+  const fromFolderId = searchParams.get('fromFolder');
+  const backHref = fromFolderId ? `/workspaces/folders/${encodeURIComponent(fromFolderId)}` : '/workspaces';
   const t = useTranslations('documents');
   const tCommon = useTranslations('common');
   const supabase = useMemo(() => createClient(), []);
@@ -293,7 +296,7 @@ export default function WorkspaceDetailPage() {
         title={workspace?.name || 'Loading...'}
         subtitle={workspace?.description || 'Workspace-first documents, views, and analysis'}
         leading={
-          <Link href="/workspaces">
+          <Link href={backHref}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
               {tCommon('back')}

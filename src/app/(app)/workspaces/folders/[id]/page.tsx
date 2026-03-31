@@ -214,7 +214,7 @@ export default function FolderDetailPage() {
                   {workspaces.map((workspace) => (
                     <Link
                       key={workspace.id}
-                      href={`/workspaces/${workspace.id}`}
+                      href={`/workspaces/${workspace.id}?fromFolder=${encodeURIComponent(folderId)}`}
                       draggable
                       onDragStart={(event) => {
                         event.dataTransfer.effectAllowed = 'move';

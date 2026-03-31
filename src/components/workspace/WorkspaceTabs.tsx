@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { FileText, Layers, MessageSquare, Rocket, ScrollText, StickyNote, Users } from 'lucide-react';
@@ -18,7 +18,15 @@ interface WorkspaceTabsProps {
 
 export function WorkspaceTabs({ workspaceId, active, className, showMembersTab = false }: WorkspaceTabsProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations('workspaceTabs');
+  const fromFolderId = searchParams.get('fromFolder');
+
+  const withFolderContext = (href: string) => {
+    if (!fromFolderId) return href;
+    const separator = href.includes('?') ? '&' : '?';
+    return `${href}${separator}fromFolder=${encodeURIComponent(fromFolderId)}`;
+  };
 
   const resolved: WorkspaceTabKey =
     active ||
@@ -42,14 +50,14 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     href: string;
     icon: ComponentType<{ className?: string }>;
   }[] = [
-    { key: 'documents', label: t('documents'), href: `/workspaces/${workspaceId}`, icon: FileText },
-    { key: 'ask', label: t('ask'), href: `/workspaces/${workspaceId}/ask`, icon: MessageSquare },
-    { key: 'notes', label: t('notes'), href: `/workspaces/${workspaceId}/notes`, icon: StickyNote },
-    { key: 'reports', label: t('reports'), href: `/workspaces/${workspaceId}/reports`, icon: ScrollText },
-    { key: 'pipelines', label: t('pipelines'), href: `/workspaces/${workspaceId}/pipelines`, icon: Layers },
-    { key: 'experiences', label: t('experiences'), href: `/workspaces/${workspaceId}/experiences`, icon: Rocket },
+    { key: 'documents', label: t('documents'), href: withFolderContext(`/workspaces/${workspaceId}`), icon: FileText },
+    { key: 'ask', label: t('ask'), href: withFolderContext(`/workspaces/${workspaceId}/ask`), icon: MessageSquare },
+    { key: 'notes', label: t('notes'), href: withFolderContext(`/workspaces/${workspaceId}/notes`), icon: StickyNote },
+    { key: 'reports', label: t('reports'), href: withFolderContext(`/workspaces/${workspaceId}/reports`), icon: ScrollText },
+    { key: 'pipelines', label: t('pipelines'), href: withFolderContext(`/workspaces/${workspaceId}/pipelines`), icon: Layers },
+    { key: 'experiences', label: t('experiences'), href: withFolderContext(`/workspaces/${workspaceId}/experiences`), icon: Rocket },
     ...(showMembersTab
-      ? [{ key: 'members' as const, label: t('members'), href: `/workspaces/${workspaceId}/members`, icon: Users }]
+      ? [{ key: 'members' as const, label: t('members'), href: withFolderContext(`/workspaces/${workspaceId}/members`), icon: Users }]
       : []),
   ];
 
