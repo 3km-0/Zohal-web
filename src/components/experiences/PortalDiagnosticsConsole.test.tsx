@@ -26,8 +26,14 @@ const messages = {
       candidateDescription: 'Candidate description',
       validationSummary: '{fails} fails, {warnings} warnings, quality {quality}',
       customizationSummary: 'Customization strategy: {strategy} • Result: {result}',
+      recoveryMode: 'Recovery mode',
       previousRevision: 'Previous revision',
+      attemptedRevision: 'Attempted revision',
+      fallbackReason: 'Fallback reason',
       preservedLive: 'The previous Live Portal stayed active because the recomposition attempt did not fully replace it.',
+      recompositionScorecard: 'Recomposition scorecard',
+      recompositionSignals: '{count} novelty signals: {signals}',
+      recompositionRatios: 'Shared lines {lines} • Shared tokens {tokens}',
       generationFailures: 'Generation failures',
       stageNames: {
         compile: 'Compile',
@@ -89,6 +95,7 @@ function diagnostics(overrides: Partial<PortalDiagnostics> = {}): PortalDiagnost
       publication_lane: 'trusted_runtime',
       active_runtime: 'generated_dispatch',
       active_revision_id: 'rev_demo',
+      recovery_mode: 'normal',
       live_url: 'https://live.zohal.ai/e/ct_demo',
     },
     candidate: {
@@ -159,6 +166,13 @@ function diagnostics(overrides: Partial<PortalDiagnostics> = {}): PortalDiagnost
     customization_result: null,
     previous_revision_id: null,
     preserved_live_on_failure: false,
+    recovery_mode: 'normal',
+    user_message_code: null,
+    active_live_revision_id: 'rev_demo',
+    attempted_revision_id: null,
+    recomposition_scorecard: null,
+    fallback_reason: null,
+    operator_trace_id: null,
     recent_events: [],
     stale_serving_reason: null,
     ...overrides,
@@ -219,7 +233,16 @@ describe('PortalDiagnosticsConsole', () => {
           customization_strategy: 'recompose',
           customization_result: 'preserved_live',
           previous_revision_id: 'rev_prev',
+          attempted_revision_id: 'rev_attempt',
           preserved_live_on_failure: true,
+          recovery_mode: 'preserved_live',
+          fallback_reason: 'worker_too_similar_to_reference',
+          recomposition_scorecard: {
+            novelty_signal_count: 3,
+            novelty_signals: ['route_chrome_delta', 'css_selector_overlap_ratio', 'design_system_delta'],
+            shared_line_ratio: 0.72,
+            shared_token_ratio: 0.70,
+          },
         })}
         isLoading={false}
         onRefresh={() => {}}
@@ -228,6 +251,9 @@ describe('PortalDiagnosticsConsole', () => {
 
     expect(screen.getByText('Customization strategy: Recompose • Result: Preserved Live')).toBeInTheDocument();
     expect(screen.getByText('Previous revision: rev_prev')).toBeInTheDocument();
+    expect(screen.getByText('Attempted revision: rev_attempt')).toBeInTheDocument();
+    expect(screen.getByText('Fallback reason: Worker Too Similar To Reference')).toBeInTheDocument();
+    expect(screen.getByText('Recomposition scorecard')).toBeInTheDocument();
     expect(screen.getByText('The previous Live Portal stayed active because the recomposition attempt did not fully replace it.')).toBeInTheDocument();
   });
 });

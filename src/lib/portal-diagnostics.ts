@@ -13,6 +13,7 @@ export type PortalDiagnostics = {
     publication_lane: string | null;
     active_runtime: string | null;
     active_revision_id: string | null;
+    recovery_mode?: string | null;
     live_url: string | null;
   };
   candidate: {
@@ -90,6 +91,23 @@ export type PortalDiagnostics = {
   customization_result: string | null;
   previous_revision_id: string | null;
   preserved_live_on_failure: boolean;
+  recovery_mode?: string | null;
+  user_message_code?: string | null;
+  active_live_revision_id?: string | null;
+  attempted_revision_id?: string | null;
+  recomposition_scorecard?: {
+    novelty_signal_count?: number | null;
+    novelty_signals?: string[] | null;
+    shared_line_ratio?: number | null;
+    shared_token_ratio?: number | null;
+    css_selector_overlap_ratio?: number | null;
+    top_level_structure_overlap_ratio?: number | null;
+    route_chrome_delta?: boolean | null;
+    design_system_delta?: boolean | null;
+    reason?: string | null;
+  } | null;
+  fallback_reason?: string | null;
+  operator_trace_id?: string | null;
   recent_events: Array<{
     event_kind: string;
     created_at: string;

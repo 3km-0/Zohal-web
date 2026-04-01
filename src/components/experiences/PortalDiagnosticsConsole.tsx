@@ -93,6 +93,11 @@ export function PortalDiagnosticsConsole({
                   {diagnostics.summary.active_revision_id || t('status.none')}
                 </div>
                 <div className="mt-2 text-sm text-text-soft">{diagnostics.summary.active_runtime || '—'}</div>
+                {diagnostics.recovery_mode ? (
+                  <div className="mt-2 text-sm text-text-soft">
+                    {t('portalConsole.recoveryMode')}: {humanizeFailureClass(diagnostics.recovery_mode)}
+                  </div>
+                ) : null}
               </div>
               <div className="rounded-scholar border border-border bg-surface-alt p-4">
                 <div className="text-text-soft">{t('portalConsole.qualityScore')}</div>
@@ -217,8 +222,35 @@ export function PortalDiagnosticsConsole({
                       {t('portalConsole.previousRevision')}: {diagnostics.previous_revision_id}
                     </div>
                   ) : null}
+                  {diagnostics.attempted_revision_id ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.attemptedRevision')}: {diagnostics.attempted_revision_id}
+                    </div>
+                  ) : null}
+                  {diagnostics.fallback_reason ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.fallbackReason')}: {humanizeFailureClass(diagnostics.fallback_reason)}
+                    </div>
+                  ) : null}
                   {diagnostics.preserved_live_on_failure ? (
                     <div className="mt-2 text-text-soft">{t('portalConsole.preservedLive')}</div>
+                  ) : null}
+                  {diagnostics.recomposition_scorecard ? (
+                    <div className="mt-3 rounded-scholar border border-border bg-background p-3 text-text-soft">
+                      <div className="font-semibold text-text">{t('portalConsole.recompositionScorecard')}</div>
+                      <div className="mt-1">
+                        {t('portalConsole.recompositionSignals', {
+                          count: diagnostics.recomposition_scorecard.novelty_signal_count ?? 0,
+                          signals: diagnostics.recomposition_scorecard.novelty_signals?.join(', ') || '—',
+                        })}
+                      </div>
+                      <div className="mt-1">
+                        {t('portalConsole.recompositionRatios', {
+                          lines: (diagnostics.recomposition_scorecard.shared_line_ratio ?? 0).toFixed(2),
+                          tokens: (diagnostics.recomposition_scorecard.shared_token_ratio ?? 0).toFixed(2),
+                        })}
+                      </div>
+                    </div>
                   ) : null}
                 </div>
                 {diagnostics.candidate?.generation_failures?.length ? (
