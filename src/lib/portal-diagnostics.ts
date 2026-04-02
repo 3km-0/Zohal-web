@@ -95,6 +95,14 @@ export type PortalDiagnostics = {
   user_message_code?: string | null;
   active_live_revision_id?: string | null;
   attempted_revision_id?: string | null;
+  attempted_strategy?: string | null;
+  fallback_from_strategy?: string | null;
+  stale_worker_reason?: string | null;
+  edit_diff_summary?: {
+    changed?: boolean | null;
+    added_line_count?: number | null;
+    removed_line_count?: number | null;
+  } | null;
   recomposition_scorecard?: {
     novelty_signal_count?: number | null;
     novelty_signals?: string[] | null;

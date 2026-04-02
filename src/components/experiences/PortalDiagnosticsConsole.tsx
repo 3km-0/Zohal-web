@@ -227,6 +227,21 @@ export function PortalDiagnosticsConsole({
                       {t('portalConsole.attemptedRevision')}: {diagnostics.attempted_revision_id}
                     </div>
                   ) : null}
+                  {diagnostics.attempted_strategy ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.attemptedStrategy')}: {humanizeFailureClass(diagnostics.attempted_strategy)}
+                    </div>
+                  ) : null}
+                  {diagnostics.fallback_from_strategy ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.fallbackFromStrategy')}: {humanizeFailureClass(diagnostics.fallback_from_strategy)}
+                    </div>
+                  ) : null}
+                  {diagnostics.stale_worker_reason ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.staleWorkerReason')}: {humanizeFailureClass(diagnostics.stale_worker_reason)}
+                    </div>
+                  ) : null}
                   {diagnostics.fallback_reason ? (
                     <div className="mt-2 text-text-soft">
                       {t('portalConsole.fallbackReason')}: {humanizeFailureClass(diagnostics.fallback_reason)}
@@ -250,6 +265,14 @@ export function PortalDiagnosticsConsole({
                           tokens: (diagnostics.recomposition_scorecard.shared_token_ratio ?? 0).toFixed(2),
                         })}
                       </div>
+                    </div>
+                  ) : null}
+                  {diagnostics.edit_diff_summary?.changed ? (
+                    <div className="mt-2 text-text-soft">
+                      {t('portalConsole.editDiffSummary', {
+                        added: diagnostics.edit_diff_summary.added_line_count ?? 0,
+                        removed: diagnostics.edit_diff_summary.removed_line_count ?? 0,
+                      })}
                     </div>
                   ) : null}
                 </div>
