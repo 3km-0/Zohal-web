@@ -40,7 +40,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
   return (
     <header
       className={cn(
-        'flex items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-md md:px-6 md:py-4',
+        'relative z-30 flex items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-md md:px-6 md:py-4',
         className
       )}
     >
@@ -104,7 +104,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-60 bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)] z-50 overflow-hidden animate-fade-in">
+            <div className="absolute right-0 mt-2 w-60 bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)] z-[200] overflow-hidden animate-fade-in">
               {/* User info header */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
                 <div
