@@ -994,202 +994,149 @@ function HeroVisualScene({
       tone: "warning",
       status: content.ui.mock.reviewStatus,
     },
+    {
+      label: content.ui.mock.sampleTermLabel,
+      value: content.ui.mock.sampleTermMonthsValue,
+      tone: "success",
+      status: content.ui.mock.verifiedStatus,
+    },
   ] as const;
 
-  const dashClass = reducedMotion ? "" : "homepage-scene-dash";
   const pulseClass = reducedMotion ? "" : "homepage-scene-pulse";
-  const floatClass = reducedMotion ? "" : "homepage-scene-float";
-  const shimmerClass = reducedMotion ? "" : "homepage-scene-shimmer";
 
   return (
     <div className={cn("relative mx-auto w-full", isRtl ? "max-w-[780px]" : "max-w-[760px]")}>
-      <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-6 lg:p-7">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_20%,rgba(226,200,126,0.09),transparent_22%),radial-gradient(circle_at_84%_16%,rgba(226,200,126,0.12),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
-        <div
-          className={cn(
-            "absolute top-4 h-px w-28 bg-[linear-gradient(90deg,rgba(226,200,126,0),rgba(226,200,126,0.5),rgba(226,200,126,0))]",
-            isRtl ? "left-6" : "right-6"
-          )}
-        />
+      {/* Ambient glow behind the card */}
+      <div className="pointer-events-none absolute -inset-6 rounded-[50px] bg-[radial-gradient(ellipse_at_60%_30%,rgba(226,200,126,0.12),transparent_55%)]" aria-hidden="true" />
 
-        <div className="relative z-10 flex flex-wrap gap-2">
-          <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-[11px] tracking-[0.16em] uppercase text-text-soft">
-            {content.hero.mock.title}
+      <div className="relative overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.09)] bg-[#0f0f11] shadow-[0_32px_100px_rgba(0,0,0,0.5)]">
+
+        {/* Window chrome bar */}
+        <div className={cn(
+          "flex items-center justify-between border-b border-[rgba(255,255,255,0.07)] px-5 py-3.5",
+          isRtl && "flex-row-reverse"
+        )}>
+          <div className={cn("flex items-center gap-1.5", isRtl && "flex-row-reverse")}>
+            <span className="h-3 w-3 rounded-full bg-[rgba(255,255,255,0.1)]" />
+            <span className="h-3 w-3 rounded-full bg-[rgba(255,255,255,0.07)]" />
+            <span className="h-3 w-3 rounded-full bg-[rgba(255,255,255,0.04)]" />
+          </div>
+          <div className="text-[11px] tracking-[0.18em] uppercase text-[rgba(255,255,255,0.35)]">
+            {content.ui.mock.samplePackTitle}
+          </div>
+          <span className="rounded-full border border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.14)] px-2.5 py-1 text-[10px] font-semibold text-success">
+            {content.ui.mock.verifiedStatus}
           </span>
-          {content.hero.mock.panels.map((panel) => (
-            <span
-              key={panel}
-              className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] px-3 py-1.5 text-xs text-text-soft"
-            >
-              {panel}
-            </span>
-          ))}
         </div>
 
-        <div
-          className={cn(
-            "relative z-10 mt-5 grid gap-4",
-            isRtl
-              ? "min-[1800px]:grid-cols-[minmax(0,1fr),minmax(280px,0.86fr)]"
-              : "lg:grid-cols-[minmax(0,1.05fr),minmax(250px,0.82fr)]"
-          )}
-        >
-          <div className="relative rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(19,19,22,0.26)] p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
+        {/* Two-column body */}
+        <div className={cn("grid", isRtl ? "sm:grid-cols-[1fr,0.95fr]" : "sm:grid-cols-[1fr,0.95fr]")}>
+
+          {/* Left: Document viewer */}
+          <div className={cn("border-[rgba(255,255,255,0.06)] p-5 sm:p-6", isRtl ? "border-l" : "border-r")}>
+            <div className={cn("mb-4 flex items-center justify-between", isRtl && "flex-row-reverse")}>
+              <span className="text-[10px] tracking-[0.18em] uppercase text-[rgba(255,255,255,0.35)]">
                 {content.ui.mock.documentViewer}
-              </div>
-              <div className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-2.5 py-1 text-[10px] tracking-[0.16em] uppercase text-text-soft">
+              </span>
+              <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase text-[rgba(255,255,255,0.35)]">
                 PDF
-              </div>
+              </span>
             </div>
 
-            <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-5">
-              <div className="space-y-3">
-                <div className="h-2.5 w-11/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
-                <div className="h-2.5 w-9/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
-                <div className="h-2.5 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
-                <div className="h-2.5 w-8/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
-              </div>
-
-              <div
-                className={cn(
-                  "relative mt-5 overflow-hidden rounded-[20px] border border-[rgba(226,200,126,0.28)] bg-[rgba(226,200,126,0.08)] p-4",
-                  isRtl && "p-4 sm:p-5"
-                )}
-              >
-                <div className={cn("absolute inset-y-0 -left-1/3 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(226,200,126,0.18),transparent)]", shimmerClass)} />
-                <div className={cn("relative text-sm leading-7 text-accent", isRtl && "sm:text-[15px] sm:leading-8")}>
-                  {content.ui.mock.highlightSnippet}
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3 min-[560px]:grid-cols-2">
-                {[4, 12].map((page) => (
-                  <div
-                    key={page}
-                    className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3"
-                  >
-                    <div className="text-xs text-text-soft">
-                      {content.ui.mock.pageLabel.replace("{page}", String(page))}
-                    </div>
-                    <div className="mt-2 h-12 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
-                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(226,200,126,0.22)]" />
-                  </div>
-                ))}
-              </div>
+            {/* Document text lines */}
+            <div className="space-y-2 mb-5">
+              <div className="h-2 w-full rounded-full bg-[rgba(255,255,255,0.07)]" />
+              <div className="h-2 w-10/12 rounded-full bg-[rgba(255,255,255,0.07)]" />
+              <div className="h-2 w-11/12 rounded-full bg-[rgba(255,255,255,0.07)]" />
+              <div className="h-2 w-7/12 rounded-full bg-[rgba(255,255,255,0.07)]" />
             </div>
 
-            <div
-              className={cn(
-                "pointer-events-none absolute top-[92px] w-16 border-t border-dashed border-[rgba(226,200,126,0.38)]",
-                isRtl ? "left-[-28px]" : "right-[-28px]",
-                dashClass
-              )}
-            />
-          </div>
-
-          <div className="relative space-y-4 min-w-0">
-            <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-              <div className={cn("flex gap-3", isRtl ? "flex-col items-start sm:flex-row sm:items-center sm:justify-between" : "items-center justify-between")}>
-                <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-                  {content.ui.mock.verifiedVariables}
-                </div>
-                <span className="rounded-[var(--rPill)] border border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.16)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
-                  {content.ui.mock.verifiedStatus}
+            {/* Highlighted / extracted clause */}
+            <div className="rounded-[14px] border border-[rgba(226,200,126,0.28)] bg-[rgba(226,200,126,0.07)] px-4 py-3.5 mb-5">
+              <div className={cn("mb-2 flex items-center gap-1.5", isRtl && "flex-row-reverse")}>
+                <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                <span className="text-[9px] font-semibold tracking-[0.15em] uppercase text-accent">
+                  {content.ui.mock.fieldEvidenceLabel}
                 </span>
               </div>
-
-              <div className="mt-4 space-y-3">
-                {factRows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3"
-                  >
-                    <div className={cn("flex gap-2", isRtl ? "flex-col items-start" : "items-center justify-between gap-3")}>
-                      <div className="min-w-0 text-xs font-semibold leading-6 text-text-soft">{row.label}</div>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-[var(--rPill)] px-2 py-0.5 text-[10px] font-semibold",
-                          row.tone === "success"
-                            ? "border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.16)] text-success"
-                            : "border border-[rgba(226,200,126,0.26)] bg-[rgba(226,200,126,0.07)] text-accent"
-                        )}
-                      >
-                        {row.status}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-sm text-text">{row.value}</div>
-                  </div>
-                ))}
-              </div>
+              <p className={cn("text-sm leading-6 text-accent/80", isRtl && "text-right")}>
+                {content.ui.mock.highlightSnippet}
+              </p>
             </div>
 
-            <div className="relative rounded-[24px] border border-[rgba(226,200,126,0.28)] bg-[linear-gradient(180deg,rgba(226,200,126,0.13),rgba(226,200,126,0.05))] p-4">
-              <div className="flex items-center gap-2">
-                <span className={cn("h-2.5 w-2.5 rounded-full bg-accent", pulseClass)} />
-                <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
-                  {content.ui.mock.exceptionsQueueTitle}
-                </div>
-              </div>
-              <div className="mt-3 text-sm leading-6 text-text">{content.ui.mock.exceptionsQueueBody}</div>
+            {/* More faded text lines */}
+            <div className="space-y-2">
+              <div className="h-2 w-11/12 rounded-full bg-[rgba(255,255,255,0.04)]" />
+              <div className="h-2 w-9/12 rounded-full bg-[rgba(255,255,255,0.04)]" />
+              <div className="h-2 w-10/12 rounded-full bg-[rgba(255,255,255,0.04)]" />
             </div>
           </div>
-        </div>
 
-        <div
-          className={cn(
-            "relative z-10 mt-4 grid gap-4",
-            isRtl
-              ? "min-[1800px]:grid-cols-[minmax(260px,0.82fr),minmax(0,1fr)] min-[1800px]:items-start"
-              : "lg:grid-cols-[minmax(0,0.78fr),minmax(0,1fr)] lg:items-start"
-          )}
-        >
-          <div
-            className={cn(
-              "rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]",
-              floatClass
-            )}
-          >
-            <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-              {content.ui.decisionPackPreview.deliverablesLabel}
+          {/* Right: Extracted & verified fields */}
+          <div className="p-5 sm:p-6">
+            <div className={cn("mb-4 flex items-center justify-between", isRtl && "flex-row-reverse")}>
+              <span className="text-[10px] tracking-[0.18em] uppercase text-[rgba(255,255,255,0.35)]">
+                {content.ui.mock.verifiedVariables}
+              </span>
             </div>
-            <div className="mt-4 space-y-2.5">
-              {content.ui.decisionPackPreview.deliverables.slice(0, 3).map((label) => (
+
+            <div className="space-y-2">
+              {factRows.map((row) => (
                 <div
-                  key={label}
-                  className="flex items-center justify-between gap-3 rounded-[16px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5"
+                  key={row.label}
+                  className={cn(
+                    "flex items-center justify-between rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-3.5 py-2.5",
+                    isRtl && "flex-row-reverse"
+                  )}
                 >
-                  <span className="text-sm text-text">{label}</span>
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-text-soft">
-                    {content.ui.mock.verifiedStatus}
+                  <div className={cn("min-w-0", isRtl && "text-right")}>
+                    <div className="text-[10px] text-[rgba(255,255,255,0.38)] mb-0.5">{row.label}</div>
+                    <div className="text-[13px] font-medium text-text">{row.value}</div>
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                      row.tone === "success"
+                        ? "border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.12)] text-success"
+                        : "border border-[rgba(226,200,126,0.28)] bg-[rgba(226,200,126,0.08)] text-accent"
+                    )}
+                  >
+                    {row.status}
                   </span>
                 </div>
               ))}
             </div>
-          </div>
 
-          <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(19,19,22,0.22)] p-4">
-            <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-              {content.ui.mock.fieldEvidenceLabel}
-            </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {[4, 12].map((page) => (
-                <div
-                  key={page}
-                  className="rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-3 py-3"
-                >
-                  <div className="text-xs text-text-soft">
-                    {content.ui.mock.pageLabel.replace("{page}", String(page))}
-                  </div>
-                  <div className="mt-2 h-10 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
-                </div>
-              ))}
+            {/* Exception / alert card */}
+            <div className="mt-3 rounded-[12px] border border-[rgba(226,200,126,0.22)] bg-[rgba(226,200,126,0.06)] px-3.5 py-3">
+              <div className={cn("flex items-center gap-2 mb-1", isRtl && "flex-row-reverse")}>
+                <span className={cn("h-2 w-2 rounded-full bg-accent shrink-0", pulseClass)} />
+                <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-accent">
+                  {content.ui.mock.exceptionsQueueTitle}
+                </span>
+              </div>
+              <p className={cn("text-[12px] leading-5 text-[rgba(255,255,255,0.45)]", isRtl && "text-right")}>
+                {content.ui.mock.exceptionsQueueBody}
+              </p>
             </div>
           </div>
         </div>
-      </div>
 
+        {/* Footer stat strip */}
+        <div className="border-t border-[rgba(255,255,255,0.06)] px-5 py-3">
+          <div className={cn("flex flex-wrap items-center gap-2", isRtl && "flex-row-reverse")}>
+            {content.ui.decisionPackPreview.deliverables.slice(0, 3).map((label) => (
+              <div
+                key={label}
+                className="flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-1"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" />
+                <span className="text-[11px] text-[rgba(255,255,255,0.45)]">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
