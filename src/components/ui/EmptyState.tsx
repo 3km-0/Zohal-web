@@ -2,7 +2,6 @@
 
 import { type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { IconBox } from './IconBox';
 import { Button } from './Button';
 
 export interface EmptyStateProps {
@@ -52,18 +51,25 @@ export function EmptyState({
       {icon && (
         <div
           className={cn(
-            'flex items-center justify-center rounded-full bg-surface-alt border border-border mb-4',
-            variant === 'inline' ? 'w-12 h-12' : 'w-16 h-16'
+            'flex items-center justify-center mb-5',
+            variant === 'inline' ? 'w-12 h-12 rounded-xl' : 'w-16 h-16 rounded-2xl'
           )}
+          style={{
+            background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+          }}
         >
-          <span className={cn('text-text-soft', variant === 'inline' ? 'w-6 h-6' : 'w-8 h-8')}>
+          <span
+            className={cn(variant === 'inline' ? 'w-5 h-5' : 'w-7 h-7')}
+            style={{ color: 'var(--accent)' }}
+          >
             {icon}
           </span>
         </div>
       )}
       <h3
         className={cn(
-          'font-semibold text-text mb-1',
+          'font-semibold tracking-tight text-text mb-1',
           variant === 'inline' ? 'text-base' : 'text-lg'
         )}
       >

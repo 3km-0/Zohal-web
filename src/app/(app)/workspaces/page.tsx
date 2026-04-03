@@ -555,11 +555,13 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150',
-        selected
-          ? 'bg-accent/10 text-accent'
-          : 'text-text-soft hover:bg-surface-alt hover:text-text'
+        'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150',
+        !selected && 'text-text-soft hover:bg-surface-alt hover:text-text'
       )}
+      style={selected ? {
+        backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+        color: 'var(--accent)',
+      } : undefined}
     >
       {label}
     </button>

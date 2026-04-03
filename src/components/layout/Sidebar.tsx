@@ -138,7 +138,12 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-0.5">
+        {!collapsed && (
+          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-text-muted select-none">
+            Navigation
+          </p>
+        )}
         {navItems.map((item) => (
           <NavItem
             key={item.href}
@@ -151,7 +156,12 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="p-3 border-t border-border space-y-1">
+      <div className="p-3 border-t border-border space-y-0.5">
+        {!collapsed && (
+          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-text-muted select-none">
+            Account
+          </p>
+        )}
         {bottomItems.map((item) => (
           <NavItem
             key={item.href}
@@ -195,16 +205,27 @@ function NavItem({ href, label, icon: Icon, active, collapsed, onNavigate }: Nav
       href={href}
       onClick={onNavigate}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-scholar transition-colors',
+        'relative flex items-center gap-3 px-3 py-2.5 rounded-scholar transition-colors duration-150',
         active
-          ? 'bg-accent/10 text-accent'
+          ? 'text-accent'
           : 'text-text-soft hover:text-text hover:bg-surface-alt',
         collapsed && 'justify-center'
       )}
+      style={active ? { backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)' } : undefined}
       title={collapsed ? label : undefined}
     >
-      <Icon className="w-5 h-5 flex-shrink-0" />
-      {!collapsed && <span className="font-medium">{label}</span>}
+      {/* Left indicator bar — active only */}
+      {active && (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full"
+          style={{ backgroundColor: 'var(--accent)' }}
+          aria-hidden="true"
+        />
+      )}
+      <Icon className={cn('flex-shrink-0', active ? 'w-5 h-5' : 'w-5 h-5')} />
+      {!collapsed && (
+        <span className={cn(active ? 'font-semibold' : 'font-medium')}>{label}</span>
+      )}
     </Link>
   );
 }

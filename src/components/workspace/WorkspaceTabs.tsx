@@ -74,14 +74,30 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
                 href={tab.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-sm font-medium transition-all duration-150 border-b-2 -mb-px',
+                  'inline-flex items-center whitespace-nowrap py-2 px-1 transition-all duration-150 border-b-2 -mb-px',
                   isActive
-                    ? 'border-accent text-text'
-                    : 'border-transparent text-text-soft hover:text-text hover:border-border'
+                    ? 'border-accent'
+                    : 'border-transparent hover:border-border'
                 )}
               >
-                <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                {tab.label}
+                {/* Pill wrapping icon + label */}
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-150',
+                    isActive
+                      ? 'font-semibold text-text'
+                      : 'font-medium text-text-soft hover:text-text'
+                  )}
+                  style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)' } : undefined}
+                >
+                  <Icon
+                    className={cn(
+                      'flex-shrink-0 transition-colors duration-150',
+                      isActive ? 'h-4 w-4 text-accent' : 'h-3.5 w-3.5 text-text-muted'
+                    )}
+                  />
+                  {tab.label}
+                </span>
               </Link>
             );
           })}

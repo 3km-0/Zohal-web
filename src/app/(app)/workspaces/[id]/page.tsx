@@ -34,14 +34,14 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 const documentThumbnailCache = new Map<string, string>();
 
-const statusColors: Record<ProcessingStatus, string> = {
-  pending: 'bg-gray-500/10 text-gray-500',
-  uploading: 'bg-blue-500/10 text-blue-500',
-  processing: 'bg-amber-500/10 text-amber-500',
-  chunked: 'bg-cyan-500/10 text-cyan-500',
-  embedding: 'bg-purple-500/10 text-purple-500',
-  completed: 'bg-success/10 text-success',
-  failed: 'bg-error/10 text-error',
+const STATUS_COLORS: Record<ProcessingStatus, { bg: string; color: string }> = {
+  pending:    { bg: 'color-mix(in srgb, var(--text-muted) 10%, transparent)', color: 'var(--text-muted)' },
+  uploading:  { bg: 'color-mix(in srgb, var(--accent) 12%, transparent)',     color: 'var(--accent)' },
+  processing: { bg: 'color-mix(in srgb, var(--warning) 12%, transparent)',    color: 'var(--warning)' },
+  chunked:    { bg: 'color-mix(in srgb, var(--accent) 8%, transparent)',      color: 'var(--accent-alt)' },
+  embedding:  { bg: 'color-mix(in srgb, var(--accent) 12%, transparent)',     color: 'var(--accent)' },
+  completed:  { bg: 'color-mix(in srgb, var(--success) 12%, transparent)',    color: 'var(--success)' },
+  failed:     { bg: 'color-mix(in srgb, var(--error) 12%, transparent)',      color: 'var(--error)' },
 };
 
 type SavedViewFilters = {
@@ -424,20 +424,24 @@ export default function WorkspaceDetailPage() {
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Saved views</div>
                   <div className="flex flex-wrap gap-2">
-                    {savedViews.map((view) => (
-                      <button
-                        key={view.id}
-                        onClick={() => applySavedView(view)}
-                        className={cn(
-                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                          activeSavedViewId === view.id
-                            ? 'border-accent bg-accent/10 text-accent'
-                            : 'border-border bg-surface text-text-soft hover:text-text'
-                        )}
-                      >
-                        {view.name}
-                      </button>
-                    ))}
+                    {savedViews.map((view) => {
+                      const isSelected = activeSavedViewId === view.id;
+                      return (
+                        <button
+                          key={view.id}
+                          onClick={() => applySavedView(view)}
+                          className="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+                          style={isSelected ? {
+                            backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                            borderColor: 'var(--accent)',
+                            color: 'var(--accent)',
+                          } : undefined}
+                          data-inactive={!isSelected || undefined}
+                        >
+                          {view.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -446,23 +450,29 @@ export default function WorkspaceDetailPage() {
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Types</div>
                   <div className="flex flex-wrap gap-2">
-                    {documentTypes.map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => {
-                          setActiveSavedViewId(null);
-                          setSelectedDocumentType((current) => (current === type ? null : type));
-                        }}
-                        className={cn(
-                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                          selectedDocumentType === type
-                            ? 'border-accent bg-accent/10 text-accent'
-                            : 'border-border bg-surface text-text-soft hover:text-text'
-                        )}
-                      >
-                        {type}
-                      </button>
-                    ))}
+                    {documentTypes.map((type) => {
+                      const isSelected = selectedDocumentType === type;
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => {
+                            setActiveSavedViewId(null);
+                            setSelectedDocumentType((current) => (current === type ? null : type));
+                          }}
+                          className={cn(
+                            'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                            !isSelected && 'border-border bg-surface text-text-soft hover:text-text'
+                          )}
+                          style={isSelected ? {
+                            backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                            borderColor: 'var(--accent)',
+                            color: 'var(--accent)',
+                          } : undefined}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -471,23 +481,29 @@ export default function WorkspaceDetailPage() {
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Tags</div>
                   <div className="flex flex-wrap gap-2">
-                    {documentTags.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => {
-                          setActiveSavedViewId(null);
-                          setSelectedTag((current) => (current === tag ? null : tag));
-                        }}
-                        className={cn(
-                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                          selectedTag === tag
-                            ? 'border-accent bg-accent/10 text-accent'
-                            : 'border-border bg-surface text-text-soft hover:text-text'
-                        )}
-                      >
-                        #{tag}
-                      </button>
-                    ))}
+                    {documentTags.map((tag) => {
+                      const isSelected = selectedTag === tag;
+                      return (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            setActiveSavedViewId(null);
+                            setSelectedTag((current) => (current === tag ? null : tag));
+                          }}
+                          className={cn(
+                            'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                            !isSelected && 'border-border bg-surface text-text-soft hover:text-text'
+                          )}
+                          style={isSelected ? {
+                            backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                            borderColor: 'var(--accent)',
+                            color: 'var(--accent)',
+                          } : undefined}
+                        >
+                          #{tag}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -697,8 +713,11 @@ function DocumentCard({ document: doc, workspaceId, onDelete }: DocumentCardProp
             {doc.document_type && <Badge size="sm">{t(doc.document_type)}</Badge>}
             <Badge
               size="sm"
-              variant={doc.processing_status === 'completed' ? 'success' : 'default'}
-              className={cn(statusColors[doc.processing_status])}
+              variant="default"
+              style={{
+                backgroundColor: STATUS_COLORS[doc.processing_status].bg,
+                color: STATUS_COLORS[doc.processing_status].color,
+              }}
             >
               {isProcessing && <span className="mr-1 h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
               {doc.processing_status}

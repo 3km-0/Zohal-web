@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Menu, Search, User } from 'lucide-react';
+import { Crown, FolderOpen, House, LogOut, Menu, Search, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
@@ -85,50 +85,80 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
           <button
             type="button"
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 p-1.5 rounded-scholar-sm hover:bg-surface-alt transition-colors"
+            className="flex items-center gap-2 p-1 rounded-full hover:bg-surface-alt transition-colors"
+            aria-label="User menu"
           >
-            <div className="w-8 h-8 bg-accent/10 border border-accent/20 rounded-full flex items-center justify-center">
-              <User className="w-4 h-4 text-accent" />
+            {/* Initials avatar — uses color-mix to avoid invalid CSS variable opacity */}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+              style={{
+                background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                color: 'var(--accent)',
+              }}
+            >
+              {(user?.user_metadata?.full_name as string | undefined)?.[0]?.toUpperCase() ||
+                user?.email?.[0]?.toUpperCase() ||
+                '?'}
             </div>
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)] z-50 overflow-hidden animate-fade-in">
-              <div className="px-4 py-3 border-b border-border">
-                <p className="text-sm font-medium text-text truncate">
-                  {user?.email || tCommon('user')}
-                </p>
-                <p className="text-xs text-text-soft">
-                  {user?.user_metadata?.full_name || tCommon('zohalUser')}
-                </p>
+            <div className="absolute right-0 mt-2 w-60 bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)] z-50 overflow-hidden animate-fade-in">
+              {/* User info header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                  style={{
+                    background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                    color: 'var(--accent)',
+                  }}
+                >
+                  {(user?.user_metadata?.full_name as string | undefined)?.[0]?.toUpperCase() ||
+                    user?.email?.[0]?.toUpperCase() ||
+                    '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-text truncate">
+                    {(user?.user_metadata?.full_name as string | undefined) || tCommon('zohalUser')}
+                  </p>
+                  <p className="text-xs text-text-soft truncate">{user?.email || ''}</p>
+                </div>
               </div>
+
+              {/* Nav links */}
               <div className="py-1">
                 <Link
                   href="/workspaces"
-                  className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
+                  <FolderOpen className="w-3.5 h-3.5 text-text-muted shrink-0" />
                   {tNav('dashboard')}
                 </Link>
                 <Link
                   href="/home"
-                  className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
+                  <House className="w-3.5 h-3.5 text-text-muted shrink-0" />
                   {tNav('home')}
                 </Link>
                 <Link
                   href="/settings"
-                  className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
+                  <Settings className="w-3.5 h-3.5 text-text-muted shrink-0" />
                   {tNav('settings')}
                 </Link>
                 <Link
-                  href="/settings/subscription"
-                  className="block px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
+                  href="/subscription"
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-text hover:bg-surface-alt transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
+                  <Crown className="w-3.5 h-3.5 text-text-muted shrink-0" />
                   {tSidebar('subscription')}
                 </Link>
                 <hr className="my-1 border-border" />
@@ -137,8 +167,9 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
                     setShowUserMenu(false);
                     signOut();
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors"
                 >
+                  <LogOut className="w-3.5 h-3.5 shrink-0" />
                   {tSidebar('logOut')}
                 </button>
               </div>
