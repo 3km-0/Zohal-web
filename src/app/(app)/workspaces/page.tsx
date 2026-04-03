@@ -242,7 +242,7 @@ export default function WorkspacesPage() {
                 <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted">
                   Folders
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1">
                   {topLevelFolders.map((folder) => (
                     <FolderTile
                       key={folder.id}
@@ -366,19 +366,32 @@ function FolderTile({
         onDrop?.();
       }}
       className={cn(
-        'group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/80 bg-surface p-5 transition-all duration-200',
-        'hover:border-accent/25 hover:shadow-[0_0_0_1px_rgba(196,164,90,0.08),0_8px_32px_rgba(0,0,0,0.24)] active:scale-[0.99]',
-        isDropTarget && 'border-accent/30 bg-accent/5',
-        'focus:outline-none focus:ring-2 focus:ring-accent/50',
-        'min-h-[130px]'
+        'group flex flex-col items-center gap-2.5 rounded-xl p-3 transition-all duration-200',
+        'hover:bg-surface-alt focus:outline-none focus:ring-2 focus:ring-accent/50',
+        isDropTarget && 'bg-accent/8 ring-2 ring-accent/40 scale-[1.03]',
       )}
     >
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-border" aria-hidden="true" />
-      <div className="space-y-1">
-        <FolderOpen className="mb-2 h-5 w-5 text-text-muted" />
-        <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-muted">Folder</div>
-        <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-text">{folder.name}</div>
+      {/* Big folder icon SVG */}
+      <div className="relative flex items-center justify-center w-full">
+        <svg
+          viewBox="0 0 120 92"
+          className="w-[84px] h-[64px] sm:w-[96px] sm:h-[74px] drop-shadow-md transition-transform duration-200 group-hover:scale-[1.06] group-hover:drop-shadow-lg"
+          aria-hidden="true"
+        >
+          {/* Back panel - slightly darker tab */}
+          <rect x="0" y="0" width="54" height="20" rx="6" fill="rgba(196,164,90,0.55)" />
+          {/* Main folder body */}
+          <rect x="0" y="12" width="120" height="80" rx="9" fill="rgba(196,164,90,0.82)" />
+          {/* Subtle inner shine */}
+          <rect x="6" y="24" width="108" height="42" rx="5" fill="rgba(255,255,255,0.07)" />
+          {/* Bottom depth strip */}
+          <rect x="0" y="76" width="120" height="16" rx="9" fill="rgba(0,0,0,0.08)" />
+        </svg>
       </div>
+
+      <span className="w-full text-center text-[13px] font-semibold text-text leading-tight line-clamp-2 px-1">
+        {folder.name}
+      </span>
     </Link>
   );
 }
@@ -405,6 +418,7 @@ function WorkspaceIcon({
   const tCommon = useTranslations('common');
   const [showMenu, setShowMenu] = useState(false);
   const accentColor = workspace.color ? String(workspace.color) : 'var(--accent)';
+  const initial = workspace.name.charAt(0).toUpperCase();
 
   return (
     <div className="group relative">
@@ -417,47 +431,73 @@ function WorkspaceIcon({
         }}
         onDragEnd={() => onDragEnd?.()}
         className={cn(
-          'relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/80 bg-surface p-5 transition-all duration-200',
-          'hover:border-accent/25 hover:shadow-[0_0_0_1px_rgba(196,164,90,0.08),0_8px_32px_rgba(0,0,0,0.24)] active:scale-[0.99]',
+          'relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-surface transition-all duration-200',
+          'hover:border-accent/30 hover:shadow-[0_2px_16px_rgba(0,0,0,0.18),0_0_0_1px_rgba(196,164,90,0.1)] active:scale-[0.985]',
           'focus:outline-none focus:ring-2 focus:ring-accent/50',
-          'min-h-[130px]'
         )}
       >
-        {/* Top accent line */}
+        {/* Header accent area */}
         <div
-          className="absolute inset-x-0 top-0 h-[2px]"
-          style={{ backgroundColor: accentColor }}
-          aria-hidden="true"
-        />
-
-        <div className="space-y-1">
-          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-muted">
-            {t(workspace.workspace_type)}
-          </div>
-          <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-text">
-            {workspace.name}
+          className="relative flex h-[72px] items-end px-4 pb-3 overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}26 0%, ${accentColor}0a 100%)`,
+          }}
+        >
+          {/* Decorative background circle */}
+          <div
+            className="absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20"
+            style={{ background: `radial-gradient(circle, ${accentColor} 0%, transparent 70%)` }}
+            aria-hidden="true"
+          />
+          {/* Initial avatar */}
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-base font-bold tracking-tight shrink-0"
+            style={{
+              backgroundColor: `${accentColor}22`,
+              color: accentColor,
+              border: `1.5px solid ${accentColor}35`,
+              boxShadow: `0 1px 6px ${accentColor}20`,
+            }}
+          >
+            {initial}
           </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-between">
-          <span className="text-[11px] text-text-muted">
-            {new Date(workspace.updated_at).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-            })}
+        {/* Content body */}
+        <div className="flex flex-1 flex-col gap-1 px-4 pt-3 pb-4">
+          <span
+            className="self-start rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+            style={{
+              backgroundColor: `${accentColor}14`,
+              color: accentColor,
+            }}
+          >
+            {t(workspace.workspace_type)}
           </span>
-          <ArrowRight className="h-3.5 w-3.5 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+          <div className="line-clamp-2 text-[14px] font-semibold leading-snug text-text mt-0.5">
+            {workspace.name}
+          </div>
+
+          <div className="mt-auto pt-3 flex items-center justify-between">
+            <span className="text-[11px] text-text-muted">
+              {new Date(workspace.updated_at).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+            <ArrowRight className="h-3 w-3 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+          </div>
         </div>
       </Link>
 
       {/* Context menu */}
-      <div className="absolute right-2.5 top-2.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+      <div className="absolute right-2.5 top-2.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 z-10">
         <button
           onClick={(e) => {
             e.preventDefault();
             setShowMenu(!showMenu);
           }}
-          className="rounded-md p-1 hover:bg-surface-alt transition-colors"
+          className="rounded-md p-1 bg-surface/70 backdrop-blur-sm hover:bg-surface-alt transition-colors"
         >
           <MoreVertical className="h-3.5 w-3.5 text-text-muted" />
         </button>

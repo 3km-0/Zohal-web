@@ -156,7 +156,7 @@ export default function FolderDetailPage() {
             {childFolders.length > 0 && (
               <section className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Folders</div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1">
                   {childFolders.map((child) => (
                     <Link
                       key={child.id}
@@ -181,19 +181,26 @@ export default function FolderDetailPage() {
                         void handleDropOnFolder(child.id);
                       }}
                       className={cn(
-                        'rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-surface-alt',
-                        activeDropFolderId === child.id && 'bg-accent/10 ring-2 ring-accent/40'
+                        'group flex flex-col items-center gap-2.5 rounded-xl p-3 transition-all duration-200',
+                        'hover:bg-surface-alt focus:outline-none focus:ring-2 focus:ring-accent/50',
+                        activeDropFolderId === child.id && 'bg-accent/8 ring-2 ring-accent/40 scale-[1.03]'
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface-alt">
-                          <FolderOpen className="h-5 w-5 text-text-soft" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-text">{child.name}</div>
-                          <div className="text-xs text-text-soft">Open folder</div>
-                        </div>
+                      <div className="relative flex items-center justify-center w-full">
+                        <svg
+                          viewBox="0 0 120 92"
+                          className="w-[84px] h-[64px] sm:w-[96px] sm:h-[74px] drop-shadow-md transition-transform duration-200 group-hover:scale-[1.06] group-hover:drop-shadow-lg"
+                          aria-hidden="true"
+                        >
+                          <rect x="0" y="0" width="54" height="20" rx="6" fill="rgba(196,164,90,0.55)" />
+                          <rect x="0" y="12" width="120" height="80" rx="9" fill="rgba(196,164,90,0.82)" />
+                          <rect x="6" y="24" width="108" height="42" rx="5" fill="rgba(255,255,255,0.07)" />
+                          <rect x="0" y="76" width="120" height="16" rx="9" fill="rgba(0,0,0,0.08)" />
+                        </svg>
                       </div>
+                      <span className="w-full text-center text-[13px] font-semibold text-text leading-tight line-clamp-2 px-1">
+                        {child.name}
+                      </span>
                     </Link>
                   ))}
                 </div>
@@ -211,24 +218,55 @@ export default function FolderDetailPage() {
                 />
               ) : (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {workspaces.map((workspace) => (
-                    <Link
-                      key={workspace.id}
-                      href={`/workspaces/${workspace.id}?fromFolder=${encodeURIComponent(folderId)}`}
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = 'move';
-                        setDraggedItem({ kind: 'workspace', id: workspace.id });
-                      }}
-                      onDragEnd={() => setDraggedItem(null)}
-                      className="rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-surface-alt"
-                    >
-                      <div className="truncate text-sm font-semibold text-text">{workspace.name}</div>
-                      <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-soft">
-                        {workspace.workspace_type}
-                      </div>
-                    </Link>
-                  ))}
+                  {workspaces.map((workspace) => {
+                    const accentColor = workspace.color ? String(workspace.color) : 'var(--accent)';
+                    const initial = workspace.name.charAt(0).toUpperCase();
+                    return (
+                      <Link
+                        key={workspace.id}
+                        href={`/workspaces/${workspace.id}?fromFolder=${encodeURIComponent(folderId)}`}
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = 'move';
+                          setDraggedItem({ kind: 'workspace', id: workspace.id });
+                        }}
+                        onDragEnd={() => setDraggedItem(null)}
+                        className="group relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-surface transition-all duration-200 hover:border-accent/30 hover:shadow-[0_2px_16px_rgba(0,0,0,0.18),0_0_0_1px_rgba(196,164,90,0.1)] active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      >
+                        <div
+                          className="relative flex h-[64px] items-end px-3 pb-2.5 overflow-hidden"
+                          style={{ background: `linear-gradient(135deg, ${accentColor}26 0%, ${accentColor}0a 100%)` }}
+                        >
+                          <div
+                            className="absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-20"
+                            style={{ background: `radial-gradient(circle, ${accentColor} 0%, transparent 70%)` }}
+                            aria-hidden="true"
+                          />
+                          <div
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold tracking-tight shrink-0"
+                            style={{
+                              backgroundColor: `${accentColor}22`,
+                              color: accentColor,
+                              border: `1.5px solid ${accentColor}35`,
+                            }}
+                          >
+                            {initial}
+                          </div>
+                        </div>
+                        <div className="flex flex-1 flex-col gap-1 px-3 pt-2.5 pb-3">
+                          <span
+                            className="self-start rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+                            style={{ backgroundColor: `${accentColor}14`, color: accentColor }}
+                          >
+                            {workspace.workspace_type}
+                          </span>
+                          <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-text mt-0.5">
+                            {workspace.name}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </section>
