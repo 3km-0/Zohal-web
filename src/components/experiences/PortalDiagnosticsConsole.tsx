@@ -321,7 +321,7 @@ export function PortalDiagnosticsConsole({
                           : null}
                       </div>
                     ) : null}
-                    {diagnostics.projection_diagnostics.projection_route_count > 0 ? (
+                    {(diagnostics.projection_diagnostics.projection_route_count ?? 0) > 0 ? (
                       <div className="mt-1 text-text-soft">
                         Projection routes: {diagnostics.projection_diagnostics.projection_route_count}
                       </div>
