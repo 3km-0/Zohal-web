@@ -244,27 +244,33 @@ export default function FolderDetailPage() {
                           setDraggedItem({ kind: 'workspace', id: workspace.id });
                         }}
                         onDragEnd={() => setDraggedItem(null)}
-                        className="group relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-surface transition-all duration-200 hover:border-accent/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.22)] active:scale-[0.985] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-surface transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent/40"
                       >
                         <div
-                          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
-                          style={{ backgroundColor: accentColor }}
+                          className="pointer-events-none absolute inset-0"
+                          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(20)} 0%, transparent 65%)` }}
                           aria-hidden="true"
                         />
-                        <div className="flex flex-col gap-2 pl-5 pr-3 pt-3.5 pb-3.5">
+                        <div className="relative z-10 flex flex-col p-5">
                           <div
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold shrink-0"
-                            style={{ backgroundColor: cm(13), color: accentColor, border: `1.5px solid ${cm(28)}` }}
+                            className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold"
+                            style={{
+                              background: cm(22),
+                              color: accentColor,
+                              border: `1px solid ${cm(45)}`,
+                              boxShadow: `0 0 0 4px ${cm(10)}, 0 4px 20px ${cm(28)}`,
+                            }}
                           >
                             {initial}
                           </div>
-                          <div>
-                            <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
-                              {workspace.workspace_type}
-                            </div>
-                            <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-text mt-0.5">
-                              {workspace.name}
-                            </div>
+                          <span
+                            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.16em]"
+                            style={{ color: accentColor }}
+                          >
+                            {workspace.workspace_type}
+                          </span>
+                          <div className="line-clamp-2 text-[14px] font-semibold leading-snug text-text">
+                            {workspace.name}
                           </div>
                         </div>
                       </Link>

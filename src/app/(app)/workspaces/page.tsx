@@ -430,7 +430,6 @@ function WorkspaceIcon({
   const [showMenu, setShowMenu] = useState(false);
   const accentColor = workspace.color ? String(workspace.color) : 'var(--accent)';
   const initial = workspace.name.charAt(0).toUpperCase();
-  // color-mix works correctly with both hex values and CSS custom properties
   const cm = (pct: number) => `color-mix(in srgb, ${accentColor} ${pct}%, transparent)`;
 
   return (
@@ -444,51 +443,54 @@ function WorkspaceIcon({
         }}
         onDragEnd={() => onDragEnd?.()}
         className={cn(
-          'relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-surface transition-all duration-200',
-          'hover:border-accent/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.22)] active:scale-[0.985]',
-          'focus:outline-none focus:ring-2 focus:ring-accent/50',
+          'relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-surface',
+          'transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]',
+          'active:translate-y-0 active:shadow-none focus:outline-none focus:ring-2 focus:ring-accent/40',
         )}
       >
-        {/* Left accent bar */}
+        {/* Ambient radial glow wash — renders correctly via color-mix */}
         <div
-          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
-          style={{ backgroundColor: accentColor }}
+          className="pointer-events-none absolute inset-0"
+          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(20)} 0%, transparent 65%)` }}
           aria-hidden="true"
         />
 
-        {/* Card content */}
-        <div className="flex flex-col gap-2.5 pl-5 pr-4 pt-4 pb-4">
-          {/* Avatar */}
+        <div className="relative z-10 flex flex-col p-5">
+          {/* Avatar with glow */}
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold shrink-0"
+            className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-bold"
             style={{
-              backgroundColor: cm(13),
+              background: cm(22),
               color: accentColor,
-              border: `1.5px solid ${cm(28)}`,
+              border: `1px solid ${cm(45)}`,
+              boxShadow: `0 0 0 4px ${cm(10)}, 0 4px 20px ${cm(28)}`,
             }}
           >
             {initial}
           </div>
 
-          {/* Type + Name */}
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
-              {t(workspace.workspace_type)}
-            </span>
-            <div className="line-clamp-2 text-[14px] font-semibold leading-snug text-text">
-              {workspace.name}
-            </div>
+          {/* Type label */}
+          <span
+            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.16em]"
+            style={{ color: accentColor }}
+          >
+            {t(workspace.workspace_type)}
+          </span>
+
+          {/* Name */}
+          <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-text">
+            {workspace.name}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-1 border-t border-border/40">
+          <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-3">
             <span className="text-[11px] text-text-muted">
               {new Date(workspace.updated_at).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
               })}
             </span>
-            <ArrowRight className="h-3 w-3 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+            <ArrowRight className="h-3.5 w-3.5 text-text-muted opacity-0 transition-opacity duration-200 group-hover:opacity-70" />
           </div>
         </div>
       </Link>
