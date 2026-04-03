@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { FileText, Layers, MessageSquare, Rocket, ScrollText, StickyNote, Users } from 'lucide-react';
+import { FileText, MessageSquare, Rocket, StickyNote, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-type WorkspaceTabKey = 'documents' | 'ask' | 'notes' | 'reports' | 'pipelines' | 'packs' | 'experiences' | 'members';
+type WorkspaceTabKey = 'documents' | 'ask' | 'notes' | 'packs' | 'experiences' | 'members';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -38,11 +38,7 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
         ? 'experiences'
       : pathname.includes('/members')
         ? 'members'
-      : pathname.includes('/reports')
-        ? 'reports'
-        : pathname.includes('/pipelines')
-          ? 'pipelines'
-        : 'documents');
+      : 'documents');
 
   const tabs: {
     key: WorkspaceTabKey;
@@ -53,8 +49,6 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     { key: 'documents', label: t('documents'), href: withFolderContext(`/workspaces/${workspaceId}`), icon: FileText },
     { key: 'ask', label: t('ask'), href: withFolderContext(`/workspaces/${workspaceId}/ask`), icon: MessageSquare },
     { key: 'notes', label: t('notes'), href: withFolderContext(`/workspaces/${workspaceId}/notes`), icon: StickyNote },
-    { key: 'reports', label: t('reports'), href: withFolderContext(`/workspaces/${workspaceId}/reports`), icon: ScrollText },
-    { key: 'pipelines', label: t('pipelines'), href: withFolderContext(`/workspaces/${workspaceId}/pipelines`), icon: Layers },
     { key: 'experiences', label: t('experiences'), href: withFolderContext(`/workspaces/${workspaceId}/experiences`), icon: Rocket },
     ...(showMembersTab
       ? [{ key: 'members' as const, label: t('members'), href: withFolderContext(`/workspaces/${workspaceId}/members`), icon: Users }]

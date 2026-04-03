@@ -288,6 +288,53 @@ export function PortalDiagnosticsConsole({
                 ) : null}
               </CardContent>
             </Card>
+
+            {diagnostics.projection_diagnostics ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Routing Mode</CardTitle>
+                  <CardDescription>Template projection routing diagnostics</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="rounded-scholar border border-border bg-surface-alt p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-text-soft">Routing Mode</span>
+                      <span
+                        data-testid="portal-routing-mode"
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${badgeClass(diagnostics.routing_mode === 'template_projection' ? 'pass' : 'warning')}`}
+                      >
+                        {diagnostics.routing_mode === 'template_projection'
+                          ? 'Template Projection'
+                          : 'Catalog Fallback'}
+                      </span>
+                    </div>
+                    {diagnostics.projection_status ? (
+                      <div className="mt-2 text-text-soft">
+                        Status: {diagnostics.projection_status}
+                      </div>
+                    ) : null}
+                    {diagnostics.projection_diagnostics.projection_source_template_id ? (
+                      <div className="mt-1 text-text-soft">
+                        Template: {diagnostics.projection_diagnostics.projection_source_template_id}
+                        {diagnostics.projection_diagnostics.projection_source_template_version
+                          ? ` v${diagnostics.projection_diagnostics.projection_source_template_version}`
+                          : null}
+                      </div>
+                    ) : null}
+                    {diagnostics.projection_diagnostics.projection_route_count > 0 ? (
+                      <div className="mt-1 text-text-soft">
+                        Projection routes: {diagnostics.projection_diagnostics.projection_route_count}
+                      </div>
+                    ) : null}
+                    {diagnostics.projection_diagnostics.projection_fallback_reason ? (
+                      <div className="mt-2 text-xs text-amber-600">
+                        Fallback: {diagnostics.projection_diagnostics.projection_fallback_reason}
+                      </div>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
         </div>
       ) : null}

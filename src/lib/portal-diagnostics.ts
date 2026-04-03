@@ -116,6 +116,21 @@ export type PortalDiagnostics = {
   } | null;
   fallback_reason?: string | null;
   operator_trace_id?: string | null;
+  routing_mode?: string | null;
+  projection_status?: string | null;
+  projection_diagnostics?: {
+    routing_mode?: string | null;
+    projection_status?: string | null;
+    projection_source?: string | null;
+    projection_source_template_id?: string | null;
+    projection_source_template_version?: string | null;
+    projection_route_count?: number;
+    projection_route_ids?: string[];
+    projection_fallback_reason?: string | null;
+    projection_validation_issues?: string[];
+    projection_validation_warnings?: string[];
+    projection_coverage?: number | null;
+  } | null;
   recent_events: Array<{
     event_kind: string;
     created_at: string;
