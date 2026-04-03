@@ -244,21 +244,20 @@ export default function FolderDetailPage() {
                           setDraggedItem({ kind: 'workspace', id: workspace.id });
                         }}
                         onDragEnd={() => setDraggedItem(null)}
-                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-surface transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(0,0,0,0.15)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent/40"
                       >
                         <div
                           className="pointer-events-none absolute inset-0"
-                          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(20)} 0%, transparent 65%)` }}
+                          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(14)} 0%, transparent 60%)` }}
                           aria-hidden="true"
                         />
                         <div className="relative z-10 flex flex-col p-5">
                           <div
                             className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold"
                             style={{
-                              background: cm(22),
+                              background: cm(18),
                               color: accentColor,
-                              border: `1px solid ${cm(45)}`,
-                              boxShadow: `0 0 0 4px ${cm(10)}, 0 4px 20px ${cm(28)}`,
+                              border: `1.5px solid ${cm(40)}`,
                             }}
                           >
                             {initial}

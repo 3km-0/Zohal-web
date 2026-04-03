@@ -443,15 +443,15 @@ function WorkspaceIcon({
         }}
         onDragEnd={() => onDragEnd?.()}
         className={cn(
-          'relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-surface',
-          'transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]',
+          'relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface',
+          'transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(0,0,0,0.15)]',
           'active:translate-y-0 active:shadow-none focus:outline-none focus:ring-2 focus:ring-accent/40',
         )}
       >
         {/* Ambient radial glow wash — renders correctly via color-mix */}
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(20)} 0%, transparent 65%)` }}
+          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(14)} 0%, transparent 60%)` }}
           aria-hidden="true"
         />
 
@@ -460,10 +460,9 @@ function WorkspaceIcon({
           <div
             className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-bold"
             style={{
-              background: cm(22),
+              background: cm(18),
               color: accentColor,
-              border: `1px solid ${cm(45)}`,
-              boxShadow: `0 0 0 4px ${cm(10)}, 0 4px 20px ${cm(28)}`,
+              border: `1.5px solid ${cm(40)}`,
             }}
           >
             {initial}
@@ -483,7 +482,7 @@ function WorkspaceIcon({
           </div>
 
           {/* Footer */}
-          <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-3">
+          <div className="mt-5 flex items-center justify-between border-t border-border pt-3">
             <span className="text-[11px] text-text-muted">
               {new Date(workspace.updated_at).toLocaleDateString(undefined, {
                 month: 'short',
