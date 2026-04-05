@@ -20,27 +20,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/types/database';
 import { getEffectiveSubscriptionTier } from '@/lib/subscription';
-
-function readThemeFromStorage(): 'light' | 'dark' | null {
-  try {
-    const value = window.localStorage.getItem('theme');
-    return value === 'light' || value === 'dark' ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeThemeToStorage(value: 'light' | 'dark'): void {
-  try {
-    window.localStorage.setItem('theme', value);
-  } catch {
-    // Ignore blocked storage environments.
-  }
-}
-
-function themeToDataTheme(value: 'light' | 'dark'): 'slate-light' | 'slate-dark' {
-  return value === 'light' ? 'slate-light' : 'slate-dark';
-}
+import {
+  applyThemeMode,
+  DEFAULT_THEME_MODE,
+  resolveThemeMode,
+  subscribeToThemeMode,
+  type ThemeMode,
+} from '@/lib/theme-mode';
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
@@ -52,7 +38,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME_MODE);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -80,17 +66,12 @@ export default function SettingsPage() {
   }, [supabase, user]);
 
   useEffect(() => {
-    const savedTheme = readThemeFromStorage();
-    const resolvedTheme = savedTheme ?? 'dark';
-    setTheme(resolvedTheme);
-    writeThemeToStorage(resolvedTheme);
-    document.documentElement.setAttribute('data-theme', themeToDataTheme(resolvedTheme));
+    setTheme(resolveThemeMode());
+    return subscribeToThemeMode(setTheme);
   }, []);
 
-  const handleThemeChange = (newTheme: 'light' | 'dark') => {
-    setTheme(newTheme);
-    writeThemeToStorage(newTheme);
-    document.documentElement.setAttribute('data-theme', themeToDataTheme(newTheme));
+  const handleThemeChange = (newTheme: ThemeMode) => {
+    applyThemeMode(newTheme);
   };
 
   const handleSaveProfile = async () => {

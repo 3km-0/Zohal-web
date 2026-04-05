@@ -20,7 +20,7 @@ This file is the repo-local workflow guide for `Zohal-web`.
 ## Product and architecture posture
 
 - The product model remains:
-  `Document -> Template -> Run -> Snapshot -> Portal -> Automation`
+  `Document -> Template -> Run -> Snapshot -> Living Interface -> Automation`
 - Preserve the core loops:
   - circle -> explain
   - solve -> workspace
@@ -28,6 +28,11 @@ This file is the repo-local workflow guide for `Zohal-web`.
   - evidence-grade analysis
 - Treat web changes as part of one shared product with iOS; do not create a web
   behavior fork unless explicitly approved.
+- Use `Living Interface` for public/company/category phrasing and user-facing
+  lifecycle language.
+- Use `Surface` as the default internal/product-architecture noun.
+- Treat `Portal` and `Experience` as legacy compatibility terms unless a
+  storage/runtime identifier or old operator/debug surface requires them.
 
 ## Hosting and deploy posture
 

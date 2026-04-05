@@ -1,13 +1,21 @@
 'use client';
 
+import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Crown, FolderOpen, House, LogOut, Menu, Search, Settings } from 'lucide-react';
+import { Crown, FolderOpen, House, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppShell } from './AppShellContext';
+import {
+  applyThemeMode,
+  DEFAULT_THEME_MODE,
+  resolveThemeMode,
+  subscribeToThemeMode,
+  type ThemeMode,
+} from '@/lib/theme-mode';
 
 interface AppHeaderProps {
   title?: string;
@@ -22,8 +30,10 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
   const tCommon = useTranslations('common');
   const tNav = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
+  const tSettingsPage = useTranslations('settingsPage');
   const { openMobileSidebar } = useAppShell();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(DEFAULT_THEME_MODE);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -36,6 +46,17 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setThemeMode(resolveThemeMode());
+    return subscribeToThemeMode(setThemeMode);
+  }, []);
+
+  const nextThemeMode: ThemeMode = themeMode === 'light' ? 'dark' : 'light';
+  const themeToggleLabel =
+    themeMode === 'light'
+      ? tSettingsPage('switchToDarkMode')
+      : tSettingsPage('switchToLightMode');
 
   return (
     <header
@@ -74,6 +95,17 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         >
           <Search className="w-5 h-5 text-text-soft" />
         </Link>
+
+        <button
+          type="button"
+          onClick={() => applyThemeMode(nextThemeMode)}
+          className="inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-scholar-sm border border-border bg-surface-alt text-text-soft transition-colors hover:border-accent hover:bg-surface hover:text-text"
+          aria-label={themeToggleLabel}
+          title={themeToggleLabel}
+          data-testid="app-header-theme-toggle"
+        >
+          {themeMode === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        </button>
 
         {/* Language Switcher */}
         <div className="hidden md:block">

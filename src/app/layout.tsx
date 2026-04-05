@@ -117,7 +117,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir}
-      data-theme="slate-dark"
+      data-theme="slate-light"
       className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${plusJakartaSans.variable}`}
       suppressHydrationWarning
     >

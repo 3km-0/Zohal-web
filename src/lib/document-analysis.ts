@@ -86,7 +86,7 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
     return ['Research Synthesis Site'];
   }
   if (documentType === 'textbook' || documentType === 'lecture_notes' || documentType === 'problem_set') {
-    return ['Course Learning Portal'];
+    return ['Course Learning Surface'];
   }
   if (documentType === 'invoice') {
     return ['Vendor Invoice Exceptions', ...broadContract];
@@ -95,7 +95,7 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
     return ['Vendor Onboarding Review', ...broadContract];
   }
   if (documentType === 'policy' || containsAny(searchableText, complianceKeywords)) {
-    return ['Policy & Regulatory Portal', ...broadContract];
+    return ['Policy & Regulatory Surface', ...broadContract];
   }
   if (containsAny(searchableText, amendmentKeywords)) {
     return ['Amendment Conflict Review', ...broadContract];

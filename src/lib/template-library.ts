@@ -48,7 +48,7 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     descriptionAr: 'حوّل مجموعة الأوراق والتقارير إلى موقع توليف بحثي يتتبع الأدلة والفجوات.',
   },
   {
-    canonicalName: 'Course Learning Portal',
+    canonicalName: 'Course Learning Surface',
     group: 'zohal_templates',
     rank: 50,
     emoji: '🎓',
@@ -56,7 +56,7 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     descriptionAr: 'حوّل مستندات المقررات إلى بوابة تعلم تفاعلية للدراسة والجدول والمهام.',
   },
   {
-    canonicalName: 'Policy & Regulatory Portal',
+    canonicalName: 'Policy & Regulatory Surface',
     group: 'zohal_templates',
     rank: 60,
     emoji: '📚',
@@ -73,7 +73,7 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     descriptionAr: 'حوّل السجلات الصحية الطولية إلى واجهة ملخصات وجداول زمنية ومتابعات قابلة للتصفح.',
   },
   {
-    canonicalName: 'Logistics Operations Portal',
+    canonicalName: 'Logistics Operations Surface',
     group: 'zohal_templates',
     rank: 80,
     emoji: '🚚',
