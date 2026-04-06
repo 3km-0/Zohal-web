@@ -2112,5 +2112,14 @@
         }
       }
     }
+  },
+  "sourceViewer": {
+    "kicker": "Source",
+    "receiptRevenueReviewTitle": "Receipt Revenue Review",
+    "defaultTitle": "Source document",
+    "subtitle": "Open the linked source in a focused PDF view with page and highlight context preserved from the Living Interface.",
+    "unavailableTitle": "Source unavailable",
+    "unavailableBody": "This source does not have a public web viewer yet.",
+    "backToHome": "Back to home"
   }
 }
