@@ -7,37 +7,37 @@ import {
 } from '@/lib/document-analysis';
 
 describe('document analysis template recommendations', () => {
-  it('prefers the renamed renewal template and still supports legacy aliases', () => {
+  it('routes contracts into the compliance interface', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'contract',
         title: 'Vendor Agreement Renewal Notice',
       })[0]
-    ).toBe('Renewal Radar');
+    ).toBe('Policy & Regulatory Interface');
   });
 
-  it('prefers contract compliance workspace as the broad default contract template', () => {
+  it('prefers the compliance interface as the broad default contract template', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'contract',
         title: 'Master Services Agreement',
       })[0]
-    ).toBe('Contract Compliance Workspace');
+    ).toBe('Policy & Regulatory Interface');
   });
 
-  it('matches renamed templates via aliases when selecting a playbook', () => {
+  it('matches renamed templates via aliases when selecting a template', () => {
     const playbook = selectRecommendedPlaybook(
       [
         {
           id: 'pb-1',
-          name: 'Renewal Radar',
+          name: 'Policy & Regulatory Interface',
           is_system_preset: true,
           current_version: {
             id: 'v1',
             version_number: 1,
             spec_json: {
               meta: {
-                aliases: ['Renewal Pack', 'Default (Renewal Pack)'],
+                aliases: ['Policy & Regulatory Portal'],
               },
             },
           },
@@ -49,23 +49,23 @@ describe('document analysis template recommendations', () => {
       }
     );
 
-    expect(playbook?.name).toBe('Renewal Radar');
+    expect(playbook?.name).toBe('Policy & Regulatory Interface');
   });
 
-  it('routes invoices and onboarding documents into the expanded library', () => {
+  it('routes invoices and onboarding documents into the logistics interface', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'invoice',
         title: 'March invoice',
       })[0]
-    ).toBe('Vendor Invoice Exceptions');
+    ).toBe('Logistics Operations Interface');
 
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'onboarding_doc',
         title: 'Vendor onboarding packet',
       })[0]
-    ).toBe('Vendor Onboarding Review');
+    ).toBe('Logistics Operations Interface');
   });
 
   it('routes financial reports and research corpora into the new top-level templates', () => {
@@ -81,7 +81,7 @@ describe('document analysis template recommendations', () => {
         documentType: 'paper',
         title: 'Meta-analysis of cardiovascular outcomes',
       })[0]
-    ).toBe('Research Synthesis Site');
+    ).toBe('Research Synthesis Interface');
   });
 
   it('marks onboarding documents as structured-analysis capable', () => {
@@ -93,29 +93,29 @@ describe('document analysis template recommendations', () => {
   it('uses classifier-ranked template ids before heuristic fallback', () => {
     const playbooks = [
       {
-        id: 'pb-renewal',
-        name: 'Renewal Radar',
+        id: 'pb-compliance',
+        name: 'Policy & Regulatory Interface',
         is_system_preset: true,
         current_version: {
-          id: 'v-renewal',
+          id: 'v-compliance',
           version_number: 1,
           spec_json: {
-            template_id: 'renewal_pack',
+            template_id: 'compliance_docset_review',
             meta: {
-              aliases: ['Renewal Pack'],
+              aliases: ['Policy & Regulatory Portal'],
             },
           },
         },
       },
       {
-        id: 'pb-lease',
-        name: 'Commercial Lease Review',
+        id: 'pb-logistics',
+        name: 'Logistics Operations Interface',
         is_system_preset: true,
         current_version: {
-          id: 'v-lease',
+          id: 'v-logistics',
           version_number: 1,
           spec_json: {
-            template_id: 'lease_pack',
+            template_id: 'logistics_operations_portal',
           },
         },
       },
@@ -125,10 +125,10 @@ describe('document analysis template recommendations', () => {
       documentType: 'contract',
       title: 'Sample Commercial Lease Test Set',
       originalFilename: 'Sample Commercial Lease Test Set.pdf',
-      recommendedTemplateIds: ['renewal_pack'],
+      recommendedTemplateIds: ['compliance_docset_review'],
     });
 
-    expect(playbook?.name).toBe('Renewal Radar');
+    expect(playbook?.name).toBe('Policy & Regulatory Interface');
   });
 
   it('prefers stored recommendation metadata before name heuristics', () => {
@@ -154,14 +154,14 @@ describe('document analysis template recommendations', () => {
         },
         {
           id: 'pb-contract',
-          name: 'Contract Compliance Workspace',
+          name: 'Policy & Regulatory Interface',
           is_system_preset: true,
           current_version: {
             id: 'v-contract',
             version_number: 1,
             spec_json: {
-              template_id: 'contract_analysis',
-              meta: { name: 'Contract Compliance Workspace', kind: 'document' },
+              template_id: 'compliance_docset_review',
+              meta: { name: 'Policy & Regulatory Interface', kind: 'document' },
             },
           },
         },

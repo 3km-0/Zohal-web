@@ -355,8 +355,8 @@ export function ContractAnalysisPane({
     ) => {
       const ar = {
         all: 'الكل',
-        zohal_templates: 'قوالب زحل',
-        specializations: 'التخصصات',
+        zohal_templates: 'القوالب',
+        specializations: 'القوالب',
         custom: 'مخصص',
         systemLabel: 'من زحل',
         search: 'ابحث في القوالب…',
@@ -365,8 +365,8 @@ export function ContractAnalysisPane({
       } as const;
       const en = {
         all: 'All',
-        zohal_templates: 'Zohal Templates',
-        specializations: 'Specializations',
+        zohal_templates: 'Templates',
+        specializations: 'Templates',
         custom: 'Custom',
         systemLabel: 'System',
         search: 'Search templates…',
@@ -1391,12 +1391,12 @@ export function ContractAnalysisPane({
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase.functions.invoke('playbooks-list', {
+      const { data, error } = await supabase.functions.invoke('templates-list', {
         body: { workspace_id: workspaceId, kind: 'document' },
       });
       if (error) return;
-      if (data?.ok && Array.isArray(data.playbooks)) {
-        const pbs = data.playbooks as PlaybookRecord[];
+      if (data?.ok && Array.isArray(data.templates)) {
+        const pbs = data.templates as PlaybookRecord[];
         setPlaybooks(pbs);
         
         if (!didInitializeRecommendedPlaybook && !selectedPlaybookId && pbs.length > 0) {
@@ -2763,7 +2763,7 @@ export function ContractAnalysisPane({
                         className="w-full rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none placeholder:text-text-soft"
                       />
                       <div className="flex gap-2 overflow-x-auto pb-1">
-                        {(['all', 'zohal_templates', 'specializations', 'custom'] as TemplateFilter[]).map(
+                        {(['all', 'zohal_templates', 'custom'] as TemplateFilter[]).map(
                           (filter) => (
                             <button
                               key={filter}

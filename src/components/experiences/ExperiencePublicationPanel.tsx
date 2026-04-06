@@ -24,7 +24,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const documentId = searchParams.get('document_id');
   const [experienceId, setExperienceId] = useState(`exp_${workspaceId.replace(/-/g, '_')}_investor_dashboard`);
   const [corpusId, setCorpusId] = useState(`corpus_${workspaceId.replace(/-/g, '_')}_investor_dashboard`);
-  const [title, setTitle] = useState('Investor Portal');
+  const [title, setTitle] = useState('Living Interface');
   const [host, setHost] = useState('live.zohal.ai');
   const [visibility, setVisibility] = useState('public_unlisted');
   const [password, setPassword] = useState('');

@@ -66,64 +66,35 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   if (!documentType) return [];
 
   const searchableText = normalizedDocumentText(metadata);
-  const leaseKeywords = ['lease', 'tenant', 'landlord', 'rent', 'rental', 'property', 'real estate', 'tenancy', 'premises', 'sublease'];
-  const vendorKeywords = ['vendor', 'supplier', 'procurement', 'software', 'saas', 'cloud', 'subscription', 'license', 'licensing', 'service agreement', 'services agreement', 'master service', 'msa', 'sow', 'statement of work', 'dpa', 'sla', 'implementation'];
-  const renewalKeywords = ['renewal', 'renew', 'auto renew', 'auto-renew', 'expiration', 'expiry', 'notice period', 'non-renewal', 'extension'];
-  const amendmentKeywords = ['amendment', 'amended', 'addendum', 'addenda', 'side letter', 'side-letter', 'amended and restated', 'supplement'];
-  const obligationKeywords = ['obligation', 'obligations', 'deliverable', 'deliverables', 'milestone', 'service level', 'reporting', 'covenant', 'deadline', 'notice'];
   const complianceKeywords = ['policy', 'policies', 'regulation', 'regulatory', 'compliance', 'controls', 'framework', 'guideline', 'standard', 'procedure'];
-  const employmentKeywords = ['employment', 'employee', 'employer', 'offer letter', 'probation', 'termination', 'salary', 'compensation', 'leave'];
-  const insuranceKeywords = ['insurance', 'claim', 'claims', 'coverage', 'endorsement', 'deductible', 'insurer', 'policy number'];
   const onboardingKeywords = ['vendor onboarding', 'supplier onboarding', 'trade license', 'registration', 'vat certificate', 'iban', 'bank details', 'compliance certificate'];
-  const ksaKeywords = ['ksa', 'saudi', 'saudi arabia', 'riyadh', 'jeddah', 'sar', 'المملكة', 'السعودية', 'وزارة', 'هيئة'];
-  const broadContract = ['Contract Compliance Workspace'];
-  const renewalFocused = ['Renewal Radar', 'Contract Compliance Workspace'];
+  const logisticsKeywords = ['shipment', 'carrier', 'bill of lading', 'warehouse', 'delivery', 'container', 'tracking', 'supplier', 'procurement', 'vendor'];
+  const healthcareKeywords = ['patient', 'lab result', 'discharge', 'medication', 'diagnosis', 'encounter', 'care plan'];
+  const complianceTemplate = ['Policy & Regulatory Interface'];
 
   if (documentType === 'financial_report') {
     return ['Investor Reporting Dashboard'];
   }
   if (documentType === 'paper' || documentType === 'research') {
-    return ['Research Synthesis Site'];
+    return ['Research Synthesis Interface'];
   }
   if (documentType === 'textbook' || documentType === 'lecture_notes' || documentType === 'problem_set') {
-    return ['Course Learning Surface'];
+    return ['Course Learning Interface'];
   }
-  if (documentType === 'invoice') {
-    return ['Vendor Invoice Exceptions', ...broadContract];
-  }
-  if (documentType === 'onboarding_doc' || containsAny(searchableText, onboardingKeywords)) {
-    return ['Vendor Onboarding Review', ...broadContract];
-  }
-  if (documentType === 'policy' || containsAny(searchableText, complianceKeywords)) {
-    return ['Policy & Regulatory Surface', ...broadContract];
-  }
-  if (containsAny(searchableText, amendmentKeywords)) {
-    return ['Amendment Conflict Review', ...broadContract];
-  }
-  if (containsAny(searchableText, renewalKeywords)) {
-    return renewalFocused;
-  }
-  if (containsAny(searchableText, obligationKeywords)) {
-    return broadContract;
-  }
-  if (containsAny(searchableText, leaseKeywords)) {
-    return ['Commercial Lease Review', ...broadContract];
-  }
-  if (containsAny(searchableText, employmentKeywords)) {
-    return broadContract;
-  }
-  if (containsAny(searchableText, insuranceKeywords)) {
-    return broadContract;
-  }
-  if (containsAny(searchableText, vendorKeywords)) {
-    return [...broadContract, 'Vendor / SaaS Contract Review'];
-  }
-  if (documentType === 'legal_filing' || containsAny(searchableText, ksaKeywords)) {
-    return ['KSA Contract Checklist (Contract-Only)', ...broadContract];
-  }
-
   if (documentType === 'contract' || documentType === 'legal_filing' || documentType === 'policy') {
-    return [...broadContract, 'Renewal Radar'];
+    return complianceTemplate;
+  }
+  if (documentType === 'invoice' || documentType === 'onboarding_doc') {
+    return ['Logistics Operations Interface'];
+  }
+  if (containsAny(searchableText, complianceKeywords)) {
+    return complianceTemplate;
+  }
+  if (containsAny(searchableText, logisticsKeywords) || containsAny(searchableText, onboardingKeywords)) {
+    return ['Logistics Operations Interface'];
+  }
+  if (containsAny(searchableText, healthcareKeywords)) {
+    return ['Healthcare Record Interface'];
   }
 
   return [];
@@ -137,10 +108,9 @@ export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[]
       .map((playbook) => {
         const recommendedTypes = getTemplateRecommendedDocumentTypes(playbook);
         if (!recommendedTypes.includes(normalizedDocumentType)) return { playbook, score: -1 };
-        const group = getTemplateGroup(playbook);
         return {
           playbook,
-          score: group === 'specializations' ? 200 : 100,
+          score: 100,
         };
       })
       .filter((entry) => entry.score > 0)

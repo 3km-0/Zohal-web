@@ -64,12 +64,12 @@ export function RunAnalysisModal(props: {
 
   const loadPlaybooks = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('playbooks-list', {
+      const { data, error } = await supabase.functions.invoke('templates-list', {
         body: { workspace_id: workspaceId, kind: 'document' },
       });
       if (error) return;
-      if (data?.ok && Array.isArray(data.playbooks)) {
-        setPlaybooks(data.playbooks as PlaybookRecord[]);
+      if (data?.ok && Array.isArray(data.templates)) {
+        setPlaybooks(data.templates as PlaybookRecord[]);
       }
     } catch {
       // Best-effort: ignore and fall back to default analysis
@@ -216,8 +216,8 @@ export function RunAnalysisModal(props: {
     ) => {
       const ar = {
         all: 'الكل',
-        zohal_templates: 'قوالب زحل',
-        specializations: 'التخصصات',
+        zohal_templates: 'القوالب',
+        specializations: 'القوالب',
         custom: 'مخصص',
         systemLabel: 'من زحل',
         search: 'ابحث في القوالب…',
@@ -226,8 +226,8 @@ export function RunAnalysisModal(props: {
       } as const;
       const en = {
         all: 'All',
-        zohal_templates: 'Zohal Templates',
-        specializations: 'Specializations',
+        zohal_templates: 'Templates',
+        specializations: 'Templates',
         custom: 'Custom',
         systemLabel: 'System',
         search: 'Search templates…',
@@ -628,7 +628,7 @@ export function RunAnalysisModal(props: {
                       placeholder={localizedTemplateText('search')}
                     />
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                      {(['all', 'zohal_templates', 'specializations', 'custom'] as TemplateFilter[]).map((filter) => (
+                      {(['all', 'zohal_templates', 'custom'] as TemplateFilter[]).map((filter) => (
                         <button
                           key={filter}
                           type="button"

@@ -94,15 +94,15 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
     const loadTemplates = async () => {
       setLoadingTemplates(true);
       try {
-        const { data, error } = await supabase.functions.invoke('playbooks-list', {
+        const { data, error } = await supabase.functions.invoke('templates-list', {
           body: {
             workspace_id: '00000000-0000-0000-0000-000000000000',
             kind: 'document',
             status: 'published',
           },
         });
-        if (!error && data?.playbooks) {
-          const visible = (data.playbooks as PlaybookRecord[]).filter(
+        if (!error && data?.templates) {
+          const visible = (data.templates as PlaybookRecord[]).filter(
             (p) => !p.is_system_preset || !isHiddenSystemPlaybook(p as Parameters<typeof isHiddenSystemPlaybook>[0])
           );
           setAvailableTemplates(visible);
@@ -350,4 +350,3 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
     </div>
   );
 }
-

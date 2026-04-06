@@ -517,13 +517,13 @@
       "actionFailed": "فشل إجراء النشر."
     },
     "portalConsole": {
-      "title": "لوحة تشغيل السطح",
+      "title": "لوحة تشغيل الواجهة",
       "description": "راجع المرشح الحالي ومسار النشر وحالة النشر الفعلية وفحص الواجهة الحية من مكان واحد.",
-      "loading": "جارٍ تحميل تشخيص السطح…",
-      "summaryTitle": "ملخص السطح",
+      "loading": "جارٍ تحميل تشخيص الواجهة…",
+      "summaryTitle": "ملخص الواجهة",
       "failureClass": "تصنيف الإخفاق",
       "activeRevision": "النسخة النشطة",
-      "qualityScore": "جودة السطح",
+      "qualityScore": "جودة الواجهة",
       "qualitySummary": "تم عرض {rendered}/{required} من المسارات المطلوبة",
       "traceTitle": "مسار النشر",
       "traceDescription": "تابع البناء والتهيئة والتحقق والنشر والترقية وفحص الواجهة الحية كمراحل منفصلة.",
@@ -883,7 +883,7 @@
   },
   "playbooks": {
     "title": "القوالب",
-    "subtitle": "عرّف وحدات الاستخراج والمتغيرات لتحليل العقود. انشر الإصدارات لتصبح قابلة للاختيار.",
+    "subtitle": "عرّف أهداف الاستخراج والاشتقاق ووحدات الواجهة لتحليل المستندات. انشر الإصدارات لتصبح قابلة للاختيار.",
     "list": {
       "title": "منشور ومسودة",
       "newNamePlaceholder": "اسم القالب الجديد",
@@ -1254,7 +1254,7 @@
       "empty": "لا توجد تحليلات بعد",
       "newRun": "تحليل جديد",
       "chat": "المحادثة",
-      "defaultLabel": "تحليل العقد",
+      "defaultLabel": "تحليل المستند",
       "scopeSingle": "مستند واحد",
       "scopeBundle": "مستندات مرتبطة",
       "scopeDocset": "مستندات مرتبطة",
@@ -1401,7 +1401,7 @@
       "sanitizedSubtitle": "تم إخفاء بعض الحقول قبل المعالجة. لا تحاول تخمين المحتوى المحجوب."
     },
     "progress": {
-      "title": "تحليل العقد قيد التنفيذ",
+      "title": "التحليل قيد التنفيذ",
       "footer": "مدة التحليل تختلف حسب حجم المستند.",
       "status": {
         "queued": "جارٍ تجهيز التحليل… {percent}٪",
@@ -1456,11 +1456,11 @@
     },
     "errors": {
       "notAuthenticated": "غير مسجل الدخول",
-      "loadFailed": "فشل تحميل تحليل العقد",
+      "loadFailed": "فشل تحميل التحليل",
       "createReferencePackFailed": "فشل إنشاء الحزمة المرجعية",
       "generateKnowledgePackFailed": "فشل إنشاء حزمة المعرفة",
       "complianceCheckFailed": "فشل فحص الامتثال",
-      "contractAnalysisFailed": "فشل تحليل العقد",
+      "contractAnalysisFailed": "فشل التحليل",
       "analysisTakingLonger": "يستغرق التحليل وقتاً أطول من المتوقع. يرجى التحقق لاحقاً.",
       "exportCalendarFailed": "فشل تصدير التقويم",
       "generateReportFailed": "فشل إنشاء التقرير",

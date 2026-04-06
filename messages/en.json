@@ -517,13 +517,13 @@
       "actionFailed": "The publication action failed."
     },
     "portalConsole": {
-      "title": "Surface operator console",
+      "title": "Interface operator console",
       "description": "Review the current candidate, publish trace, deploy state, and live probe from one place.",
-      "loading": "Loading Surface diagnostics…",
-      "summaryTitle": "Surface summary",
+      "loading": "Loading Interface diagnostics…",
+      "summaryTitle": "Interface summary",
       "failureClass": "Failure class",
       "activeRevision": "Active revision",
-      "qualityScore": "Surface quality",
+      "qualityScore": "Interface quality",
       "qualitySummary": "{rendered}/{required} required routes rendered",
       "traceTitle": "Publish trace",
       "traceDescription": "Track compile, stage, validate, deploy, promote, and live probe as separate stages.",
@@ -883,7 +883,7 @@
   },
   "playbooks": {
     "title": "Templates",
-    "subtitle": "Define extraction modules and variables for contract analysis. Publish versions to make them selectable.",
+    "subtitle": "Define extraction targets, derivations, and interface modules for document analysis. Publish versions to make them selectable.",
     "list": {
       "title": "Published & Draft",
       "newNamePlaceholder": "New template name",
@@ -1254,7 +1254,7 @@
       "empty": "No runs yet",
       "newRun": "New Run",
       "chat": "Chat",
-      "defaultLabel": "Contract analysis",
+      "defaultLabel": "Document analysis",
       "scopeSingle": "Single",
       "scopeBundle": "Related documents",
       "scopeDocset": "Related documents",
@@ -1401,7 +1401,7 @@
       "sanitizedSubtitle": "Some fields are masked before cloud processing. Do not guess redacted content."
     },
     "progress": {
-      "title": "Contract analysis in progress",
+      "title": "Analysis in progress",
       "footer": "Analysis time depends on document size.",
       "status": {
         "queued": "Queuing analysis… {percent}%",
@@ -1456,11 +1456,11 @@
     },
     "errors": {
       "notAuthenticated": "Not authenticated",
-      "loadFailed": "Failed to load contract analysis",
+      "loadFailed": "Failed to load analysis",
       "createReferencePackFailed": "Failed to create reference pack",
       "generateKnowledgePackFailed": "Failed to generate knowledge pack",
       "complianceCheckFailed": "Compliance check failed",
-      "contractAnalysisFailed": "Contract analysis failed",
+      "contractAnalysisFailed": "Analysis failed",
       "analysisTakingLonger": "Analysis is taking longer than expected. Please check back later.",
       "exportCalendarFailed": "Failed to export calendar",
       "generateReportFailed": "Failed to generate report",
