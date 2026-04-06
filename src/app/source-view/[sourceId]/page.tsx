@@ -1,20 +1,32 @@
-'use client';
-
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { useMemo } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
-import { PDFViewer } from '@/components/pdf-viewer';
+import { PublicSourceViewerClient } from './PublicSourceViewerClient';
 
-function parseTapToProof(searchParams: ReturnType<typeof useSearchParams>) {
-  const pageStr = searchParams.get('page');
+type PageProps = {
+  params: Promise<{
+    sourceId: string;
+  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function readSearchParam(
+  searchParams: Record<string, string | string[] | undefined>,
+  key: string
+) {
+  const value = searchParams[key];
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function parseTapToProof(searchParams: Record<string, string | string[] | undefined>) {
+  const pageStr = readSearchParam(searchParams, 'page');
   const page = pageStr ? Number.parseInt(pageStr, 10) : NaN;
   if (!pageStr || Number.isNaN(page) || page < 1) return undefined;
 
-  const quote = searchParams.get('quote') || undefined;
-  const bboxStr = searchParams.get('bbox');
+  const quote = readSearchParam(searchParams, 'quote') || undefined;
+  const bboxStr = readSearchParam(searchParams, 'bbox');
   let bbox:
     | {
         x: number;
@@ -39,16 +51,19 @@ const SOURCE_TITLES: Record<string, string> = {
   'receipt-revenue-review': 'receiptRevenueReviewTitle',
 };
 
-export default function PublicSourceViewerPage() {
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const t = useTranslations('sourceViewer');
+export default async function PublicSourceViewerPage({ params, searchParams }: PageProps) {
+  const [{ sourceId }, resolvedSearchParams, t] = await Promise.all([
+    params,
+    searchParams,
+    getTranslations('sourceViewer'),
+  ]);
 
-  const sourceId = String(params.sourceId || '').trim();
-  const titleKey = SOURCE_TITLES[sourceId];
-  const title = searchParams.get('title') || (titleKey ? t(titleKey) : t('defaultTitle'));
-  const pdfUrl = `/api/public-source/${encodeURIComponent(sourceId)}/file`;
-  const tapToProof = useMemo(() => parseTapToProof(searchParams), [searchParams]);
+  const normalizedSourceId = String(sourceId || '').trim();
+  const titleKey = SOURCE_TITLES[normalizedSourceId];
+  const requestedTitle = readSearchParam(resolvedSearchParams, 'title');
+  const title = requestedTitle || (titleKey ? t(titleKey) : t('defaultTitle'));
+  const pdfUrl = `/api/public-source/${encodeURIComponent(normalizedSourceId)}/file`;
+  const tapToProof = parseTapToProof(resolvedSearchParams);
 
   if (!titleKey) {
     return (
@@ -101,7 +116,7 @@ export default function PublicSourceViewerPage() {
         </header>
 
         <div className="overflow-hidden rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[0_28px_80px_rgba(12,14,24,0.12)]">
-          <PDFViewer url={pdfUrl} tapToProof={tapToProof} className="min-h-[78vh]" />
+          <PublicSourceViewerClient pdfUrl={pdfUrl} tapToProof={tapToProof} />
         </div>
       </div>
     </div>
