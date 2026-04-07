@@ -317,7 +317,7 @@ export async function ensurePrivateLiveExperienceRefresh({
     title,
     summary,
     canonicalVersionId: verificationObjectVersionId,
-    materializationStatus: "pending",
+    materializationStatus: snapshot ? "materialized" : "pending",
   });
 
   return {
