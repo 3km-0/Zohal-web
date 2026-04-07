@@ -447,6 +447,7 @@
     "reports": "Reports",
     "pipelines": "Pipelines",
     "packs": "Packs",
+    "dataSources": "Data Sources",
     "experiences": "Living Interfaces",
     "members": "Members"
   },

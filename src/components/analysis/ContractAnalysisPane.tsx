@@ -235,6 +235,27 @@ export function ContractAnalysisPane({
     }
   }, [runLanguage, runStrictness]);
 
+  // API data sources
+  const [apiConnections, setApiConnections] = useState<Array<{ id: string; name: string; status: string }>>([]);
+  const [selectedApiConnectionIds, setSelectedApiConnectionIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const loadApiConnections = async () => {
+      try {
+        const sb = createClient();
+        const { data } = await sb.functions.invoke('workspace-api-connections', {
+          body: { action: 'list', workspace_id: workspaceId },
+        });
+        const conns = data?.data?.connections || data?.connections || [];
+        setApiConnections(conns.filter((c: { status: string }) => c.status === 'active'));
+      } catch {
+        // silently handle
+      }
+    };
+    loadApiConnections();
+  }, [workspaceId]);
+
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -506,7 +527,9 @@ export function ContractAnalysisPane({
   }, [docsetSearch, folderNameById, workspaceDocs]);
 
   const proofHref = useCallback((evidence: EvidenceGradeSnapshot['variables'][number]['evidence'] | undefined | null) => {
-    if (!evidence?.page_number) return null;
+    if (!evidence) return null;
+    if ((evidence as any).source_type === 'api') return null;
+    if (!evidence.page_number) return null;
     const quote = (evidence.snippet || '').slice(0, 160);
     const bbox = evidence.bbox ? `${evidence.bbox.x},${evidence.bbox.y},${evidence.bbox.width},${evidence.bbox.height}` : null;
     const targetDocId = (evidence as any).document_id ? String((evidence as any).document_id) : documentId;
@@ -1898,6 +1921,9 @@ export function ContractAnalysisPane({
                 playbook_id: selectedPlaybookId,
                 playbook_version_id: selectedPlaybookVersionId || undefined,
               }
+            : {}),
+          ...(selectedApiConnectionIds.length > 0
+            ? { api_connection_ids: selectedApiConnectionIds }
             : {}),
         }),
       });

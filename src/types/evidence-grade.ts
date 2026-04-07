@@ -61,6 +61,14 @@ export interface BoundingBox {
   height: number
 }
 
+export interface ApiSourceInfo {
+  connection_id: string
+  connection_name: string
+  endpoint_url: string
+  fetched_at: string
+  response_path?: string
+}
+
 /** Links extracted data back to source document location */
 export interface EvidenceAnchor {
   /** Optional source document ID (for multi-document bundles). */
@@ -81,6 +89,12 @@ export interface EvidenceAnchor {
   
   /** Visual bounding box (only if available from extraction) */
   bbox?: BoundingBox
+
+  /** Source type: document (default if absent) or api */
+  source_type?: 'document' | 'api'
+
+  /** API source provenance (present when source_type === 'api') */
+  api_source?: ApiSourceInfo
 }
 
 // =============================================================================
@@ -199,6 +213,8 @@ export interface CanonicalSourceAnchor {
   char_start?: number
   char_end?: number
   bbox?: BoundingBox
+  source_type?: 'document' | 'api'
+  api_source?: ApiSourceInfo
 }
 
 export interface CanonicalItemV3 {

@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { FileText, Rocket, StickyNote, Users } from 'lucide-react';
+import { Database, FileText, Rocket, StickyNote, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-type WorkspaceTabKey = 'documents' | 'notes' | 'packs' | 'experiences' | 'members';
+type WorkspaceTabKey = 'documents' | 'notes' | 'data-sources' | 'experiences' | 'members';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -32,6 +32,8 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     active ||
     (pathname.includes('/notes')
       ? 'notes'
+      : pathname.includes('/data-sources')
+        ? 'data-sources'
       : pathname.includes('/experiences')
         ? 'experiences'
       : pathname.includes('/members')
@@ -46,6 +48,7 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
   }[] = [
     { key: 'documents', label: t('documents'), href: withFolderContext(`/workspaces/${workspaceId}`), icon: FileText },
     { key: 'notes', label: t('notes'), href: withFolderContext(`/workspaces/${workspaceId}/notes`), icon: StickyNote },
+    { key: 'data-sources' as const, label: t('dataSources'), href: withFolderContext(`/workspaces/${workspaceId}/data-sources`), icon: Database },
     { key: 'experiences', label: t('experiences'), href: withFolderContext(`/workspaces/${workspaceId}/experiences`), icon: Rocket },
     ...(showMembersTab
       ? [{ key: 'members' as const, label: t('members'), href: withFolderContext(`/workspaces/${workspaceId}/members`), icon: Users }]

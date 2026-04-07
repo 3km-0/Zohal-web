@@ -495,6 +495,32 @@ export interface SubscriptionPlan {
   updated_at: string;
 }
 
+// API Data Source types
+export type ApiConnectionAuthMode = 'none' | 'api_key' | 'bearer' | 'basic' | 'oauth2_client_credentials';
+export type ApiConnectionRefreshPolicy = 'on_run' | 'manual';
+export type ApiConnectionStatus = 'active' | 'disabled' | 'error';
+
+export interface WorkspaceApiConnection {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description?: string | null;
+  endpoint_url: string;
+  http_method: 'GET' | 'POST';
+  headers_template?: Record<string, string> | null;
+  query_params?: Record<string, string> | null;
+  body_template?: object | null;
+  response_schema_hint?: string | null;
+  auth_mode: ApiConnectionAuthMode;
+  refresh_policy: ApiConnectionRefreshPolicy;
+  status: ApiConnectionStatus;
+  last_fetched_at?: string | null;
+  last_error?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Search result types
 export interface SearchResult {
   chunk_id: string;

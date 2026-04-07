@@ -13,6 +13,14 @@ export type BoundingBox = {
   height: number;
 };
 
+export type ApiSourceInfo = {
+  connection_id: string;
+  connection_name: string;
+  endpoint_url: string;
+  fetched_at: string;
+  response_path?: string;
+};
+
 export type SourceAnchor = {
   document_id?: string;
   page_number: number;
@@ -23,6 +31,9 @@ export type SourceAnchor = {
   char_start?: number;
   char_end?: number;
   bbox?: BoundingBox;
+  // Phase 1: API data source provenance (additive, backward-compatible)
+  source_type?: 'document' | 'api';
+  api_source?: ApiSourceInfo;
 };
 
 export type CanonicalDerivation = {
