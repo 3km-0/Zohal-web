@@ -820,7 +820,8 @@
   },
   "integrationsPage": {
     "title": "Integrations",
-    "description": "Connect your cloud accounts to import files and sync calendar events.",
+    "accountsTitle": "Connected Accounts",
+    "description": "Connect cloud accounts and manage reusable API Sources from one place.",
     "whatsapp": "WhatsApp",
     "whatsappDesc": "Link the phone number you will message from when sending documents into a workspace.",
     "whatsappPhoneLabel": "Your WhatsApp number",
@@ -836,7 +837,86 @@
     "microsoftDesc": "OneDrive & Calendar",
     "connected": "Connected",
     "connect": "Connect",
-    "disconnect": "Disconnect"
+    "disconnect": "Disconnect",
+    "apiSources": {
+      "title": "API Sources",
+      "description": "Create reusable external data sources once, then attach them to the workspaces that need them.",
+      "reuseHint": "API Sources live here as a reusable library. Attach them per workspace so runs stay focused on source selection instead of setup.",
+      "loading": "Loading API Sources...",
+      "emptyTitle": "No API Sources yet",
+      "emptyBody": "Create your first reusable source to start attaching live data to workspaces.",
+      "addSource": "Add API Source",
+      "editSource": "Edit API Source",
+      "modalDescription": "Define connection details, auth, and normalization once so this source can be reused across workspaces.",
+      "createSource": "Create source",
+      "saveChanges": "Save changes",
+      "edit": "Edit",
+      "delete": "Delete",
+      "testConnection": "Test connection",
+      "connectionSucceeded": "Connection succeeded.",
+      "connectionFailed": "Connection failed.",
+      "cancel": "Cancel",
+      "authLabel": "Auth: {mode}",
+      "lastFetched": "Last fetched: {date}",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "endpointUrl": "Endpoint URL",
+        "method": "Method",
+        "authMode": "Authentication",
+        "sourceMode": "Source mode",
+        "apiKeyHeaderName": "API key header name",
+        "apiKey": "API key",
+        "bearerToken": "Bearer token",
+        "basicSecret": "Basic auth secret",
+        "tokenUrl": "Token URL",
+        "scope": "Scope",
+        "audience": "Audience",
+        "clientId": "Client ID",
+        "clientSecret": "Client secret",
+        "accessToken": "Access token",
+        "refreshToken": "Refresh token",
+        "responseRootPath": "Response root path",
+        "preferredFields": "Preferred fields (comma separated)",
+        "includePaths": "Include paths (one per line)",
+        "excludePaths": "Exclude paths (one per line)"
+      }
+    }
+  },
+  "workspaceDataSourcesPage": {
+    "title": "Data Sources",
+    "description": "Attach reusable API Sources from your library, choose which ones are enabled by default, and keep run setup focused on selection.",
+    "manageLibrary": "Manage source library",
+    "openIntegrations": "Open Integrations",
+    "guidance": {
+      "createOnce": "Create reusable API Sources in Integrations once, then attach them to any workspace that should use them.",
+      "runSelection": "Run Analysis only shows sources attached to this workspace, and defaults come from the toggles below."
+    },
+    "authModes": {
+      "none": "None",
+      "api_key": "API key",
+      "bearer": "Bearer token",
+      "basic": "Basic auth",
+      "oauth2_client_credentials": "OAuth2 client credentials",
+      "oauth2_refresh_token": "OAuth2 refresh token"
+    },
+    "attached": {
+      "title": "Attached Sources",
+      "description": "These sources are available in this workspace and can be preselected for new runs.",
+      "emptyTitle": "No sources attached yet",
+      "emptyDescription": "Attach a source from your library or create one in Integrations first.",
+      "detach": "Detach",
+      "lastSuccess": "Last success: {value}",
+      "defaultLabel": "Enable by default for new runs",
+      "defaultCaption": "This source will start selected in Run Analysis for this workspace."
+    },
+    "library": {
+      "title": "Available From Your Library",
+      "description": "Attach reusable sources without recreating them per workspace.",
+      "emptyTitle": "No unattached library sources",
+      "emptyDescription": "Everything in your current library is already attached here, or you have not created any sources yet.",
+      "attach": "Attach"
+    }
   },
   "organizationPage": {
     "title": "Organization",
@@ -1230,6 +1310,18 @@
       "arabic": "Arabic",
       "default": "Default",
       "strict": "Strict"
+    },
+    "apiSources": {
+      "title": "API Sources",
+      "empty": "No API Sources are attached to this workspace yet.",
+      "manageWorkspace": "Manage workspace sources",
+      "openLibrary": "Open source library",
+      "defaultBadge": "Default",
+      "includeDocument": "Include current document",
+      "includeDocumentCaption": "Turn this off to run from API evidence only.",
+      "apiOnlyHint": "API-only runs stay in single-source mode and use the selected API Sources as the primary evidence for this run.",
+      "apiOnlyNeedsSource": "Select at least one API Source before running without the current document.",
+      "apiOnlyBundleWarning": "API-only runs currently support a single-source scope."
     },
     "playbook": {
       "optional": "Template (optional)",

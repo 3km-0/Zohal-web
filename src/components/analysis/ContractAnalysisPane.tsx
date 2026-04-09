@@ -20,6 +20,7 @@ import {
   ScholarActionMenu,
   ScholarProgressCard,
   ScholarSelect,
+  ScholarToggle,
   type ScholarTab,
 } from '@/components/ui';
 import {
@@ -236,8 +237,9 @@ export function ContractAnalysisPane({
   }, [runLanguage, runStrictness]);
 
   // API data sources
-  const [apiConnections, setApiConnections] = useState<Array<{ id: string; name: string; status: string }>>([]);
+  const [apiConnections, setApiConnections] = useState<Array<{ id: string; name: string; status: string; enabled_by_default?: boolean | null; endpoint_url?: string | null }>>([]);
   const [selectedApiConnectionIds, setSelectedApiConnectionIds] = useState<string[]>([]);
+  const [includeDocumentSource, setIncludeDocumentSource] = useState(true);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -248,7 +250,15 @@ export function ContractAnalysisPane({
           body: { action: 'list', workspace_id: workspaceId },
         });
         const conns = data?.data?.connections || data?.connections || [];
-        setApiConnections(conns.filter((c: { status: string }) => c.status === 'active'));
+        const activeConnections = conns.filter((c: { status: string }) => c.status === 'active');
+        setApiConnections(activeConnections);
+        setSelectedApiConnectionIds((current) =>
+          current.length > 0
+            ? current.filter((id) => activeConnections.some((conn: { id: string }) => conn.id === id))
+            : activeConnections
+                .filter((conn: { enabled_by_default?: boolean | null }) => conn.enabled_by_default !== false)
+                .map((conn: { id: string }) => conn.id)
+        );
       } catch {
         // silently handle
       }
@@ -319,6 +329,12 @@ export function ContractAnalysisPane({
 
   // Expanded sections for collapsible groups
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!includeDocumentSource && scope === 'bundle') {
+      setScope('single');
+    }
+  }, [includeDocumentSource, scope]);
 
   const selectedRun = useMemo(
     () => runs.find((run) => run.runId === selectedRunId) ?? null,
@@ -509,6 +525,19 @@ export function ContractAnalysisPane({
     if (enforcedPlaybookScope === 'single') return 'single';
     return scope;
   }, [enforcedPlaybookScope, scope]);
+
+  const runConfigError = useMemo(() => {
+    if (!includeDocumentSource && selectedApiConnectionIds.length === 0) {
+      return t('apiSources.apiOnlyNeedsSource');
+    }
+    if (!includeDocumentSource && effectiveScope === 'bundle') {
+      return t('apiSources.apiOnlyBundleWarning');
+    }
+    if (effectiveScope === 'bundle' && docsetIssues.length > 0) {
+      return docsetIssues[0] || t('docset.validation.invalidDocset');
+    }
+    return null;
+  }, [docsetIssues, effectiveScope, includeDocumentSource, selectedApiConnectionIds.length, t]);
 
   const folderNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -1874,6 +1903,18 @@ export function ContractAnalysisPane({
         language: languagePref,
       };
 
+      if (!includeDocumentSource && selectedApiConnectionIds.length === 0) {
+        setError(t('apiSources.apiOnlyNeedsSource'));
+        setIsAnalyzing(false);
+        return;
+      }
+
+      if (!includeDocumentSource && effectiveScope === 'bundle') {
+        setError(t('apiSources.apiOnlyBundleWarning'));
+        setIsAnalyzing(false);
+        return;
+      }
+
       const shouldUseDocset = effectiveScope === 'bundle';
       if (shouldUseDocset && docsetIssues.length > 0) {
         setError(docsetIssues[0] || t('docset.validation.invalidDocset'));
@@ -1903,7 +1944,7 @@ export function ContractAnalysisPane({
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          document_id: documentId,
+          ...(includeDocumentSource ? { document_id: documentId } : {}),
           workspace_id: workspaceId,
           user_id: userId,
           ...(playbook_options ? { playbook_options } : {}),
@@ -2994,7 +3035,7 @@ export function ContractAnalysisPane({
                       size="sm"
                       variant={effectiveScope === 'bundle' ? 'primary' : 'secondary'}
                       onClick={() => setScope('bundle')}
-                      disabled={enforcedPlaybookScope === 'single'}
+                      disabled={enforcedPlaybookScope === 'single' || !includeDocumentSource}
                     >
                       {t('docset.scopeDocset')}
                     </Button>
@@ -3215,6 +3256,103 @@ export function ContractAnalysisPane({
                 )}
 
                 <div className="pt-3 border-t border-border space-y-3">
+                  <div className="space-y-2.5">
+                    <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">
+                      {t('apiSources.title')}
+                    </div>
+                    <div className="rounded-scholar border border-border bg-surface-alt px-3 py-3">
+                      <ScholarToggle
+                        label={t('apiSources.includeDocument')}
+                        caption={t('apiSources.includeDocumentCaption')}
+                        checked={includeDocumentSource}
+                        onCheckedChange={setIncludeDocumentSource}
+                      />
+                    </div>
+                    {!includeDocumentSource ? (
+                      <div className="rounded-scholar border border-accent/20 bg-accent/5 px-3 py-3 text-sm text-text-soft">
+                        {t('apiSources.apiOnlyHint')}
+                      </div>
+                    ) : null}
+                    {apiConnections.length === 0 ? (
+                      <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-3 py-4 text-sm text-text-soft">
+                        <p>{t('apiSources.empty')}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link
+                            href={`/workspaces/${workspaceId}/data-sources`}
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
+                          >
+                            {t('apiSources.manageWorkspace')}
+                          </Link>
+                          <Link
+                            href="/integrations"
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface-alt hover:text-text"
+                          >
+                            {t('apiSources.openLibrary')}
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {apiConnections.map((connection) => {
+                          const selected = selectedApiConnectionIds.includes(connection.id);
+                          return (
+                            <button
+                              key={connection.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedApiConnectionIds((current) =>
+                                  current.includes(connection.id)
+                                    ? current.filter((id) => id !== connection.id)
+                                    : [...current, connection.id]
+                                )
+                              }
+                              className={cn(
+                                'flex w-full items-start gap-3 rounded-scholar border px-3 py-3 text-left transition-colors',
+                                selected
+                                  ? 'border-accent/40 bg-accent/5'
+                                  : 'border-border bg-surface-alt hover:border-accent/20'
+                              )}
+                            >
+                              <div className={cn('mt-0.5 h-5 w-5 rounded-full border flex items-center justify-center', selected ? 'border-accent bg-accent text-white' : 'border-border text-transparent')}>
+                                <CheckCircle className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-medium text-text">{connection.name}</span>
+                                  {connection.enabled_by_default !== false ? (
+                                    <Badge size="sm">{t('apiSources.defaultBadge')}</Badge>
+                                  ) : null}
+                                </div>
+                                {connection.endpoint_url ? (
+                                  <div className="mt-1 truncate font-mono text-xs text-text-soft">{connection.endpoint_url}</div>
+                                ) : null}
+                              </div>
+                            </button>
+                          );
+                        })}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <Link
+                            href={`/workspaces/${workspaceId}/data-sources`}
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
+                          >
+                            {t('apiSources.manageWorkspace')}
+                          </Link>
+                          <Link
+                            href="/integrations"
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface-alt hover:text-text"
+                          >
+                            {t('apiSources.openLibrary')}
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                    {runConfigError ? (
+                      <div className="rounded-scholar border border-accent/20 bg-accent/5 px-3 py-3 text-sm text-text">
+                        {runConfigError}
+                      </div>
+                    ) : null}
+                  </div>
+
                   {(selectedPlaybookId || effectiveScope === 'bundle') && (
                     <div className="flex items-center gap-2 flex-wrap">
                       {selectedPlaybookId && (
@@ -3235,7 +3373,7 @@ export function ContractAnalysisPane({
                       if (!isAnalyzing) analyzeOnce();
                     }}
                     variant="primary"
-                    disabled={isAnalyzing || (effectiveScope === 'bundle' && docsetIssues.length > 0)}
+                    disabled={isAnalyzing || runConfigError !== null}
                     data-tour="contract-analyze"
                     className="w-full justify-center"
                   >

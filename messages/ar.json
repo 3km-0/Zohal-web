@@ -820,7 +820,8 @@
   },
   "integrationsPage": {
     "title": "التكاملات",
-    "description": "اربط حساباتك السحابية لاستيراد الملفات ومزامنة أحداث التقويم.",
+    "accountsTitle": "الحسابات المتصلة",
+    "description": "اربط الحسابات السحابية وأدر API Sources القابلة لإعادة الاستخدام من مكان واحد.",
     "whatsapp": "واتساب",
     "whatsappDesc": "اربط رقم الهاتف الذي سترسل منه المستندات إلى مساحة العمل عبر واتساب.",
     "whatsappPhoneLabel": "رقم واتساب الخاص بك",
@@ -836,7 +837,86 @@
     "microsoftDesc": "ون درايف والتقويم",
     "connected": "متصل",
     "connect": "ربط",
-    "disconnect": "فصل"
+    "disconnect": "فصل",
+    "apiSources": {
+      "title": "مصادر API",
+      "description": "أنشئ مصادر بيانات خارجية قابلة لإعادة الاستخدام مرة واحدة، ثم اربطها بمساحات العمل التي تحتاجها.",
+      "reuseHint": "تعيش مصادر API هنا كمكتبة قابلة لإعادة الاستخدام. اربطها بكل مساحة عمل حتى يبقى التشغيل مركّزًا على الاختيار بدل الإعداد.",
+      "loading": "جارٍ تحميل مصادر API...",
+      "emptyTitle": "لا توجد مصادر API بعد",
+      "emptyBody": "أنشئ أول مصدر قابل لإعادة الاستخدام لبدء ربط البيانات الحية بمساحات العمل.",
+      "addSource": "إضافة مصدر API",
+      "editSource": "تعديل مصدر API",
+      "modalDescription": "عرّف تفاصيل الاتصال والمصادقة والتطبيع مرة واحدة حتى يمكن إعادة استخدام هذا المصدر عبر مساحات العمل.",
+      "createSource": "إنشاء المصدر",
+      "saveChanges": "حفظ التغييرات",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "testConnection": "اختبار الاتصال",
+      "connectionSucceeded": "نجح الاتصال.",
+      "connectionFailed": "فشل الاتصال.",
+      "cancel": "إلغاء",
+      "authLabel": "المصادقة: {mode}",
+      "lastFetched": "آخر جلب: {date}",
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف",
+        "endpointUrl": "رابط نقطة النهاية",
+        "method": "الطريقة",
+        "authMode": "المصادقة",
+        "sourceMode": "وضع المصدر",
+        "apiKeyHeaderName": "اسم ترويسة مفتاح API",
+        "apiKey": "مفتاح API",
+        "bearerToken": "رمز Bearer",
+        "basicSecret": "سر المصادقة الأساسية",
+        "tokenUrl": "رابط الرمز",
+        "scope": "النطاق",
+        "audience": "الجمهور",
+        "clientId": "معرّف العميل",
+        "clientSecret": "سر العميل",
+        "accessToken": "رمز الوصول",
+        "refreshToken": "رمز التحديث",
+        "responseRootPath": "مسار جذر الاستجابة",
+        "preferredFields": "الحقول المفضلة (مفصولة بفواصل)",
+        "includePaths": "مسارات التضمين (سطر لكل مسار)",
+        "excludePaths": "مسارات الاستبعاد (سطر لكل مسار)"
+      }
+    }
+  },
+  "workspaceDataSourcesPage": {
+    "title": "مصادر البيانات",
+    "description": "اربط مصادر API القابلة لإعادة الاستخدام من مكتبتك، وحدد ما يُفعّل افتراضياً، وأبقِ إعداد التشغيل مركّزاً على الاختيار.",
+    "manageLibrary": "إدارة مكتبة المصادر",
+    "openIntegrations": "فتح التكاملات",
+    "guidance": {
+      "createOnce": "أنشئ مصادر API القابلة لإعادة الاستخدام في التكاملات مرة واحدة، ثم اربطها بأي مساحة عمل تحتاجها.",
+      "runSelection": "يعرض Run Analysis فقط المصادر المرتبطة بهذه المساحة، وتأتي الإعدادات الافتراضية من الخيارات أدناه."
+    },
+    "authModes": {
+      "none": "بدون مصادقة",
+      "api_key": "مفتاح API",
+      "bearer": "رمز Bearer",
+      "basic": "مصادقة أساسية",
+      "oauth2_client_credentials": "OAuth2 client credentials",
+      "oauth2_refresh_token": "OAuth2 refresh token"
+    },
+    "attached": {
+      "title": "المصادر المرتبطة",
+      "description": "هذه المصادر متاحة في مساحة العمل هذه ويمكن تحديدها افتراضياً في عمليات التشغيل الجديدة.",
+      "emptyTitle": "لا توجد مصادر مرتبطة بعد",
+      "emptyDescription": "اربط مصدراً من مكتبتك أو أنشئ واحداً أولاً من التكاملات.",
+      "detach": "فصل",
+      "lastSuccess": "آخر نجاح: {value}",
+      "defaultLabel": "تفعيل افتراضي للتشغيلات الجديدة",
+      "defaultCaption": "سيبدأ هذا المصدر محدداً افتراضياً في Run Analysis لهذه المساحة."
+    },
+    "library": {
+      "title": "المتاح من مكتبتك",
+      "description": "اربط المصادر القابلة لإعادة الاستخدام دون إعادة إنشائها لكل مساحة عمل.",
+      "emptyTitle": "لا توجد مصادر غير مرتبطة في المكتبة",
+      "emptyDescription": "كل المصادر في مكتبتك الحالية مرتبطة هنا بالفعل، أو أنك لم تنشئ أي مصدر بعد.",
+      "attach": "ربط"
+    }
   },
   "organizationPage": {
     "title": "المؤسسة",
@@ -1230,6 +1310,18 @@
       "arabic": "العربية",
       "default": "افتراضي",
       "strict": "صارم"
+    },
+    "apiSources": {
+      "title": "مصادر API",
+      "empty": "لا توجد مصادر API مرتبطة بهذه المساحة بعد.",
+      "manageWorkspace": "إدارة مصادر مساحة العمل",
+      "openLibrary": "فتح مكتبة المصادر",
+      "defaultBadge": "افتراضي",
+      "includeDocument": "تضمين المستند الحالي",
+      "includeDocumentCaption": "أوقف هذا الخيار للتشغيل اعتماداً على أدلة API فقط.",
+      "apiOnlyHint": "تبقى عمليات API-only ضمن نطاق مصدر واحد، وتستخدم مصادر API المحددة كدليل أساسي لهذا التشغيل.",
+      "apiOnlyNeedsSource": "اختر مصدراً واحداً على الأقل من مصادر API قبل التشغيل بدون المستند الحالي.",
+      "apiOnlyBundleWarning": "عمليات API-only تدعم حالياً نطاق المصدر الواحد فقط."
     },
     "playbook": {
       "optional": "القالب (اختياري)",

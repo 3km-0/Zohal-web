@@ -496,13 +496,14 @@ export interface SubscriptionPlan {
 }
 
 // API Data Source types
-export type ApiConnectionAuthMode = 'none' | 'api_key' | 'bearer' | 'basic' | 'oauth2_client_credentials';
+export type ApiConnectionAuthMode = 'none' | 'api_key' | 'bearer' | 'basic' | 'oauth2_client_credentials' | 'oauth2_refresh_token';
 export type ApiConnectionRefreshPolicy = 'on_run' | 'manual';
 export type ApiConnectionStatus = 'active' | 'disabled' | 'error';
+export type ApiConnectionSourceMode = 'hybrid' | 'api_only' | 'either';
 
 export interface WorkspaceApiConnection {
   id: string;
-  workspace_id: string;
+  workspace_id?: string | null;
   name: string;
   description?: string | null;
   endpoint_url: string;
@@ -513,9 +514,17 @@ export interface WorkspaceApiConnection {
   response_schema_hint?: string | null;
   auth_mode: ApiConnectionAuthMode;
   refresh_policy: ApiConnectionRefreshPolicy;
+  source_mode?: ApiConnectionSourceMode | null;
   status: ApiConnectionStatus;
   last_fetched_at?: string | null;
+  last_successful_fetch_at?: string | null;
   last_error?: string | null;
+  auth_config_json?: Record<string, unknown> | null;
+  normalization_config_json?: Record<string, unknown> | null;
+  attachment_id?: string | null;
+  attached_workspace_id?: string | null;
+  enabled_by_default?: boolean | null;
+  attachment_sort_index?: number | null;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -548,4 +557,3 @@ export interface AskWorkspaceResult {
   confidence: number;
   source: 'insights' | 'rag';
 }
-
