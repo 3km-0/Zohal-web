@@ -237,7 +237,14 @@ export function ContractAnalysisPane({
   }, [runLanguage, runStrictness]);
 
   // API data sources
-  const [apiConnections, setApiConnections] = useState<Array<{ id: string; name: string; status: string; enabled_by_default?: boolean | null; endpoint_url?: string | null }>>([]);
+  const [apiConnections, setApiConnections] = useState<Array<{
+    id: string;
+    name: string;
+    status: string;
+    enabled_by_default?: boolean | null;
+    endpoint_url?: string | null;
+    source_kind?: 'http' | 'mcp' | 'finance_builtin' | null;
+  }>>([]);
   const [selectedApiConnectionIds, setSelectedApiConnectionIds] = useState<string[]>([]);
   const [includeDocumentSource, setIncludeDocumentSource] = useState(true);
 
@@ -3319,6 +3326,18 @@ export function ContractAnalysisPane({
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-sm font-medium text-text">{connection.name}</span>
+                                  <Badge size="sm" variant="accent">
+                                    {t('apiSources.attachedBadge')}
+                                  </Badge>
+                                  {connection.source_kind ? (
+                                    <Badge size="sm">
+                                      {connection.source_kind === 'finance_builtin'
+                                        ? 'Finance connector'
+                                        : connection.source_kind === 'mcp'
+                                          ? 'MCP tool'
+                                          : 'API'}
+                                    </Badge>
+                                  ) : null}
                                   {connection.enabled_by_default !== false ? (
                                     <Badge size="sm">{t('apiSources.defaultBadge')}</Badge>
                                   ) : null}

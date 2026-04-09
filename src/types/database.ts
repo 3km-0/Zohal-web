@@ -500,12 +500,15 @@ export type ApiConnectionAuthMode = 'none' | 'api_key' | 'bearer' | 'basic' | 'o
 export type ApiConnectionRefreshPolicy = 'on_run' | 'manual';
 export type ApiConnectionStatus = 'active' | 'disabled' | 'error';
 export type ApiConnectionSourceMode = 'hybrid' | 'api_only' | 'either';
+export type ApiConnectionSourceKind = 'http' | 'mcp' | 'finance_builtin';
+export type ApiConnectionMappingStatus = 'draft' | 'ready' | 'needs_attention';
 
 export interface WorkspaceApiConnection {
   id: string;
   workspace_id?: string | null;
   name: string;
   description?: string | null;
+  source_kind?: ApiConnectionSourceKind | null;
   endpoint_url: string;
   http_method: 'GET' | 'POST';
   headers_template?: Record<string, string> | null;
@@ -521,6 +524,11 @@ export interface WorkspaceApiConnection {
   last_error?: string | null;
   auth_config_json?: Record<string, unknown> | null;
   normalization_config_json?: Record<string, unknown> | null;
+  mcp_config_json?: Record<string, unknown> | null;
+  mapping_summary_json?: Record<string, unknown> | null;
+  mapping_generated_at?: string | null;
+  mapping_generated_from_prompt?: string | null;
+  mapping_status?: ApiConnectionMappingStatus | null;
   attachment_id?: string | null;
   attached_workspace_id?: string | null;
   enabled_by_default?: boolean | null;

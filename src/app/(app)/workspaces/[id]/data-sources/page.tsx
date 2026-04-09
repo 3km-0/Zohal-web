@@ -195,6 +195,15 @@ export default function DataSourcesPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-medium text-text">{source.name}</p>
                             <StatusBadge status={source.status} />
+                            {source.source_kind ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                                {source.source_kind === 'finance_builtin'
+                                  ? 'Finance connector'
+                                  : source.source_kind === 'mcp'
+                                    ? 'MCP tool'
+                                    : 'API'}
+                              </span>
+                            ) : null}
                             {source.enabled_by_default !== false ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                                 <CheckCircle2 className="h-3 w-3" />
@@ -205,6 +214,9 @@ export default function DataSourcesPage() {
                           <p className="mt-1 truncate font-mono text-xs text-text-muted">{source.endpoint_url}</p>
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-soft">
                             <span>{authModeLabel(source.auth_mode)}</span>
+                            {source.mapping_status ? (
+                              <span>Mapping: {source.mapping_status.replace('_', ' ')}</span>
+                            ) : null}
                             {source.last_successful_fetch_at ? (
                               <span>{t('attached.lastSuccess', { value: new Date(source.last_successful_fetch_at).toLocaleString() })}</span>
                             ) : null}
@@ -231,6 +243,12 @@ export default function DataSourcesPage() {
                         onCheckedChange={(enabled) => void updateDefault(source, enabled)}
                         disabled={busySourceId === source.id}
                       />
+                      <Link
+                        href="/integrations"
+                        className="mt-4 inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface hover:text-text"
+                      >
+                        {t('attached.editInIntegrations')}
+                      </Link>
                     </div>
                   </div>
                 ))}

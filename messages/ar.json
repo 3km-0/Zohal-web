@@ -847,17 +847,100 @@
       "emptyBody": "أنشئ أول مصدر قابل لإعادة الاستخدام لبدء ربط البيانات الحية بمساحات العمل.",
       "addSource": "إضافة مصدر API",
       "editSource": "تعديل مصدر API",
-      "modalDescription": "عرّف تفاصيل الاتصال والمصادقة والتطبيع مرة واحدة حتى يمكن إعادة استخدام هذا المصدر عبر مساحات العمل.",
+      "modalDescription": "أعد هذا المصدر خطوة بخطوة، ثم اربطه بأي مساحة عمل يجب أن تستخدمه.",
       "createSource": "إنشاء المصدر",
       "saveChanges": "حفظ التغييرات",
+      "saveDraft": "حفظ كمسودة",
+      "saveAndContinue": "حفظ والمتابعة",
       "edit": "تعديل",
       "delete": "حذف",
+      "attachNow": "اربط الآن",
       "testConnection": "اختبار الاتصال",
       "connectionSucceeded": "نجح الاتصال.",
       "connectionFailed": "فشل الاتصال.",
       "cancel": "إلغاء",
+      "stepLabel": "الخطوة",
+      "next": "التالي",
+      "back": "السابق",
+      "show": "إظهار",
+      "hide": "إخفاء",
+      "notTested": "لم يُختبر بعد",
       "authLabel": "المصادقة: {mode}",
       "lastFetched": "آخر جلب: {date}",
+      "presetsTitle": "ابدأ من إعداد جاهز",
+      "presetsDescription": "اختر أقرب نقطة بداية، ثم عدّل فقط ما يحتاجه هذا المصدر.",
+      "suggestedPaths": "مسارات مقترحة",
+      "previewTitle": "معاينة ما سيستخدمه زحل",
+      "previewDescription": "اختبر الاتصال هنا لتأكيد الاستجابة وتحسين المسار قبل الحفظ.",
+      "previewPrompt": "شغّل اختبار الاتصال لرؤية معاينة خفيفة للاستجابة هنا.",
+      "previewEmpty": "لا توجد معاينة بعد.",
+      "advancedAuth": "خيارات مصادقة متقدمة",
+      "advancedMapping": "خيارات ربط بيانات متقدمة",
+      "steps": {
+        "basics": {
+          "title": "الأساسيات",
+          "description": "سمِّ المصدر، واختر نقطة النهاية، وأكّد طريقة الطلب."
+        },
+        "auth": {
+          "title": "المصادقة",
+          "description": "اختر كيف يجب أن يصادق زحل، واملأ فقط الحقول التي يحتاجها هذا النوع."
+        },
+        "mapping": {
+          "title": "ربط البيانات",
+          "description": "وجّه زحل إلى البيانات المفيدة، واضبط الحقول المهمة عند الحاجة."
+        }
+      },
+      "presets": {
+        "public_json": {
+          "title": "واجهة JSON عامة",
+          "description": "مناسبة لنقاط GET المفتوحة التي تعيد JSON."
+        },
+        "api_key": {
+          "title": "واجهة بمفتاح API",
+          "description": "استخدمها عندما تتوقع الواجهة مفتاحًا سريًا في الترويسات."
+        },
+        "oauth_service": {
+          "title": "واجهة OAuth2 خدمية",
+          "description": "لـ OAuth2 بنمط client credentials بين الخدمات."
+        },
+        "internal_rest": {
+          "title": "واجهة REST داخلية",
+          "description": "نقطة بداية جيدة لواجهات JSON الخاصة."
+        }
+      },
+      "authModes": {
+        "none": "بدون مصادقة",
+        "api_key": "مفتاح API",
+        "bearer": "رمز Bearer",
+        "basic": "مصادقة أساسية",
+        "oauth2_client_credentials": "خدمة OAuth2",
+        "oauth2_refresh_token": "رمز تحديث OAuth2"
+      },
+      "authHints": {
+        "none": "استخدم هذا مع النقاط العامة أو المفتوحة.",
+        "api_key": "الأنسب للواجهات التي تتوقع مفتاحًا في الترويسات.",
+        "bearer": "استخدم رمز Bearer ثابتًا.",
+        "basic": "استخدم زوج اسم مستخدم وكلمة مرور.",
+        "oauth2_client_credentials": "استخدم معرّف العميل والسر لجلب الرموز تلقائياً.",
+        "oauth2_refresh_token": "استخدم هذا فقط عندما تحتاج إلى حالة رمز التحديث."
+      },
+      "mapping": {
+        "rootLabel": "أين توجد البيانات المفيدة؟",
+        "rootHint": "استخدم مسار JSON مثل $.items عندما تغلّف الواجهة السجلات المهمة.",
+        "preferredFields": "ما الحقول الأهم؟",
+        "includePaths": "مسارات التضمين (سطر لكل مسار)",
+        "excludePaths": "مسارات الاستبعاد (سطر لكل مسار)"
+      },
+      "attach": {
+        "title": "هل تريد ربط هذا المصدر بمساحات العمل الآن؟",
+        "description": "يمكنك تخطي هذه الخطوة وربطه لاحقًا من أي مساحة عمل.",
+        "loading": "جارٍ تحميل مساحات العمل...",
+        "empty": "لا توجد مساحات عمل نشطة متاحة الآن.",
+        "defaultLabel": "تفعيل افتراضي للتشغيلات الجديدة",
+        "defaultCaption": "سيبدأ هذا المصدر محددًا في Run Analysis لتلك المساحة.",
+        "skip": "تخطَّ الآن",
+        "confirm": "ربط المحدد"
+      },
       "fields": {
         "name": "الاسم",
         "description": "الوصف",
@@ -906,6 +989,7 @@
       "emptyTitle": "لا توجد مصادر مرتبطة بعد",
       "emptyDescription": "اربط مصدراً من مكتبتك أو أنشئ واحداً أولاً من التكاملات.",
       "detach": "فصل",
+      "editInIntegrations": "تعديل في التكاملات",
       "lastSuccess": "آخر نجاح: {value}",
       "defaultLabel": "تفعيل افتراضي للتشغيلات الجديدة",
       "defaultCaption": "سيبدأ هذا المصدر محدداً افتراضياً في Run Analysis لهذه المساحة."
@@ -1316,6 +1400,7 @@
       "empty": "لا توجد مصادر API مرتبطة بهذه المساحة بعد.",
       "manageWorkspace": "إدارة مصادر مساحة العمل",
       "openLibrary": "فتح مكتبة المصادر",
+      "attachedBadge": "مصدر مرتبط",
       "defaultBadge": "افتراضي",
       "includeDocument": "تضمين المستند الحالي",
       "includeDocumentCaption": "أوقف هذا الخيار للتشغيل اعتماداً على أدلة API فقط.",

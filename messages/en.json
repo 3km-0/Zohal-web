@@ -847,17 +847,100 @@
       "emptyBody": "Create your first reusable source to start attaching live data to workspaces.",
       "addSource": "Add API Source",
       "editSource": "Edit API Source",
-      "modalDescription": "Define connection details, auth, and normalization once so this source can be reused across workspaces.",
+      "modalDescription": "Set up this source step by step, then attach it to any workspace that should use it.",
       "createSource": "Create source",
       "saveChanges": "Save changes",
+      "saveDraft": "Save as draft",
+      "saveAndContinue": "Save and continue",
       "edit": "Edit",
       "delete": "Delete",
+      "attachNow": "Attach now",
       "testConnection": "Test connection",
       "connectionSucceeded": "Connection succeeded.",
       "connectionFailed": "Connection failed.",
       "cancel": "Cancel",
+      "stepLabel": "Step",
+      "next": "Next",
+      "back": "Back",
+      "show": "Show",
+      "hide": "Hide",
+      "notTested": "Not tested yet",
       "authLabel": "Auth: {mode}",
       "lastFetched": "Last fetched: {date}",
+      "presetsTitle": "Start from a preset",
+      "presetsDescription": "Choose the closest starting point, then adjust only what this source needs.",
+      "suggestedPaths": "Suggested paths",
+      "previewTitle": "Preview of what Zohal will use",
+      "previewDescription": "Test the connection here to confirm the response and refine the path before saving.",
+      "previewPrompt": "Run a connection test to see a lightweight response preview here.",
+      "previewEmpty": "No preview available yet.",
+      "advancedAuth": "Advanced auth options",
+      "advancedMapping": "Advanced mapping options",
+      "steps": {
+        "basics": {
+          "title": "Basics",
+          "description": "Name the source, choose the endpoint, and confirm the request method."
+        },
+        "auth": {
+          "title": "Authentication",
+          "description": "Choose how Zohal should authenticate and only fill the fields this auth type needs."
+        },
+        "mapping": {
+          "title": "Data Mapping",
+          "description": "Point Zohal to the useful data and optionally tune which fields matter most."
+        }
+      },
+      "presets": {
+        "public_json": {
+          "title": "Public JSON API",
+          "description": "Best for open GET endpoints that return JSON."
+        },
+        "api_key": {
+          "title": "API Key API",
+          "description": "Use when the API expects a secret key in headers."
+        },
+        "oauth_service": {
+          "title": "OAuth2 Service API",
+          "description": "Use for service-to-service OAuth2 client credentials."
+        },
+        "internal_rest": {
+          "title": "Internal REST API",
+          "description": "A good starting point for private JSON APIs."
+        }
+      },
+      "authModes": {
+        "none": "No auth",
+        "api_key": "API key",
+        "bearer": "Bearer token",
+        "basic": "Basic auth",
+        "oauth2_client_credentials": "OAuth2 service",
+        "oauth2_refresh_token": "OAuth2 refresh token"
+      },
+      "authHints": {
+        "none": "Use this for public or open endpoints.",
+        "api_key": "Best for APIs that expect a key in request headers.",
+        "bearer": "Use a static bearer token.",
+        "basic": "Use a username and password pair.",
+        "oauth2_client_credentials": "Use a client ID and secret to fetch tokens automatically.",
+        "oauth2_refresh_token": "Use this only when you need refresh-token state."
+      },
+      "mapping": {
+        "rootLabel": "Where is the useful data?",
+        "rootHint": "Use a JSON path like $.items when the API wraps the relevant records.",
+        "preferredFields": "Which fields matter most?",
+        "includePaths": "Include paths (one per line)",
+        "excludePaths": "Exclude paths (one per line)"
+      },
+      "attach": {
+        "title": "Attach this source to workspaces now?",
+        "description": "You can skip this and attach it later from any workspace.",
+        "loading": "Loading workspaces...",
+        "empty": "No active workspaces are available right now.",
+        "defaultLabel": "Enable by default for new runs",
+        "defaultCaption": "This source will start selected in Run Analysis for that workspace.",
+        "skip": "Skip for now",
+        "confirm": "Attach selected"
+      },
       "fields": {
         "name": "Name",
         "description": "Description",
@@ -906,6 +989,7 @@
       "emptyTitle": "No sources attached yet",
       "emptyDescription": "Attach a source from your library or create one in Integrations first.",
       "detach": "Detach",
+      "editInIntegrations": "Edit in Integrations",
       "lastSuccess": "Last success: {value}",
       "defaultLabel": "Enable by default for new runs",
       "defaultCaption": "This source will start selected in Run Analysis for this workspace."
@@ -1316,6 +1400,7 @@
       "empty": "No API Sources are attached to this workspace yet.",
       "manageWorkspace": "Manage workspace sources",
       "openLibrary": "Open source library",
+      "attachedBadge": "Attached source",
       "defaultBadge": "Default",
       "includeDocument": "Include current document",
       "includeDocumentCaption": "Turn this off to run from API evidence only.",
