@@ -58,7 +58,7 @@ type FinanceConnectorKey =
   | 'market_overview'
   | 'filings_fundamentals'
   | 'credit_rates_benchmarks';
-type WizardStep = 'basics' | 'auth' | 'mapping';
+type WizardStep = 'basics' | 'auth';
 
 type MappingProposal = {
   normalization_config_json?: Record<string, unknown>;
@@ -178,7 +178,6 @@ type ApiSourceAttachLabels = {
 const WIZARD_STEPS: Array<{ id: WizardStep }> = [
   { id: 'basics' },
   { id: 'auth' },
-  { id: 'mapping' },
 ];
 
 const PRESETS: Array<{
@@ -834,15 +833,11 @@ function ApiSourceWizardModal({
                   ) : null}
                 </CardContent>
               </Card>
-            </div>
-          ) : null}
 
-          {step === 'mapping' ? (
-            <div className="space-y-4">
               <Card className="border border-border bg-surface-alt">
                 <CardHeader>
-                  <CardTitle className="text-base">{labels.steps.mapping.title}</CardTitle>
-                  <CardDescription>{labels.steps.mapping.description}</CardDescription>
+                  <CardTitle className="text-base">Review sample</CardTitle>
+                  <CardDescription>Zohal will test the source, propose the mapping, and save it when you continue.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-scholar border border-border bg-surface px-4 py-3 text-sm text-text-soft">
@@ -979,7 +974,7 @@ function ApiSourceWizardModal({
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4">
           <div className="flex items-center gap-2">
             {step !== 'basics' ? (
-              <Button variant="ghost" size="sm" onClick={() => setStep(step === 'mapping' ? 'auth' : 'basics')}>
+              <Button variant="ghost" size="sm" onClick={() => setStep('basics')}>
                 {labels.back}
               </Button>
             ) : (
@@ -990,8 +985,8 @@ function ApiSourceWizardModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {step !== 'mapping' ? (
-              <Button size="sm" onClick={() => setStep(step === 'basics' ? 'auth' : 'mapping')} disabled={!canAdvance}>
+            {step !== 'auth' ? (
+              <Button size="sm" onClick={() => setStep('auth')} disabled={!canAdvance}>
                 {labels.next}
               </Button>
             ) : (
@@ -1750,10 +1745,6 @@ export default function IntegrationsPage() {
               auth: {
                 title: t('apiSources.steps.auth.title'),
                 description: t('apiSources.steps.auth.description'),
-              },
-              mapping: {
-                title: t('apiSources.steps.mapping.title'),
-                description: t('apiSources.steps.mapping.description'),
               },
             },
             presets: {
