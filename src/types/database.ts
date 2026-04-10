@@ -210,6 +210,7 @@ export interface DocumentChunk {
   content_text: string;
   content_hash: string;
   language: string;
+  metadata_json?: Record<string, unknown> | null;
   created_at: string;
 }
 

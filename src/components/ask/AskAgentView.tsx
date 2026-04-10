@@ -205,7 +205,17 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
 
       const targetWorkspaceId = workspaceId ?? citation.workspace_id;
       if (!targetWorkspaceId) return;
-      router.push(`/workspaces/${targetWorkspaceId}/documents/${citation.document_id}?page=${citation.page_number}&pane=chat`);
+      const params = new URLSearchParams({ pane: 'chat' });
+      if (citation.source_type === 'tabular' && citation.tabular_source) {
+        params.set('sheet', citation.tabular_source.sheet_name);
+        params.set('range', citation.tabular_source.range_ref);
+        if (citation.tabular_source.cell_ref) {
+          params.set('cell', citation.tabular_source.cell_ref);
+        }
+      } else {
+        params.set('page', String(citation.page_number));
+      }
+      router.push(`/workspaces/${targetWorkspaceId}/documents/${citation.document_id}?${params.toString()}`);
     },
     [router, supabase, t, workspaceId]
   );

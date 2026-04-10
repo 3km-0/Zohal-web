@@ -24,12 +24,21 @@ export async function GET(_: Request, { params }: RouteContext) {
 
   const { data: document, error: documentError } = await supabase
     .from('documents')
-    .select('original_filename, source_metadata')
+    .select('source_metadata')
     .eq('id', documentId)
     .single();
 
   if (documentError || !document) {
     return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+  }
+
+  const sourceMetadata = (document.source_metadata || {}) as Record<string, unknown>;
+  const manifestStoragePath = typeof sourceMetadata.tabular_manifest_storage_path === 'string'
+    ? sourceMetadata.tabular_manifest_storage_path
+    : null;
+
+  if (!manifestStoragePath) {
+    return NextResponse.json({ error: 'Tabular manifest unavailable' }, { status: 404 });
   }
 
   const signedUrlResponse = await fetch(
@@ -40,7 +49,10 @@ export async function GET(_: Request, { params }: RouteContext) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ document_id: documentId }),
+      body: JSON.stringify({
+        document_id: documentId,
+        storage_path_override: manifestStoragePath,
+      }),
       cache: 'no-store',
     }
   );
@@ -54,34 +66,23 @@ export async function GET(_: Request, { params }: RouteContext) {
     });
   }
 
-  const payload = (await signedUrlResponse.json().catch(() => null)) as {
-    download_url?: string;
-    storage_path?: string;
-  } | null;
+  const payload = (await signedUrlResponse.json().catch(() => null)) as { download_url?: string } | null;
   if (!payload?.download_url) {
-    return NextResponse.json({ error: 'Document download URL unavailable' }, { status: 404 });
+    return NextResponse.json({ error: 'Tabular manifest download URL unavailable' }, { status: 404 });
   }
 
   const upstream = await fetch(payload.download_url, {
-    headers: { Accept: '*/*' },
+    headers: { Accept: 'application/json' },
     cache: 'no-store',
   });
 
   if (!upstream.ok || !upstream.body) {
-    return NextResponse.json({ error: 'Failed to fetch document file' }, { status: upstream.status || 502 });
+    return NextResponse.json({ error: 'Failed to fetch tabular manifest' }, { status: upstream.status || 502 });
   }
 
   const headers = new Headers();
-  headers.set('Content-Type', upstream.headers.get('content-type') || 'application/pdf');
+  headers.set('Content-Type', upstream.headers.get('content-type') || 'application/json');
   headers.set('Cache-Control', 'private, no-store');
-  const originalFilename =
-    document.original_filename ||
-    (payload.storage_path ? payload.storage_path.split('/').pop() : null) ||
-    `document-${documentId}`;
-  headers.set(
-    'Content-Disposition',
-    upstream.headers.get('content-disposition') || `inline; filename="${originalFilename}"`
-  );
 
   return new NextResponse(upstream.body, {
     status: 200,

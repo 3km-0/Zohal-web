@@ -69,6 +69,17 @@ export interface ApiSourceInfo {
   response_path?: string
 }
 
+export interface TabularSourceInfo {
+  sheet_name: string
+  table_name?: string | null
+  range_ref: string
+  cell_ref?: string | null
+  row_index?: number | null
+  column_key?: string | null
+  formula?: string | null
+  workbook_path?: string | null
+}
+
 /** Links extracted data back to source document location */
 export interface EvidenceAnchor {
   /** Optional source document ID (for multi-document bundles). */
@@ -90,11 +101,14 @@ export interface EvidenceAnchor {
   /** Visual bounding box (only if available from extraction) */
   bbox?: BoundingBox
 
-  /** Source type: document (default if absent) or api */
-  source_type?: 'document' | 'api'
+  /** Source type: document (default if absent), api, or tabular */
+  source_type?: 'document' | 'api' | 'tabular'
 
   /** API source provenance (present when source_type === 'api') */
   api_source?: ApiSourceInfo
+
+  /** Structured spreadsheet provenance (present when source_type === 'tabular') */
+  tabular_source?: TabularSourceInfo
 }
 
 // =============================================================================
@@ -213,8 +227,9 @@ export interface CanonicalSourceAnchor {
   char_start?: number
   char_end?: number
   bbox?: BoundingBox
-  source_type?: 'document' | 'api'
+  source_type?: 'document' | 'api' | 'tabular'
   api_source?: ApiSourceInfo
+  tabular_source?: TabularSourceInfo
 }
 
 export interface CanonicalItemV3 {

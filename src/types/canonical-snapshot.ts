@@ -21,6 +21,17 @@ export type ApiSourceInfo = {
   response_path?: string;
 };
 
+export type TabularSourceInfo = {
+  sheet_name: string;
+  table_name?: string | null;
+  range_ref: string;
+  cell_ref?: string | null;
+  row_index?: number | null;
+  column_key?: string | null;
+  formula?: string | null;
+  workbook_path?: string | null;
+};
+
 export type SourceAnchor = {
   document_id?: string;
   page_number: number;
@@ -32,8 +43,9 @@ export type SourceAnchor = {
   char_end?: number;
   bbox?: BoundingBox;
   // Phase 1: API data source provenance (additive, backward-compatible)
-  source_type?: 'document' | 'api';
+  source_type?: 'document' | 'api' | 'tabular';
   api_source?: ApiSourceInfo;
+  tabular_source?: TabularSourceInfo;
 };
 
 export type CanonicalDerivation = {

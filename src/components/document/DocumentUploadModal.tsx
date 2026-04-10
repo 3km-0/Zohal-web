@@ -43,9 +43,13 @@ type SubscriptionTier = 'free' | 'core' | 'pro' | 'pro_plus' | 'premium' | 'team
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const CSV_MIME = 'text/csv';
 const ALLOWED_TYPES = [
   'application/pdf',
   DOCX_MIME,
+  XLSX_MIME,
+  CSV_MIME,
   'image/jpeg',
   'image/png',
   'image/heic',
@@ -59,6 +63,11 @@ const isSupportedRasterImage = (file: File) =>
   file.type === 'image/jpeg' || file.type === 'image/png';
 const isDocxFile = (file: File) =>
   file.type === DOCX_MIME || file.name.toLowerCase().endsWith('.docx');
+const isSpreadsheetFile = (file: File) =>
+  file.type === XLSX_MIME ||
+  file.type === CSV_MIME ||
+  file.name.toLowerCase().endsWith('.xlsx') ||
+  file.name.toLowerCase().endsWith('.csv');
 
 const getFileExtension = (name: string) => {
   const parts = name.split('.');
@@ -197,7 +206,7 @@ export function DocumentUploadModal({
     const validFiles: FileWithPreview[] = [];
 
     Array.from(newFiles).forEach((file) => {
-      if (!ALLOWED_TYPES.includes(file.type) && !isDocxFile(file)) {
+      if (!ALLOWED_TYPES.includes(file.type) && !isDocxFile(file) && !isSpreadsheetFile(file)) {
         return;
       }
 
@@ -421,7 +430,7 @@ export function DocumentUploadModal({
     return documentId;
   };
 
-  const uploadDocxDocument = async (docxFile: File, idsToMark: string[]): Promise<string> => {
+  const uploadSourceDocument = async (sourceFile: File, idsToMark: string[]): Promise<string> => {
     setFiles((prev) =>
       prev.map((f) =>
         idsToMark.includes(f.id) ? { ...f, status: 'uploading' as const } : f
@@ -432,8 +441,9 @@ export function DocumentUploadModal({
     if (!user) throw new Error('Not authenticated');
 
     const documentId = crypto.randomUUID();
-    const extension = getFileExtension(docxFile.name) || 'docx';
-    const contentType = docxFile.type || DOCX_MIME;
+    const extension = getFileExtension(sourceFile.name) || 'docx';
+    const contentType = sourceFile.type || (extension === 'xlsx' ? XLSX_MIME : extension === 'csv' ? CSV_MIME : DOCX_MIME);
+    const isTabular = extension === 'xlsx' || extension === 'csv';
 
     const { data: uploadUrlData, error: urlError, response: urlResponse } = await supabase.functions.invoke(
       'document-source-upload-url',
@@ -442,7 +452,7 @@ export function DocumentUploadModal({
           document_id: documentId,
           workspace_id: workspaceId,
           content_type: contentType,
-          file_size: docxFile.size,
+          file_size: sourceFile.size,
           source_extension: extension,
         },
       }
@@ -460,11 +470,13 @@ export function DocumentUploadModal({
       upload_url: uploadUrl,
       source_storage_path: sourceStoragePath,
       pdf_storage_path: pdfStoragePath,
+      canonical_storage_path: canonicalStoragePath,
+      source_format: sourceFormat,
     } = uploadUrlData;
 
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
-      body: docxFile,
+      body: sourceFile,
       headers: { 'Content-Type': contentType },
     });
 
@@ -477,39 +489,53 @@ export function DocumentUploadModal({
       workspace_id: workspaceId,
       folder_id: folderId || null,
       user_id: user.id,
-      title: docxFile.name.replace(/\.[^.]+$/i, ''),
-      original_filename: docxFile.name,
-      storage_path: pdfStoragePath,
+      title: sourceFile.name.replace(/\.[^.]+$/i, ''),
+      original_filename: sourceFile.name,
+      storage_path: canonicalStoragePath || (isTabular ? sourceStoragePath : pdfStoragePath),
       storage_bucket: 'gcs',
-      file_size_bytes: docxFile.size,
+      file_size_bytes: sourceFile.size,
       document_type: 'other',
-      processing_status: 'processing',
+      processing_status: isTabular ? 'pending' : 'processing',
       source_metadata: {
         original_mime: contentType,
         original_extension: extension,
+        source_format: sourceFormat || (isTabular ? extension : 'pdf'),
         source_storage_path: sourceStoragePath,
         source_storage_bucket: 'documents',
-        conversion_method: 'cloudconvert_docx_to_pdf_v1',
-        conversion_status: 'processing',
+        conversion_method: isTabular ? 'none' : 'cloudconvert_docx_to_pdf_v1',
+        conversion_status: isTabular ? 'completed' : 'processing',
       },
     });
 
     if (insertError) throw insertError;
 
-    const { error: convertError } = await supabase.functions.invoke('convert-to-pdf', {
-      body: { document_id: documentId, source_storage_path: sourceStoragePath },
-    });
-
-    if (convertError) {
-      console.warn('[Upload] convert-to-pdf failed:', convertError);
-      setFiles((prev) =>
-        prev.map((f) =>
-          idsToMark.includes(f.id)
-            ? { ...f, status: 'error' as const, error: 'Conversion failed — open the document to retry.' }
-            : f
-        )
+    if (isTabular) {
+      const { error: enqueueError, response: enqueueResponse } = await supabase.functions.invoke(
+        'enqueue-document-ingestion',
+        { body: { document_id: documentId } }
       );
-      return documentId;
+      if (enqueueError) {
+        const json = enqueueResponse ? await enqueueResponse.json().catch(() => null) : null;
+        const uiErr = mapHttpError(enqueueResponse?.status ?? 500, json, 'enqueue-document-ingestion');
+        toast.show(uiErr);
+        throw new Error(uiErr.message);
+      }
+    } else {
+      const { error: convertError } = await supabase.functions.invoke('convert-to-pdf', {
+        body: { document_id: documentId, source_storage_path: sourceStoragePath },
+      });
+
+      if (convertError) {
+        console.warn('[Upload] convert-to-pdf failed:', convertError);
+        setFiles((prev) =>
+          prev.map((f) =>
+            idsToMark.includes(f.id)
+              ? { ...f, status: 'error' as const, error: 'Conversion failed — open the document to retry.' }
+              : f
+          )
+        );
+        return documentId;
+      }
     }
 
     setFiles((prev) =>
@@ -527,7 +553,7 @@ export function DocumentUploadModal({
     const pendingFiles = files.filter((f) => f.status === 'pending');
     const pendingImageItems = pendingFiles.filter((f) => isImageType(f.file.type));
     const pendingPdfItems = pendingFiles.filter((f) => f.file.type === 'application/pdf');
-    const pendingDocxItems = pendingFiles.filter((f) => isDocxFile(f.file));
+    const pendingSourceItems = pendingFiles.filter((f) => isDocxFile(f.file) || isSpreadsheetFile(f.file));
 
     let firstUploadedDocId: string | undefined;
 
@@ -567,21 +593,21 @@ export function DocumentUploadModal({
       }
     }
 
-    // Handle DOCX (standard mode only)
-    if (pendingDocxItems.length > 0) {
-      const ids = pendingDocxItems.map((x) => x.id);
+    // Handle cloud-backed source documents (DOCX/XLSX/CSV)
+    if (pendingSourceItems.length > 0) {
+      const ids = pendingSourceItems.map((x) => x.id);
       if (isPrivateMode) {
         setFiles((prev) =>
           prev.map((f) =>
             ids.includes(f.id)
-              ? { ...f, status: 'error' as const, error: t('docxPrivateUnsupported') }
+              ? { ...f, status: 'error' as const, error: 'This file type requires standard cloud mode.' }
               : f
           )
         );
       } else {
-        for (const fileItem of pendingDocxItems) {
+        for (const fileItem of pendingSourceItems) {
           try {
-            const docId = await uploadDocxDocument(fileItem.file, [fileItem.id]);
+            const docId = await uploadSourceDocument(fileItem.file, [fileItem.id]);
             if (!firstUploadedDocId) firstUploadedDocId = docId;
           } catch (error) {
             setFiles((prev) =>
@@ -712,7 +738,7 @@ export function DocumentUploadModal({
             <label>
               <input
                 type="file"
-                accept=".pdf,.docx,image/*"
+                accept=".pdf,.docx,.xlsx,.csv,image/*"
                 multiple
                 onChange={(e) => e.target.files && addFiles(e.target.files)}
                 className="hidden"

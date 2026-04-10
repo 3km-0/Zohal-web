@@ -48,6 +48,8 @@ export interface OneDriveFolder {
 }
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const CSV_MIME = 'text/csv';
 
 // Store the access token in memory
 let cachedAccessToken: string | null = null;
@@ -310,8 +312,17 @@ export function isDocxFile(file: OneDriveFile): boolean {
   return file.file?.mimeType === DOCX_MIME || file.name.toLowerCase().endsWith('.docx');
 }
 
+export function isSpreadsheetFile(file: OneDriveFile): boolean {
+  return (
+    file.file?.mimeType === XLSX_MIME ||
+    file.file?.mimeType === CSV_MIME ||
+    file.name.toLowerCase().endsWith('.xlsx') ||
+    file.name.toLowerCase().endsWith('.csv')
+  );
+}
+
 export function isImportableDocument(file: OneDriveFile): boolean {
-  return isPdfFile(file) || isDocxFile(file);
+  return isPdfFile(file) || isDocxFile(file) || isSpreadsheetFile(file);
 }
 
 /**

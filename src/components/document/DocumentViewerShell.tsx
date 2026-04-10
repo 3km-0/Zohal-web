@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Button, Spinner, Badge, Card, CardContent, ScholarActionMenu } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { PDFViewer } from '@/components/pdf-viewer';
+import { SpreadsheetViewer } from '@/components/document/SpreadsheetViewer';
 import { DocumentRightPane } from '@/components/document/DocumentRightPane';
 import { createClient } from '@/lib/supabase/client';
 import type { Document, Workspace } from '@/types/database';
@@ -43,6 +44,7 @@ export default function DocumentViewerShell({
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [tabularManifestUrl, setTabularManifestUrl] = useState<string | null>(null);
   const [showRightPane, setShowRightPane] = useState(initialPaneOpen);
   const [rightPaneMode, setRightPaneMode] = useState<RightPaneMode>(initialMode);
   const [selectedText, setSelectedText] = useState<string>('');
@@ -116,6 +118,26 @@ export default function DocumentViewerShell({
     return { page, quote, bbox };
   }, [searchParams]);
 
+  const sourceFormat = useMemo(() => {
+    const sourceMetadata = (document?.source_metadata || {}) as Record<string, unknown>;
+    const raw = typeof sourceMetadata.source_format === 'string'
+      ? sourceMetadata.source_format
+      : typeof sourceMetadata.original_extension === 'string'
+        ? sourceMetadata.original_extension
+        : null;
+    const normalized = String(raw || '').trim().toLowerCase();
+    if (normalized === 'xlsx' || normalized === 'csv') return normalized;
+    return 'pdf';
+  }, [document]);
+
+  const tabularProof = useMemo(() => {
+    const sheetName = searchParams.get('sheet') || undefined;
+    const rangeRef = searchParams.get('range') || undefined;
+    const cellRef = searchParams.get('cell') || undefined;
+    if (!sheetName && !rangeRef && !cellRef) return undefined;
+    return { sheetName, rangeRef, cellRef };
+  }, [searchParams]);
+
   useEffect(() => {
     const pane = searchParams.get('pane');
     if (pane === 'chat' || pane === 'analysis') {
@@ -176,22 +198,43 @@ export default function DocumentViewerShell({
         // Privacy Mode: original PDF is device-only; web cannot fetch it.
         if (docData.privacy_mode) {
           setPdfUrl(null);
+          setTabularManifestUrl(null);
         }
         // Failed conversion — PDF doesn't exist, don't even try to fetch
         else if (docData.processing_status === 'failed') {
           setPdfUrl(null);
+          setTabularManifestUrl(null);
         }
         // Still processing — PDF not ready yet
         else if (docData.processing_status === 'processing' || docData.processing_status === 'pending') {
           setPdfUrl(null);
+          setTabularManifestUrl(
+            ((docData.source_metadata as Record<string, unknown> | null)?.source_format === 'xlsx' ||
+              (docData.source_metadata as Record<string, unknown> | null)?.source_format === 'csv')
+              ? `/api/documents/${documentId}/tabular`
+              : null
+          );
         }
         // Proxy through same-origin to avoid browser CORS failures on signed GCS URLs.
         else if (docData.storage_path && docData.storage_path !== 'local') {
-          setPdfUrl(`/api/documents/${documentId}/file`);
+          const sourceMeta = (docData.source_metadata as Record<string, unknown> | null) || {};
+          const format = typeof sourceMeta.source_format === 'string'
+            ? String(sourceMeta.source_format).toLowerCase()
+            : typeof sourceMeta.original_extension === 'string'
+              ? String(sourceMeta.original_extension).toLowerCase()
+              : 'pdf';
+          if (format === 'xlsx' || format === 'csv') {
+            setPdfUrl(null);
+            setTabularManifestUrl(`/api/documents/${documentId}/tabular`);
+          } else {
+            setPdfUrl(`/api/documents/${documentId}/file`);
+            setTabularManifestUrl(null);
+          }
         } else {
           // Document only exists locally on iOS device - show friendly error
           show(notFound('document file'));
           setPdfUrl(null);
+          setTabularManifestUrl(null);
         }
       }
 
@@ -379,12 +422,17 @@ export default function DocumentViewerShell({
 
       {/* Main Content */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* PDF Viewer */}
+        {/* Document Viewer */}
         <div
           className={cn('min-w-0 flex-1 overflow-hidden', showRightPane && 'md:border-r md:border-border')}
           data-tour="viewer-pdf"
         >
-          {pdfUrl ? (
+          {tabularManifestUrl ? (
+            <SpreadsheetViewer
+              manifestUrl={tabularManifestUrl}
+              highlight={tabularProof}
+            />
+          ) : pdfUrl ? (
             <PDFViewer
               url={pdfUrl}
               onTextSelect={handleTextSelect}
@@ -493,9 +541,13 @@ export default function DocumentViewerShell({
                           <Spinner size="sm" />
                         </div>
                         <div>
-                          <h2 className="text-lg font-semibold text-text">Converting document…</h2>
+                          <h2 className="text-lg font-semibold text-text">
+                            {sourceFormat === 'pdf' ? 'Converting document…' : 'Processing spreadsheet…'}
+                          </h2>
                           <p className="mt-1 text-sm text-text-soft">
-                            Your document is being converted to PDF. This usually takes under a minute. Checking automatically…
+                            {sourceFormat === 'pdf'
+                              ? 'Your document is being converted to PDF. This usually takes under a minute. Checking automatically…'
+                              : 'Your spreadsheet is being parsed into a tabular analysis model. Checking automatically…'}
                           </p>
                         </div>
                       </div>
@@ -505,11 +557,15 @@ export default function DocumentViewerShell({
                           <span className="text-lg">📄</span>
                         </div>
                         <div>
-                          <h2 className="text-lg font-semibold text-text">PDF not available</h2>
+                          <h2 className="text-lg font-semibold text-text">
+                            {sourceFormat === 'pdf' ? 'PDF not available' : 'Spreadsheet preview unavailable'}
+                          </h2>
                           <p className="mt-1 text-sm text-text-soft">
                             {document.storage_path === 'local'
                               ? 'This document only exists on the iOS device that imported it.'
-                              : 'The PDF for this document is not available on the web.'}
+                              : sourceFormat === 'pdf'
+                                ? 'The PDF for this document is not available on the web.'
+                                : 'The spreadsheet preview for this document is not available on the web yet.'}
                           </p>
                         </div>
                       </div>

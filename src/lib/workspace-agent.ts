@@ -3,6 +3,17 @@ export type WorkspaceAgentCitation = {
   document_title: string;
   page_number: number;
   quote: string;
+  source_type?: 'document' | 'api' | 'tabular';
+  tabular_source?: {
+    sheet_name: string;
+    table_name?: string | null;
+    range_ref: string;
+    cell_ref?: string | null;
+    row_index?: number | null;
+    column_key?: string | null;
+    formula?: string | null;
+    workbook_path?: string | null;
+  } | null;
   source_kind?: 'workspace_document' | 'zohal_library';
   workspace_id?: string | null;
   workspace_name?: string | null;

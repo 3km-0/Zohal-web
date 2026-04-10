@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils';
 import { Database, FileText, Rocket, StickyNote, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-type WorkspaceTabKey = 'documents' | 'notes' | 'data-sources' | 'experiences' | 'members';
+type WorkspaceTabKey = 'documents' | 'notes' | 'data-sources' | 'experiences' | 'members' | 'packs';
+type VisibleWorkspaceTabKey = Exclude<WorkspaceTabKey, 'packs'>;
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -28,8 +29,8 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     return `${href}${separator}fromFolder=${encodeURIComponent(fromFolderId)}`;
   };
 
-  const resolved: WorkspaceTabKey =
-    active ||
+  const resolved: VisibleWorkspaceTabKey =
+    (active === 'packs' ? 'documents' : active) ||
     (pathname.includes('/notes')
       ? 'notes'
       : pathname.includes('/data-sources')
@@ -41,7 +42,7 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
       : 'documents');
 
   const tabs: {
-    key: WorkspaceTabKey;
+    key: VisibleWorkspaceTabKey;
     label: string;
     href: string;
     icon: ComponentType<{ className?: string }>;

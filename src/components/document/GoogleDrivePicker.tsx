@@ -60,7 +60,7 @@ export function GoogleDrivePicker({
   }, [GOOGLE_CLIENT_ID]);
 
   const selectedSummary = useMemo(() => {
-    if (selectedFiles.length === 0) return 'Select PDF or DOCX files to import';
+    if (selectedFiles.length === 0) return 'Select PDF, DOCX, XLSX, or CSV files to import';
     if (selectedFiles.length === 1) return `Selected: ${selectedFiles[0]?.name ?? '1 file'}`;
     return `Selected: ${selectedFiles.length} files`;
   }, [selectedFiles]);
@@ -222,7 +222,7 @@ export function GoogleDrivePicker({
 
       const view = new g.picker.DocsView(g.picker.ViewId.DOCS)
         .setMimeTypes(
-          'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv'
         )
         .setIncludeFolders(false)
         .setSelectFolderEnabled(false);
@@ -234,7 +234,7 @@ export function GoogleDrivePicker({
         .setOrigin(window.location.origin)
         .addView(view)
         .enableFeature(g.picker.Feature.MULTISELECT_ENABLED)
-        .setTitle('Select PDF or DOCX files')
+        .setTitle('Select PDF, DOCX, XLSX, or CSV files')
         .setCallback((data: any) => {
           if (data?.action === g.picker.Action.PICKED) {
             const docs = Array.isArray(data?.docs) ? data.docs : [];

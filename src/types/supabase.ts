@@ -1454,6 +1454,7 @@ export type Database = {
           end_char: number | null
           id: string
           language: string | null
+          metadata_json: Json
           page_id: string | null
           page_number: number
           start_char: number | null
@@ -1475,6 +1476,7 @@ export type Database = {
           end_char?: number | null
           id?: string
           language?: string | null
+          metadata_json?: Json
           page_id?: string | null
           page_number: number
           start_char?: number | null
@@ -1496,6 +1498,7 @@ export type Database = {
           end_char?: number | null
           id?: string
           language?: string | null
+          metadata_json?: Json
           page_id?: string | null
           page_number?: number
           start_char?: number | null

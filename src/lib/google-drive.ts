@@ -28,6 +28,8 @@ export interface GoogleDriveFolder {
 }
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const CSV_MIME = 'text/csv';
 
 interface TokenResponse {
   access_token: string;
@@ -199,6 +201,8 @@ export async function searchDriveFiles(
     `trashed = false and (` +
     `mimeType = 'application/pdf' or ` +
     `mimeType = '${DOCX_MIME}' or ` +
+    `mimeType = '${XLSX_MIME}' or ` +
+    `mimeType = '${CSV_MIME}' or ` +
     `mimeType = 'application/vnd.google-apps.folder')`;
   if (searchQuery) {
     query += ` and name contains '${searchQuery.replace(/'/g, "\\'")}'`;
