@@ -7,22 +7,22 @@ import {
 } from '@/lib/document-analysis';
 
 describe('document analysis template recommendations', () => {
-  it('routes contracts into the compliance interface', () => {
+  it('routes contracts into the PE diligence template', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'contract',
         title: 'Vendor Agreement Renewal Notice',
       })[0]
-    ).toBe('Policy & Regulatory Interface');
+    ).toBe('PE Diligence Data Room Workspace');
   });
 
-  it('prefers the compliance interface as the broad default contract template', () => {
+  it('prefers PE diligence as the broad default contract template', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'contract',
         title: 'Master Services Agreement',
       })[0]
-    ).toBe('Policy & Regulatory Interface');
+    ).toBe('PE Diligence Data Room Workspace');
   });
 
   it('matches renamed templates via aliases when selecting a template', () => {
@@ -30,14 +30,14 @@ describe('document analysis template recommendations', () => {
       [
         {
           id: 'pb-1',
-          name: 'Policy & Regulatory Interface',
+          name: 'Public Company Intelligence Workspace',
           is_system_preset: true,
           current_version: {
             id: 'v1',
             version_number: 1,
             spec_json: {
               meta: {
-                aliases: ['Policy & Regulatory Portal'],
+                aliases: ['Investor Reporting Dashboard'],
               },
             },
           },
@@ -49,39 +49,39 @@ describe('document analysis template recommendations', () => {
       }
     );
 
-    expect(playbook?.name).toBe('Policy & Regulatory Interface');
+    expect(playbook?.name).toBe('Public Company Intelligence Workspace');
   });
 
-  it('routes invoices and onboarding documents into the logistics interface', () => {
+  it('routes invoices and onboarding documents into the SMB cash flow template', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'invoice',
         title: 'March invoice',
       })[0]
-    ).toBe('Logistics Operations Interface');
+    ).toBe('SMB Cash Flow Workspace');
 
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'onboarding_doc',
         title: 'Vendor onboarding packet',
       })[0]
-    ).toBe('Logistics Operations Interface');
+    ).toBe('SMB Cash Flow Workspace');
   });
 
-  it('routes financial reports and research corpora into the new top-level templates', () => {
+  it('routes financial reports and research corpora into finance templates', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'financial_report',
         title: 'FY2025 Annual Report',
       })[0]
-    ).toBe('Investor Reporting Dashboard');
+    ).toBe('Public Company Intelligence Workspace');
 
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'paper',
         title: 'Meta-analysis of cardiovascular outcomes',
       })[0]
-    ).toBe('Research Synthesis Interface');
+    ).toBe('Quant Research Workspace');
   });
 
   it('marks onboarding documents as structured-analysis capable', () => {
@@ -93,29 +93,29 @@ describe('document analysis template recommendations', () => {
   it('uses classifier-ranked template ids before heuristic fallback', () => {
     const playbooks = [
       {
-        id: 'pb-compliance',
-        name: 'Policy & Regulatory Interface',
+        id: 'pb-pe',
+        name: 'PE Diligence Data Room Workspace',
         is_system_preset: true,
         current_version: {
-          id: 'v-compliance',
+          id: 'v-pe',
           version_number: 1,
           spec_json: {
-            template_id: 'compliance_docset_review',
+            template_id: 'pe_diligence_data_room_workspace',
             meta: {
-              aliases: ['Policy & Regulatory Portal'],
+              aliases: [],
             },
           },
         },
       },
       {
-        id: 'pb-logistics',
-        name: 'Logistics Operations Interface',
+        id: 'pb-smb',
+        name: 'SMB Cash Flow Workspace',
         is_system_preset: true,
         current_version: {
-          id: 'v-logistics',
+          id: 'v-smb',
           version_number: 1,
           spec_json: {
-            template_id: 'logistics_operations_portal',
+            template_id: 'smb_cash_flow_workspace',
           },
         },
       },
@@ -125,10 +125,10 @@ describe('document analysis template recommendations', () => {
       documentType: 'contract',
       title: 'Sample Commercial Lease Test Set',
       originalFilename: 'Sample Commercial Lease Test Set.pdf',
-      recommendedTemplateIds: ['compliance_docset_review'],
+      recommendedTemplateIds: ['pe_diligence_data_room_workspace'],
     });
 
-    expect(playbook?.name).toBe('Policy & Regulatory Interface');
+    expect(playbook?.name).toBe('PE Diligence Data Room Workspace');
   });
 
   it('prefers stored recommendation metadata before name heuristics', () => {
@@ -136,14 +136,14 @@ describe('document analysis template recommendations', () => {
       [
         {
           id: 'pb-investor',
-          name: 'Investor Reporting Dashboard',
+          name: 'Public Company Intelligence Workspace',
           is_system_preset: true,
           current_version: {
             id: 'v-investor',
             version_number: 1,
             spec_json: {
               template_id: 'investor_reporting_dashboard',
-              meta: { name: 'Investor Reporting Dashboard', kind: 'document' },
+              meta: { name: 'Public Company Intelligence Workspace', kind: 'document' },
               canonical_profile: {
                 positioning: {
                   recommended_document_types: ['financial_report'],
@@ -154,14 +154,14 @@ describe('document analysis template recommendations', () => {
         },
         {
           id: 'pb-contract',
-          name: 'Policy & Regulatory Interface',
+          name: 'PE Diligence Data Room Workspace',
           is_system_preset: true,
           current_version: {
             id: 'v-contract',
             version_number: 1,
             spec_json: {
-              template_id: 'compliance_docset_review',
-              meta: { name: 'Policy & Regulatory Interface', kind: 'document' },
+              template_id: 'pe_diligence_data_room_workspace',
+              meta: { name: 'PE Diligence Data Room Workspace', kind: 'document' },
             },
           },
         },
@@ -172,6 +172,6 @@ describe('document analysis template recommendations', () => {
       }
     );
 
-    expect(playbook?.name).toBe('Investor Reporting Dashboard');
+    expect(playbook?.name).toBe('Public Company Intelligence Workspace');
   });
 });

@@ -66,35 +66,33 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   if (!documentType) return [];
 
   const searchableText = normalizedDocumentText(metadata);
-  const complianceKeywords = ['policy', 'policies', 'regulation', 'regulatory', 'compliance', 'controls', 'framework', 'guideline', 'standard', 'procedure'];
-  const onboardingKeywords = ['vendor onboarding', 'supplier onboarding', 'trade license', 'registration', 'vat certificate', 'iban', 'bank details', 'compliance certificate'];
-  const logisticsKeywords = ['shipment', 'carrier', 'bill of lading', 'warehouse', 'delivery', 'container', 'tracking', 'supplier', 'procurement', 'vendor'];
-  const healthcareKeywords = ['patient', 'lab result', 'discharge', 'medication', 'diagnosis', 'encounter', 'care plan'];
-  const complianceTemplate = ['Policy & Regulatory Interface'];
+  const realEstateKeywords = ['lease', 'rent roll', 'tenant', 'landlord', 'noi ', 'net operating income', 'premises'];
+  const retailKeywords = ['restaurant', 'pos ', 'food cost', 'menu', 'retail margin'];
+  const fundKeywords = ['lp letter', 'capital account', 'dpi', 'tvpi', 'fund report', 'capital call'];
 
   if (documentType === 'financial_report') {
-    return ['Investor Reporting Dashboard'];
+    return ['Public Company Intelligence Workspace'];
   }
   if (documentType === 'paper' || documentType === 'research') {
-    return ['Research Synthesis Interface'];
+    return ['Quant Research Workspace'];
   }
   if (documentType === 'textbook' || documentType === 'lecture_notes' || documentType === 'problem_set') {
-    return ['Course Learning Interface'];
+    return [];
+  }
+  if (containsAny(searchableText, realEstateKeywords)) {
+    return ['Real Estate Portfolio Tracker'];
+  }
+  if (containsAny(searchableText, retailKeywords)) {
+    return ['Retail & F&B Margin Workspace'];
+  }
+  if (containsAny(searchableText, fundKeywords)) {
+    return ['Fund Reporting Workspace'];
   }
   if (documentType === 'contract' || documentType === 'legal_filing' || documentType === 'policy') {
-    return complianceTemplate;
+    return ['PE Diligence Data Room Workspace'];
   }
   if (documentType === 'invoice' || documentType === 'onboarding_doc') {
-    return ['Logistics Operations Interface'];
-  }
-  if (containsAny(searchableText, complianceKeywords)) {
-    return complianceTemplate;
-  }
-  if (containsAny(searchableText, logisticsKeywords) || containsAny(searchableText, onboardingKeywords)) {
-    return ['Logistics Operations Interface'];
-  }
-  if (containsAny(searchableText, healthcareKeywords)) {
-    return ['Healthcare Record Interface'];
+    return ['SMB Cash Flow Workspace'];
   }
 
   return [];
@@ -128,11 +126,33 @@ export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[]
 }
 
 function playbookTemplateId(playbook: PlaybookLike | null | undefined): string | null {
-  const raw = playbook?.current_version?.spec_json?.template_id;
-  if (typeof raw !== 'string') return null;
-  const normalized = raw.trim().toLowerCase();
-  return normalized || null;
+  const spec = playbook?.current_version?.spec_json as Record<string, unknown> | undefined;
+  if (!spec) return null;
+  const top = spec.template_id;
+  if (typeof top === 'string' && top.trim()) return top.trim().toLowerCase();
+  const identity = spec.identity;
+  if (identity && typeof identity === 'object' && !Array.isArray(identity)) {
+    const id = (identity as Record<string, unknown>).template_id;
+    if (typeof id === 'string' && id.trim()) return id.trim().toLowerCase();
+  }
+  return null;
 }
+
+const LEGACY_RECOMMENDED_TEMPLATE_ID: Record<string, string> = {
+  product_specification_catalog: 'pe_diligence_data_room_workspace',
+  research_synthesis_site: 'quant_research_workspace',
+  research_synthesis_interface: 'quant_research_workspace',
+  course_learning_portal: 'quant_research_workspace',
+  course_learning_interface: 'quant_research_workspace',
+  compliance_docset_review: 'pe_diligence_data_room_workspace',
+  policy_regulatory_portal: 'pe_diligence_data_room_workspace',
+  healthcare_record_surface: 'pe_diligence_data_room_workspace',
+  healthcare_record_interface: 'pe_diligence_data_room_workspace',
+  logistics_operations_portal: 'smb_cash_flow_workspace',
+  logistics_operations_interface: 'smb_cash_flow_workspace',
+  portfolio_monitoring_workspace: 'family_office_portfolio_monitor',
+  credit_covenant_monitoring: 'startup_cfo_workspace',
+};
 
 export function resolveRecommendedPlaybook<T extends PlaybookLike>(
   playbooks: T[],
@@ -143,9 +163,14 @@ export function resolveRecommendedPlaybook<T extends PlaybookLike>(
     .filter(Boolean);
 
   for (const recommendedId of normalizedRecommendedIds) {
-    const classifierPlaybook =
-      playbooks.find((playbook) => playbookTemplateId(playbook) === recommendedId) || null;
-    if (classifierPlaybook) return classifierPlaybook;
+    const candidates = Array.from(
+      new Set([recommendedId, LEGACY_RECOMMENDED_TEMPLATE_ID[recommendedId]].filter(Boolean) as string[]),
+    );
+    for (const id of candidates) {
+      const classifierPlaybook =
+        playbooks.find((playbook) => playbookTemplateId(playbook) === id) || null;
+      if (classifierPlaybook) return classifierPlaybook;
+    }
   }
 
   return selectRecommendedPlaybook(playbooks, metadata);

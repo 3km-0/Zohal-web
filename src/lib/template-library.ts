@@ -15,63 +15,99 @@ type TemplateDefinition = {
 
 const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   {
-    canonicalName: 'Investor Reporting Dashboard',
+    canonicalName: 'Public Company Intelligence Workspace',
     group: 'zohal_templates',
     rank: 10,
     emoji: '📈',
-    description: 'Turn annual reports, filings, and recurring reporting sets into traceable investor-facing dashboards.',
-    descriptionAr: 'حوّل التقارير السنوية والإفصاحات إلى لوحة تقارير استثمارية قابلة للتتبع.',
+    description:
+      'Filings, earnings decks, and transcripts turned into a traceable public-company intelligence surface.',
+    descriptionAr: 'حوّل الإفصاحات والعروض إلى مساحة ذكاء لشركة عامة قابلة للتتبع.',
+    aliases: ['Investor Reporting Dashboard'],
   },
   {
-    canonicalName: 'Product Specification Catalog',
+    canonicalName: 'Saudi Family Office Portfolio Monitor',
     group: 'zohal_templates',
     rank: 20,
-    emoji: '🧰',
-    description: 'Convert technical PDFs and product sheets into searchable, comparable product interfaces.',
-    descriptionAr: 'حوّل المواصفات الفنية وملفات PDF إلى واجهات مواصفات قابلة للبحث والمقارنة.',
+    emoji: '🏢',
+    description:
+      'Board packs, IC memos, and portfolio updates turned into a multi-company portfolio monitor.',
+    descriptionAr: 'حزم مجالس الإدارة وتحديثات المحفظة في رقابة محفظة لعائلة مستثمرة.',
+    aliases: ['Portfolio Monitoring Workspace'],
   },
   {
-    canonicalName: 'Research Synthesis Interface',
+    canonicalName: 'Startup CFO Workspace',
     group: 'zohal_templates',
     rank: 30,
-    emoji: '🧠',
-    description: 'Turn a corpus of papers and reports into an evolving synthesis interface with evidence and gaps.',
-    descriptionAr: 'حوّل مجموعة الأوراق والتقارير إلى واجهة توليف بحثي تتتبع الأدلة والفجوات.',
+    emoji: '💰',
+    description:
+      'Accounting exports, bank data, board decks, and forecasts turned into BvA, runway, and covenant surfaces.',
+    descriptionAr: 'مساحة للمدير المالي مع الميزانية والاحتياطي والعهد.',
   },
   {
-    canonicalName: 'Course Learning Interface',
+    canonicalName: 'SMB Cash Flow Workspace',
     group: 'zohal_templates',
     rank: 40,
-    emoji: '🎓',
-    description: 'Turn course documents into an interactive study, schedule, and assignment interface.',
-    descriptionAr: 'حوّل مستندات المقررات إلى واجهة تعلم تفاعلية للدراسة والجدول والمهام.',
+    emoji: '💳',
+    description:
+      'Receipts, invoices, and bank activity turned into SMB cash flow, AP/AR, and reconciliation views.',
+    descriptionAr: 'تدفقات نقدية للمنشآت الصغيرة من الإيصالات والبنك.',
   },
   {
-    canonicalName: 'Policy & Regulatory Interface',
+    canonicalName: 'Freelancer Financial Clarity Workspace',
     group: 'zohal_templates',
     rank: 50,
-    emoji: '📚',
-    description: 'Turn versioned policy or regulatory corpora into a navigable, update-aware compliance interface.',
-    descriptionAr: 'حوّل مجموعات السياسات واللوائح المرقمة إلى واجهة امتثال تنظيمية قابلة للتصفح وتتبع التحديثات.',
-    aliases: ['Policy & Regulatory Compliance Review', 'Policy & Regulatory Portal'],
+    emoji: '🧑‍💻',
+    description:
+      'Client contracts, invoices, and bank feeds turned into pipeline, AR, and tax-reserve clarity.',
+    descriptionAr: 'وضوح مالي للمستقلين من الفواتير والعقود.',
   },
   {
-    canonicalName: 'Healthcare Record Interface',
+    canonicalName: 'PE Diligence Data Room Workspace',
     group: 'zohal_templates',
     rank: 60,
-    emoji: '🩺',
-    description: 'Turn longitudinal healthcare documents into navigable summaries, timelines, and follow-up interfaces.',
-    descriptionAr: 'حوّل السجلات الصحية الطولية إلى واجهة ملخصات وجداول زمنية ومتابعات قابلة للتصفح.',
+    emoji: '🗂️',
+    description:
+      'Data rooms and deal sets turned into diligence dashboards, risks, checklists, and claim-to-evidence views.',
+    descriptionAr: 'غرف بيانات للفحص الاستثماري مع المخاطر والقوائم.',
   },
   {
-    canonicalName: 'Logistics Operations Interface',
+    canonicalName: 'Real Estate Portfolio Tracker',
     group: 'zohal_templates',
     rank: 70,
-    emoji: '🚚',
-    description: 'Turn logistics document sets into status-aware operations interfaces with milestones and exceptions.',
-    descriptionAr: 'حوّل مستندات اللوجستيات إلى واجهة عمليات تتتبع الحالة والمراحل والاستثناءات.',
+    emoji: '🏡',
+    description:
+      'Leases, rent rolls, and opex turned into yield, expiry, arrears, and NOI portfolio views.',
+    descriptionAr: 'تتبع محفظة عقارية من العقود والإيجارات.',
+  },
+  {
+    canonicalName: 'Fund Reporting Workspace',
+    group: 'zohal_templates',
+    rank: 80,
+    emoji: '💼',
+    description:
+      'LP letters, capital accounts, and fund reports turned into performance, flows, and narrative-change views.',
+    descriptionAr: 'تقارير الصناديق والمساهمين مع الأداء والتدفقات.',
+  },
+  {
+    canonicalName: 'Quant Research Workspace',
+    group: 'zohal_templates',
+    rank: 90,
+    emoji: '📊',
+    description:
+      'Market, alt, and fundamental inputs turned into signals, backtests, risk surfaces, and lineage.',
+    descriptionAr: 'بحث كمي لربط بيانات السوق مع تحليل الإشارات والمخاطر.',
+  },
+  {
+    canonicalName: 'Retail & F&B Margin Workspace',
+    group: 'zohal_templates',
+    rank: 100,
+    emoji: '🍽️',
+    description:
+      'POS and supplier spend turned into branch margins, COGS pressure, and payables visibility.',
+    descriptionAr: 'هوامش التجزئة والمطاعم من نقاط البيع والموردين.',
   },
 ];
+
 
 const NAME_TO_DEFINITION = new Map<string, TemplateDefinition>();
 for (const definition of TEMPLATE_DEFINITIONS) {
@@ -80,6 +116,19 @@ for (const definition of TEMPLATE_DEFINITIONS) {
     NAME_TO_DEFINITION.set(alias.toLowerCase(), definition);
   }
 }
+
+const TEMPLATE_ID_TO_DEFINITION = new Map<string, TemplateDefinition>([
+  ['investor_reporting_dashboard', TEMPLATE_DEFINITIONS[0]],
+  ['family_office_portfolio_monitor', TEMPLATE_DEFINITIONS[1]],
+  ['startup_cfo_workspace', TEMPLATE_DEFINITIONS[2]],
+  ['smb_cash_flow_workspace', TEMPLATE_DEFINITIONS[3]],
+  ['freelancer_financial_clarity_workspace', TEMPLATE_DEFINITIONS[4]],
+  ['pe_diligence_data_room_workspace', TEMPLATE_DEFINITIONS[5]],
+  ['real_estate_portfolio_tracker', TEMPLATE_DEFINITIONS[6]],
+  ['fund_reporting_workspace', TEMPLATE_DEFINITIONS[7]],
+  ['quant_research_workspace', TEMPLATE_DEFINITIONS[8]],
+  ['retail_fnb_margin_workspace', TEMPLATE_DEFINITIONS[9]],
+]);
 
 function specMeta(playbook: TemplateLibraryPlaybookLike): Record<string, unknown> {
   return playbook.current_version?.spec_json?.meta &&
@@ -128,8 +177,17 @@ export function isHiddenSystemPlaybook(playbook: TemplateLibraryPlaybookLike): b
 }
 
 export function resolveTemplateDefinition(playbookOrName: TemplateLibraryPlaybookLike | string) {
-  const name = typeof playbookOrName === 'string' ? playbookOrName : playbookOrName.name;
-  return NAME_TO_DEFINITION.get(String(name || '').trim().toLowerCase()) || null;
+  if (typeof playbookOrName === 'string') {
+    return NAME_TO_DEFINITION.get(String(playbookOrName || '').trim().toLowerCase()) || null;
+  }
+  const playbook = playbookOrName;
+  const byName = NAME_TO_DEFINITION.get(String(playbook.name || '').trim().toLowerCase());
+  if (byName) return byName;
+  const templateId = playbook.current_version?.spec_json?.template_id;
+  if (typeof templateId === 'string' && templateId.trim()) {
+    return TEMPLATE_ID_TO_DEFINITION.get(templateId.trim().toLowerCase()) || null;
+  }
+  return null;
 }
 
 export function getTemplateAliases(playbook: TemplateLibraryPlaybookLike): string[] {
