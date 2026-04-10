@@ -38,6 +38,7 @@ const DOCUMENT_INGESTION_OCR_POLL_DELAY_SECONDS = Math.max(
   5,
   Number(process.env.DOCUMENT_INGESTION_OCR_POLL_DELAY_SECONDS || 60),
 );
+const TABULAR_SOURCE_FORMATS = new Set(["xlsx", "csv"]);
 const INSIGHTS_DOC_TYPES = new Set([
   "contract",
   "legal_filing",
@@ -76,6 +77,20 @@ function getSourceMetadata(doc) {
     return doc.source_metadata;
   }
   return {};
+}
+
+function getDocumentSourceFormat(doc) {
+  const sourceMetadata = getSourceMetadata(doc);
+  const sourceFormat = String(
+    sourceMetadata.source_format ||
+      sourceMetadata.original_extension ||
+      "",
+  ).trim().toLowerCase();
+  return sourceFormat;
+}
+
+function isTabularSourceFormat(value) {
+  return TABULAR_SOURCE_FORMATS.has(String(value || "").trim().toLowerCase());
 }
 
 function hasDateLikePattern(text) {
@@ -627,6 +642,47 @@ async function runInsightsStep({ supabase, requestId, payload, documentType }) {
   return buildGcpEnvelope(requestId, response.json || { success: true });
 }
 
+async function runTabularPipeline({ supabase, requestId, payload, document }) {
+  const extractResult = await invokeSupabaseStep({
+    functionName: "extract-tabular-document",
+    requestId,
+    body: {
+      document_id: normalizeUuid(payload.document_id),
+      workspace_id: normalizeUuid(payload.workspace_id),
+      user_id: normalizeUuid(payload.user_id),
+    },
+  });
+
+  await appendIngestionRuntime(supabase, payload.document_id, {
+    current_step: "extract_tabular",
+  });
+
+  const embedResult = await runEmbedStep({ supabase, requestId, payload });
+  const classifyResult = await runClassifyStep({ supabase, requestId, payload });
+  const documentType = String(classifyResult.document_type || "").trim().toLowerCase();
+  const insightsResult = await runInsightsStep({
+    supabase,
+    requestId,
+    payload,
+    documentType,
+  });
+
+  await setProcessingState(supabase, payload.document_id, "completed", {
+    current_step: "completed",
+  });
+
+  return buildGcpEnvelope(requestId, {
+    success: true,
+    document_id: normalizeUuid(payload.document_id),
+    source_format: getDocumentSourceFormat(document),
+    tabular: true,
+    extract: extractResult.json || { success: true },
+    embed: embedResult,
+    classify: classifyResult,
+    insights: insightsResult,
+  });
+}
+
 async function runPostOcrPipeline({ req, supabase, requestId, payload, log }) {
   const document = await fetchDocumentOrThrow(supabase, payload.document_id);
   const mdPath = String(document.source_metadata?.ocr_markdown_storage_path || "").trim();
@@ -685,6 +741,33 @@ async function performExtractText({ supabase, payload }) {
     const error = new Error("Text extraction is disabled for Privacy Mode documents");
     error.statusCode = 403;
     throw error;
+  }
+
+  const sourceFormat = getDocumentSourceFormat(document);
+  if (isTabularSourceFormat(sourceFormat)) {
+    const summary = [
+      `Tabular source format: ${sourceFormat}.`,
+      `Document title: ${String(document.title || "Untitled workbook").trim()}.`,
+      "Route this document through the spreadsheet extraction pipeline.",
+    ].join(" ");
+    return {
+      success: true,
+      document_id: normalizeUuid(payload.document_id),
+      page_count: 1,
+      pages_with_text: 1,
+      total_chars: summary.length,
+      scanned: false,
+      low_signal_text_layer: false,
+      should_fallback_to_ocr: false,
+      is_tabular: true,
+      source_format: sourceFormat,
+      pages: [
+        {
+          page_number: 1,
+          text: summary,
+        },
+      ],
+    };
   }
 
   const downloadUrl = await getDocumentDownloadUrl({ supabase, document });
@@ -1270,6 +1353,7 @@ export async function handleIngestionRunTextPipeline(req, res, { requestId, log,
         "user_id",
       ]);
       const document = await fetchDocumentOrThrow(supabase, payload.document_id);
+      const sourceFormat = getDocumentSourceFormat(document);
       if (
         String(document.ocr_status || "").toLowerCase() === "completed" &&
         document.embedding_completed === true
@@ -1293,6 +1377,15 @@ export async function handleIngestionRunTextPipeline(req, res, { requestId, log,
           skipped_to_classify: true,
           classify: classifyResult,
           insights: insightsResult,
+        });
+      }
+
+      if (isTabularSourceFormat(sourceFormat)) {
+        return await runTabularPipeline({
+          supabase,
+          requestId,
+          payload,
+          document,
         });
       }
 
