@@ -12,16 +12,28 @@ import {
   getAIStageConfig,
 } from "./ai-provider.js";
 
+function hasNumericValue(value) {
+  return value !== null && value !== undefined && String(value).trim() !== "";
+}
+
+function normalizePageNumber(value, fallback = 1) {
+  if (hasNumericValue(value) && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+  return fallback;
+}
+
 function findChunkForQuote(chunks, pageNumber, sourceQuote) {
   const normalizedQuote = String(sourceQuote || "").trim();
-  const normalizedPage = Number(pageNumber || 0);
+  const normalizedPage = normalizePageNumber(pageNumber, 0);
   const pageChunks = Array.isArray(chunks)
     ? chunks.filter((chunk) => Number(chunk?.page_number || 0) === normalizedPage)
     : [];
   if (normalizedQuote) {
-    const matching = pageChunks.find((chunk) =>
-      String(chunk?.content_text || "").includes(normalizedQuote)
-    );
+    const matching = pageChunks.find((chunk) => {
+      const content = String(chunk?.content_text || "").trim();
+      return content && (content.includes(normalizedQuote) || normalizedQuote.includes(content));
+    });
     if (matching) return matching;
   }
   return pageChunks[0] || chunks[0] || null;
@@ -30,6 +42,15 @@ function findChunkForQuote(chunks, pageNumber, sourceQuote) {
 function buildSourceAnchor(candidate, chunk, documentId) {
   const quote = String(candidate?.source_quote || candidate?.snippet || "").trim();
   const snippet = quote || String(chunk?.content_text || "").slice(0, 160).trim();
+  const chunkMetadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+    ? chunk.metadata_json
+    : {};
+  const tabularSource = candidate?.tabular_source && typeof candidate.tabular_source === "object"
+    ? candidate.tabular_source
+    : chunkMetadata?.tabular_source && typeof chunkMetadata.tabular_source === "object"
+    ? chunkMetadata.tabular_source
+    : undefined;
+  const sourceType = String(candidate?.source_type || chunkMetadata?.source_type || "").trim();
   // Preserve optional sub-page precision if a future extractor supplies it.
   // The current extraction schema does not require these fields yet.
   const charStart = Number.isFinite(Number(candidate?.char_start))
@@ -43,9 +64,14 @@ function buildSourceAnchor(candidate, chunk, documentId) {
     : undefined;
   return {
     document_id: normalizeUuid(candidate?.document_id || documentId),
-    page_number: Number(candidate?.page_number || chunk?.page_number || 1),
+    page_number: normalizePageNumber(
+      candidate?.page_number,
+      normalizePageNumber(chunk?.page_number, 1),
+    ),
     chunk_id: chunk?.id ? String(chunk.id) : undefined,
     snippet,
+    ...(sourceType ? { source_type: sourceType } : {}),
+    ...(tabularSource ? { tabular_source: tabularSource } : {}),
     ...(charStart !== undefined ? { char_start: charStart } : {}),
     ...(charEnd !== undefined ? { char_end: charEnd } : {}),
     ...(bbox ? { bbox } : {}),
@@ -55,7 +81,10 @@ function buildSourceAnchor(candidate, chunk, documentId) {
 function normalizeExtractedItems(result, chunks, documentId) {
   const rows = Array.isArray(result?.extracted_items) ? result.extracted_items : [];
   return rows.map((candidate, index) => {
-    const pageNumber = Number(candidate?.page_number || 0) || Number(chunks[0]?.page_number || 1) || 1;
+    const pageNumber = normalizePageNumber(
+      candidate?.page_number,
+      normalizePageNumber(chunks[0]?.page_number, 1),
+    );
     const chunk = findChunkForQuote(chunks, pageNumber, candidate?.source_quote);
     const payload = candidate?.payload && typeof candidate.payload === "object" && !Array.isArray(candidate.payload)
       ? candidate.payload
@@ -102,6 +131,7 @@ async function analyzeBatchWithOpenAI({
                   payload: { type: "object", additionalProperties: true },
                   page_number: { type: "number" },
                   source_quote: { type: "string" },
+                  source_type: { type: "string" },
                   confidence: { type: "string", enum: ["high", "medium", "low"] },
                 },
                 required: [
@@ -128,6 +158,7 @@ async function analyzeBatchWithOpenAI({
           "You are extracting source-backed items from a document batch for Zohal.",
           "Return extracted items only. Do not compute conclusions, risk assessments, summaries, totals, or other derived insights.",
           "Every item must cite a page_number and a verbatim source_quote from the batch text.",
+          "For spreadsheet or tabular batches, use page_number 0, set source_type to tabular, and cite the exact row/range line as source_quote.",
           "Payload must stay compact and factual.",
           playbookOptions?.language === "ar" ? "Prefer Arabic labels when the source is Arabic." : "",
         ].filter(Boolean).join("\n"),
@@ -174,7 +205,7 @@ async function fetchBatchRunOrThrow(supabase, batchRunId) {
 async function fetchDocumentChunksForBatch(supabase, run, startPage, endPage) {
   const { data, error } = await supabase
     .from("document_chunks")
-    .select("id, document_id, page_number, chunk_index, content_text")
+    .select("id, document_id, page_number, chunk_index, chunk_type, content_text, metadata_json")
     .eq("document_id", normalizeUuid(run.document_id))
     .gte("page_number", startPage)
     .lte("page_number", endPage)
@@ -230,15 +261,33 @@ export function allowedVariableNamesForTemplate() {
 export function buildBatchText(chunks) {
   const pages = new Map();
   for (const chunk of chunks || []) {
-    const pageNumber = Number(chunk?.page_number || 0);
-    if (!pageNumber) continue;
+    const pageNumber = normalizePageNumber(chunk?.page_number, 0);
     if (!pages.has(pageNumber)) pages.set(pageNumber, []);
     const content = String(chunk?.content_text || "").trim();
-    if (content) pages.get(pageNumber).push(content);
+    if (!content) continue;
+    const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+      ? chunk.metadata_json
+      : {};
+    const tabular = metadata?.tabular_source && typeof metadata.tabular_source === "object"
+      ? metadata.tabular_source
+      : null;
+    if (tabular) {
+      const sheetName = String(tabular.sheet_name || "Sheet").trim();
+      const rangeRef = String(tabular.range_ref || "").trim();
+      pages.get(pageNumber).push(
+        `[Tabular ${sheetName}${rangeRef ? ` ${rangeRef}` : ""}] ${content}`,
+      );
+    } else {
+      pages.get(pageNumber).push(content);
+    }
   }
   return Array.from(pages.entries())
     .sort((a, b) => a[0] - b[0])
-    .map(([pageNumber, parts]) => `[Page ${pageNumber}]\n${parts.join("\n")}`)
+    .map(([pageNumber, parts]) =>
+      pageNumber === 0
+        ? `[Tabular source]\n${parts.join("\n")}`
+        : `[Page ${pageNumber}]\n${parts.join("\n")}`
+    )
     .join("\n\n");
 }
 

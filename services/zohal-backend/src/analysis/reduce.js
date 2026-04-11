@@ -63,14 +63,21 @@ function groupChunksByDocument(rows) {
 
 function findMatchingChunk(chunksByDoc, anchor, fallbackDocumentId) {
   const documentId = normalizeUuid(anchor?.document_id || fallbackDocumentId);
-  const pageNumber = Number(anchor?.page_number || 0);
+  const pageNumber = anchor?.page_number !== null &&
+      anchor?.page_number !== undefined &&
+      String(anchor.page_number).trim() !== ""
+    ? Number(anchor.page_number)
+    : 0;
   const snippet = String(anchor?.snippet || "").trim();
   const chunks = Array.isArray(chunksByDoc?.[documentId]) ? chunksByDoc[documentId] : [];
-  const pageChunks = pageNumber > 0
+  const pageChunks = Number.isFinite(pageNumber)
     ? chunks.filter((chunk) => Number(chunk?.page_number || 0) === pageNumber)
     : chunks;
   if (snippet) {
-    const direct = pageChunks.find((chunk) => String(chunk?.content_text || "").includes(snippet));
+    const direct = pageChunks.find((chunk) => {
+      const content = String(chunk?.content_text || "").trim();
+      return content.includes(snippet) || snippet.includes(content);
+    });
     if (direct) return direct;
   }
   return pageChunks[0] || chunks[0] || null;
@@ -80,7 +87,8 @@ function verifyAnchorIntegrity(anchor, chunksByDoc, fallbackDocumentId) {
   const chunk = findMatchingChunk(chunksByDoc, anchor, fallbackDocumentId);
   const snippet = String(anchor?.snippet || "").trim();
   if (!chunk || !snippet) return "failed";
-  return String(chunk?.content_text || "").includes(snippet) ? "verified" : "failed";
+  const content = String(chunk?.content_text || "").trim();
+  return content.includes(snippet) || snippet.includes(content) ? "verified" : "failed";
 }
 
 function normalizeExtractedItems(extractedItems, chunksByDoc, fallbackDocumentId) {
@@ -104,13 +112,31 @@ function normalizeExtractedItems(extractedItems, chunksByDoc, fallbackDocumentId
       ? item.source_anchor
       : {};
     const chunk = findMatchingChunk(chunksByDoc, sourceAnchor, fallbackDocumentId);
+    const chunkMetadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+      ? chunk.metadata_json
+      : {};
+    const tabularSource = sourceAnchor?.tabular_source &&
+        typeof sourceAnchor.tabular_source === "object"
+      ? sourceAnchor.tabular_source
+      : chunkMetadata?.tabular_source && typeof chunkMetadata.tabular_source === "object"
+      ? chunkMetadata.tabular_source
+      : undefined;
+    const sourceType = String(
+      sourceAnchor?.source_type || chunkMetadata?.source_type || "",
+    ).trim();
     // Preserve optional sub-page precision when present.
     // Verification still keys off snippet/chunk matching today, not char offsets or bbox.
     const normalizedAnchor = {
       document_id: normalizeUuid(sourceAnchor.document_id || fallbackDocumentId),
-      page_number: Number(sourceAnchor.page_number || chunk?.page_number || 1),
+      page_number: sourceAnchor.page_number !== null &&
+          sourceAnchor.page_number !== undefined &&
+          String(sourceAnchor.page_number).trim() !== ""
+        ? Number(sourceAnchor.page_number)
+        : Number(chunk?.page_number ?? 1),
       chunk_id: String(sourceAnchor.chunk_id || chunk?.id || "").trim() || undefined,
       snippet: String(sourceAnchor.snippet || "").trim(),
+      ...(sourceType ? { source_type: sourceType } : {}),
+      ...(tabularSource ? { tabular_source: tabularSource } : {}),
       ...(Number.isFinite(Number(sourceAnchor.char_start))
         ? { char_start: Number(sourceAnchor.char_start) }
         : {}),
@@ -930,7 +956,7 @@ export async function executeContractAnalysisReduce({
 
   const { data: chunkRows, error: chunksError } = await supabase
     .from("document_chunks")
-    .select("id, document_id, page_number, chunk_index, content_text, bounding_box")
+    .select("id, document_id, page_number, chunk_index, content_text, bounding_box, metadata_json")
     .in("document_id", scopeDocumentIds)
     .order("page_number", { ascending: true })
     .order("chunk_index", { ascending: true });

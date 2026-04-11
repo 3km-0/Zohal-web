@@ -12,6 +12,7 @@ import {
 } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
+import { promotePrivateLiveToPublicUnlisted } from "../analysis/private-live.js";
 
 const DOCUMENT_ANALYSIS_TASK_QUEUE = String(
   process.env.GCP_DOCUMENT_ANALYSIS_TASK_QUEUE ||
@@ -764,6 +765,69 @@ export async function handleAnalysisExportReport(req, res, { requestId, log, rea
   } catch (error) {
     const status = Number(error?.statusCode || 500);
     log.error("Analysis export failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return sendJson(res, status, buildEnvelope(requestId, {
+      error: error instanceof Error ? error.message : "Internal server error",
+    }));
+  }
+}
+
+async function handlePromotePrivateLivePublic(req, res, { requestId, log, readJsonBody }) {
+  requireInternalCaller(req.headers);
+  const supabase = createServiceClient();
+  const body = await readJsonBody(req);
+  const workspaceId = normalizeUuid(body.workspace_id);
+  const documentId = normalizeUuid(body.document_id);
+  const userId = normalizeUuid(body.user_id);
+  const templateId = String(body.template_id || "document_analysis").trim();
+
+  ensureFields({ workspace_id: workspaceId, document_id: documentId, user_id: userId }, [
+    "workspace_id",
+    "document_id",
+    "user_id",
+  ]);
+
+  log.info("Promoting private live experience to public_unlisted", {
+    workspace_id: workspaceId,
+    document_id: documentId,
+  });
+
+  const result = await promotePrivateLiveToPublicUnlisted({
+    supabase,
+    requestId,
+    userId,
+    workspaceId,
+    documentId,
+    templateId,
+  });
+
+  return sendJson(res, 200, buildEnvelope(requestId, {
+    ok: true,
+    promoted: true,
+    default_visibility: "public_unlisted",
+    experience_id: result.experience_id || null,
+    run_id: result.run_id || null,
+    candidate_id: result.candidate_id || null,
+    revision_id: result.revision_id || null,
+    public_url: result.public_url || null,
+  }));
+}
+
+export async function handleAnalysisPromotePrivateLivePublic(req, res, {
+  requestId,
+  log,
+  readJsonBody,
+}) {
+  try {
+    return await handlePromotePrivateLivePublic(req, res, {
+      requestId,
+      log,
+      readJsonBody,
+    });
+  } catch (error) {
+    const status = Number(error?.statusCode || 500);
+    log.error("Private live public promotion failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return sendJson(res, status, buildEnvelope(requestId, {

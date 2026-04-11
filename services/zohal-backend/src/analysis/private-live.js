@@ -53,6 +53,15 @@ export function pickCanonicalPrivateLiveExperienceRecord(records, templateId) {
   ) || records[0] || null;
 }
 
+/** Maps registry default_visibility to publication API access fields (see experiences-runtime accessModeFromPolicy). */
+export function privateLiveMaterializeAccessFromDefaultVisibility(defaultVisibility) {
+  const v = String(defaultVisibility || "org_private").trim().toLowerCase();
+  if (v === "public_unlisted" || v === "public_indexed") {
+    return { visibility: v, org_restricted: false };
+  }
+  return { visibility: "org_private", org_restricted: true };
+}
+
 function resolveExperienceSourceKind(templateId) {
   return normalizeExperienceTemplateId(templateId) === "document_analysis"
     ? "verification_document"
@@ -93,7 +102,7 @@ async function resolvePrivateLiveExperienceRecord({
   const { data: existingRows, error } = await supabase
     .from("experience_registry")
     .select(
-      "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id",
+      "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id, default_visibility",
     )
     .eq("workspace_id", normalizedWorkspaceId)
     .in("template_id", templateLookupIds)
@@ -125,7 +134,7 @@ async function resolvePrivateLiveExperienceRecord({
         })
         .eq("experience_id", String(existing.experience_id))
         .select(
-          "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id",
+          "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id, default_visibility",
         )
         .single();
       if (normalizeError) throw new Error(normalizeError.message);
@@ -155,7 +164,7 @@ async function resolvePrivateLiveExperienceRecord({
       description: summary || null,
     })
     .select(
-      "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id",
+      "experience_id, workspace_id, corpus_id, source_scope, source_document_id, title, description, publication_status, scaffold_status, materialization_status, last_canonical_version_id, template_id, default_visibility",
     )
     .single();
 
@@ -272,6 +281,7 @@ export async function ensurePrivateLiveExperienceRefresh({
   const resolvedAnalysisTemplateId = String(
     analysisTemplateId || snapshot?.template || "",
   ).trim();
+  const access = privateLiveMaterializeAccessFromDefaultVisibility(record.default_visibility);
   const response = await callPublicationApi({
     requestId,
     userId,
@@ -301,8 +311,8 @@ export async function ensurePrivateLiveExperienceRefresh({
         summary ||
         "Structured analysis completed. This private live experience now reflects the latest canonical snapshot.",
       host: "live.zohal.ai",
-      visibility: "org_private",
-      org_restricted: true,
+      visibility: access.visibility,
+      org_restricted: access.org_restricted,
       materialization_mode: "refresh",
       default_verification_status: defaultVerificationStatus,
       updated_after_verification: Boolean(updatedAfterVerification),
@@ -330,6 +340,96 @@ export async function ensurePrivateLiveExperienceRefresh({
     fallback_reason: response?.fallback_reason || null,
     bundle_revision_id: response?.bundle_revision_id || null,
   };
+}
+
+/**
+ * Sets default_visibility to public_unlisted and rematerializes from the latest canonical snapshot
+ * so the existing /live/... URL is readable without login (accessModeFromPolicy to public).
+ */
+export async function promotePrivateLiveToPublicUnlisted({
+  supabase,
+  requestId,
+  userId,
+  workspaceId,
+  documentId,
+  templateId = "document_analysis",
+}) {
+  const record = await resolvePrivateLiveExperienceRecord({
+    supabase,
+    workspaceId,
+    documentId,
+    templateId,
+    title: null,
+    summary: null,
+  });
+  const versionId = String(record.last_canonical_version_id || "").trim();
+  if (!versionId) {
+    throw new Error(
+      "Private live experience has no last_canonical_version_id; run analysis first.",
+    );
+  }
+  const { data: version, error: versionError } = await supabase
+    .from("verification_object_versions")
+    .select("id, snapshot_json, verification_object_id")
+    .eq("id", normalizeUuid(versionId))
+    .maybeSingle();
+  if (versionError) {
+    throw new Error(versionError.message);
+  }
+  if (version.snapshot_json == null) {
+    throw new Error("Canonical snapshot_json missing for last_canonical_version_id");
+  }
+  let snapshot = version.snapshot_json;
+  if (typeof snapshot === "string") {
+    try {
+      snapshot = JSON.parse(snapshot);
+    } catch {
+      throw new Error("Canonical snapshot_json is not valid JSON");
+    }
+  }
+  if (!snapshot || typeof snapshot !== "object") {
+    throw new Error("Canonical snapshot_json must be an object");
+  }
+  const verificationObjectId = String(version.verification_object_id || "").trim();
+  if (!verificationObjectId) {
+    throw new Error("verification_object_id missing on canonical version");
+  }
+  const resolvedTemplateId = normalizeExperienceTemplateId(
+    record.template_id || templateId,
+  );
+  const resolvedAnalysisTemplateId = String(
+    snapshot?.template || templateId || "",
+  ).trim();
+
+  await supabase
+    .from("experience_registry")
+    .update({
+      default_visibility: "public_unlisted",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("experience_id", record.experience_id);
+
+  const title = record.title || defaultExperienceTitle(resolvedTemplateId);
+  const summary = record.description ||
+    "Structured analysis completed. This private live experience now reflects the latest canonical snapshot.";
+
+  return await ensurePrivateLiveExperienceRefresh({
+    supabase,
+    requestId,
+    workspaceId,
+    userId,
+    documentId,
+    templateId: resolvedTemplateId,
+    analysisTemplateId: resolvedAnalysisTemplateId,
+    title,
+    subtitle: "Private live experience",
+    summary,
+    verificationObjectId,
+    verificationObjectVersionId: String(version.id || "").trim(),
+    snapshot,
+    updatedAfterVerification: false,
+    defaultVerificationStatus: "generated",
+  });
 }
 
 export async function openPrivateLiveExperienceLink({

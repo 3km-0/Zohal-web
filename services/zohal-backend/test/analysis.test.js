@@ -27,6 +27,7 @@ import {
 import {
   normalizeExperienceTemplateId,
   pickCanonicalPrivateLiveExperienceRecord,
+  privateLiveMaterializeAccessFromDefaultVisibility,
 } from "../src/analysis/private-live.js";
 
 test("normalizeUuid lowercases and trims analysis ids", () => {
@@ -46,6 +47,25 @@ test("private live record picker prefers the canonical document-analysis row", (
   ], "contract_analysis");
 
   assert.equal(picked?.experience_id, "canonical");
+});
+
+test("private live materialize access maps public visibility to org_restricted false", () => {
+  assert.deepEqual(
+    privateLiveMaterializeAccessFromDefaultVisibility("public_unlisted"),
+    { visibility: "public_unlisted", org_restricted: false },
+  );
+  assert.deepEqual(
+    privateLiveMaterializeAccessFromDefaultVisibility("public_indexed"),
+    { visibility: "public_indexed", org_restricted: false },
+  );
+  assert.deepEqual(
+    privateLiveMaterializeAccessFromDefaultVisibility("org_private"),
+    { visibility: "org_private", org_restricted: true },
+  );
+  assert.deepEqual(
+    privateLiveMaterializeAccessFromDefaultVisibility(null),
+    { visibility: "org_private", org_restricted: true },
+  );
 });
 
 test("analysis accepted payload preserves backward-compatible queue response shape", () => {
@@ -96,6 +116,27 @@ test("native batch text builder preserves ordered page markers", () => {
   assert.equal(
     text,
     "[Page 1]\nFirst page A\nFirst page B\n\n[Page 2]\nSecond page",
+  );
+});
+
+test("native batch text builder includes tabular page-zero chunks", () => {
+  const text = buildBatchText([
+    {
+      page_number: 0,
+      content_text: "ExecSummary - A2:F2 - Metric: Revenue | ActualQ12026_USDm: 12.4",
+      metadata_json: {
+        source_type: "tabular",
+        tabular_source: {
+          sheet_name: "ExecSummary",
+          range_ref: "A2:F2",
+        },
+      },
+    },
+  ]);
+
+  assert.equal(
+    text,
+    "[Tabular source]\n[Tabular ExecSummary A2:F2] ExecSummary - A2:F2 - Metric: Revenue | ActualQ12026_USDm: 12.4",
   );
 });
 
