@@ -58,17 +58,17 @@ describe('document analysis template recommendations', () => {
         documentType: 'invoice',
         title: 'March invoice',
       })[0]
-    ).toBe('SMB Cash Flow Workspace');
+    ).toBe('WhatsApp Receipts to SMB Cash Flow Workspace');
 
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'onboarding_doc',
         title: 'Vendor onboarding packet',
       })[0]
-    ).toBe('SMB Cash Flow Workspace');
+    ).toBe('WhatsApp Receipts to SMB Cash Flow Workspace');
   });
 
-  it('routes financial reports and research corpora into finance templates', () => {
+  it('routes financial reports and research corpora into the definitive library', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'financial_report',
@@ -81,7 +81,21 @@ describe('document analysis template recommendations', () => {
         documentType: 'paper',
         title: 'Meta-analysis of cardiovascular outcomes',
       })[0]
-    ).toBe('Quant Research Workspace');
+    ).toBe('Literature Review & Research Synthesis Workspace');
+
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'textbook',
+        title: 'Chapter 4 study guide and quiz bank',
+      })[0]
+    ).toBe('Adaptive Quiz & Spaced Repetition Learning Workspace');
+
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'meeting_notes',
+        title: 'April board pack variance commentary',
+      })[0]
+    ).toBe('Board Pack Radar');
   });
 
   it('marks onboarding documents as structured-analysis capable', () => {
@@ -129,6 +143,50 @@ describe('document analysis template recommendations', () => {
     });
 
     expect(playbook?.name).toBe('PE Diligence Data Room Workspace');
+  });
+
+  it('normalizes legacy interface ids onto the visible canonical template', () => {
+    const playbooks = [
+      {
+        id: 'pb-r1',
+        name: 'Literature Review & Research Synthesis Workspace',
+        is_system_preset: true,
+        current_version: {
+          id: 'v-r1',
+          version_number: 2,
+          spec_json: {
+            template_id: 'research_synthesis_interface',
+            meta: { name: 'Literature Review & Research Synthesis Workspace', kind: 'document' },
+          },
+        },
+      },
+      {
+        id: 'pb-old-r1',
+        name: 'Research Synthesis Interface',
+        is_system_preset: true,
+        current_version: {
+          id: 'v-old-r1',
+          version_number: 1,
+          spec_json: {
+            template_id: 'research_synthesis_site',
+            meta: {
+              name: 'Research Synthesis Interface',
+              kind: 'document',
+              library_section: 'deprecated',
+              library_hidden: true,
+            },
+          },
+        },
+      },
+    ];
+
+    const playbook = resolveRecommendedPlaybook(playbooks, {
+      documentType: 'paper',
+      title: 'Meta-analysis update',
+      recommendedTemplateIds: ['research_synthesis_site'],
+    });
+
+    expect(playbook?.name).toBe('Literature Review & Research Synthesis Workspace');
   });
 
   it('prefers stored recommendation metadata before name heuristics', () => {

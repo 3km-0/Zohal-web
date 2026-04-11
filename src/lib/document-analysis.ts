@@ -1,6 +1,6 @@
 import type { DocumentType } from '@/types/database';
 import {
-  getTemplateGroup,
+  isHiddenSystemPlaybook,
   getTemplateRecommendedDocumentTypes,
   playbookMatchesName,
   sortSystemPlaybooks,
@@ -69,37 +69,74 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   const realEstateKeywords = ['lease', 'rent roll', 'tenant', 'landlord', 'noi ', 'net operating income', 'premises'];
   const retailKeywords = ['restaurant', 'pos ', 'food cost', 'menu', 'retail margin'];
   const fundKeywords = ['lp letter', 'capital account', 'dpi', 'tvpi', 'fund report', 'capital call'];
+  const boardKeywords = ['board pack', 'management pack', 'management accounts', 'lender report', 'budget vs actual', 'variance'];
+  const shipmentKeywords = ['bill of lading', 'packing list', 'arrival notice', 'freight forwarder', 'container', 'shipment'];
+  const customsKeywords = ['customs declaration', 'certificate of origin', 'hs code', 'tariff', 'duty', 'broker'];
+  const constructionKeywords = ['delivery note', 'site receipt', 'site delivery', 'subcontractor', 'project schedule', 'material shortage'];
+  const healthcareKeywords = ['lab report', 'blood test', 'patient', 'biomarker', 'clinician note', 'visit summary'];
+  const educationKeywords = ['syllabus', 'lecture notes', 'study guide', 'question bank', 'flashcard', 'spaced repetition'];
+  const quantKeywords = ['backtest', 'sharpe', 'factor model', 'value at risk', 'cointegration', 'monte carlo'];
+  const researchKeywords = ['literature review', 'systematic review', 'meta-analysis', 'preprint', 'citation graph', 'research synthesis'];
+  const hospitalityKeywords = ['night audit', 'folio', 'revpar', 'pms export', 'room charge', 'shift handover'];
 
-  if (documentType === 'financial_report') {
-    return ['Public Company Intelligence Workspace'];
-  }
-  if (documentType === 'paper' || documentType === 'research') {
-    return ['Quant Research Workspace'];
-  }
-  if (documentType === 'textbook' || documentType === 'lecture_notes' || documentType === 'problem_set') {
-    return [];
+  if (containsAny(searchableText, boardKeywords)) {
+    return ['Board Pack Radar'];
   }
   if (containsAny(searchableText, realEstateKeywords)) {
     return ['Real Estate Portfolio Tracker'];
   }
   if (containsAny(searchableText, retailKeywords)) {
-    return ['Retail & F&B Margin Workspace'];
+    return ['Retail / F&B Owner Margin Intelligence Workspace'];
+  }
+  if (containsAny(searchableText, customsKeywords)) {
+    return ['Customs & Trade Compliance Workspace'];
+  }
+  if (containsAny(searchableText, constructionKeywords)) {
+    return ['Construction Materials & Site Delivery Workspace'];
+  }
+  if (containsAny(searchableText, shipmentKeywords)) {
+    return ['Import / Export Shipment Control Tower'];
+  }
+  if (containsAny(searchableText, hospitalityKeywords)) {
+    return ['Hospitality Night Audit Workspace'];
+  }
+  if (containsAny(searchableText, healthcareKeywords)) {
+    return ['Lab Reports -> Patient Biomarker Dashboard'];
+  }
+  if (containsAny(searchableText, quantKeywords)) {
+    return ['Quant Research Workspace'];
+  }
+  if (containsAny(searchableText, researchKeywords) || documentType === 'paper' || documentType === 'research') {
+    return ['Literature Review & Research Synthesis Workspace'];
+  }
+  if (
+    containsAny(searchableText, educationKeywords) ||
+    documentType === 'textbook' ||
+    documentType === 'lecture_notes' ||
+    documentType === 'problem_set'
+  ) {
+    return ['Adaptive Quiz & Spaced Repetition Learning Workspace'];
   }
   if (containsAny(searchableText, fundKeywords)) {
-    return ['Fund Reporting Workspace'];
+    return ['Saudi Family Office Portfolio Monitor'];
+  }
+  if (documentType === 'financial_report') {
+    return ['Public Company Intelligence Workspace'];
   }
   if (documentType === 'contract' || documentType === 'legal_filing' || documentType === 'policy') {
     return ['PE Diligence Data Room Workspace'];
   }
   if (documentType === 'invoice' || documentType === 'onboarding_doc') {
-    return ['SMB Cash Flow Workspace'];
+    return ['WhatsApp Receipts to SMB Cash Flow Workspace'];
   }
 
   return [];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {
-  const systemPlaybooks = sortSystemPlaybooks(playbooks.filter((playbook) => playbook.is_system_preset));
+  const systemPlaybooks = sortSystemPlaybooks(
+    playbooks.filter((playbook) => playbook.is_system_preset && !isHiddenSystemPlaybook(playbook))
+  );
   const normalizedDocumentType = String(metadata.documentType || '').trim().toLowerCase();
   if (normalizedDocumentType) {
     const metadataRecommended = [...systemPlaybooks]
@@ -122,7 +159,7 @@ export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[]
     if (match) return match;
   }
 
-  return systemPlaybooks[0] ?? playbooks[0] ?? null;
+  return systemPlaybooks[0] ?? playbooks.find((playbook) => !playbook.is_system_preset) ?? playbooks[0] ?? null;
 }
 
 function playbookTemplateId(playbook: PlaybookLike | null | undefined): string | null {
@@ -139,17 +176,10 @@ function playbookTemplateId(playbook: PlaybookLike | null | undefined): string |
 }
 
 const LEGACY_RECOMMENDED_TEMPLATE_ID: Record<string, string> = {
-  product_specification_catalog: 'pe_diligence_data_room_workspace',
-  research_synthesis_site: 'quant_research_workspace',
-  research_synthesis_interface: 'quant_research_workspace',
-  course_learning_portal: 'quant_research_workspace',
-  course_learning_interface: 'quant_research_workspace',
-  compliance_docset_review: 'pe_diligence_data_room_workspace',
-  policy_regulatory_portal: 'pe_diligence_data_room_workspace',
-  healthcare_record_surface: 'pe_diligence_data_room_workspace',
-  healthcare_record_interface: 'pe_diligence_data_room_workspace',
-  logistics_operations_portal: 'smb_cash_flow_workspace',
-  logistics_operations_interface: 'smb_cash_flow_workspace',
+  research_synthesis_site: 'research_synthesis_interface',
+  course_learning_portal: 'course_learning_interface',
+  healthcare_record_surface: 'healthcare_record_interface',
+  logistics_operations_portal: 'logistics_operations_interface',
   portfolio_monitoring_workspace: 'family_office_portfolio_monitor',
   credit_covenant_monitoring: 'startup_cfo_workspace',
 };
@@ -158,6 +188,9 @@ export function resolveRecommendedPlaybook<T extends PlaybookLike>(
   playbooks: T[],
   metadata: DocumentMetadata & { recommendedTemplateIds?: string[] | null }
 ): T | null {
+  const visibleSystemPlaybooks = sortSystemPlaybooks(
+    playbooks.filter((playbook) => playbook.is_system_preset && !isHiddenSystemPlaybook(playbook))
+  );
   const normalizedRecommendedIds = (metadata.recommendedTemplateIds || [])
     .map((value) => String(value || '').trim().toLowerCase())
     .filter(Boolean);
@@ -168,7 +201,7 @@ export function resolveRecommendedPlaybook<T extends PlaybookLike>(
     );
     for (const id of candidates) {
       const classifierPlaybook =
-        playbooks.find((playbook) => playbookTemplateId(playbook) === id) || null;
+        visibleSystemPlaybooks.find((playbook) => playbookTemplateId(playbook) === id) || null;
       if (classifierPlaybook) return classifierPlaybook;
     }
   }

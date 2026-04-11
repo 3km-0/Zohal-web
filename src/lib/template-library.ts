@@ -42,29 +42,22 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
     description:
       'Accounting exports, bank data, board decks, and forecasts turned into BvA, runway, and covenant surfaces.',
     descriptionAr: 'مساحة للمدير المالي مع الميزانية والاحتياطي والعهد.',
+    aliases: ['Credit / Covenant Monitoring Workspace'],
   },
   {
-    canonicalName: 'SMB Cash Flow Workspace',
+    canonicalName: 'WhatsApp Receipts to SMB Cash Flow Workspace',
     group: 'zohal_templates',
     rank: 40,
     emoji: '💳',
     description:
       'Receipts, invoices, and bank activity turned into SMB cash flow, AP/AR, and reconciliation views.',
     descriptionAr: 'تدفقات نقدية للمنشآت الصغيرة من الإيصالات والبنك.',
-  },
-  {
-    canonicalName: 'Freelancer Financial Clarity Workspace',
-    group: 'zohal_templates',
-    rank: 50,
-    emoji: '🧑‍💻',
-    description:
-      'Client contracts, invoices, and bank feeds turned into pipeline, AR, and tax-reserve clarity.',
-    descriptionAr: 'وضوح مالي للمستقلين من الفواتير والعقود.',
+    aliases: ['SMB Cash Flow Workspace'],
   },
   {
     canonicalName: 'PE Diligence Data Room Workspace',
     group: 'zohal_templates',
-    rank: 60,
+    rank: 50,
     emoji: '🗂️',
     description:
       'Data rooms and deal sets turned into diligence dashboards, risks, checklists, and claim-to-evidence views.',
@@ -73,38 +66,106 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   {
     canonicalName: 'Real Estate Portfolio Tracker',
     group: 'zohal_templates',
-    rank: 70,
+    rank: 60,
     emoji: '🏡',
     description:
       'Leases, rent rolls, and opex turned into yield, expiry, arrears, and NOI portfolio views.',
     descriptionAr: 'تتبع محفظة عقارية من العقود والإيجارات.',
   },
   {
-    canonicalName: 'Fund Reporting Workspace',
-    group: 'zohal_templates',
-    rank: 80,
-    emoji: '💼',
-    description:
-      'LP letters, capital accounts, and fund reports turned into performance, flows, and narrative-change views.',
-    descriptionAr: 'تقارير الصناديق والمساهمين مع الأداء والتدفقات.',
-  },
-  {
     canonicalName: 'Quant Research Workspace',
     group: 'zohal_templates',
-    rank: 90,
+    rank: 70,
     emoji: '📊',
     description:
       'Market, alt, and fundamental inputs turned into signals, backtests, risk surfaces, and lineage.',
     descriptionAr: 'بحث كمي لربط بيانات السوق مع تحليل الإشارات والمخاطر.',
   },
   {
-    canonicalName: 'Retail & F&B Margin Workspace',
+    canonicalName: 'Retail / F&B Owner Margin Intelligence Workspace',
     group: 'zohal_templates',
-    rank: 100,
+    rank: 80,
     emoji: '🍽️',
     description:
       'POS and supplier spend turned into branch margins, COGS pressure, and payables visibility.',
     descriptionAr: 'هوامش التجزئة والمطاعم من نقاط البيع والموردين.',
+    aliases: ['Retail & F&B Margin Workspace'],
+  },
+  {
+    canonicalName: 'Board Pack Radar',
+    group: 'zohal_templates',
+    rank: 90,
+    emoji: '🧭',
+    description:
+      'Board packs, management accounts, and lender reporting turned into period comparisons and exception monitoring.',
+    descriptionAr: 'حزم المجالس والتقارير الإدارية إلى متابعة للفروقات والاستثناءات.',
+  },
+  {
+    canonicalName: 'Import / Export Shipment Control Tower',
+    group: 'zohal_templates',
+    rank: 100,
+    emoji: '🚚',
+    description:
+      'Shipment documents, carrier updates, and ERP records turned into milestone, delay, and reconciliation visibility.',
+    descriptionAr: 'مستندات الشحن والتحديثات التشغيلية إلى برج تحكم وتتبع للشحنات.',
+    aliases: ['Logistics Operations Interface', 'Logistics Operations Portal'],
+  },
+  {
+    canonicalName: 'Customs & Trade Compliance Workspace',
+    group: 'zohal_templates',
+    rank: 110,
+    emoji: '🛃',
+    description:
+      'Declarations, certificates, broker updates, and customs notices turned into a compliance and clearance workspace.',
+    descriptionAr: 'التصاريح والشهادات وتحديثات الوسطاء إلى مساحة امتثال وتخليص جمركي.',
+  },
+  {
+    canonicalName: 'Construction Materials & Site Delivery Workspace',
+    group: 'zohal_templates',
+    rank: 120,
+    emoji: '🏗️',
+    description:
+      'POs, delivery notes, site receipts, and invoices turned into a live project-delivery and shortage monitor.',
+    descriptionAr: 'أوامر الشراء وإشعارات التسليم إلى متابعة للموقع والتوريد والنواقص.',
+  },
+  {
+    canonicalName: 'Lab Reports -> Patient Biomarker Dashboard',
+    group: 'zohal_templates',
+    rank: 130,
+    emoji: '🧪',
+    description:
+      'Lab reports and clinician notes turned into biomarker trends, out-of-range monitoring, and follow-up visibility.',
+    descriptionAr: 'تقارير المختبر والملاحظات الطبية إلى لوحة مؤشرات حيوية ومتابعة.',
+    aliases: ['Healthcare Record Interface', 'Healthcare Record Surface'],
+  },
+  {
+    canonicalName: 'Adaptive Quiz & Spaced Repetition Learning Workspace',
+    group: 'zohal_templates',
+    rank: 140,
+    emoji: '🎓',
+    description:
+      'Textbooks, lecture notes, and student performance turned into adaptive quizzes and spaced repetition workflows.',
+    descriptionAr: 'المواد الدراسية والأداء إلى اختبارات تكيفية ومراجعة متباعدة.',
+    aliases: ['Course Learning Interface', 'Course Learning Portal'],
+  },
+  {
+    canonicalName: 'Literature Review & Research Synthesis Workspace',
+    group: 'zohal_templates',
+    rank: 150,
+    emoji: '📚',
+    description:
+      'Research papers, preprints, and annotations turned into a living synthesis with citation and gap analysis.',
+    descriptionAr: 'الأوراق البحثية والملاحظات إلى مساحة مراجعة أدبية وتركيب بحثي حي.',
+    aliases: ['Research Synthesis Interface', 'Research Synthesis Site'],
+  },
+  {
+    canonicalName: 'Hospitality Night Audit Workspace',
+    group: 'zohal_templates',
+    rank: 160,
+    emoji: '🏨',
+    description:
+      'Night audit reports, PMS exports, folios, and POS summaries turned into reconciliation and exception workflows.',
+    descriptionAr: 'تقارير التدقيق الليلي وبيانات الفندق إلى متابعة للمطابقة والاستثناءات.',
   },
 ];
 
@@ -122,12 +183,24 @@ const TEMPLATE_ID_TO_DEFINITION = new Map<string, TemplateDefinition>([
   ['family_office_portfolio_monitor', TEMPLATE_DEFINITIONS[1]],
   ['startup_cfo_workspace', TEMPLATE_DEFINITIONS[2]],
   ['smb_cash_flow_workspace', TEMPLATE_DEFINITIONS[3]],
-  ['freelancer_financial_clarity_workspace', TEMPLATE_DEFINITIONS[4]],
-  ['pe_diligence_data_room_workspace', TEMPLATE_DEFINITIONS[5]],
-  ['real_estate_portfolio_tracker', TEMPLATE_DEFINITIONS[6]],
-  ['fund_reporting_workspace', TEMPLATE_DEFINITIONS[7]],
-  ['quant_research_workspace', TEMPLATE_DEFINITIONS[8]],
-  ['retail_fnb_margin_workspace', TEMPLATE_DEFINITIONS[9]],
+  ['pe_diligence_data_room_workspace', TEMPLATE_DEFINITIONS[4]],
+  ['real_estate_portfolio_tracker', TEMPLATE_DEFINITIONS[5]],
+  ['quant_research_workspace', TEMPLATE_DEFINITIONS[6]],
+  ['retail_fnb_margin_workspace', TEMPLATE_DEFINITIONS[7]],
+  ['board_pack_radar', TEMPLATE_DEFINITIONS[8]],
+  ['logistics_operations_interface', TEMPLATE_DEFINITIONS[9]],
+  ['customs_trade_compliance_workspace', TEMPLATE_DEFINITIONS[10]],
+  ['construction_materials_site_delivery_workspace', TEMPLATE_DEFINITIONS[11]],
+  ['healthcare_record_interface', TEMPLATE_DEFINITIONS[12]],
+  ['course_learning_interface', TEMPLATE_DEFINITIONS[13]],
+  ['research_synthesis_interface', TEMPLATE_DEFINITIONS[14]],
+  ['hospitality_night_audit_workspace', TEMPLATE_DEFINITIONS[15]],
+  ['portfolio_monitoring_workspace', TEMPLATE_DEFINITIONS[1]],
+  ['credit_covenant_monitoring', TEMPLATE_DEFINITIONS[2]],
+  ['research_synthesis_site', TEMPLATE_DEFINITIONS[14]],
+  ['course_learning_portal', TEMPLATE_DEFINITIONS[13]],
+  ['healthcare_record_surface', TEMPLATE_DEFINITIONS[12]],
+  ['logistics_operations_portal', TEMPLATE_DEFINITIONS[9]],
 ]);
 
 function specMeta(playbook: TemplateLibraryPlaybookLike): Record<string, unknown> {
