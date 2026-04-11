@@ -100,6 +100,94 @@ function normalizeExtractedItems(result, chunks, documentId) {
   });
 }
 
+function chooseTabularTargetId(chunk, extractionTargets) {
+  const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+    ? chunk.metadata_json
+    : {};
+  const columns = Array.isArray(metadata?.tabular_source?.columns)
+    ? metadata.tabular_source.columns
+    : [];
+  const hasNumericValue = columns.some((column) =>
+    ["number", "integer", "currency", "percentage"].includes(
+      String(column?.inferred_type || "").trim().toLowerCase(),
+    )
+  );
+  const preferredId = hasNumericValue
+    ? "headline_measures"
+    : "workbook_structure";
+  const targetIds = new Set(
+    (Array.isArray(extractionTargets) ? extractionTargets : [])
+      .map((target) => String(target?.id || "").trim())
+      .filter(Boolean),
+  );
+  if (targetIds.has(preferredId)) return preferredId;
+  if (targetIds.has("metric_definitions_and_labels")) return "metric_definitions_and_labels";
+  return Array.from(targetIds)[0] || preferredId;
+}
+
+function buildTabularRowPayload(chunk) {
+  const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+    ? chunk.metadata_json
+    : {};
+  const tabular = metadata?.tabular_source && typeof metadata.tabular_source === "object"
+    ? metadata.tabular_source
+    : {};
+  const columns = Array.isArray(tabular.columns) ? tabular.columns : [];
+  const values = {};
+  const formulas = {};
+  for (const column of columns) {
+    const key = String(column?.column_key || column?.cell_ref || "").trim();
+    if (!key) continue;
+    values[key] = column?.formatted_value ?? null;
+    const formula = String(column?.formula || "").trim();
+    if (formula) formulas[key] = formula;
+  }
+  return {
+    sheet_name: String(tabular.sheet_name || "").trim() || null,
+    range_ref: String(tabular.range_ref || "").trim() || null,
+    row_index: Number.isFinite(Number(tabular.row_index)) ? Number(tabular.row_index) : null,
+    values,
+    ...(Object.keys(formulas).length > 0 ? { formulas } : {}),
+  };
+}
+
+function buildDeterministicTabularExtraction(chunks, extractionTargets) {
+  const tabularChunks = (Array.isArray(chunks) ? chunks : []).filter((chunk) => {
+    const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+      ? chunk.metadata_json
+      : {};
+    return String(metadata?.source_type || "").trim().toLowerCase() === "tabular" ||
+      Boolean(metadata?.tabular_source);
+  });
+  if (tabularChunks.length === 0) return null;
+
+  return {
+    extracted_items: tabularChunks.map((chunk, index) => {
+      const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+        ? chunk.metadata_json
+        : {};
+      const tabular = metadata?.tabular_source && typeof metadata.tabular_source === "object"
+        ? metadata.tabular_source
+        : {};
+      const sheetName = String(tabular.sheet_name || "Sheet").trim();
+      const rangeRef = String(tabular.range_ref || "").trim();
+      const targetId = chooseTabularTargetId(chunk, extractionTargets);
+      return {
+        target_id: targetId,
+        target_label: targetId.replace(/_/g, " "),
+        display_name: `${sheetName}${rangeRef ? ` ${rangeRef}` : ""}`,
+        structural_facet: "measure",
+        payload: buildTabularRowPayload(chunk),
+        page_number: normalizePageNumber(chunk?.page_number, 0),
+        source_quote: String(chunk?.content_text || "").trim(),
+        source_type: "tabular",
+        confidence: "high",
+        candidate_id: `tabular-row-${index}`,
+      };
+    }),
+  };
+}
+
 async function analyzeBatchWithOpenAI({
   batchText,
   extractionTargets,
@@ -349,13 +437,16 @@ export async function executeContractAnalysisBatch({
     extraction_targets: extractionTargets.length,
   });
 
-  const rawResult = await analyzeBatch({
+  let rawResult = await analyzeBatch({
     batchText,
     extractionTargets,
     playbookOptions,
     workspaceId: run.workspace_id,
     requestId,
   });
+  if (!Array.isArray(rawResult?.extracted_items) || rawResult.extracted_items.length === 0) {
+    rawResult = buildDeterministicTabularExtraction(chunks, extractionTargets) || rawResult;
+  }
 
   const normalizedResult = {
     extracted_items: normalizeExtractedItems(
