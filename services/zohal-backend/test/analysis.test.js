@@ -8,6 +8,9 @@ import {
 import {
   addStableCandidateIds,
   buildBatchText,
+  buildDeterministicTabularExtraction,
+  isPureTabularBatch,
+  resolveBatchExtractionResult,
 } from "../src/analysis/batch.js";
 import {
   getTemplateIntent,
@@ -138,6 +141,163 @@ test("native batch text builder includes tabular page-zero chunks", () => {
     text,
     "[Tabular source]\n[Tabular ExecSummary A2:F2] ExecSummary - A2:F2 - Metric: Revenue | ActualQ12026_USDm: 12.4",
   );
+});
+
+test("pure tabular batches are detected explicitly", () => {
+  assert.equal(
+    isPureTabularBatch([
+      {
+        page_number: 0,
+        content_text: "Row A",
+        metadata_json: { source_type: "tabular", tabular_source: { sheet_name: "Sheet1" } },
+      },
+      {
+        page_number: 0,
+        content_text: "Row B",
+        metadata_json: { tabular_source: { sheet_name: "Sheet1" } },
+      },
+    ]),
+    true,
+  );
+  assert.equal(
+    isPureTabularBatch([
+      {
+        page_number: 1,
+        content_text: "Narrative paragraph",
+        metadata_json: {},
+      },
+      {
+        page_number: 0,
+        content_text: "Row A",
+        metadata_json: { source_type: "tabular", tabular_source: { sheet_name: "Sheet1" } },
+      },
+    ]),
+    false,
+  );
+});
+
+test("deterministic tabular extraction is the primary strategy for pure spreadsheet batches", async () => {
+  let modelCalls = 0;
+  const chunks = [
+    {
+      id: "chunk-1",
+      page_number: 0,
+      content_text: "ExecSummary - A2:F2 - Metric: Revenue | ActualQ12026_USDm: 12.4 | Formula: =SUM(B2:E2)",
+      metadata_json: {
+        source_type: "tabular",
+        tabular_source: {
+          sheet_name: "ExecSummary",
+          range_ref: "A2:F2",
+          row_index: 2,
+          columns: [
+            { column_key: "Metric", formatted_value: "Revenue", inferred_type: "text" },
+            { column_key: "ActualQ12026_USDm", formatted_value: "12.4", inferred_type: "number", formula: "=SUM(B2:E2)" },
+          ],
+        },
+      },
+    },
+  ];
+
+  const result = await resolveBatchExtractionResult({
+    chunks,
+    batchText: buildBatchText(chunks),
+    extractionTargets: [{ id: "headline_measures" }],
+    playbookOptions: { language: "en" },
+    workspaceId: "ws_1",
+    requestId: "req_1",
+    analyzeBatch: async () => {
+      modelCalls += 1;
+      return { extracted_items: [{ target_id: "should_not_run" }] };
+    },
+  });
+
+  assert.equal(modelCalls, 0);
+  assert.equal(result.extractionMode, "deterministic_tabular_primary");
+  assert.deepEqual(result.rawResult, buildDeterministicTabularExtraction(chunks, [{ id: "headline_measures" }]));
+});
+
+test("model extraction remains primary for non-tabular batches", async () => {
+  let modelCalls = 0;
+  const chunks = [
+    {
+      id: "chunk-1",
+      page_number: 1,
+      content_text: "Counterparty: Acme LLC",
+      metadata_json: {},
+    },
+  ];
+
+  const result = await resolveBatchExtractionResult({
+    chunks,
+    batchText: buildBatchText(chunks),
+    extractionTargets: [{ id: "key_entities" }],
+    playbookOptions: { language: "en" },
+    workspaceId: "ws_1",
+    requestId: "req_1",
+    analyzeBatch: async () => {
+      modelCalls += 1;
+      return {
+        extracted_items: [
+          {
+            target_id: "key_entities",
+            target_label: "Key entities",
+            display_name: "Acme LLC",
+            structural_facet: "entity",
+            payload: { value: "Acme LLC" },
+            page_number: 1,
+            source_quote: "Counterparty: Acme LLC",
+            confidence: "high",
+          },
+        ],
+      };
+    },
+  });
+
+  assert.equal(modelCalls, 1);
+  assert.equal(result.extractionMode, "model_primary");
+  assert.equal(result.rawResult.extracted_items.length, 1);
+});
+
+test("mixed or non-tabular batches still recover with deterministic tabular extraction when the model returns empty", async () => {
+  const chunks = [
+    {
+      id: "chunk-1",
+      page_number: 0,
+      content_text: "ExecSummary - A2:F2 - Metric: Revenue | ActualQ12026_USDm: 12.4",
+      metadata_json: {
+        source_type: "tabular",
+        tabular_source: {
+          sheet_name: "ExecSummary",
+          range_ref: "A2:F2",
+          row_index: 2,
+          columns: [
+            { column_key: "Metric", formatted_value: "Revenue", inferred_type: "text" },
+            { column_key: "ActualQ12026_USDm", formatted_value: "12.4", inferred_type: "number" },
+          ],
+        },
+      },
+    },
+    {
+      id: "chunk-2",
+      page_number: 1,
+      content_text: "Management commentary",
+      metadata_json: {},
+    },
+  ];
+
+  const result = await resolveBatchExtractionResult({
+    chunks,
+    batchText: buildBatchText(chunks),
+    extractionTargets: [{ id: "headline_measures" }],
+    playbookOptions: { language: "en" },
+    workspaceId: "ws_1",
+    requestId: "req_1",
+    analyzeBatch: async () => ({ extracted_items: [] }),
+  });
+
+  assert.equal(result.extractionMode, "model_primary_with_tabular_recovery");
+  assert.equal(result.rawResult.extracted_items.length, 1);
+  assert.equal(result.rawResult.extracted_items[0].source_type, "tabular");
 });
 
 test("batch candidate ids stay deterministic for extracted items", () => {

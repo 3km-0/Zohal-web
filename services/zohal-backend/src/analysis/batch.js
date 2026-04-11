@@ -151,14 +151,21 @@ function buildTabularRowPayload(chunk) {
   };
 }
 
-function buildDeterministicTabularExtraction(chunks, extractionTargets) {
-  const tabularChunks = (Array.isArray(chunks) ? chunks : []).filter((chunk) => {
-    const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
-      ? chunk.metadata_json
-      : {};
-    return String(metadata?.source_type || "").trim().toLowerCase() === "tabular" ||
-      Boolean(metadata?.tabular_source);
-  });
+function isTabularChunk(chunk) {
+  const metadata = chunk?.metadata_json && typeof chunk.metadata_json === "object"
+    ? chunk.metadata_json
+    : {};
+  return String(metadata?.source_type || "").trim().toLowerCase() === "tabular" ||
+    Boolean(metadata?.tabular_source);
+}
+
+export function isPureTabularBatch(chunks) {
+  const rows = Array.isArray(chunks) ? chunks.filter(Boolean) : [];
+  return rows.length > 0 && rows.every((chunk) => isTabularChunk(chunk));
+}
+
+export function buildDeterministicTabularExtraction(chunks, extractionTargets) {
+  const tabularChunks = (Array.isArray(chunks) ? chunks : []).filter((chunk) => isTabularChunk(chunk));
   if (tabularChunks.length === 0) return null;
 
   return {
@@ -395,6 +402,44 @@ export function addStableCandidateIds({
   return { extracted_items: extractedItems };
 }
 
+export async function resolveBatchExtractionResult({
+  chunks,
+  batchText,
+  extractionTargets,
+  playbookOptions,
+  workspaceId,
+  requestId,
+  analyzeBatch,
+}) {
+  if (isPureTabularBatch(chunks)) {
+    return {
+      rawResult: buildDeterministicTabularExtraction(chunks, extractionTargets) || { extracted_items: [] },
+      extractionMode: "deterministic_tabular_primary",
+    };
+  }
+
+  let rawResult = await analyzeBatch({
+    batchText,
+    extractionTargets,
+    playbookOptions,
+    workspaceId,
+    requestId,
+  });
+
+  if (!Array.isArray(rawResult?.extracted_items) || rawResult.extracted_items.length === 0) {
+    rawResult = buildDeterministicTabularExtraction(chunks, extractionTargets) || rawResult;
+    return {
+      rawResult,
+      extractionMode: "model_primary_with_tabular_recovery",
+    };
+  }
+
+  return {
+    rawResult,
+    extractionMode: "model_primary",
+  };
+}
+
 export async function executeContractAnalysisBatch({
   supabase,
   batchRunId,
@@ -437,16 +482,15 @@ export async function executeContractAnalysisBatch({
     extraction_targets: extractionTargets.length,
   });
 
-  let rawResult = await analyzeBatch({
+  const { rawResult, extractionMode } = await resolveBatchExtractionResult({
+    chunks,
     batchText,
     extractionTargets,
     playbookOptions,
     workspaceId: run.workspace_id,
     requestId,
+    analyzeBatch,
   });
-  if (!Array.isArray(rawResult?.extracted_items) || rawResult.extracted_items.length === 0) {
-    rawResult = buildDeterministicTabularExtraction(chunks, extractionTargets) || rawResult;
-  }
 
   const normalizedResult = {
     extracted_items: normalizeExtractedItems(
@@ -463,6 +507,7 @@ export async function executeContractAnalysisBatch({
     document_id: normalizeUuid(run.document_id),
     start_page: startPage,
     end_page: endPage,
+    extraction_mode: extractionMode,
     extraction_targets: extractionTargets.map((target) => ({
       id: target.id,
       label: target.label,
