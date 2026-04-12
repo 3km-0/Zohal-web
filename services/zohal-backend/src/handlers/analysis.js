@@ -137,6 +137,11 @@ function parseTaskPayload(body) {
     request_id: String(body.request_id || "").trim(),
     parent_run_id: normalizeUuid(body.parent_run_id),
     batch_run_id: normalizeUuid(body.batch_run_id),
+    mode: String(body.mode || "").trim(),
+    analysis_space_id: normalizeUuid(body.analysis_space_id),
+    parity_reference: body.parity_reference && typeof body.parity_reference === "object"
+      ? body.parity_reference
+      : null,
   };
 }
 
@@ -638,6 +643,9 @@ async function handleTask(req, res, { requestId, log, readJsonBody }) {
         parentRunId: payload.parent_run_id,
         requestId,
         log,
+        mode: payload.mode === "shadow" ? "shadow" : "canonical",
+        parityReference: payload.parity_reference || null,
+        analysisSpaceId: payload.analysis_space_id || null,
       });
 
       return sendJson(res, 200, buildEnvelope(requestId, {
@@ -712,6 +720,40 @@ async function handleTask(req, res, { requestId, log, readJsonBody }) {
   }
 }
 
+async function handleReduce(req, res, { requestId, log, readJsonBody }) {
+  requireInternalCaller(req.headers);
+  const supabase = createServiceClient();
+  const body = await readJsonBody(req);
+  const payload = parseTaskPayload({
+    ...body,
+    kind: body?.kind || "document_analysis_reduce",
+  });
+  ensureFields(payload, ["parent_run_id"]);
+  const result = await executeContractAnalysisReduce({
+    supabase,
+    parentRunId: payload.parent_run_id,
+    requestId,
+    log,
+    mode: payload.mode === "shadow" ? "shadow" : "canonical",
+    parityReference: payload.parity_reference || null,
+    analysisSpaceId: payload.analysis_space_id || null,
+  });
+  return sendJson(res, 200, buildEnvelope(requestId, {
+    success: true,
+    kind: payload.kind,
+    parent_run_id: payload.parent_run_id,
+    delegated: result.delegated === true,
+    verification_object_id: result.verification_object_id || null,
+    version_id: result.version_id || null,
+    mode: result.mode || "canonical",
+    snapshot_summary: result.snapshot_summary || null,
+    workspace_sync: result.workspace_sync || null,
+    workspace_preview: result.workspace_preview || null,
+    parity: result.parity || null,
+    materialization_ready: result.materialization_ready !== false,
+  }));
+}
+
 async function handleExportReport(req, res, { requestId, log, readJsonBody }) {
   requireInternalCaller(req.headers);
   const supabase = createServiceClient();
@@ -751,6 +793,20 @@ export async function handleAnalysisTask(req, res, { requestId, log, readJsonBod
   } catch (error) {
     const status = Number(error?.statusCode || 500);
     log.error("Analysis task failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return sendJson(res, status, buildEnvelope(requestId, {
+      error: error instanceof Error ? error.message : "Internal server error",
+    }));
+  }
+}
+
+export async function handleAnalysisReduce(req, res, { requestId, log, readJsonBody }) {
+  try {
+    return await handleReduce(req, res, { requestId, log, readJsonBody });
+  } catch (error) {
+    const status = Number(error?.statusCode || 500);
+    log.error("Analysis reduce failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return sendJson(res, status, buildEnvelope(requestId, {

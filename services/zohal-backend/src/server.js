@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import {
   handleAnalysisExportReport,
+  handleAnalysisReduce,
   handleAnalysisPromotePrivateLivePublic,
   handleAnalysisStart,
   handleAnalysisTask,
@@ -64,6 +65,10 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/analysis/tasks") {
       return await handleAnalysisTask(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/analysis/reduce") {
+      return await handleAnalysisReduce(req, res, { requestId, log, readJsonBody });
     }
 
     if (req.method === "POST" && url.pathname === "/analysis/export-report") {

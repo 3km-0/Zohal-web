@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   buildProofManifest,
   buildSourceManifest,
@@ -20,6 +21,10 @@ import {
   openPrivateLiveExperienceLink,
   preferredPrivateLiveExperienceUrl,
 } from "./private-live.js";
+import {
+  buildSupabaseInternalHeaders,
+  getSupabaseUrl,
+} from "../runtime/supabase.js";
 
 function dedupeByKey(rows, keyFn) {
   const seen = new Set();
@@ -31,6 +36,120 @@ function dedupeByKey(rows, keyFn) {
     out.push(row);
   }
   return out;
+}
+
+function stableJsonStringify(value) {
+  if (value === null || value === undefined) return "null";
+  if (typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableJsonStringify(item)).join(",")}]`;
+  }
+  const obj = value;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map((key) =>
+    `${JSON.stringify(key)}:${stableJsonStringify(obj[key])}`).join(",")}}`;
+}
+
+function shortHash(value) {
+  return createHash("sha256").update(String(value || "")).digest("hex").slice(0, 16);
+}
+
+export function buildSnapshotParitySummary(snapshotJson) {
+  const items = Array.isArray(snapshotJson?.items) ? snapshotJson.items : [];
+  const links = Array.isArray(snapshotJson?.links) ? snapshotJson.links : [];
+  const extracted = items.filter((item) => item?.provenance_class === "extracted");
+  const derived = items.filter((item) => item?.provenance_class === "derived");
+  const anchored = extracted.filter((item) =>
+    Array.isArray(item?.source_anchors) && item.source_anchors.length > 0
+  );
+  return {
+    snapshot_hash: shortHash(stableJsonStringify(snapshotJson)),
+    counts: {
+      items: items.length,
+      links: links.length,
+      extracted_items: extracted.length,
+      derived_items: derived.length,
+      anchored_items: anchored.length,
+    },
+    item_ids_hash: shortHash(
+      stableJsonStringify(items.map((item) => String(item?.id || "")).sort()),
+    ),
+    link_ids_hash: shortHash(
+      stableJsonStringify(links.map((link) => String(link?.id || "")).sort()),
+    ),
+  };
+}
+
+export function compareParity(reference, candidate) {
+  const mismatches = [];
+  const refCounts = reference?.counts || {};
+  const candCounts = candidate?.counts || {};
+  for (const key of [
+    "items",
+    "links",
+    "extracted_items",
+    "derived_items",
+    "anchored_items",
+  ]) {
+    if (Number(refCounts[key] || 0) !== Number(candCounts[key] || 0)) {
+      mismatches.push({
+        field: `counts.${key}`,
+        expected: Number(refCounts[key] || 0),
+        actual: Number(candCounts[key] || 0),
+      });
+    }
+  }
+  if ((reference?.snapshot_hash || null) !== (candidate?.snapshot_hash || null)) {
+    mismatches.push({
+      field: "snapshot_hash",
+      expected: reference?.snapshot_hash || null,
+      actual: candidate?.snapshot_hash || null,
+    });
+  }
+  if ((reference?.item_ids_hash || null) !== (candidate?.item_ids_hash || null)) {
+    mismatches.push({
+      field: "item_ids_hash",
+      expected: reference?.item_ids_hash || null,
+      actual: candidate?.item_ids_hash || null,
+    });
+  }
+  if ((reference?.link_ids_hash || null) !== (candidate?.link_ids_hash || null)) {
+    mismatches.push({
+      field: "link_ids_hash",
+      expected: reference?.link_ids_hash || null,
+      actual: candidate?.link_ids_hash || null,
+    });
+  }
+  return {
+    ok: mismatches.length === 0,
+    mismatch_count: mismatches.length,
+    mismatches,
+  };
+}
+
+async function callWorkspaceOperationalSync({
+  requestId,
+  body,
+}) {
+  const supabaseUrl = getSupabaseUrl();
+  const response = await fetch(`${supabaseUrl}/functions/v1/workspace-operational-sync`, {
+    method: "POST",
+    headers: buildSupabaseInternalHeaders(requestId),
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  let json = {};
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    json = { raw: text };
+  }
+  if (!response.ok) {
+    throw new Error(
+      `workspace_operational_sync_failed:${response.status}:${String(json?.error || text || "unknown")}`,
+    );
+  }
+  return json;
 }
 
 function collectBatchItems(batchRuns) {
@@ -900,6 +1019,9 @@ export async function executeContractAnalysisReduce({
   parentRunId,
   requestId,
   log,
+  mode = "canonical",
+  parityReference = null,
+  analysisSpaceId = null,
 }) {
   const { parentRun, batchRuns } = await fetchParentAndBatches(supabase, parentRunId);
   if (parentRun.status === "completed") {
@@ -1027,12 +1149,86 @@ export async function executeContractAnalysisReduce({
     ),
     templateId,
   );
+  const paritySummary = buildSnapshotParitySummary(snapshotJson);
+
+  if (mode === "shadow") {
+    let workspacePreview = null;
+    try {
+      workspacePreview = await callWorkspaceOperationalSync({
+        requestId,
+        body: {
+          dry_run: true,
+          snapshot: snapshotJson,
+          workspace_id: normalizeUuid(parentRun.workspace_id),
+          document_id: primaryDocumentId,
+          analysis_space_id: analysisSpaceId || null,
+          template_id: templateId,
+          template_version: String(playbookMeta?.template_version || "3.0.0"),
+        },
+      });
+    } catch (error) {
+      log?.warn?.("workspace operational preview failed on GCP shadow reduce", {
+        parent_run_id: normalizeUuid(parentRunId),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    const parity = parityReference
+      ? compareParity(parityReference.snapshot || null, paritySummary)
+      : { ok: true, mismatch_count: 0, mismatches: [] };
+    return {
+      ok: true,
+      delegated: false,
+      mode: "shadow",
+      snapshot_summary: paritySummary,
+      workspace_preview: workspacePreview
+        ? {
+          analysis_space_id: workspacePreview.analysisSpaceId || null,
+          counts: workspacePreview.counts || null,
+          signatures: workspacePreview.signatures || null,
+        }
+        : null,
+      parity,
+      materialization_ready: true,
+    };
+  }
 
   const { verificationObjectId, versionId, versionNumber } = await upsertVerificationSnapshot({
     supabase,
     parentRun,
     snapshotJson,
   });
+
+  let workspaceSyncResult = null;
+  try {
+    workspaceSyncResult = await callWorkspaceOperationalSync({
+      requestId,
+      body: {
+        dry_run: false,
+        snapshot: snapshotJson,
+        workspace_id: normalizeUuid(parentRun.workspace_id),
+        document_id: primaryDocumentId,
+        verification_object_id: verificationObjectId,
+        snapshot_version_id: versionId,
+        user_id: normalizeUuid(parentRun.user_id),
+        run_id: normalizeUuid(parentRunId),
+        source_extraction_run_id: normalizeUuid(parentRunId),
+        execution_plane: "gcp",
+        template_id: templateId,
+        template_version: String(playbookMeta?.template_version || "3.0.0"),
+        run_summary_json: {
+          source: "gcp_canonical_reduce",
+          extracted_items: extractedItems.length,
+          derived_items: derivedItems.length,
+          links: links.length,
+        },
+      },
+    });
+  } catch (error) {
+    log?.warn?.("workspace-native sync failed on GCP canonical reduce", {
+      parent_run_id: normalizeUuid(parentRunId),
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   await supabase
     .from("extraction_runs")
@@ -1045,6 +1241,15 @@ export async function executeContractAnalysisReduce({
         verification_object_id: verificationObjectId,
         version_id: versionId,
         execution_plane: "gcp",
+        workspace_sync: workspaceSyncResult && workspaceSyncResult.ok !== false
+          ? {
+            analysis_space_id: workspaceSyncResult.analysisSpaceId || null,
+            analysis_run_id: workspaceSyncResult.analysisRunId || null,
+            corpus_revision_id: workspaceSyncResult.corpusRevisionId || null,
+            counts: workspaceSyncResult.counts || null,
+            execution_plane: "gcp",
+          }
+          : null,
         counts: {
           extracted_items: extractedItems.length,
           derived_items: derivedItems.length,
@@ -1131,9 +1336,19 @@ export async function executeContractAnalysisReduce({
   return {
     ok: true,
     delegated: false,
+    mode: "canonical",
     contract_id: null,
     verification_object_id: verificationObjectId,
     version_id: versionId,
     version_number: versionNumber,
+    snapshot_summary: paritySummary,
+    workspace_sync: workspaceSyncResult && workspaceSyncResult.ok !== false
+      ? {
+        analysis_space_id: workspaceSyncResult.analysisSpaceId || null,
+        analysis_run_id: workspaceSyncResult.analysisRunId || null,
+        corpus_revision_id: workspaceSyncResult.corpusRevisionId || null,
+        counts: workspaceSyncResult.counts || null,
+      }
+      : null,
   };
 }

@@ -23,6 +23,8 @@ import {
 } from "../src/analysis/ai-provider.js";
 import {
   attachPackMetadata,
+  buildSnapshotParitySummary,
+  compareParity,
   normalizeDerivedItems,
   shouldNativeReduceRun,
   toSnapshot,
@@ -68,6 +70,60 @@ test("private live materialize access maps public visibility to org_restricted f
   assert.deepEqual(
     privateLiveMaterializeAccessFromDefaultVisibility(null),
     { visibility: "org_private", org_restricted: true },
+  );
+});
+
+test("snapshot parity summary is stable for identical canonical snapshots", () => {
+  const snapshot = {
+    items: [
+      {
+        id: "item_1",
+        provenance_class: "extracted",
+        source_anchors: [{ document_id: "doc_1", page_number: 1 }],
+      },
+      {
+        id: "item_2",
+        provenance_class: "derived",
+        source_anchors: [],
+      },
+    ],
+    links: [
+      { id: "link_1", source: "item_1", target: "item_2" },
+    ],
+  };
+
+  const first = buildSnapshotParitySummary(snapshot);
+  const second = buildSnapshotParitySummary({
+    links: [...snapshot.links],
+    items: [...snapshot.items],
+  });
+
+  assert.deepEqual(first, second);
+  assert.equal(first.counts.extracted_items, 1);
+  assert.equal(first.counts.derived_items, 1);
+  assert.equal(first.counts.anchored_items, 1);
+});
+
+test("parity comparison flags snapshot drift when canonical counts change", () => {
+  const reference = buildSnapshotParitySummary({
+    items: [{ id: "item_1", provenance_class: "extracted", source_anchors: [] }],
+    links: [],
+  });
+  const candidate = buildSnapshotParitySummary({
+    items: [
+      { id: "item_1", provenance_class: "extracted", source_anchors: [] },
+      { id: "item_2", provenance_class: "derived", source_anchors: [] },
+    ],
+    links: [],
+  });
+
+  const parity = compareParity(reference, candidate);
+  assert.equal(parity.ok, false);
+  assert.ok(
+    parity.mismatches.some((entry) => entry.field === "counts.items"),
+  );
+  assert.ok(
+    parity.mismatches.some((entry) => entry.field === "counts.derived_items"),
   );
 });
 
