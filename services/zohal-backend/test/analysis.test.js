@@ -30,6 +30,8 @@ import {
   toSnapshot,
 } from "../src/analysis/reduce.js";
 import {
+  extractPrivateLivePublicationState,
+  isPrivateLivePublicationSettled,
   normalizeExperienceTemplateId,
   pickCanonicalPrivateLiveExperienceRecord,
   privateLiveMaterializeAccessFromDefaultVisibility,
@@ -70,6 +72,71 @@ test("private live materialize access maps public visibility to org_restricted f
   assert.deepEqual(
     privateLiveMaterializeAccessFromDefaultVisibility(null),
     { visibility: "org_private", org_restricted: true },
+  );
+});
+
+test("private live publication state extraction prefers active revision and source binding fields", () => {
+  const state = extractPrivateLivePublicationState({
+    experience_id: "exp_1",
+    active_revision: {
+      active_revision_id: "rev_1",
+      scaffold_status: "scaffolded",
+      materialization_status: "materialized",
+      last_canonical_version_id: "canon_1",
+      active_runtime: "generated_dispatch",
+      publication_status: "private_live",
+    },
+    source_binding: {
+      public_url: "https://live.zohal.ai/live/doc_demo",
+      published_version_id: "canon_1",
+    },
+  });
+
+  assert.deepEqual(state, {
+    experienceId: "exp_1",
+    activeRevisionId: "rev_1",
+    scaffoldStatus: "scaffolded",
+    materializationStatus: "materialized",
+    canonicalVersionId: "canon_1",
+    publicUrl: "https://live.zohal.ai/live/doc_demo",
+    activeRuntime: "generated_dispatch",
+    publicationStatus: "private_live",
+  });
+});
+
+test("private live publication settled check requires matching canonical version and materialized status", () => {
+  assert.equal(
+    isPrivateLivePublicationSettled(
+      {
+        canonicalVersionId: "canon_1",
+        materializationStatus: "materialized",
+      },
+      "canon_1",
+      true,
+    ),
+    true,
+  );
+  assert.equal(
+    isPrivateLivePublicationSettled(
+      {
+        canonicalVersionId: "canon_1",
+        materializationStatus: "pending",
+      },
+      "canon_1",
+      true,
+    ),
+    false,
+  );
+  assert.equal(
+    isPrivateLivePublicationSettled(
+      {
+        canonicalVersionId: "canon_older",
+        materializationStatus: "materialized",
+      },
+      "canon_1",
+      true,
+    ),
+    false,
   );
 });
 

@@ -14,6 +14,10 @@ function publicationBaseUrl() {
   ).trim().replace(/\/+$/, "");
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getInternalHeaders(requestId, userId) {
   const token = getExpectedInternalToken();
   if (!token) {
@@ -178,7 +182,7 @@ async function updatePrivateLiveRegistryState({
   title,
   summary,
   canonicalVersionId,
-  materializationStatus = "materialized",
+  materializationStatus = "pending",
 }) {
   const patch = {
     updated_at: new Date().toISOString(),
@@ -252,6 +256,138 @@ async function callPublicationApi({ requestId, userId, path, body }) {
   return json;
 }
 
+async function getPublicationApi({ requestId, userId, path }) {
+  const response = await fetch(`${publicationBaseUrl()}${path}`, {
+    method: "GET",
+    headers: getInternalHeaders(requestId, userId),
+  });
+  const json = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = typeof json?.message === "string"
+      ? json.message
+      : typeof json?.error === "string"
+      ? json.error
+      : "Private live publication status request failed";
+    throw new Error(message);
+  }
+  return json;
+}
+
+export function extractPrivateLivePublicationState(statusJson = {}) {
+  const activeRevision = statusJson?.active_revision &&
+      typeof statusJson.active_revision === "object"
+    ? statusJson.active_revision
+    : {};
+  const sourceBinding = statusJson?.source_binding &&
+      typeof statusJson.source_binding === "object"
+    ? statusJson.source_binding
+    : {};
+  return {
+    experienceId: String(statusJson?.experience_id || "").trim() || null,
+    activeRevisionId: String(activeRevision.active_revision_id || "").trim() || null,
+    scaffoldStatus: String(activeRevision.scaffold_status || "").trim() || null,
+    materializationStatus:
+      String(activeRevision.materialization_status || "").trim() || null,
+    canonicalVersionId:
+      String(
+        activeRevision.last_canonical_version_id ||
+          sourceBinding.published_version_id ||
+          "",
+      ).trim() || null,
+    publicUrl: String(sourceBinding.public_url || "").trim() || null,
+    activeRuntime: String(activeRevision.active_runtime || "").trim() || null,
+    publicationStatus:
+      String(activeRevision.publication_status || "").trim() || null,
+  };
+}
+
+export function isPrivateLivePublicationSettled(
+  publicationState,
+  expectedCanonicalVersionId = null,
+  requireMaterialized = true,
+) {
+  if (!publicationState) return false;
+  const materialized = publicationState.materializationStatus === "materialized";
+  const canonicalMatches = !expectedCanonicalVersionId ||
+    normalizeUuid(publicationState.canonicalVersionId) ===
+      normalizeUuid(expectedCanonicalVersionId);
+  return canonicalMatches && (!requireMaterialized || materialized);
+}
+
+export async function syncPrivateLiveRegistryFromPublicationStatus({
+  supabase,
+  requestId,
+  userId,
+  experienceId,
+  expectedCanonicalVersionId = null,
+  timeoutMs = 30000,
+  intervalMs = 2000,
+  requireMaterialized = true,
+}) {
+  const normalizedExperienceId = normalizeUuid(experienceId);
+  if (!normalizedExperienceId) {
+    return {
+      ok: false,
+      settled: false,
+      reason: "missing_experience_id",
+      state: null,
+    };
+  }
+
+  const deadline = Date.now() + Math.max(0, Number(timeoutMs || 0));
+  let lastState = null;
+
+  while (true) {
+    const statusJson = await getPublicationApi({
+      requestId,
+      userId,
+      path: `/v1/experiences/publications/${normalizedExperienceId}/status`,
+    });
+    lastState = extractPrivateLivePublicationState(statusJson);
+    if (
+      isPrivateLivePublicationSettled(
+        lastState,
+        expectedCanonicalVersionId,
+        requireMaterialized,
+      )
+    ) {
+      break;
+    }
+    if (Date.now() >= deadline) {
+      break;
+    }
+    await sleep(intervalMs);
+  }
+
+  if (!lastState) {
+    return {
+      ok: false,
+      settled: false,
+      reason: "missing_publication_state",
+      state: null,
+    };
+  }
+
+  await updatePrivateLiveRegistryState({
+    supabase,
+    experienceId: normalizedExperienceId,
+    scaffoldStatus: lastState.scaffoldStatus || undefined,
+    materializationStatus: lastState.materializationStatus || undefined,
+    canonicalVersionId:
+      lastState.canonicalVersionId || expectedCanonicalVersionId || undefined,
+  });
+
+  return {
+    ok: true,
+    settled: isPrivateLivePublicationSettled(
+      lastState,
+      expectedCanonicalVersionId,
+      requireMaterialized,
+    ),
+    state: lastState,
+  };
+}
+
 export async function ensurePrivateLiveExperienceRefresh({
   supabase,
   requestId,
@@ -282,6 +418,9 @@ export async function ensurePrivateLiveExperienceRefresh({
     analysisTemplateId || snapshot?.template || "",
   ).trim();
   const access = privateLiveMaterializeAccessFromDefaultVisibility(record.default_visibility);
+  const hasCanonicalVersion = Boolean(String(verificationObjectVersionId || "").trim());
+  const shouldSendSourceOverride = Boolean(snapshot) && !hasCanonicalVersion;
+  const shouldSendPlannerPayload = !hasCanonicalVersion;
   const response = await callPublicationApi({
     requestId,
     userId,
@@ -299,12 +438,16 @@ export async function ensurePrivateLiveExperienceRefresh({
       ...(resolvedAnalysisTemplateId
         ? { analysis_template_id: resolvedAnalysisTemplateId }
         : {}),
-      planner_payload: buildPlannerPayload(
-        resolvedTemplateId,
-        title,
-        summary,
-        snapshot,
-      ),
+      ...(shouldSendPlannerPayload
+        ? {
+          planner_payload: buildPlannerPayload(
+            resolvedTemplateId,
+            title,
+            summary,
+            snapshot,
+          ),
+        }
+        : {}),
       title: title || defaultExperienceTitle(resolvedTemplateId),
       subtitle: subtitle || "Private live experience",
       summary:
@@ -317,7 +460,7 @@ export async function ensurePrivateLiveExperienceRefresh({
       default_verification_status: defaultVerificationStatus,
       updated_after_verification: Boolean(updatedAfterVerification),
       value_updated_at: new Date().toISOString(),
-      ...(snapshot ? { source_override: snapshot } : {}),
+      ...(shouldSendSourceOverride ? { source_override: snapshot } : {}),
     },
   });
 
@@ -327,8 +470,24 @@ export async function ensurePrivateLiveExperienceRefresh({
     title,
     summary,
     canonicalVersionId: verificationObjectVersionId,
-    materializationStatus: snapshot ? "materialized" : "pending",
+    materializationStatus: "pending",
   });
+
+  let syncResult = null;
+  try {
+    syncResult = await syncPrivateLiveRegistryFromPublicationStatus({
+      supabase,
+      requestId,
+      userId,
+      experienceId: record.experience_id,
+      expectedCanonicalVersionId: verificationObjectVersionId || null,
+      timeoutMs: 180000,
+      intervalMs: 3000,
+      requireMaterialized: true,
+    });
+  } catch {
+    syncResult = null;
+  }
 
   return {
     experience_id: record.experience_id,
@@ -339,6 +498,8 @@ export async function ensurePrivateLiveExperienceRefresh({
     active_runtime: response?.active_runtime || null,
     fallback_reason: response?.fallback_reason || null,
     bundle_revision_id: response?.bundle_revision_id || null,
+    materialization_status: syncResult?.state?.materializationStatus || "pending",
+    settled: Boolean(syncResult?.settled),
   };
 }
 
