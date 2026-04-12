@@ -1,11 +1,14 @@
 import type { Database } from '@/types/supabase';
 import type {
+  AnalysisScopeComparisonPolicy,
+  AnalysisScopeMode,
   AnalysisRunCorpusResolution,
   AnalysisRunDocsetMode,
   AnalysisRunLibrarySource,
   AnalysisRunMemberRole,
   AnalysisRunPrecedencePolicy,
   AnalysisRunScope,
+  AnalysisRunSourceMember,
   AnalysisRunStatus,
   AnalysisRunSummary,
   RememberedRelatedDocuments,
@@ -244,6 +247,32 @@ function parseCorpusResolution(inputConfig: unknown): AnalysisRunCorpusResolutio
     ? parseMemberRoles({ member_roles: sourceManifest.member_roles }, documentIds, primaryDocumentId)
     : parseMemberRoles(inputConfig, documentIds, primaryDocumentId);
 
+  const sourceMembers = Array.isArray(sourceManifest.source_members)
+    ? sourceManifest.source_members
+        .map((value) => {
+          const record = value && typeof value === 'object' && !Array.isArray(value)
+            ? (value as Record<string, unknown>)
+            : {};
+          const sourceId = asString(record.source_id);
+          const sourceKind = asString(record.source_kind);
+          if (!sourceId || !sourceKind) return null;
+          return {
+            sourceKind,
+            sourceId,
+            sourceRevisionId: asString(record.source_revision_id),
+            inclusionState:
+              (asString(record.inclusion_state) as AnalysisRunSourceMember['inclusionState']) || 'included',
+            resolvedByKind:
+              (asString(record.resolved_by_kind) as AnalysisRunSourceMember['resolvedByKind']) || 'system',
+            resolvedById: asString(record.resolved_by_id),
+            reason: record.reason_json && typeof record.reason_json === 'object'
+              ? (record.reason_json as Record<string, unknown>)
+              : null,
+          };
+        })
+        .filter((value): value is AnalysisRunSourceMember => !!value)
+    : [];
+
   return {
     corpusId: asString(corpusResolution.corpus_id),
     corpusKind: asString(corpusResolution.corpus_kind),
@@ -262,7 +291,47 @@ function parseCorpusResolution(inputConfig: unknown): AnalysisRunCorpusResolutio
       asString(config.saved_docset_name) ||
       asString(asRecord(config.bundle).saved_docset_name),
     librarySources: parseLibrarySources(inputConfig),
+    sourceMembers,
   };
+}
+
+function parseAnalysisScopeMode(inputConfig: unknown): AnalysisScopeMode {
+  const config = asRecord(inputConfig);
+  const raw = asString(config.scope_mode) || asString(config.scopeMode);
+  if (raw === 'pinned' || raw === 'frozen') return 'pinned';
+  if (raw === 'windowed' || raw === 'window') return 'windowed';
+  if (raw === 'period_partitioned' || raw === 'partitioned') return 'period_partitioned';
+  return 'rolling';
+}
+
+function parseScopeDisplayLabel(inputConfig: unknown): string | null {
+  const config = asRecord(inputConfig);
+  const scopePolicy = asRecord(config.scope_policy);
+  return asString(scopePolicy.display_label) || null;
+}
+
+function parsePartitionKey(inputConfig: unknown): string | null {
+  const config = asRecord(inputConfig);
+  const scopePolicy = asRecord(config.scope_policy);
+  const partition = asRecord(scopePolicy.partition);
+  return (
+    asString(config.partition_key) ||
+    asString(partition.key) ||
+    null
+  );
+}
+
+function parseComparisonPolicy(inputConfig: unknown): AnalysisScopeComparisonPolicy {
+  const config = asRecord(inputConfig);
+  const comparisonTarget = asRecord(config.comparison_target);
+  const scopePolicy = asRecord(config.scope_policy);
+  const raw =
+    asString(comparisonTarget.mode) ||
+    asString(scopePolicy.comparison_policy) ||
+    'none';
+  if (raw === 'previous_partition') return 'previous_partition';
+  if (raw === 'previous_run') return 'previous_run';
+  return 'none';
 }
 
 export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow | null): AnalysisRunSummary {
@@ -332,6 +401,11 @@ export function toAnalysisRunSummary(run: ExtractionRunRow, action?: ActionRow |
     savedDocsetName,
     versionId,
     verificationObjectId,
+    analysisSpaceId: asString(config.analysis_space_id),
+    analysisScopeMode: parseAnalysisScopeMode(run.input_config),
+    scopeDisplayLabel: parseScopeDisplayLabel(run.input_config),
+    partitionKey: parsePartitionKey(run.input_config),
+    comparisonPolicy: parseComparisonPolicy(run.input_config),
     corpusResolution,
     rememberedRelatedDocuments,
   };
@@ -375,6 +449,11 @@ export function mergeVerificationObjectFallbackRun(
     savedDocsetName: null,
     versionId,
     verificationObjectId,
+    analysisSpaceId: null,
+    analysisScopeMode: 'rolling',
+    scopeDisplayLabel: null,
+    partitionKey: null,
+    comparisonPolicy: 'none',
     corpusResolution: null,
     rememberedRelatedDocuments: null,
   };

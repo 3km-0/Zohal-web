@@ -1482,6 +1482,67 @@
         "invalidDocset": "Related-document configuration is invalid."
       }
     },
+    "sources": {
+      "title": "Sources",
+      "manualBadge": "User selected"
+    },
+    "scopePolicy": {
+      "title": "Scope",
+      "help": "Choose how this maintained view should advance: rolling, frozen, windowed, or partitioned.",
+      "displayLabel": "Scope label",
+      "anchorKind": "Anchor kind",
+      "anchorField": "Anchor field",
+      "anchorFieldPlaceholder": "Optional field name such as business_day or event_time",
+      "comparisonTitle": "Compare against",
+      "windowLookback": "Lookback amount",
+      "windowUnit": "Lookback unit",
+      "partitionGrain": "Partition grain",
+      "partitionKey": "Partition key",
+      "partitionKeyPlaceholder": "Optional explicit key such as 2026-04-12 or Night Audit 1447-10-24",
+      "previewTitle": "Run preview",
+      "modeRolling": "Rolling",
+      "modePinned": "Frozen",
+      "modeWindowed": "Windowed",
+      "modePartitioned": "Partitioned",
+      "currentPartition": "Current partition",
+      "modeBadge": {
+        "rolling": "Rolling",
+        "pinned": "Frozen",
+        "windowed": "Windowed",
+        "period_partitioned": "Partitioned"
+      },
+      "comparison": {
+        "none": "No comparison",
+        "previous_run": "Compare to previous run",
+        "previous_partition": "Compare to previous partition"
+      },
+      "anchor": {
+        "none": "None",
+        "event_time": "Event time",
+        "document_time": "Document time",
+        "api_fetch_time": "API fetch time",
+        "business_day": "Business day"
+      },
+      "unit": {
+        "hour": "Hour",
+        "day": "Day",
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter",
+        "year": "Year",
+        "custom": "Custom"
+      },
+      "previewMode": {
+        "rolling": "Rolling view",
+        "pinned": "Frozen view",
+        "windowed": "Windowed view",
+        "period_partitioned": "Partitioned view"
+      },
+      "previewSources": "{count} document source(s)",
+      "previewApis": "{count} API source(s)",
+      "previewWindow": "Last {count} {unit}",
+      "previewPartition": "{grain}: {key}"
+    },
     "inspector": {
       "title": "Run provenance",
       "recipe": "Analysis recipe used",

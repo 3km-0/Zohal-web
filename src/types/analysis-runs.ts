@@ -5,6 +5,8 @@ export type AnalysisRunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 export type AnalysisRunScope = 'single' | 'bundle';
 export type AnalysisRunDocsetMode = 'ephemeral' | 'saved';
 export type AnalysisRunPrecedencePolicy = 'manual' | 'primary_first' | 'latest_wins';
+export type AnalysisScopeMode = 'rolling' | 'pinned' | 'windowed' | 'period_partitioned';
+export type AnalysisScopeComparisonPolicy = 'previous_partition' | 'previous_run' | 'none';
 
 export interface AnalysisRunMemberRole {
   documentId: string;
@@ -20,6 +22,16 @@ export interface AnalysisRunLibrarySource {
   versionLabel: string | null;
 }
 
+export interface AnalysisRunSourceMember {
+  sourceKind: string;
+  sourceId: string;
+  sourceRevisionId: string | null;
+  inclusionState: 'included' | 'excluded' | 'reference_only';
+  resolvedByKind: 'user' | 'agent' | 'system';
+  resolvedById: string | null;
+  reason: Record<string, unknown> | null;
+}
+
 export interface AnalysisRunCorpusResolution {
   corpusId: string | null;
   corpusKind: string | null;
@@ -30,6 +42,7 @@ export interface AnalysisRunCorpusResolution {
   legacyPackId: string | null;
   savedLabel: string | null;
   librarySources: AnalysisRunLibrarySource[];
+  sourceMembers: AnalysisRunSourceMember[];
 }
 
 export interface RememberedRelatedDocuments {
@@ -57,6 +70,11 @@ export interface AnalysisRunSummary {
   savedDocsetName: string | null;
   versionId: string | null;
   verificationObjectId: string | null;
+  analysisSpaceId?: string | null;
+  analysisScopeMode?: AnalysisScopeMode;
+  scopeDisplayLabel?: string | null;
+  partitionKey?: string | null;
+  comparisonPolicy?: AnalysisScopeComparisonPolicy;
   corpusResolution: AnalysisRunCorpusResolution | null;
   rememberedRelatedDocuments: RememberedRelatedDocuments | null;
 }

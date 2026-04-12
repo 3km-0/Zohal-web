@@ -64,7 +64,7 @@ import type {
 import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
 import { useToast } from '@/components/ui/Toast';
-import type { AnalysisRunSummary } from '@/types/analysis-runs';
+import type { AnalysisRunSummary, AnalysisScopeMode, AnalysisScopeComparisonPolicy } from '@/types/analysis-runs';
 import {
   mergeVerificationObjectFallbackRun,
   normalizeAnalysisRunStatus,
@@ -90,6 +90,8 @@ import { getTemplateDescription, getTemplateEmoji, getTemplateGroup, getTemplate
 type Tab = string;
 
 type RunScope = 'single' | 'bundle';
+type ScopeAnchorKind = 'none' | 'event_time' | 'document_time' | 'api_fetch_time' | 'business_day';
+type ScopePartitionGrain = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
 type WorkspaceFolder = {
   id: string;
@@ -328,6 +330,15 @@ export function ContractAnalysisPane({
   const [docsetIssues, setDocsetIssues] = useState<string[]>([]);
   const [docsetPrimaryDocumentId, setDocsetPrimaryDocumentId] = useState<string>(documentId);
   const [docsetPrecedencePolicy, setDocsetPrecedencePolicy] = useState<'manual' | 'primary_first' | 'latest_wins'>('manual');
+  const [analysisScopeMode, setAnalysisScopeMode] = useState<AnalysisScopeMode>('rolling');
+  const [scopeDisplayLabel, setScopeDisplayLabel] = useState('');
+  const [scopeAnchorKind, setScopeAnchorKind] = useState<ScopeAnchorKind>('none');
+  const [scopeAnchorField, setScopeAnchorField] = useState('');
+  const [partitionGrain, setPartitionGrain] = useState<ScopePartitionGrain>('day');
+  const [partitionKey, setPartitionKey] = useState('');
+  const [windowLookbackValue, setWindowLookbackValue] = useState('7');
+  const [windowLookbackUnit, setWindowLookbackUnit] = useState<'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'>('day');
+  const [comparisonPolicy, setComparisonPolicy] = useState<AnalysisScopeComparisonPolicy>('none');
   const [workspaceDocs, setWorkspaceDocs] = useState<WorkspaceDoc[]>([]);
   const [workspaceFolders, setWorkspaceFolders] = useState<WorkspaceFolder[]>([]);
   const [rememberedSourceRunId, setRememberedSourceRunId] = useState<string | null>(null);
@@ -532,6 +543,103 @@ export function ContractAnalysisPane({
     if (enforcedPlaybookScope === 'single') return 'single';
     return scope;
   }, [enforcedPlaybookScope, scope]);
+
+  const normalizedScopeDisplayLabel = useMemo(() => {
+    const explicit = scopeDisplayLabel.trim();
+    if (explicit) return explicit;
+    if (analysisScopeMode === 'pinned') return t('scopePolicy.modePinned');
+    if (analysisScopeMode === 'windowed') return t('scopePolicy.modeWindowed');
+    if (analysisScopeMode === 'period_partitioned') return t('scopePolicy.modePartitioned');
+    return t('scopePolicy.modeRolling');
+  }, [analysisScopeMode, scopeDisplayLabel, t]);
+
+  const scopePolicyPayload = useMemo(() => {
+    const payload: Record<string, unknown> = {
+      mode: analysisScopeMode,
+      display_label: normalizedScopeDisplayLabel,
+      anchor: {
+        kind: scopeAnchorKind,
+        ...(scopeAnchorField.trim() ? { field: scopeAnchorField.trim() } : {}),
+        timezone: locale === 'ar' ? 'Asia/Riyadh' : Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      },
+      comparison_policy: comparisonPolicy,
+      freeze_policy: analysisScopeMode === 'pinned' ? 'freeze_on_run' : 'mutable',
+      api_policy: 'manual',
+      selection_policy: effectiveScope === 'bundle' ? 'manual' : 'all_included',
+    };
+    if (analysisScopeMode === 'windowed') {
+      payload.window = {
+        kind: 'relative',
+        lookback_value: Number(windowLookbackValue) > 0 ? Number(windowLookbackValue) : 7,
+        lookback_unit: windowLookbackUnit,
+      };
+    }
+    if (analysisScopeMode === 'period_partitioned') {
+      payload.partition = {
+        grain: partitionGrain,
+        ...(partitionKey.trim() ? { key: partitionKey.trim() } : {}),
+      };
+    }
+    return payload;
+  }, [
+    analysisScopeMode,
+    comparisonPolicy,
+    effectiveScope,
+    locale,
+    normalizedScopeDisplayLabel,
+    partitionGrain,
+    partitionKey,
+    scopeAnchorField,
+    scopeAnchorKind,
+    windowLookbackUnit,
+    windowLookbackValue,
+  ]);
+
+  const runPreviewItems = useMemo(() => {
+    const documentCount = includeDocumentSource
+      ? effectiveScope === 'bundle'
+        ? docsetMembers.length
+        : 1
+      : 0;
+    const apiCount = selectedApiConnectionIds.length;
+    const preview: string[] = [
+      t('scopePolicy.previewSources', { count: documentCount }),
+      t('scopePolicy.previewApis', { count: apiCount }),
+      t(`scopePolicy.previewMode.${analysisScopeMode}` as any),
+    ];
+    if (analysisScopeMode === 'windowed') {
+      preview.push(
+        t('scopePolicy.previewWindow', {
+          count: Number(windowLookbackValue) > 0 ? Number(windowLookbackValue) : 7,
+          unit: t(`scopePolicy.unit.${windowLookbackUnit}` as any),
+        })
+      );
+    }
+    if (analysisScopeMode === 'period_partitioned') {
+      preview.push(
+        t('scopePolicy.previewPartition', {
+          grain: t(`scopePolicy.unit.${partitionGrain}` as any),
+          key: partitionKey.trim() || t('scopePolicy.currentPartition'),
+        })
+      );
+    }
+    if (comparisonPolicy !== 'none') {
+      preview.push(t(`scopePolicy.comparison.${comparisonPolicy}` as any));
+    }
+    return preview;
+  }, [
+    analysisScopeMode,
+    comparisonPolicy,
+    docsetMembers.length,
+    effectiveScope,
+    includeDocumentSource,
+    partitionGrain,
+    partitionKey,
+    selectedApiConnectionIds.length,
+    t,
+    windowLookbackUnit,
+    windowLookbackValue,
+  ]);
 
   const runConfigError = useMemo(() => {
     if (!includeDocumentSource && selectedApiConnectionIds.length === 0) {
@@ -1954,6 +2062,14 @@ export function ContractAnalysisPane({
           ...(includeDocumentSource ? { document_id: documentId } : {}),
           workspace_id: workspaceId,
           user_id: userId,
+          scope_mode: analysisScopeMode,
+          scope_policy: scopePolicyPayload,
+          ...(comparisonPolicy !== 'none'
+            ? { comparison_target: { mode: comparisonPolicy } }
+            : {}),
+          ...(analysisScopeMode === 'period_partitioned' && partitionKey.trim()
+            ? { partition_key: partitionKey.trim() }
+            : {}),
           ...(playbook_options ? { playbook_options } : {}),
           ...(shouldUseDocset
             ? {
@@ -2676,6 +2792,11 @@ export function ContractAnalysisPane({
                             {t('runs.scopeDocset')}
                           </Badge>
                         )}
+                        {run.analysisScopeMode !== 'rolling' && (
+                          <Badge size="sm">
+                            {t(`scopePolicy.modeBadge.${run.analysisScopeMode}` as any)}
+                          </Badge>
+                        )}
                         <Badge
                           size="sm"
                           variant={run.status === 'failed' ? 'error' : run.status === 'running' ? 'warning' : run.status === 'succeeded' ? 'success' : 'default'}
@@ -2685,7 +2806,10 @@ export function ContractAnalysisPane({
                       </div>
                     </div>
                     <p className="mt-1 text-xs text-text-soft">
-                      {run.scope === 'bundle' ? t('runs.scopeDocset') : t('runs.scopeSingle')} · {new Date(run.createdAt).toLocaleString()}
+                      {run.scope === 'bundle' ? t('runs.scopeDocset') : t('runs.scopeSingle')}
+                      {run.partitionKey ? ` · ${run.partitionKey}` : ''}
+                      {' · '}
+                      {new Date(run.createdAt).toLocaleString()}
                     </p>
                   </button>
                 ))}
@@ -3028,7 +3152,7 @@ export function ContractAnalysisPane({
                 </div>
 
                 <div className="pt-3 border-t border-border space-y-2">
-                  <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('docset.scopeTitle')}</div>
+                  <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('sources.title')}</div>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -3197,15 +3321,16 @@ export function ContractAnalysisPane({
                                         <svg className="w-3.5 h-3.5 text-text-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
                                       </button>
                                     </div>
-                                    <button
-                                      onClick={() => removeDocumentFromDocset(m.document_id)}
-                                      className="p-1 rounded hover:bg-error/10 transition-colors flex-shrink-0"
-                                    >
-                                      <X className="w-3.5 h-3.5 text-error/70" />
-                                    </button>
-                                  </div>
-                                );
-                              })}
+                                  <button
+                                    onClick={() => removeDocumentFromDocset(m.document_id)}
+                                    className="p-1 rounded hover:bg-error/10 transition-colors flex-shrink-0"
+                                  >
+                                    <X className="w-3.5 h-3.5 text-error/70" />
+                                  </button>
+                                  <Badge size="sm">{t('sources.manualBadge')}</Badge>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -3261,6 +3386,145 @@ export function ContractAnalysisPane({
                     )}
                   </div>
                 )}
+
+                <div className="pt-3 border-t border-border space-y-3">
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-text-soft uppercase tracking-wider">{t('scopePolicy.title')}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {([
+                        ['rolling', t('scopePolicy.modeRolling')],
+                        ['pinned', t('scopePolicy.modePinned')],
+                        ['windowed', t('scopePolicy.modeWindowed')],
+                        ['period_partitioned', t('scopePolicy.modePartitioned')],
+                      ] as const).map(([value, label]) => (
+                        <Button
+                          key={value}
+                          size="sm"
+                          variant={analysisScopeMode === value ? 'primary' : 'secondary'}
+                          onClick={() => setAnalysisScopeMode(value)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-text-soft">{t('scopePolicy.help')}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.displayLabel')}</div>
+                      <input
+                        value={scopeDisplayLabel}
+                        onChange={(e) => setScopeDisplayLabel(e.target.value)}
+                        placeholder={normalizedScopeDisplayLabel}
+                        className="w-full px-2.5 py-2 rounded-md border border-border bg-surface-alt text-sm text-text placeholder:text-text-soft/50 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.anchorKind')}</div>
+                      <ScholarSelect
+                        value={scopeAnchorKind}
+                        onChange={(e) => setScopeAnchorKind(e.target.value as ScopeAnchorKind)}
+                        options={[
+                          { value: 'none', label: t('scopePolicy.anchor.none') },
+                          { value: 'event_time', label: t('scopePolicy.anchor.event_time') },
+                          { value: 'document_time', label: t('scopePolicy.anchor.document_time') },
+                          { value: 'api_fetch_time', label: t('scopePolicy.anchor.api_fetch_time') },
+                          { value: 'business_day', label: t('scopePolicy.anchor.business_day') },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.anchorField')}</div>
+                      <input
+                        value={scopeAnchorField}
+                        onChange={(e) => setScopeAnchorField(e.target.value)}
+                        placeholder={t('scopePolicy.anchorFieldPlaceholder')}
+                        className="w-full px-2.5 py-2 rounded-md border border-border bg-surface-alt text-sm text-text placeholder:text-text-soft/50 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.comparisonTitle')}</div>
+                      <ScholarSelect
+                        value={comparisonPolicy}
+                        onChange={(e) => setComparisonPolicy(e.target.value as AnalysisScopeComparisonPolicy)}
+                        options={[
+                          { value: 'none', label: t('scopePolicy.comparison.none') },
+                          { value: 'previous_run', label: t('scopePolicy.comparison.previous_run') },
+                          { value: 'previous_partition', label: t('scopePolicy.comparison.previous_partition') },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  {analysisScopeMode === 'windowed' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.windowLookback')}</div>
+                        <input
+                          type="number"
+                          min={1}
+                          value={windowLookbackValue}
+                          onChange={(e) => setWindowLookbackValue(e.target.value)}
+                          className="w-full px-2.5 py-2 rounded-md border border-border bg-surface-alt text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.windowUnit')}</div>
+                        <ScholarSelect
+                          value={windowLookbackUnit}
+                          onChange={(e) => setWindowLookbackUnit(e.target.value as typeof windowLookbackUnit)}
+                          options={[
+                            { value: 'hour', label: t('scopePolicy.unit.hour') },
+                            { value: 'day', label: t('scopePolicy.unit.day') },
+                            { value: 'week', label: t('scopePolicy.unit.week') },
+                            { value: 'month', label: t('scopePolicy.unit.month') },
+                            { value: 'quarter', label: t('scopePolicy.unit.quarter') },
+                            { value: 'year', label: t('scopePolicy.unit.year') },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisScopeMode === 'period_partitioned' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.partitionGrain')}</div>
+                        <ScholarSelect
+                          value={partitionGrain}
+                          onChange={(e) => setPartitionGrain(e.target.value as ScopePartitionGrain)}
+                          options={[
+                            { value: 'day', label: t('scopePolicy.unit.day') },
+                            { value: 'week', label: t('scopePolicy.unit.week') },
+                            { value: 'month', label: t('scopePolicy.unit.month') },
+                            { value: 'quarter', label: t('scopePolicy.unit.quarter') },
+                            { value: 'year', label: t('scopePolicy.unit.year') },
+                            { value: 'custom', label: t('scopePolicy.unit.custom') },
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.partitionKey')}</div>
+                        <input
+                          value={partitionKey}
+                          onChange={(e) => setPartitionKey(e.target.value)}
+                          placeholder={t('scopePolicy.partitionKeyPlaceholder')}
+                          className="w-full px-2.5 py-2 rounded-md border border-border bg-surface-alt text-sm text-text placeholder:text-text-soft/50 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-scholar border border-border bg-surface-alt px-3 py-3">
+                    <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">{t('scopePolicy.previewTitle')}</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {runPreviewItems.map((item) => (
+                        <Badge key={item} size="sm">{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="pt-3 border-t border-border space-y-3">
                   <div className="space-y-2.5">
@@ -3340,6 +3604,9 @@ export function ContractAnalysisPane({
                                   ) : null}
                                   {connection.enabled_by_default !== false ? (
                                     <Badge size="sm">{t('apiSources.defaultBadge')}</Badge>
+                                  ) : null}
+                                  {selected ? (
+                                    <Badge size="sm">{t('sources.manualBadge')}</Badge>
                                   ) : null}
                                 </div>
                                 {connection.endpoint_url ? (

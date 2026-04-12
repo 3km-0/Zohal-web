@@ -1482,6 +1482,67 @@
         "invalidDocset": "إعداد المستندات المرتبطة غير صالح."
       }
     },
+    "sources": {
+      "title": "المصادر",
+      "manualBadge": "اختاره المستخدم"
+    },
+    "scopePolicy": {
+      "title": "النطاق",
+      "help": "حدّد كيف يتقدّم هذا العرض الحي: متجدّد أو مجمّد أو نافذة زمنية أو مقسّم إلى فترات.",
+      "displayLabel": "اسم النطاق",
+      "anchorKind": "نوع المرساة",
+      "anchorField": "حقل المرساة",
+      "anchorFieldPlaceholder": "اسم حقل اختياري مثل business_day أو event_time",
+      "comparisonTitle": "المقارنة مع",
+      "windowLookback": "قيمة الرجوع",
+      "windowUnit": "وحدة الرجوع",
+      "partitionGrain": "دورية التقسيم",
+      "partitionKey": "مفتاح الفترة",
+      "partitionKeyPlaceholder": "مفتاح اختياري مثل 2026-04-12 أو Night Audit 1447-10-24",
+      "previewTitle": "معاينة التشغيل",
+      "modeRolling": "متجدّد",
+      "modePinned": "مجمّد",
+      "modeWindowed": "نافذة زمنية",
+      "modePartitioned": "مقسّم إلى فترات",
+      "currentPartition": "الفترة الحالية",
+      "modeBadge": {
+        "rolling": "متجدّد",
+        "pinned": "مجمّد",
+        "windowed": "نافذة",
+        "period_partitioned": "فترات"
+      },
+      "comparison": {
+        "none": "بدون مقارنة",
+        "previous_run": "مقارنة مع التشغيل السابق",
+        "previous_partition": "مقارنة مع الفترة السابقة"
+      },
+      "anchor": {
+        "none": "بدون",
+        "event_time": "وقت الحدث",
+        "document_time": "وقت المستند",
+        "api_fetch_time": "وقت جلب الـ API",
+        "business_day": "يوم العمل"
+      },
+      "unit": {
+        "hour": "ساعة",
+        "day": "يوم",
+        "week": "أسبوع",
+        "month": "شهر",
+        "quarter": "ربع",
+        "year": "سنة",
+        "custom": "مخصص"
+      },
+      "previewMode": {
+        "rolling": "عرض متجدّد",
+        "pinned": "عرض مجمّد",
+        "windowed": "عرض بنافذة زمنية",
+        "period_partitioned": "عرض مقسّم إلى فترات"
+      },
+      "previewSources": "{count} مصدر مستندي",
+      "previewApis": "{count} مصدر API",
+      "previewWindow": "آخر {count} {unit}",
+      "previewPartition": "{grain}: {key}"
+    },
     "inspector": {
       "title": "مرجعية التشغيل",
       "recipe": "وصفة التحليل المستخدمة",
