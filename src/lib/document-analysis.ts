@@ -66,7 +66,22 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   if (!documentType) return [];
 
   const searchableText = normalizedDocumentText(metadata);
-  const realEstateKeywords = ['lease', 'rent roll', 'tenant', 'landlord', 'noi ', 'net operating income', 'premises'];
+  const realEstateKeywords = [
+    'lease',
+    'lease amendment',
+    'rent roll',
+    'tenant',
+    'landlord',
+    'payment ledger',
+    'receivables ledger',
+    'arrears',
+    'vacancy',
+    'lease renewal',
+    'tenant renewal',
+    'noi ',
+    'net operating income',
+    'premises',
+  ];
   const retailKeywords = ['restaurant', 'pos ', 'food cost', 'menu', 'retail margin'];
   const privateMarketsKeywords = [
     'capital call',

@@ -107,6 +107,15 @@ describe('document analysis template recommendations', () => {
     ).toBe('Private Markets Obligations & Liquidity Workspace');
   });
 
+  it('routes real-estate operating files into the real-estate tracker', () => {
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'contract',
+        title: 'Retail Asset lease amendment and rent roll arrears review',
+      })[0]
+    ).toBe('Real Estate Portfolio Tracker');
+  });
+
   it('marks onboarding documents as structured-analysis capable', () => {
     expect(supportsStructuredAnalysis('onboarding_doc')).toBe(true);
     expect(supportsStructuredAnalysis('paper')).toBe(true);

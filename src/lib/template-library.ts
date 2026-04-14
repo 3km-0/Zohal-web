@@ -66,11 +66,12 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   {
     canonicalName: 'Real Estate Portfolio Tracker',
     group: 'zohal_templates',
-    rank: 60,
+    rank: 12,
     emoji: '🏡',
     description:
-      'Leases, rent rolls, and opex turned into yield, expiry, arrears, and NOI portfolio views.',
-    descriptionAr: 'تتبع محفظة عقارية من العقود والإيجارات.',
+      'Asset Radar turns leases, rent rolls, ledgers, and tenant notices into expiry, arrears, vacancy, NOI drift, concentration, and asset memo views.',
+    descriptionAr: 'Asset Radar يحوّل العقود وكشوف الإيجار والقيود إلى رؤية لمخاطر الأصل والمذكرة العقارية.',
+    aliases: ['Asset Radar'],
   },
   {
     canonicalName: 'Quant Research Workspace',
@@ -170,7 +171,7 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   {
     canonicalName: 'Private Markets Obligations & Liquidity Workspace',
     group: 'zohal_templates',
-    rank: 15,
+    rank: 165,
     emoji: '🏦',
     description:
       'Capital calls, distributions, side letters, notices, and manager updates turned into a maintained allocator obligations and liquidity workspace.',

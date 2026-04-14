@@ -1,5 +1,4 @@
 'use client';
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -13,25 +12,38 @@ import { createClient } from '@/lib/supabase/client';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import type { RememberedRelatedDocuments } from '@/types/analysis-runs';
 import type { PortalDiagnosticsEnvelope } from '@/lib/portal-diagnostics';
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/supabase';
 
 interface ExperiencePublicationPanelProps {
   workspaceId: string;
 }
 
-interface ManualCashPositionRow {
-  id: string;
-  entity_key: string;
-  entity_name: string | null;
-  currency: string | null;
-  available_cash: number | null;
-  reserve_cash: number | null;
-  effective_at: string;
-  status: 'active' | 'superseded' | 'archived';
-  note: string | null;
-  source_note: string | null;
-  trust_class: 'manual_operator_input';
-  updated_at: string;
-}
+const PRIVATE_MARKETS_TEMPLATE_ID = 'private_markets_obligations_liquidity_workspace';
+const REAL_ESTATE_TEMPLATE_ID = 'real_estate_portfolio_tracker';
+
+const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
+  string,
+  {
+    title: string;
+    subtitleKey: 'assetRadarSubtitle' | 'subtitle';
+    summaryKey: 'assetRadarSummary' | 'summary';
+  }
+> = {
+  [REAL_ESTATE_TEMPLATE_ID]: {
+    title: 'Asset Radar',
+    subtitleKey: 'assetRadarSubtitle',
+    summaryKey: 'assetRadarSummary',
+  },
+  [PRIVATE_MARKETS_TEMPLATE_ID]: {
+    title: 'Private Markets Obligations & Liquidity Workspace',
+    subtitleKey: 'subtitle',
+    summaryKey: 'summary',
+  },
+};
+
+type ManualCashPositionRow = Tables<'manual_cash_positions'>;
+type ManualCashPositionInsert = TablesInsert<'manual_cash_positions'>;
+type ManualCashPositionUpdate = TablesUpdate<'manual_cash_positions'>;
 
 interface ManualCashFormState {
   entityName: string;
@@ -119,12 +131,14 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const analysisTemplateId =
     searchParams.get('analysis_template_id') ||
     searchParams.get('template_id') ||
-    'private_markets_obligations_liquidity_workspace';
+    REAL_ESTATE_TEMPLATE_ID;
+  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[analysisTemplateId] || EXPERIENCE_TEMPLATE_DEFAULTS[REAL_ESTATE_TEMPLATE_ID];
+  const supportsManualCashInputs = analysisTemplateId === PRIVATE_MARKETS_TEMPLATE_ID;
   const workspaceSlug = workspaceId.replace(/-/g, '_');
   const templateSlug = analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase();
   const [experienceId, setExperienceId] = useState(`exp_${workspaceSlug}_${templateSlug}`);
   const [corpusId, setCorpusId] = useState(`corpus_${workspaceSlug}_${templateSlug}`);
-  const [title, setTitle] = useState('Private Markets Obligations & Liquidity Workspace');
+  const [title, setTitle] = useState(templateDefaults.title);
   const [host, setHost] = useState('live.zohal.ai');
   const [visibility, setVisibility] = useState('public_unlisted');
   const [password, setPassword] = useState('');
@@ -258,10 +272,18 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   }, [documentId, supabase, workspaceId]);
 
   useEffect(() => {
+    if (!supportsManualCashInputs) {
+      setManualCashPositions([]);
+      return;
+    }
     loadManualCashPositions().catch((err) => {
       toast.showError(err, 'manual-cash-positions');
     });
-  }, [loadManualCashPositions, toast]);
+  }, [loadManualCashPositions, supportsManualCashInputs, toast]);
+
+  useEffect(() => {
+    setTitle(templateDefaults.title);
+  }, [templateDefaults.title]);
 
   const compilePayload = useMemo(
     () => ({
@@ -276,10 +298,10 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
       password: password || undefined,
       org_restricted: visibility === 'org_private',
       title,
-      subtitle: t('defaults.subtitle'),
-      summary: t('defaults.summary'),
+      subtitle: t(`defaults.${templateDefaults.subtitleKey}`),
+      summary: t(`defaults.${templateDefaults.summaryKey}`),
     }),
-    [workspaceId, corpusId, experienceId, analysisTemplateId, host, visibility, password, title, t]
+    [workspaceId, corpusId, experienceId, analysisTemplateId, host, visibility, password, title, t, templateDefaults.subtitleKey, templateDefaults.summaryKey]
   );
 
   const invoke = useCallback(
@@ -354,7 +376,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
 
     setCashBusy('save');
     try {
-      const payload = {
+      const payload: ManualCashPositionInsert = {
         workspace_id: workspaceId,
         entity_key: normalizedEntityKey,
         entity_name: normalizedEntityName || null,
@@ -396,7 +418,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     async (row: ManualCashPositionRow) => {
       setCashBusy(row.id);
       try {
-        const nextStatus = row.status === 'archived' ? 'active' : 'archived';
+        const nextStatus: NonNullable<ManualCashPositionUpdate['status']> =
+          row.status === 'archived' ? 'active' : 'archived';
         const { error: updateError } = await supabase
           .from('manual_cash_positions')
           .update({ status: nextStatus })
@@ -464,6 +487,13 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
+              {analysisTemplateId === REAL_ESTATE_TEMPLATE_ID ? (
+                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                  <div className="font-semibold text-text">{t('assetRadar.title')}</div>
+                  <p className="mt-1 text-text-soft">{t('assetRadar.description')}</p>
+                  <p className="mt-2 text-text-soft">{t('assetRadar.boundary')}</p>
+                </div>
+              ) : null}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-text">{t('fields.visibility')}</label>
@@ -623,6 +653,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
           </Card>
         </div>
 
+        {supportsManualCashInputs ? (
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -795,6 +826,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
             </div>
           </CardContent>
         </Card>
+        ) : null}
 
         <PortalDiagnosticsConsole
           diagnostics={diagnostics}
