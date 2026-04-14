@@ -98,6 +98,15 @@ describe('document analysis template recommendations', () => {
     ).toBe('Board Pack Radar');
   });
 
+  it('routes private-markets notices into the allocator workspace', () => {
+    expect(
+      recommendedSystemPlaybookNames({
+        documentType: 'financial_report',
+        title: 'Fund IV capital call notice and side letter update',
+      })[0]
+    ).toBe('Private Markets Obligations & Liquidity Workspace');
+  });
+
   it('marks onboarding documents as structured-analysis capable', () => {
     expect(supportsStructuredAnalysis('onboarding_doc')).toBe(true);
     expect(supportsStructuredAnalysis('paper')).toBe(true);

@@ -476,15 +476,77 @@
       "description": "أنشئ روابط مؤقتة أو افتح جلسة معاينة مقيّدة.",
       "latestLink": "آخر رابط مُنشأ"
     },
-    "events": {
-      "title": "الأحداث الأخيرة",
-      "description": "عرض خفيف لنشاط النشر الخاص بهذه الواجهة الحية.",
-      "empty": "لا توجد أحداث نشر بعد."
-    },
+  "events": {
+    "title": "الأحداث الأخيرة",
+    "description": "عرض خفيف لنشاط النشر الخاص بهذه الواجهة الحية.",
+    "empty": "لا توجد أحداث نشر بعد."
+  },
+  "manualCash": {
+    "title": "مدخلات النقد اليدوية",
+    "description": "احتفظ بمدخلات النقد على مستوى الكيان والتي تغذي السيولة المتوقعة داخل مساحة العمل.",
+    "trustClass": "إدخال يدوي من المشغّل",
+    "boundary": "تغذي هذه الصفوف السيولة المتوقعة فقط. ولا تستبدل أنظمة المحاسبة أو الخزينة أو الأرصدة البنكية كمصدر حقيقة.",
+    "listTitle": "صفوف النقد الحالية",
+    "empty": "لا توجد مدخلات نقد يدوية بعد.",
     "fields": {
-      "experienceId": "معرّف الواجهة الحية",
-      "corpusId": "معرّف المجموعة",
-      "includedSources": "المصادر المضمنة",
+      "entityName": "اسم الكيان",
+      "entityKey": "مفتاح الكيان",
+      "currency": "العملة",
+      "effectiveAt": "ساري من",
+      "availableCash": "النقد المتاح",
+      "reserveCash": "النقد المحجوز / غير المتاح",
+      "note": "ملاحظة المشغّل",
+      "sourceNote": "ملاحظة المصدر"
+    },
+    "placeholders": {
+      "entityName": "النور القابضة",
+      "entityKey": "al_noor_holdings",
+      "currency": "USD",
+      "amount": "0.00",
+      "note": "سياق اختياري لهذا الإدخال الخاص بالسيولة",
+      "sourceNote": "ملاحظة اختيارية عن المصدر أو المطابقة"
+    },
+    "hints": {
+      "entityKey": "اتركه فارغًا لاشتقاق مفتاح ثابت من اسم الكيان."
+    },
+    "actions": {
+      "create": "حفظ صف النقد",
+      "update": "تحديث صف النقد",
+      "cancelEdit": "إلغاء التعديل",
+      "refresh": "تحديث صفوف النقد",
+      "edit": "تعديل",
+      "archive": "أرشفة",
+      "restore": "استعادة"
+    },
+    "status": {
+      "active": "نشط",
+      "superseded": "تم الاستبدال",
+      "archived": "مؤرشف"
+    },
+    "summary": {
+      "available": "المتاح: {amount}",
+      "reserve": "المحجوز: {amount}"
+    },
+    "rowMeta": "مفتاح الكيان {entityKey} • السريان {effectiveAt}",
+    "sourceNoteLabel": "ملاحظة المصدر: {sourceNote}",
+    "validation": {
+      "entityRequired": "أضف اسم كيان أو مفتاح كيان قبل الحفظ.",
+      "effectiveAtRequired": "اختر وقت سريان قبل الحفظ.",
+      "availableCashInvalid": "يجب أن يكون النقد المتاح رقمًا صالحًا.",
+      "reserveCashInvalid": "يجب أن يكون النقد المحجوز رقمًا صالحًا."
+    },
+    "toast": {
+      "createdTitle": "تم حفظ إدخال النقد",
+      "updatedTitle": "تم تحديث إدخال النقد",
+      "archivedTitle": "تمت أرشفة إدخال النقد",
+      "restoredTitle": "تمت استعادة إدخال النقد",
+      "savedBody": "ستلتقط السيولة المتوقعة هذا الصف عند تحديث مساحة العمل التالي."
+    }
+  },
+  "fields": {
+    "experienceId": "معرّف الواجهة الحية",
+    "corpusId": "معرّف المجموعة",
+    "includedSources": "المصادر المضمنة",
       "title": "العنوان",
       "host": "المضيف",
       "visibility": "الرؤية",

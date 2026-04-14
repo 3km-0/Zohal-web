@@ -68,7 +68,18 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
   const searchableText = normalizedDocumentText(metadata);
   const realEstateKeywords = ['lease', 'rent roll', 'tenant', 'landlord', 'noi ', 'net operating income', 'premises'];
   const retailKeywords = ['restaurant', 'pos ', 'food cost', 'menu', 'retail margin'];
-  const fundKeywords = ['lp letter', 'capital account', 'dpi', 'tvpi', 'fund report', 'capital call'];
+  const privateMarketsKeywords = [
+    'capital call',
+    'capital contribution notice',
+    'distribution notice',
+    'side letter',
+    'drawdown notice',
+    'subscription agreement',
+    'unfunded commitment',
+    'manager letter',
+    'limited partner notice',
+  ];
+  const fundKeywords = ['lp letter', 'capital account', 'dpi', 'tvpi', 'fund report', 'commitment pacing'];
   const boardKeywords = ['board pack', 'management pack', 'management accounts', 'lender report', 'budget vs actual', 'variance'];
   const shipmentKeywords = ['bill of lading', 'packing list', 'arrival notice', 'freight forwarder', 'container', 'shipment'];
   const customsKeywords = ['customs declaration', 'certificate of origin', 'hs code', 'tariff', 'duty', 'broker'];
@@ -116,6 +127,9 @@ export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): stri
     documentType === 'problem_set'
   ) {
     return ['Adaptive Quiz & Spaced Repetition Learning Workspace'];
+  }
+  if (containsAny(searchableText, privateMarketsKeywords)) {
+    return ['Private Markets Obligations & Liquidity Workspace'];
   }
   if (containsAny(searchableText, fundKeywords)) {
     return ['Saudi Family Office Portfolio Monitor'];
@@ -182,6 +196,7 @@ const LEGACY_RECOMMENDED_TEMPLATE_ID: Record<string, string> = {
   logistics_operations_portal: 'logistics_operations_interface',
   portfolio_monitoring_workspace: 'family_office_portfolio_monitor',
   credit_covenant_monitoring: 'startup_cfo_workspace',
+  private_markets_allocator_workspace: 'private_markets_obligations_liquidity_workspace',
 };
 
 export function resolveRecommendedPlaybook<T extends PlaybookLike>(

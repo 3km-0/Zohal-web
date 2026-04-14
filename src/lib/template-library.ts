@@ -167,6 +167,16 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
       'Night audit reports, PMS exports, folios, and POS summaries turned into reconciliation and exception workflows.',
     descriptionAr: 'تقارير التدقيق الليلي وبيانات الفندق إلى متابعة للمطابقة والاستثناءات.',
   },
+  {
+    canonicalName: 'Private Markets Obligations & Liquidity Workspace',
+    group: 'zohal_templates',
+    rank: 15,
+    emoji: '🏦',
+    description:
+      'Capital calls, distributions, side letters, notices, and manager updates turned into a maintained allocator obligations and liquidity workspace.',
+    descriptionAr: 'مساحة التزامات وسيولة للأسواق الخاصة مبنية من النداءات والتوزيعات والإشعارات.',
+    aliases: ['Private Markets Allocator Workspace', 'Allocator Obligations & Liquidity Workspace'],
+  },
 ];
 
 
@@ -195,6 +205,8 @@ const TEMPLATE_ID_TO_DEFINITION = new Map<string, TemplateDefinition>([
   ['course_learning_interface', TEMPLATE_DEFINITIONS[13]],
   ['research_synthesis_interface', TEMPLATE_DEFINITIONS[14]],
   ['hospitality_night_audit_workspace', TEMPLATE_DEFINITIONS[15]],
+  ['private_markets_obligations_liquidity_workspace', TEMPLATE_DEFINITIONS[16]],
+  ['private_markets_allocator_workspace', TEMPLATE_DEFINITIONS[16]],
   ['portfolio_monitoring_workspace', TEMPLATE_DEFINITIONS[1]],
   ['credit_covenant_monitoring', TEMPLATE_DEFINITIONS[2]],
   ['research_synthesis_site', TEMPLATE_DEFINITIONS[14]],

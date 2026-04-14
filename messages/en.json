@@ -476,15 +476,77 @@
       "description": "Issue expiring links or open a restricted preview session.",
       "latestLink": "Latest issued link"
     },
-    "events": {
-      "title": "Recent events",
-      "description": "A lightweight view of publication activity for this Living Interface.",
-      "empty": "No publication events yet."
-    },
+  "events": {
+    "title": "Recent events",
+    "description": "A lightweight view of publication activity for this Living Interface.",
+    "empty": "No publication events yet."
+  },
+  "manualCash": {
+    "title": "Manual cash inputs",
+    "description": "Maintain the entity-level cash inputs that feed projected liquidity in this workspace.",
+    "trustClass": "Manual operator input",
+    "boundary": "These rows drive projected liquidity only. They do not replace accounting, treasury, or bank source-of-truth balances.",
+    "listTitle": "Current cash rows",
+    "empty": "No manual cash inputs yet.",
     "fields": {
-      "experienceId": "Living Interface ID",
-      "corpusId": "Corpus ID",
-      "includedSources": "Included sources",
+      "entityName": "Entity name",
+      "entityKey": "Entity key",
+      "currency": "Currency",
+      "effectiveAt": "Effective at",
+      "availableCash": "Available cash",
+      "reserveCash": "Reserve / unavailable cash",
+      "note": "Operator note",
+      "sourceNote": "Source note"
+    },
+    "placeholders": {
+      "entityName": "Al Noor Holdings",
+      "entityKey": "al_noor_holdings",
+      "currency": "USD",
+      "amount": "0.00",
+      "note": "Optional context for this liquidity input",
+      "sourceNote": "Optional source or reconciliation note"
+    },
+    "hints": {
+      "entityKey": "Leave blank to derive a stable key from the entity name."
+    },
+    "actions": {
+      "create": "Save cash row",
+      "update": "Update cash row",
+      "cancelEdit": "Cancel edit",
+      "refresh": "Refresh cash rows",
+      "edit": "Edit",
+      "archive": "Archive",
+      "restore": "Restore"
+    },
+    "status": {
+      "active": "Active",
+      "superseded": "Superseded",
+      "archived": "Archived"
+    },
+    "summary": {
+      "available": "Available: {amount}",
+      "reserve": "Reserve: {amount}"
+    },
+    "rowMeta": "Entity key {entityKey} • Effective {effectiveAt}",
+    "sourceNoteLabel": "Source note: {sourceNote}",
+    "validation": {
+      "entityRequired": "Add an entity name or entity key before saving.",
+      "effectiveAtRequired": "Choose an effective timestamp before saving.",
+      "availableCashInvalid": "Available cash must be a valid number.",
+      "reserveCashInvalid": "Reserve cash must be a valid number."
+    },
+    "toast": {
+      "createdTitle": "Cash input saved",
+      "updatedTitle": "Cash input updated",
+      "archivedTitle": "Cash input archived",
+      "restoredTitle": "Cash input restored",
+      "savedBody": "Projected liquidity will pick up this row on the next workspace refresh."
+    }
+  },
+  "fields": {
+    "experienceId": "Living Interface ID",
+    "corpusId": "Corpus ID",
+    "includedSources": "Included sources",
       "title": "Title",
       "host": "Host",
       "visibility": "Visibility",
