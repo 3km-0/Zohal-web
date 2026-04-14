@@ -180,6 +180,7 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   },
 ];
 
+const PRIMARY_TEMPLATE_CANONICAL_NAME = 'Real Estate Portfolio Tracker';
 
 const NAME_TO_DEFINITION = new Map<string, TemplateDefinition>();
 for (const definition of TEMPLATE_DEFINITIONS) {
@@ -251,7 +252,9 @@ function metaLibrarySection(playbook: TemplateLibraryPlaybookLike): string {
 }
 
 function isHiddenDefinition(definition: TemplateDefinition | null): boolean {
-  return definition?.hidden === true;
+  if (!definition) return false;
+  if (definition.hidden === true) return true;
+  return definition.canonicalName !== PRIMARY_TEMPLATE_CANONICAL_NAME;
 }
 
 export function isHiddenSystemPlaybook(playbook: TemplateLibraryPlaybookLike): boolean {

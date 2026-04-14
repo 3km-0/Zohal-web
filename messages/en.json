@@ -453,10 +453,10 @@
   },
   "experiencesPage": {
     "title": "Living Interfaces",
-    "subtitle": "Compile, validate, publish, and share Living Interfaces for this workspace.",
+    "subtitle": "Compile, validate, publish, and customize the Asset Radar Living Interface for this workspace.",
     "configure": {
       "title": "Living Interface configuration",
-      "description": "Choose the active template, compile the Snapshot-backed Living Interface, and manage the publish flow from here.",
+      "description": "Asset Radar is the active template for this workspace. Compile the Snapshot-backed Living Interface and manage the publish flow from here.",
       "relatedDocumentsTitle": "Related documents remembered from last analysis",
       "relatedDocumentsDescription": "Living Interface publication still compiles from the primary document only in this release."
     },
@@ -473,7 +473,7 @@
     },
     "sharing": {
       "title": "Access and sharing",
-      "description": "Issue expiring links or open a restricted preview session.",
+      "description": "Publish to a public live URL by default, with restricted access tools available when needed.",
       "latestLink": "Latest issued link"
     },
   "assetRadar": {
@@ -577,8 +577,8 @@
       "refreshPortal": "Refresh diagnostics"
     },
     "defaults": {
-      "subtitle": "Evidence-grounded investor dashboard",
-      "summary": "Compile verified workspace truth into a Living Interface for investor review.",
+      "subtitle": "Deterministic Asset Radar Surface",
+      "summary": "Compile verified real-estate workspace truth into the default Asset Radar Living Interface.",
       "assetRadarSubtitle": "Maintained asset risk visibility from leases, ledgers, and notices",
       "assetRadarSummary": "Compile lease expiry, arrears, vacancy pressure, NOI drift, tenant concentration, and memo-ready asset state into a Living Interface."
     },

@@ -9,22 +9,13 @@ import type { TemplateLibraryPlaybookLike, TemplateRecord } from '@/types/templa
 
 type PlaybookLike = TemplateLibraryPlaybookLike & Pick<TemplateRecord, 'id' | 'current_version_id'>;
 
+const ASSET_RADAR_TEMPLATE_NAME = 'Real Estate Portfolio Tracker';
+
 type DocumentMetadata = {
   documentType?: string | null;
   title?: string | null;
   originalFilename?: string | null;
 };
-
-function normalizedDocumentText(metadata: DocumentMetadata): string {
-  return [metadata.title, metadata.originalFilename]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-}
-
-function containsAny(text: string, keywords: readonly string[]): boolean {
-  return keywords.some((keyword) => text.includes(keyword));
-}
 
 export function getAnalysisLabelKey(documentType?: string | null) {
   switch (documentType) {
@@ -62,104 +53,8 @@ export function getAnalysisLabelKey(documentType?: string | null) {
 }
 
 export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): string[] {
-  const { documentType } = metadata;
-  if (!documentType) return [];
-
-  const searchableText = normalizedDocumentText(metadata);
-  const realEstateKeywords = [
-    'lease',
-    'lease amendment',
-    'rent roll',
-    'tenant',
-    'landlord',
-    'payment ledger',
-    'receivables ledger',
-    'arrears',
-    'vacancy',
-    'lease renewal',
-    'tenant renewal',
-    'noi ',
-    'net operating income',
-    'premises',
-  ];
-  const retailKeywords = ['restaurant', 'pos ', 'food cost', 'menu', 'retail margin'];
-  const privateMarketsKeywords = [
-    'capital call',
-    'capital contribution notice',
-    'distribution notice',
-    'side letter',
-    'drawdown notice',
-    'subscription agreement',
-    'unfunded commitment',
-    'manager letter',
-    'limited partner notice',
-  ];
-  const fundKeywords = ['lp letter', 'capital account', 'dpi', 'tvpi', 'fund report', 'commitment pacing'];
-  const boardKeywords = ['board pack', 'management pack', 'management accounts', 'lender report', 'budget vs actual', 'variance'];
-  const shipmentKeywords = ['bill of lading', 'packing list', 'arrival notice', 'freight forwarder', 'container', 'shipment'];
-  const customsKeywords = ['customs declaration', 'certificate of origin', 'hs code', 'tariff', 'duty', 'broker'];
-  const constructionKeywords = ['delivery note', 'site receipt', 'site delivery', 'subcontractor', 'project schedule', 'material shortage'];
-  const healthcareKeywords = ['lab report', 'blood test', 'patient', 'biomarker', 'clinician note', 'visit summary'];
-  const educationKeywords = ['syllabus', 'lecture notes', 'study guide', 'question bank', 'flashcard', 'spaced repetition'];
-  const quantKeywords = ['backtest', 'sharpe', 'factor model', 'value at risk', 'cointegration', 'monte carlo'];
-  const researchKeywords = ['literature review', 'systematic review', 'meta-analysis', 'preprint', 'citation graph', 'research synthesis'];
-  const hospitalityKeywords = ['night audit', 'folio', 'revpar', 'pms export', 'room charge', 'shift handover'];
-
-  if (containsAny(searchableText, boardKeywords)) {
-    return ['Board Pack Radar'];
-  }
-  if (containsAny(searchableText, realEstateKeywords)) {
-    return ['Real Estate Portfolio Tracker'];
-  }
-  if (containsAny(searchableText, retailKeywords)) {
-    return ['Retail / F&B Owner Margin Intelligence Workspace'];
-  }
-  if (containsAny(searchableText, customsKeywords)) {
-    return ['Customs & Trade Compliance Workspace'];
-  }
-  if (containsAny(searchableText, constructionKeywords)) {
-    return ['Construction Materials & Site Delivery Workspace'];
-  }
-  if (containsAny(searchableText, shipmentKeywords)) {
-    return ['Import / Export Shipment Control Tower'];
-  }
-  if (containsAny(searchableText, hospitalityKeywords)) {
-    return ['Hospitality Night Audit Workspace'];
-  }
-  if (containsAny(searchableText, healthcareKeywords)) {
-    return ['Lab Reports -> Patient Biomarker Dashboard'];
-  }
-  if (containsAny(searchableText, quantKeywords)) {
-    return ['Quant Research Workspace'];
-  }
-  if (containsAny(searchableText, researchKeywords) || documentType === 'paper' || documentType === 'research') {
-    return ['Literature Review & Research Synthesis Workspace'];
-  }
-  if (
-    containsAny(searchableText, educationKeywords) ||
-    documentType === 'textbook' ||
-    documentType === 'lecture_notes' ||
-    documentType === 'problem_set'
-  ) {
-    return ['Adaptive Quiz & Spaced Repetition Learning Workspace'];
-  }
-  if (containsAny(searchableText, privateMarketsKeywords)) {
-    return ['Private Markets Obligations & Liquidity Workspace'];
-  }
-  if (containsAny(searchableText, fundKeywords)) {
-    return ['Saudi Family Office Portfolio Monitor'];
-  }
-  if (documentType === 'financial_report') {
-    return ['Public Company Intelligence Workspace'];
-  }
-  if (documentType === 'contract' || documentType === 'legal_filing' || documentType === 'policy') {
-    return ['PE Diligence Data Room Workspace'];
-  }
-  if (documentType === 'invoice' || documentType === 'onboarding_doc') {
-    return ['WhatsApp Receipts to SMB Cash Flow Workspace'];
-  }
-
-  return [];
+  void metadata;
+  return [ASSET_RADAR_TEMPLATE_NAME];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {

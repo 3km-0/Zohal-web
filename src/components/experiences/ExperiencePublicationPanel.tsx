@@ -2,23 +2,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Archive, ExternalLink, Link as LinkIcon, Pencil, RefreshCw, Rocket, RotateCcw, ShieldCheck, Wallet } from 'lucide-react';
+import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { PortalDiagnosticsConsole } from '@/components/experiences/PortalDiagnosticsConsole';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
-import { useToast } from '@/components/ui/Toast';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import type { RememberedRelatedDocuments } from '@/types/analysis-runs';
 import type { PortalDiagnosticsEnvelope } from '@/lib/portal-diagnostics';
-import type { Tables, TablesInsert, TablesUpdate } from '@/types/supabase';
 
 interface ExperiencePublicationPanelProps {
   workspaceId: string;
 }
 
-const PRIVATE_MARKETS_TEMPLATE_ID = 'private_markets_obligations_liquidity_workspace';
 const REAL_ESTATE_TEMPLATE_ID = 'real_estate_portfolio_tracker';
 
 const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
@@ -34,106 +31,15 @@ const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
     subtitleKey: 'assetRadarSubtitle',
     summaryKey: 'assetRadarSummary',
   },
-  [PRIVATE_MARKETS_TEMPLATE_ID]: {
-    title: 'Private Markets Obligations & Liquidity Workspace',
-    subtitleKey: 'subtitle',
-    summaryKey: 'summary',
-  },
 };
-
-type ManualCashPositionRow = Tables<'manual_cash_positions'>;
-type ManualCashPositionInsert = TablesInsert<'manual_cash_positions'>;
-type ManualCashPositionUpdate = TablesUpdate<'manual_cash_positions'>;
-
-interface ManualCashFormState {
-  entityName: string;
-  entityKey: string;
-  currency: string;
-  availableCash: string;
-  reserveCash: string;
-  effectiveAt: string;
-  note: string;
-  sourceNote: string;
-}
-
-function formatLocalDateTimeInput(value?: string | null) {
-  const date = value ? new Date(value) : new Date();
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-function createManualCashFormState(): ManualCashFormState {
-  return {
-    entityName: '',
-    entityKey: '',
-    currency: 'USD',
-    availableCash: '',
-    reserveCash: '',
-    effectiveAt: formatLocalDateTimeInput(),
-    note: '',
-    sourceNote: '',
-  };
-}
-
-function normalizeEntityKey(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-function parseCashAmount(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const numeric = Number(trimmed);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function formatCashAmount(amount: number | null, currency?: string | null) {
-  if (amount == null) return '—';
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currency || 'USD',
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency || 'USD'} ${amount.toFixed(2)}`;
-  }
-}
-
-function badgeVariantForCashStatus(status: ManualCashPositionRow['status']): 'default' | 'success' | 'warning' {
-  switch (status) {
-    case 'active':
-      return 'success';
-    case 'superseded':
-      return 'warning';
-    case 'archived':
-    default:
-      return 'default';
-  }
-}
 
 export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicationPanelProps) {
   const t = useTranslations('experiencesPage');
-  const toast = useToast();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const documentId = searchParams.get('document_id');
-  const analysisTemplateId =
-    searchParams.get('analysis_template_id') ||
-    searchParams.get('template_id') ||
-    REAL_ESTATE_TEMPLATE_ID;
-  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[analysisTemplateId] || EXPERIENCE_TEMPLATE_DEFAULTS[REAL_ESTATE_TEMPLATE_ID];
-  const supportsManualCashInputs = analysisTemplateId === PRIVATE_MARKETS_TEMPLATE_ID;
+  const analysisTemplateId = REAL_ESTATE_TEMPLATE_ID;
+  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[REAL_ESTATE_TEMPLATE_ID];
   const workspaceSlug = workspaceId.replace(/-/g, '_');
   const templateSlug = analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase();
   const [experienceId, setExperienceId] = useState(`exp_${workspaceSlug}_${templateSlug}`);
@@ -148,35 +54,9 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [rememberedRelatedDocuments, setRememberedRelatedDocuments] = useState<RememberedRelatedDocuments | null>(null);
   const [documentTitlesById, setDocumentTitlesById] = useState<Record<string, string>>({});
-  const [manualCashPositions, setManualCashPositions] = useState<ManualCashPositionRow[]>([]);
-  const [manualCashForm, setManualCashForm] = useState<ManualCashFormState>(() => createManualCashFormState());
-  const [editingCashPositionId, setEditingCashPositionId] = useState<string | null>(null);
-  const [cashBusy, setCashBusy] = useState<string | null>(null);
   const includedSourcesLabel = rememberedRelatedDocuments
     ? `${rememberedRelatedDocuments.documentIds.length} related documents from the latest successful analysis`
     : 'Workspace sources are resolved automatically for this publication flow.';
-
-  const loadManualCashPositions = useCallback(async () => {
-    setCashBusy((current) => current || 'loading');
-    try {
-      const { data, error: loadError } = await supabase
-        .from('manual_cash_positions')
-        .select(
-          'id, entity_key, entity_name, currency, available_cash, reserve_cash, effective_at, status, note, source_note, trust_class, updated_at'
-        )
-        .eq('workspace_id', workspaceId)
-        .order('effective_at', { ascending: false })
-        .order('updated_at', { ascending: false });
-
-      if (loadError) {
-        throw loadError;
-      }
-
-      setManualCashPositions((data || []) as ManualCashPositionRow[]);
-    } finally {
-      setCashBusy((current) => (current === 'loading' ? null : current));
-    }
-  }, [supabase, workspaceId]);
 
   const fetchDiagnostics = useCallback(
     async (options?: { refreshProbe?: boolean; candidateId?: string | null }) => {
@@ -272,16 +152,6 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   }, [documentId, supabase, workspaceId]);
 
   useEffect(() => {
-    if (!supportsManualCashInputs) {
-      setManualCashPositions([]);
-      return;
-    }
-    loadManualCashPositions().catch((err) => {
-      toast.showError(err, 'manual-cash-positions');
-    });
-  }, [loadManualCashPositions, supportsManualCashInputs, toast]);
-
-  useEffect(() => {
     setTitle(templateDefaults.title);
   }, [templateDefaults.title]);
 
@@ -345,107 +215,6 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
 
   const latestCandidateId = diagnosticsEnvelope?.candidate_id || diagnosticsEnvelope?.diagnostics?.candidate?.candidate_id || null;
   const diagnostics = diagnosticsEnvelope?.diagnostics || null;
-
-  const resetManualCashForm = useCallback(() => {
-    setEditingCashPositionId(null);
-    setManualCashForm(createManualCashFormState());
-  }, []);
-
-  const saveManualCashPosition = useCallback(async () => {
-    const normalizedEntityName = manualCashForm.entityName.trim();
-    const normalizedEntityKey = normalizeEntityKey(manualCashForm.entityKey || normalizedEntityName);
-    const availableCash = parseCashAmount(manualCashForm.availableCash);
-    const reserveCash = parseCashAmount(manualCashForm.reserveCash);
-
-    if (!normalizedEntityKey) {
-      toast.showError(new Error(t('manualCash.validation.entityRequired')), 'manual-cash-positions');
-      return;
-    }
-    if (!manualCashForm.effectiveAt) {
-      toast.showError(new Error(t('manualCash.validation.effectiveAtRequired')), 'manual-cash-positions');
-      return;
-    }
-    if (manualCashForm.availableCash.trim() && availableCash == null) {
-      toast.showError(new Error(t('manualCash.validation.availableCashInvalid')), 'manual-cash-positions');
-      return;
-    }
-    if (manualCashForm.reserveCash.trim() && reserveCash == null) {
-      toast.showError(new Error(t('manualCash.validation.reserveCashInvalid')), 'manual-cash-positions');
-      return;
-    }
-
-    setCashBusy('save');
-    try {
-      const payload: ManualCashPositionInsert = {
-        workspace_id: workspaceId,
-        entity_key: normalizedEntityKey,
-        entity_name: normalizedEntityName || null,
-        currency: manualCashForm.currency.trim().toUpperCase() || null,
-        available_cash: availableCash,
-        reserve_cash: reserveCash,
-        effective_at: new Date(manualCashForm.effectiveAt).toISOString(),
-        note: manualCashForm.note.trim() || null,
-        source_note: manualCashForm.sourceNote.trim() || null,
-      };
-
-      const query = editingCashPositionId
-        ? supabase
-            .from('manual_cash_positions')
-            .update(payload)
-            .eq('id', editingCashPositionId)
-            .eq('workspace_id', workspaceId)
-        : supabase.from('manual_cash_positions').insert(payload);
-
-      const { error: saveError } = await query;
-      if (saveError) {
-        throw saveError;
-      }
-
-      await loadManualCashPositions();
-      resetManualCashForm();
-      toast.showSuccess(
-        editingCashPositionId ? t('manualCash.toast.updatedTitle') : t('manualCash.toast.createdTitle'),
-        t('manualCash.toast.savedBody')
-      );
-    } catch (err) {
-      toast.showError(err, 'manual-cash-positions');
-    } finally {
-      setCashBusy(null);
-    }
-  }, [editingCashPositionId, loadManualCashPositions, manualCashForm, resetManualCashForm, supabase, t, toast, workspaceId]);
-
-  const archiveManualCashPosition = useCallback(
-    async (row: ManualCashPositionRow) => {
-      setCashBusy(row.id);
-      try {
-        const nextStatus: NonNullable<ManualCashPositionUpdate['status']> =
-          row.status === 'archived' ? 'active' : 'archived';
-        const { error: updateError } = await supabase
-          .from('manual_cash_positions')
-          .update({ status: nextStatus })
-          .eq('id', row.id)
-          .eq('workspace_id', workspaceId);
-
-        if (updateError) {
-          throw updateError;
-        }
-
-        await loadManualCashPositions();
-        if (editingCashPositionId === row.id && nextStatus === 'archived') {
-          resetManualCashForm();
-        }
-        toast.showSuccess(
-          nextStatus === 'archived' ? t('manualCash.toast.archivedTitle') : t('manualCash.toast.restoredTitle'),
-          t('manualCash.toast.savedBody')
-        );
-      } catch (err) {
-        toast.showError(err, 'manual-cash-positions');
-      } finally {
-        setCashBusy(null);
-      }
-    },
-    [editingCashPositionId, loadManualCashPositions, resetManualCashForm, supabase, t, toast, workspaceId]
-  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -652,181 +421,6 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
             </CardContent>
           </Card>
         </div>
-
-        {supportsManualCashInputs ? (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <CardTitle>{t('manualCash.title')}</CardTitle>
-                <CardDescription>{t('manualCash.description')}</CardDescription>
-              </div>
-              <Badge variant="accent" size="sm">
-                {t('manualCash.trustClass')}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
-              {t('manualCash.boundary')}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Input
-                label={t('manualCash.fields.entityName')}
-                value={manualCashForm.entityName}
-                onChange={(event) => setManualCashForm((current) => ({ ...current, entityName: event.target.value }))}
-                placeholder={t('manualCash.placeholders.entityName')}
-              />
-              <Input
-                label={t('manualCash.fields.entityKey')}
-                value={manualCashForm.entityKey}
-                onChange={(event) => setManualCashForm((current) => ({ ...current, entityKey: event.target.value }))}
-                placeholder={t('manualCash.placeholders.entityKey')}
-                hint={t('manualCash.hints.entityKey')}
-              />
-              <Input
-                label={t('manualCash.fields.currency')}
-                value={manualCashForm.currency}
-                onChange={(event) => setManualCashForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
-                placeholder={t('manualCash.placeholders.currency')}
-              />
-              <Input
-                label={t('manualCash.fields.effectiveAt')}
-                value={manualCashForm.effectiveAt}
-                onChange={(event) => setManualCashForm((current) => ({ ...current, effectiveAt: event.target.value }))}
-                type="datetime-local"
-              />
-              <Input
-                label={t('manualCash.fields.availableCash')}
-                value={manualCashForm.availableCash}
-                onChange={(event) => setManualCashForm((current) => ({ ...current, availableCash: event.target.value }))}
-                inputMode="decimal"
-                placeholder={t('manualCash.placeholders.amount')}
-              />
-              <Input
-                label={t('manualCash.fields.reserveCash')}
-                value={manualCashForm.reserveCash}
-                onChange={(event) => setManualCashForm((current) => ({ ...current, reserveCash: event.target.value }))}
-                inputMode="decimal"
-                placeholder={t('manualCash.placeholders.amount')}
-              />
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="w-full">
-                <label className="mb-1.5 block text-sm font-medium text-text">{t('manualCash.fields.note')}</label>
-                <textarea
-                  value={manualCashForm.note}
-                  onChange={(event) => setManualCashForm((current) => ({ ...current, note: event.target.value }))}
-                  rows={4}
-                  placeholder={t('manualCash.placeholders.note')}
-                  className="w-full rounded-scholar border border-border bg-surface px-4 py-3 text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)] focus:ring-offset-2 focus:ring-offset-background"
-                />
-              </div>
-              <div className="w-full">
-                <label className="mb-1.5 block text-sm font-medium text-text">{t('manualCash.fields.sourceNote')}</label>
-                <textarea
-                  value={manualCashForm.sourceNote}
-                  onChange={(event) => setManualCashForm((current) => ({ ...current, sourceNote: event.target.value }))}
-                  rows={4}
-                  placeholder={t('manualCash.placeholders.sourceNote')}
-                  className="w-full rounded-scholar border border-border bg-surface px-4 py-3 text-text placeholder:text-text-soft focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)] focus:ring-offset-2 focus:ring-offset-background"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Button isLoading={cashBusy === 'save'} onClick={() => void saveManualCashPosition()}>
-                <Wallet className="h-4 w-4" />
-                {editingCashPositionId ? t('manualCash.actions.update') : t('manualCash.actions.create')}
-              </Button>
-              <Button variant="secondary" disabled={!editingCashPositionId} onClick={resetManualCashForm}>
-                <RotateCcw className="h-4 w-4" />
-                {t('manualCash.actions.cancelEdit')}
-              </Button>
-              <Button variant="ghost" isLoading={cashBusy === 'loading'} onClick={() => void loadManualCashPositions()}>
-                <RefreshCw className="h-4 w-4" />
-                {t('manualCash.actions.refresh')}
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="text-sm font-semibold text-text">{t('manualCash.listTitle')}</div>
-              {manualCashPositions.length ? (
-                manualCashPositions.map((row) => (
-                  <div
-                    key={row.id}
-                    className="rounded-scholar border border-border bg-surface-alt p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="font-semibold text-text">{row.entity_name || row.entity_key}</div>
-                          <Badge size="sm" variant={badgeVariantForCashStatus(row.status)}>
-                            {t(`manualCash.status.${row.status}`)}
-                          </Badge>
-                          <Badge size="sm">{row.currency || 'USD'}</Badge>
-                        </div>
-                        <div className="text-sm text-text-soft">
-                          {t('manualCash.rowMeta', {
-                            entityKey: row.entity_key,
-                            effectiveAt: new Date(row.effective_at).toLocaleString(),
-                          })}
-                        </div>
-                        <div className="grid gap-2 text-sm text-text md:grid-cols-2">
-                          <div>{t('manualCash.summary.available', { amount: formatCashAmount(row.available_cash, row.currency) })}</div>
-                          <div>{t('manualCash.summary.reserve', { amount: formatCashAmount(row.reserve_cash, row.currency) })}</div>
-                        </div>
-                        {row.note ? <div className="text-sm text-text-soft">{row.note}</div> : null}
-                        {row.source_note ? (
-                          <div className="text-xs text-text-soft">{t('manualCash.sourceNoteLabel', { sourceNote: row.source_note })}</div>
-                        ) : null}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            setEditingCashPositionId(row.id);
-                            setManualCashForm({
-                              entityName: row.entity_name || '',
-                              entityKey: row.entity_key,
-                              currency: row.currency || 'USD',
-                              availableCash: row.available_cash == null ? '' : String(row.available_cash),
-                              reserveCash: row.reserve_cash == null ? '' : String(row.reserve_cash),
-                              effectiveAt: formatLocalDateTimeInput(row.effective_at),
-                              note: row.note || '',
-                              sourceNote: row.source_note || '',
-                            });
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          {t('manualCash.actions.edit')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          isLoading={cashBusy === row.id}
-                          onClick={() => void archiveManualCashPosition(row)}
-                        >
-                          <Archive className="h-4 w-4" />
-                          {row.status === 'archived' ? t('manualCash.actions.restore') : t('manualCash.actions.archive')}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
-                  {t('manualCash.empty')}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        ) : null}
 
         <PortalDiagnosticsConsole
           diagnostics={diagnostics}
