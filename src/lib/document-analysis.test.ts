@@ -6,43 +6,43 @@ import {
   supportsStructuredAnalysis,
 } from '@/lib/document-analysis';
 
-const assetRadarPlaybook = {
-  id: 'pb-asset-radar',
-  name: 'Real Estate Portfolio Tracker',
+const operationsWorkspacePlaybook = {
+  id: 'pb-operations-workspace',
+  name: 'Operations Workspace',
   is_system_preset: true,
   current_version: {
-    id: 'v-asset-radar',
+    id: 'v-operations-workspace',
     version_number: 1,
     spec_json: {
-      template_id: 'real_estate_portfolio_tracker',
+      template_id: 'property_operations_workspace',
       meta: {
-        aliases: ['Asset Radar'],
+        aliases: ['Operations Workspace'],
       },
     },
   },
 };
 
 describe('document analysis template recommendations', () => {
-  it('always recommends Asset Radar as the user-facing system template', () => {
+  it('always recommends Operations Workspace as the user-facing system template', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'contract',
         title: 'Retail Asset lease amendment and rent roll review',
       }),
-    ).toEqual(['Real Estate Portfolio Tracker']);
+    ).toEqual(['Operations Workspace']);
 
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'invoice',
         title: 'April payment ledger export',
       }),
-    ).toEqual(['Real Estate Portfolio Tracker']);
+    ).toEqual(['Operations Workspace']);
   });
 
-  it('selects the visible Asset Radar playbook when present', () => {
+  it('selects the visible Operations Workspace playbook when present', () => {
     const playbook = selectRecommendedPlaybook(
       [
-        assetRadarPlaybook,
+        operationsWorkspacePlaybook,
         {
           id: 'pb-custom',
           name: 'Custom user template',
@@ -60,25 +60,25 @@ describe('document analysis template recommendations', () => {
       },
     );
 
-    expect(playbook?.name).toBe('Real Estate Portfolio Tracker');
+    expect(playbook?.name).toBe('Operations Workspace');
   });
 
-  it('resolves classifier-ranked real-estate template ids onto Asset Radar', () => {
+  it('resolves classifier-ranked real-estate template ids onto Operations Workspace', () => {
     const playbook = resolveRecommendedPlaybook(
-      [assetRadarPlaybook],
+      [operationsWorkspacePlaybook],
       {
         documentType: 'financial_report',
         title: 'Portfolio receivables ledger',
-        recommendedTemplateIds: ['real_estate_portfolio_tracker'],
+        recommendedTemplateIds: ['property_operations_workspace'],
       },
     );
 
-    expect(playbook?.name).toBe('Real Estate Portfolio Tracker');
+    expect(playbook?.name).toBe('Operations Workspace');
   });
 
-  it('falls back to Asset Radar when a hidden legacy template id is suggested', () => {
+  it('falls back to Operations Workspace when a hidden legacy template id is suggested', () => {
     const playbook = resolveRecommendedPlaybook(
-      [assetRadarPlaybook],
+      [operationsWorkspacePlaybook],
       {
         documentType: 'research',
         title: 'Legacy template metadata should not leak into the product path',
@@ -86,7 +86,7 @@ describe('document analysis template recommendations', () => {
       },
     );
 
-    expect(playbook?.name).toBe('Real Estate Portfolio Tracker');
+    expect(playbook?.name).toBe('Operations Workspace');
   });
 
   it('keeps structured analysis enabled for supported document classes', () => {

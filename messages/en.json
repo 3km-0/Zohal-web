@@ -453,10 +453,10 @@
   },
   "experiencesPage": {
     "title": "Living Interfaces",
-    "subtitle": "Compile, validate, publish, and customize the Asset Radar Living Interface for this workspace.",
+    "subtitle": "Compile, validate, publish, and customize the Operations Workspace Living Interface for this workspace.",
     "configure": {
       "title": "Living Interface configuration",
-      "description": "Asset Radar is the active template for this workspace. Compile the Snapshot-backed Living Interface and manage the publish flow from here.",
+      "description": "Operations Workspace is the active template for this workspace. Compile the Snapshot-backed Living Interface and manage the publish flow from here.",
       "relatedDocumentsTitle": "Related documents remembered from last analysis",
       "relatedDocumentsDescription": "Living Interface publication still compiles from the primary document only in this release."
     },
@@ -476,10 +476,10 @@
       "description": "Publish to a public live URL by default, with restricted access tools available when needed.",
       "latestLink": "Latest issued link"
     },
-  "assetRadar": {
-    "title": "Asset Radar source boundary",
-    "description": "This workspace is optimized for a file-first real-estate flow: leases, amendments, rent rolls, payment ledgers, and tenant notices.",
-    "boundary": "Asset Radar compiles maintained asset risk visibility and memo-ready output without replacing property-management or accounting systems."
+  "operationsWorkspace": {
+    "title": "Operations Workspace source boundary",
+    "description": "This workspace is optimized for property-operations flows: maintenance intake, work-order activity, vendor contracts, SOPs, warranties, and supporting property documents.",
+    "boundary": "Operations Workspace compiles document-aware intake, triage, dispatch, action logs, and review queues without replacing property-management or accounting systems."
   },
   "events": {
     "title": "Recent events",
@@ -577,10 +577,10 @@
       "refreshPortal": "Refresh diagnostics"
     },
     "defaults": {
-      "subtitle": "Deterministic Asset Radar Surface",
-      "summary": "Compile verified real-estate workspace truth into the default Asset Radar Living Interface.",
-      "assetRadarSubtitle": "Maintained asset risk visibility from leases, ledgers, and notices",
-      "assetRadarSummary": "Compile lease expiry, arrears, vacancy pressure, NOI drift, tenant concentration, and memo-ready asset state into a Living Interface."
+      "subtitle": "Deterministic Operations Workspace Surface",
+      "summary": "Compile verified property-operations truth into the default Operations Workspace Living Interface.",
+      "operationsWorkspaceSubtitle": "Document-aware intake, triage, dispatch, and action tracking from your latest property files",
+      "operationsWorkspaceSummary": "Compile maintenance intake, work-order progress, vendor coordination, dispatch checks, action logs, and review queues into a Living Interface."
     },
     "errors": {
       "statusFailed": "Failed to load publication status.",

@@ -7,13 +7,13 @@ import type { PortalDiagnostics } from '@/lib/portal-diagnostics';
 const messages = {
   experiencesPage: {
     portalConsole: {
-      title: 'Portal operator console',
+      title: 'Living Interface operator console',
       description: 'Description',
-      loading: 'Loading Portal diagnostics…',
-      summaryTitle: 'Portal summary',
+      loading: 'Loading Living Interface diagnostics…',
+      summaryTitle: 'Living Interface summary',
       failureClass: 'Failure class',
       activeRevision: 'Active revision',
-      qualityScore: 'Portal quality',
+      qualityScore: 'Living Interface quality',
       qualitySummary: '{rendered}/{required} required routes rendered',
       traceTitle: 'Publish trace',
       traceDescription: 'Trace description',
@@ -30,7 +30,7 @@ const messages = {
       previousRevision: 'Previous revision',
       attemptedRevision: 'Attempted revision',
       fallbackReason: 'Fallback reason',
-      preservedLive: 'The previous Live Portal stayed active because the recomposition attempt did not fully replace it.',
+      preservedLive: 'The previous Living Interface stayed active because the recomposition attempt did not fully replace it.',
       recompositionScorecard: 'Recomposition scorecard',
       recompositionSignals: '{count} novelty signals: {signals}',
       recompositionRatios: 'Shared lines {lines} • Shared tokens {tokens}',
@@ -46,7 +46,7 @@ const messages = {
     },
     actions: {
       refreshPortal: 'Refresh diagnostics',
-      openPortal: 'Open Portal',
+      openPortal: 'Open Living Interface',
     },
     status: {
       none: 'None yet',
@@ -189,12 +189,12 @@ describe('PortalDiagnosticsConsole', () => {
       />
     );
 
-    expect(screen.getByText('Portal operator console')).toBeInTheDocument();
+    expect(screen.getByText('Living Interface operator console')).toBeInTheDocument();
     expect(screen.getByText('Board Portal')).toBeInTheDocument();
     expect(screen.getByTestId('portal-stage-compile')).toHaveTextContent('Passed');
     expect(screen.getByText('HTTP status: 200')).toBeInTheDocument();
     expect(screen.getByText('Evidence markers: 4')).toBeInTheDocument();
-    expect(screen.getByText('Open Portal')).toBeInTheDocument();
+    expect(screen.getByText('Open Living Interface')).toBeInTheDocument();
   });
 
   it('renders failure class and failing stage state', () => {
@@ -254,6 +254,6 @@ describe('PortalDiagnosticsConsole', () => {
     expect(screen.getByText('Attempted revision: rev_attempt')).toBeInTheDocument();
     expect(screen.getByText('Fallback reason: Worker Too Similar To Reference')).toBeInTheDocument();
     expect(screen.getByText('Recomposition scorecard')).toBeInTheDocument();
-    expect(screen.getByText('The previous Live Portal stayed active because the recomposition attempt did not fully replace it.')).toBeInTheDocument();
+    expect(screen.getByText('The previous Living Interface stayed active because the recomposition attempt did not fully replace it.')).toBeInTheDocument();
   });
 });

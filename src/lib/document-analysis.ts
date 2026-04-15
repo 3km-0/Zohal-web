@@ -1,7 +1,6 @@
 import type { DocumentType } from '@/types/database';
 import {
   isHiddenSystemPlaybook,
-  getTemplateRecommendedDocumentTypes,
   playbookMatchesName,
   sortSystemPlaybooks,
 } from '@/lib/template-library';
@@ -9,7 +8,7 @@ import type { TemplateLibraryPlaybookLike, TemplateRecord } from '@/types/templa
 
 type PlaybookLike = TemplateLibraryPlaybookLike & Pick<TemplateRecord, 'id' | 'current_version_id'>;
 
-const ASSET_RADAR_TEMPLATE_NAME = 'Real Estate Portfolio Tracker';
+const OPERATIONS_WORKSPACE_TEMPLATE_NAME = 'Operations Workspace';
 
 type DocumentMetadata = {
   documentType?: string | null;
@@ -54,28 +53,14 @@ export function getAnalysisLabelKey(documentType?: string | null) {
 
 export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): string[] {
   void metadata;
-  return [ASSET_RADAR_TEMPLATE_NAME];
+  return [OPERATIONS_WORKSPACE_TEMPLATE_NAME];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {
+  void metadata;
   const systemPlaybooks = sortSystemPlaybooks(
     playbooks.filter((playbook) => playbook.is_system_preset && !isHiddenSystemPlaybook(playbook))
   );
-  const normalizedDocumentType = String(metadata.documentType || '').trim().toLowerCase();
-  if (normalizedDocumentType) {
-    const metadataRecommended = [...systemPlaybooks]
-      .map((playbook) => {
-        const recommendedTypes = getTemplateRecommendedDocumentTypes(playbook);
-        if (!recommendedTypes.includes(normalizedDocumentType)) return { playbook, score: -1 };
-        return {
-          playbook,
-          score: 100,
-        };
-      })
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score);
-    if (metadataRecommended[0]) return metadataRecommended[0].playbook;
-  }
   const preferredNames = recommendedSystemPlaybookNames(metadata);
 
   for (const name of preferredNames) {
@@ -99,36 +84,18 @@ function playbookTemplateId(playbook: PlaybookLike | null | undefined): string |
   return null;
 }
 
-const LEGACY_RECOMMENDED_TEMPLATE_ID: Record<string, string> = {
-  research_synthesis_site: 'research_synthesis_interface',
-  course_learning_portal: 'course_learning_interface',
-  healthcare_record_surface: 'healthcare_record_interface',
-  logistics_operations_portal: 'logistics_operations_interface',
-  portfolio_monitoring_workspace: 'family_office_portfolio_monitor',
-  credit_covenant_monitoring: 'startup_cfo_workspace',
-};
-
 export function resolveRecommendedPlaybook<T extends PlaybookLike>(
   playbooks: T[],
   metadata: DocumentMetadata & { recommendedTemplateIds?: string[] | null }
 ): T | null {
+  void metadata.recommendedTemplateIds;
   const visibleSystemPlaybooks = sortSystemPlaybooks(
     playbooks.filter((playbook) => playbook.is_system_preset && !isHiddenSystemPlaybook(playbook))
   );
-  const normalizedRecommendedIds = (metadata.recommendedTemplateIds || [])
-    .map((value) => String(value || '').trim().toLowerCase())
-    .filter(Boolean);
-
-  for (const recommendedId of normalizedRecommendedIds) {
-    const candidates = Array.from(
-      new Set([recommendedId, LEGACY_RECOMMENDED_TEMPLATE_ID[recommendedId]].filter(Boolean) as string[]),
-    );
-    for (const id of candidates) {
-      const classifierPlaybook =
-        visibleSystemPlaybooks.find((playbook) => playbookTemplateId(playbook) === id) || null;
-      if (classifierPlaybook) return classifierPlaybook;
-    }
-  }
+  const operationsWorkspacePlaybook = visibleSystemPlaybooks.find((playbook) =>
+    playbookTemplateId(playbook) === 'property_operations_workspace'
+  );
+  if (operationsWorkspacePlaybook) return operationsWorkspacePlaybook;
 
   return selectRecommendedPlaybook(playbooks, metadata);
 }

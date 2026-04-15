@@ -16,20 +16,20 @@ interface ExperiencePublicationPanelProps {
   workspaceId: string;
 }
 
-const REAL_ESTATE_TEMPLATE_ID = 'real_estate_portfolio_tracker';
+const OPERATIONS_WORKSPACE_TEMPLATE_ID = 'property_operations_workspace';
 
 const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
   string,
   {
     title: string;
-    subtitleKey: 'assetRadarSubtitle' | 'subtitle';
-    summaryKey: 'assetRadarSummary' | 'summary';
+    subtitleKey: 'operationsWorkspaceSubtitle' | 'subtitle';
+    summaryKey: 'operationsWorkspaceSummary' | 'summary';
   }
 > = {
-  [REAL_ESTATE_TEMPLATE_ID]: {
-    title: 'Asset Radar',
-    subtitleKey: 'assetRadarSubtitle',
-    summaryKey: 'assetRadarSummary',
+  [OPERATIONS_WORKSPACE_TEMPLATE_ID]: {
+    title: 'Operations Workspace',
+    subtitleKey: 'operationsWorkspaceSubtitle',
+    summaryKey: 'operationsWorkspaceSummary',
   },
 };
 
@@ -38,8 +38,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const documentId = searchParams.get('document_id');
-  const analysisTemplateId = REAL_ESTATE_TEMPLATE_ID;
-  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[REAL_ESTATE_TEMPLATE_ID];
+  const analysisTemplateId = OPERATIONS_WORKSPACE_TEMPLATE_ID;
+  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[OPERATIONS_WORKSPACE_TEMPLATE_ID];
   const workspaceSlug = workspaceId.replace(/-/g, '_');
   const templateSlug = analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase();
   const [experienceId, setExperienceId] = useState(`exp_${workspaceSlug}_${templateSlug}`);
@@ -256,11 +256,11 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
-              {analysisTemplateId === REAL_ESTATE_TEMPLATE_ID ? (
+              {analysisTemplateId === OPERATIONS_WORKSPACE_TEMPLATE_ID ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('assetRadar.title')}</div>
-                  <p className="mt-1 text-text-soft">{t('assetRadar.description')}</p>
-                  <p className="mt-2 text-text-soft">{t('assetRadar.boundary')}</p>
+                  <div className="font-semibold text-text">{t('operationsWorkspace.title')}</div>
+                  <p className="mt-1 text-text-soft">{t('operationsWorkspace.description')}</p>
+                  <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
                 </div>
               ) : null}
               <div className="grid gap-4 md:grid-cols-2">
