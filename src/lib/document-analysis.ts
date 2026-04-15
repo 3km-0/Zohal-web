@@ -106,7 +106,6 @@ const LEGACY_RECOMMENDED_TEMPLATE_ID: Record<string, string> = {
   logistics_operations_portal: 'logistics_operations_interface',
   portfolio_monitoring_workspace: 'family_office_portfolio_monitor',
   credit_covenant_monitoring: 'startup_cfo_workspace',
-  private_markets_allocator_workspace: 'private_markets_obligations_liquidity_workspace',
 };
 
 export function resolveRecommendedPlaybook<T extends PlaybookLike>(
