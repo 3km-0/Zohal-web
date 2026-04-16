@@ -181,6 +181,16 @@ type OpenPrivateLiveEnvelope = {
   redeem_url?: string | null;
 };
 
+const EXTERNAL_SURFACE_PATH_FAMILIES = new Set(['market', 'diligence']);
+
+function sortPublishedSurfaceSummaries(left: WorkspaceExperienceSummary, right: WorkspaceExperienceSummary) {
+  const familyRank = (value?: string | null) => (value === 'market' ? 0 : value === 'diligence' ? 1 : 2);
+  const leftRank = familyRank(left.path_family);
+  const rightRank = familyRank(right.path_family);
+  if (leftRank !== rightRank) return leftRank - rightRank;
+  return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
+}
+
 export function ContractAnalysisPane({
   embedded = false,
   initialView = 'results',
@@ -1426,7 +1436,13 @@ export function ContractAnalysisPane({
         throw new Error((data as any)?.message || 'Failed to load experiences');
       }
       const experiences = Array.isArray(data.experiences) ? data.experiences : [];
-      const match = experiences.find((item) => item.document_id === documentId) || null;
+      const match = experiences
+        .filter(
+          (item) =>
+            item.document_id === documentId &&
+            EXTERNAL_SURFACE_PATH_FAMILIES.has(String(item.path_family || '').trim().toLowerCase())
+        )
+        .sort(sortPublishedSurfaceSummaries)[0] || null;
       setLiveExperience(match);
     } catch (e) {
       setLiveExperience(null);

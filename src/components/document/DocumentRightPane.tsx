@@ -38,6 +38,16 @@ type WorkspaceExperiencesEnvelope = {
   message?: string;
 };
 
+const EXTERNAL_SURFACE_PATH_FAMILIES = new Set(['market', 'diligence']);
+
+function sortPublishedSurfaceSummaries(left: WorkspaceExperienceSummary, right: WorkspaceExperienceSummary) {
+  const familyRank = (value?: string | null) => (value === 'market' ? 0 : value === 'diligence' ? 1 : 2);
+  const leftRank = familyRank(left.path_family);
+  const rightRank = familyRank(right.path_family);
+  if (leftRank !== rightRank) return leftRank - rightRank;
+  return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
+}
+
 function resolveWorkspaceExperienceUrl(experience: WorkspaceExperienceSummary): string | null {
   if (experience.public_url?.trim()) return experience.public_url.trim();
   if (experience.host?.trim() && experience.path_family?.trim() && experience.path_key?.trim()) {
@@ -107,13 +117,12 @@ export function DocumentRightPane({
         }
         const experiences = Array.isArray(data?.experiences) ? data!.experiences : [];
         const matching = experiences
-          .filter((experience) => experience.document_id === documentId || experience.corpus_id === documentId)
-          .sort((left, right) => {
-            const leftPrivate = left.experience_lane === 'private_live';
-            const rightPrivate = right.experience_lane === 'private_live';
-            if (leftPrivate !== rightPrivate) return leftPrivate ? -1 : 1;
-            return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-          });
+          .filter(
+            (experience) =>
+              (experience.document_id === documentId || experience.corpus_id === documentId) &&
+              EXTERNAL_SURFACE_PATH_FAMILIES.has(String(experience.path_family || '').trim().toLowerCase())
+          )
+          .sort(sortPublishedSurfaceSummaries);
         const current = matching[0];
         if (cancelled) return;
         if (!current) {

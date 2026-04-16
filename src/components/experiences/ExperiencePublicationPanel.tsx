@@ -17,19 +17,34 @@ interface ExperiencePublicationPanelProps {
 }
 
 const OPERATIONS_WORKSPACE_TEMPLATE_ID = 'property_operations_workspace';
+type SurfaceFamily = 'market' | 'diligence';
 
 const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
-  string,
+  SurfaceFamily,
   {
+    slug: string;
     title: string;
-    subtitleKey: 'operationsWorkspaceSubtitle' | 'subtitle';
-    summaryKey: 'operationsWorkspaceSummary' | 'summary';
+    subtitleKey:
+      | 'operationsWorkspaceMarketSubtitle'
+      | 'operationsWorkspaceDiligenceSubtitle'
+      | 'subtitle';
+    summaryKey:
+      | 'operationsWorkspaceMarketSummary'
+      | 'operationsWorkspaceDiligenceSummary'
+      | 'summary';
   }
 > = {
-  [OPERATIONS_WORKSPACE_TEMPLATE_ID]: {
-    title: 'Operations Workspace',
-    subtitleKey: 'operationsWorkspaceSubtitle',
-    summaryKey: 'operationsWorkspaceSummary',
+  market: {
+    slug: 'market',
+    title: 'Property Market Surface',
+    subtitleKey: 'operationsWorkspaceMarketSubtitle',
+    summaryKey: 'operationsWorkspaceMarketSummary',
+  },
+  diligence: {
+    slug: 'diligence',
+    title: 'Property Diligence Surface',
+    subtitleKey: 'operationsWorkspaceDiligenceSubtitle',
+    summaryKey: 'operationsWorkspaceDiligenceSummary',
   },
 };
 
@@ -39,9 +54,10 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const supabase = useMemo(() => createClient(), []);
   const documentId = searchParams.get('document_id');
   const analysisTemplateId = OPERATIONS_WORKSPACE_TEMPLATE_ID;
-  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[OPERATIONS_WORKSPACE_TEMPLATE_ID];
   const workspaceSlug = workspaceId.replace(/-/g, '_');
-  const templateSlug = analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase();
+  const [surfaceFamily, setSurfaceFamily] = useState<SurfaceFamily>('market');
+  const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[surfaceFamily];
+  const templateSlug = `${analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}_${templateDefaults.slug}`;
   const [experienceId, setExperienceId] = useState(`exp_${workspaceSlug}_${templateSlug}`);
   const [corpusId, setCorpusId] = useState(`corpus_${workspaceSlug}_${templateSlug}`);
   const [title, setTitle] = useState(templateDefaults.title);
@@ -153,7 +169,9 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
 
   useEffect(() => {
     setTitle(templateDefaults.title);
-  }, [templateDefaults.title]);
+    setExperienceId(`exp_${workspaceSlug}_${templateSlug}`);
+    setCorpusId(`corpus_${workspaceSlug}_${templateSlug}`);
+  }, [templateDefaults.title, templateSlug, workspaceSlug]);
 
   const compilePayload = useMemo(
     () => ({
@@ -163,6 +181,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
       template_id: 'document_analysis',
       experience_template_id: 'document_analysis',
       analysis_template_id: analysisTemplateId,
+      surface_family: surfaceFamily,
       host,
       visibility,
       password: password || undefined,
@@ -171,7 +190,20 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
       subtitle: t(`defaults.${templateDefaults.subtitleKey}`),
       summary: t(`defaults.${templateDefaults.summaryKey}`),
     }),
-    [workspaceId, corpusId, experienceId, analysisTemplateId, host, visibility, password, title, t, templateDefaults.subtitleKey, templateDefaults.summaryKey]
+    [
+      workspaceId,
+      corpusId,
+      experienceId,
+      analysisTemplateId,
+      surfaceFamily,
+      host,
+      visibility,
+      password,
+      title,
+      t,
+      templateDefaults.subtitleKey,
+      templateDefaults.summaryKey,
+    ]
   );
 
   const invoke = useCallback(
@@ -252,14 +284,25 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
                 <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
               </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-text">{t('fields.surfaceFamily')}</label>
+                <select
+                  value={surfaceFamily}
+                  onChange={(e) => setSurfaceFamily(e.target.value as SurfaceFamily)}
+                  className="w-full min-h-[44px] rounded-scholar border border-border bg-surface px-4 py-3 text-text"
+                >
+                  <option value="market">{t('surfaceFamilies.market')}</option>
+                  <option value="diligence">{t('surfaceFamilies.diligence')}</option>
+                </select>
+              </div>
               <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
               {analysisTemplateId === OPERATIONS_WORKSPACE_TEMPLATE_ID ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('operationsWorkspace.title')}</div>
-                  <p className="mt-1 text-text-soft">{t('operationsWorkspace.description')}</p>
+                  <div className="font-semibold text-text">{t(`surfaceBoundary.${surfaceFamily}.title`)}</div>
+                  <p className="mt-1 text-text-soft">{t(`surfaceBoundary.${surfaceFamily}.description`)}</p>
                   <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
                 </div>
               ) : null}

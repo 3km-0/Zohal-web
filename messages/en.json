@@ -442,6 +442,7 @@
   },
   "workspaceTabs": {
     "documents": "Documents",
+    "operations": "Operations",
     "ask": "Ask",
     "notes": "Notes",
     "reports": "Reports",
@@ -451,12 +452,119 @@
     "experiences": "Living Interfaces",
     "members": "Members"
   },
+  "workspaceOperationsPage": {
+    "title": "Operations",
+    "subtitle": "Canonical properties, vendors, requests, work orders, and linked documents for this workspace.",
+    "overview": {
+      "title": "Operations overview",
+      "description": "This view now loads from the canonical operations graph first, with maintained panels layered on top for review and narrative outputs."
+    },
+    "summary": {
+      "properties": "Properties",
+      "vendors": "Vendors",
+      "requests": "Open requests",
+      "workOrders": "Open work orders",
+      "documents": "Linked documents"
+    },
+    "forms": {
+      "propertyTitle": "Add property",
+      "propertyDescription": "Create a canonical property record and link it to this workspace.",
+      "vendorTitle": "Add vendor",
+      "vendorDescription": "Create a vendor and optionally attach it to a property scope.",
+      "requestTitle": "Log service request",
+      "requestDescription": "Create a workspace-scoped intake record on top of the canonical property graph.",
+      "workOrderTitle": "Create work order",
+      "workOrderDescription": "Open a work order against the canonical property and vendor records."
+    },
+    "fields": {
+      "propertyName": "Property name",
+      "propertyCode": "Property code",
+      "propertyType": "Property type",
+      "vendorName": "Vendor name",
+      "property": "Property",
+      "summary": "Summary",
+      "description": "Description",
+      "urgency": "Urgency",
+      "request": "Service request",
+      "vendor": "Vendor",
+      "category": "Category",
+      "priority": "Priority"
+    },
+    "placeholders": {
+      "propertyName": "Olaya Tower",
+      "propertyCode": "OLY-001",
+      "propertyType": "mixed_use",
+      "vendorName": "Alpha Plumbing",
+      "requestSummary": "Water leak reported in Suite 101",
+      "requestDescription": "Tenant reported a recurring leak near the kitchen sink.",
+      "workOrderCategory": "Leak repair"
+    },
+    "options": {
+      "selectProperty": "Select a property",
+      "optionalRequest": "Optional service request",
+      "optionalVendor": "Optional vendor",
+      "unassigned": "Unassigned",
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "actions": {
+      "addProperty": "Add property",
+      "addVendor": "Add vendor",
+      "logRequest": "Log request",
+      "createWorkOrder": "Create work order",
+      "refresh": "Refresh operations"
+    },
+    "lists": {
+      "propertiesTitle": "Properties",
+      "propertiesDescription": "Canonical property roots linked to this workspace.",
+      "vendorsTitle": "Vendors",
+      "vendorsDescription": "Vendors resolved against the canonical operations graph.",
+      "requestsTitle": "Service requests",
+      "requestsDescription": "Current intake and triage queue items.",
+      "workOrdersTitle": "Work orders",
+      "workOrdersDescription": "Execution records anchored to properties, requests, and vendors.",
+      "documentsTitle": "Linked documents",
+      "documentsDescription": "Documents attached to canonical operations entities through evidence-aware links."
+    },
+    "empty": {
+      "properties": "No properties yet.",
+      "vendors": "No vendors yet.",
+      "requests": "No service requests yet.",
+      "workOrders": "No work orders yet.",
+      "documents": "No linked documents yet."
+    },
+    "badges": {
+      "default": "Default"
+    },
+    "propertyMeta": {
+      "components": "{count} components",
+      "vendors": "{count} vendors",
+      "requests": "{count} open requests",
+      "workOrders": "{count} open work orders"
+    },
+    "vendorMeta": {
+      "contracts": "{count} active contracts",
+      "assignments": "{count} active assignments",
+      "workOrders": "{count} open work orders"
+    },
+    "workOrderMeta": {
+      "latestEvent": "Latest event: {value}"
+    },
+    "toast": {
+      "propertyCreated": "Property created",
+      "vendorCreated": "Vendor created",
+      "requestCreated": "Service request logged",
+      "workOrderCreated": "Work order created"
+    }
+  },
   "experiencesPage": {
     "title": "Living Interfaces",
-    "subtitle": "Compile, validate, publish, and customize the Operations Workspace Living Interface for this workspace.",
+    "subtitle": "Compile, validate, publish, and refresh the market and diligence Living Interfaces for this workspace.",
     "configure": {
       "title": "Living Interface configuration",
-      "description": "Operations Workspace is the active template for this workspace. Compile the Snapshot-backed Living Interface and manage the publish flow from here.",
+      "description": "The internal workspace keeps maintained property truth current. Publish the approved external market or diligence surface from here.",
       "relatedDocumentsTitle": "Related documents remembered from last analysis",
       "relatedDocumentsDescription": "Living Interface publication still compiles from the primary document only in this release."
     },
@@ -477,9 +585,19 @@
       "latestLink": "Latest issued link"
     },
   "operationsWorkspace": {
-    "title": "Operations Workspace source boundary",
-    "description": "This workspace is optimized for property-operations flows: maintenance intake, work-order activity, vendor contracts, SOPs, warranties, and supporting property documents.",
-    "boundary": "Operations Workspace compiles document-aware intake, triage, dispatch, action logs, and review queues without replacing property-management or accounting systems."
+    "title": "Internal workspace source boundary",
+    "description": "This workspace is optimized for property operations: maintenance intake, work-order activity, vendor contracts, SOPs, warranties, leasing files, and supporting property documents.",
+    "boundary": "The internal workspace remains the analysis system of record. Published Living Interfaces are downstream external surfaces, not the workspace itself."
+  },
+  "surfaceBoundary": {
+    "market": {
+      "title": "Market surface",
+      "description": "Publishes approved property facts, availability, documents, and inquiry-ready context for external market-facing viewers."
+    },
+    "diligence": {
+      "title": "Diligence surface",
+      "description": "Publishes a controlled diligence-facing view for owners, lenders, buyers, and other approved stakeholders reviewing risk, disclosures, and current condition."
+    }
   },
   "events": {
     "title": "Recent events",
@@ -552,11 +670,16 @@
     "experienceId": "Living Interface ID",
     "corpusId": "Corpus ID",
     "includedSources": "Included sources",
+      "surfaceFamily": "Surface family",
       "title": "Title",
       "host": "Host",
       "visibility": "Visibility",
       "password": "Shared password",
       "passwordPlaceholder": "Only used for password-protected links"
+    },
+    "surfaceFamilies": {
+      "market": "Market surface",
+      "diligence": "Diligence surface"
     },
     "visibility": {
       "publicIndexed": "Public indexed",
@@ -579,8 +702,10 @@
     "defaults": {
       "subtitle": "Deterministic Operations Workspace Surface",
       "summary": "Compile verified property-operations truth into the default Operations Workspace Living Interface.",
-      "operationsWorkspaceSubtitle": "Document-aware intake, triage, dispatch, and action tracking from your latest property files",
-      "operationsWorkspaceSummary": "Compile maintenance intake, work-order progress, vendor coordination, dispatch checks, action logs, and review queues into a Living Interface."
+      "operationsWorkspaceMarketSubtitle": "Approved property facts, availability, and supporting files for market-facing visibility",
+      "operationsWorkspaceMarketSummary": "Compile approved listing details, availability, plans, documents, and inquiry-ready property context into a market Living Interface.",
+      "operationsWorkspaceDiligenceSubtitle": "Controlled owner and diligence visibility into property condition, obligations, and risk",
+      "operationsWorkspaceDiligenceSummary": "Compile evidence-backed diligence, disclosures, operating history, risk, and review queues into a diligence Living Interface."
     },
     "errors": {
       "statusFailed": "Failed to load publication status.",

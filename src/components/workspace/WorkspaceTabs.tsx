@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { Database, FileText, Rocket, StickyNote, Users } from 'lucide-react';
+import { Building2, Database, FileText, Rocket, StickyNote, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-type WorkspaceTabKey = 'documents' | 'notes' | 'data-sources' | 'experiences' | 'members' | 'packs';
+type WorkspaceTabKey = 'documents' | 'operations' | 'notes' | 'data-sources' | 'experiences' | 'members' | 'packs';
 type VisibleWorkspaceTabKey = Exclude<WorkspaceTabKey, 'packs'>;
 
 interface WorkspaceTabsProps {
@@ -17,7 +17,12 @@ interface WorkspaceTabsProps {
   showMembersTab?: boolean;
 }
 
-export function WorkspaceTabs({ workspaceId, active, className, showMembersTab = false }: WorkspaceTabsProps) {
+export function WorkspaceTabs({
+  workspaceId,
+  active,
+  className,
+  showMembersTab = false,
+}: WorkspaceTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations('workspaceTabs');
@@ -33,6 +38,8 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     (active === 'packs' ? 'documents' : active) ||
     (pathname.includes('/notes')
       ? 'notes'
+      : pathname.includes('/operations')
+        ? 'operations'
       : pathname.includes('/data-sources')
         ? 'data-sources'
       : pathname.includes('/experiences')
@@ -48,6 +55,7 @@ export function WorkspaceTabs({ workspaceId, active, className, showMembersTab =
     icon: ComponentType<{ className?: string }>;
   }[] = [
     { key: 'documents', label: t('documents'), href: withFolderContext(`/workspaces/${workspaceId}`), icon: FileText },
+    { key: 'operations', label: t('operations'), href: withFolderContext(`/workspaces/${workspaceId}/operations`), icon: Building2 },
     { key: 'notes', label: t('notes'), href: withFolderContext(`/workspaces/${workspaceId}/notes`), icon: StickyNote },
     { key: 'data-sources' as const, label: t('dataSources'), href: withFolderContext(`/workspaces/${workspaceId}/data-sources`), icon: Database },
     { key: 'experiences', label: t('experiences'), href: withFolderContext(`/workspaces/${workspaceId}/experiences`), icon: Rocket },
