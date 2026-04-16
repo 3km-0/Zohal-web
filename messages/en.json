@@ -480,7 +480,9 @@
     "commandRecentDocs": "Recent source updates",
     "commandPublish": "Marketing / live link",
     "openSources": "Open Sources",
+    "openOperator": "Open Operator",
     "openMarketing": "Open Marketing",
+    "whereToNext": "Where to next",
     "needsAttention": "Needs attention",
     "recordKeeping": "Add records",
     "overview": {
@@ -589,9 +591,11 @@
   },
   "experiencesPage": {
     "title": "Marketing",
-    "subtitle": "Publish and refresh the primary market surface for this property. Advanced surfaces stay below.",
-    "advancedSurfacesTitle": "Advanced surfaces",
-    "advancedSurfacesDescription": "Diligence and other families exist in the backend but are not part of the primary workflow yet. Configure read-only or diagnostic use here.",
+    "subtitle": "Publish and refresh the primary market surface for this property. Diligence stays in an advanced section below.",
+    "advancedSurfacesTitle": "Diligence (advanced)",
+    "advancedSurfacesDescription": "Not in the primary workflow yet. Open this section only when you need a diligence-family publication or diagnostics. Closing it returns you to the market workflow.",
+    "diligenceAdvancedSummary": "Not in the primary workflow yet. Expand to draft or compile a diligence-family surface.",
+    "diligenceAdvancedOpenHint": "This workspace is now using the diligence template IDs and copy below. Collapse the section above to return to the primary market workflow.",
     "configure": {
       "title": "Living Interface configuration",
       "description": "The internal workspace keeps maintained property truth current. Publish the approved external market or diligence surface from here.",

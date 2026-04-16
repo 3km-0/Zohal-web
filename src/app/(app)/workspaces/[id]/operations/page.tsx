@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
-import { Building2, ClipboardList, FileText, Wrench, Users } from 'lucide-react';
+import { Bot, Building2, ClipboardList, FileText, FolderOpen, Megaphone, Wrench, Users } from 'lucide-react';
 
 type OperationsWorkspaceState = {
   summary: {
@@ -140,7 +140,14 @@ function valueOrEmpty(value: string | null | undefined): string {
 
 export default function WorkspaceOperationsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
+  const fromFolderId = searchParams.get('fromFolder');
+  const withFolderContext = (href: string) => {
+    if (!fromFolderId) return href;
+    const separator = href.includes('?') ? '&' : '?';
+    return `${href}${separator}fromFolder=${encodeURIComponent(fromFolderId)}`;
+  };
   const t = useTranslations('workspaceOperationsPage');
   const supabase = useMemo(() => createClient(), []);
   const { showError, showSuccess } = useToast();
@@ -324,7 +331,7 @@ export default function WorkspaceOperationsPage() {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div className="flex flex-col gap-4 rounded-scholar border border-border bg-surface p-4 shadow-[var(--shadowSm)] md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 rounded-scholar border border-border bg-surface p-4 shadow-[var(--shadowSm)] md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
               <div className="text-sm font-semibold text-text">{t('commandNext')}</div>
               <p className="mt-1 text-sm text-text-soft">
@@ -333,19 +340,31 @@ export default function WorkspaceOperationsPage() {
                   : t('subtitle')}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={`/workspaces/${workspaceId}`}
-                className="inline-flex min-h-[42px] items-center justify-center rounded-scholar bg-[color:var(--button-primary-bg)] px-5 py-2.5 text-sm font-semibold text-[color:var(--button-primary-text)] transition-all hover:bg-[color:var(--button-primary-bg-hover)]"
-              >
-                {t('openSources')}
-              </Link>
-              <Link
-                href={`/workspaces/${workspaceId}/experiences`}
-                className="inline-flex min-h-[42px] items-center justify-center rounded-scholar border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
-              >
-                {t('openMarketing')}
-              </Link>
+            <div className="flex w-full flex-col gap-2 md:w-auto md:items-end">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-soft">{t('whereToNext')}</span>
+              <div className="flex w-full flex-wrap gap-2 md:justify-end">
+                <Link
+                  href={withFolderContext(`/workspaces/${workspaceId}`)}
+                  className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar bg-[color:var(--button-primary-bg)] px-4 py-2.5 text-sm font-semibold text-[color:var(--button-primary-text)] transition-all hover:bg-[color:var(--button-primary-bg-hover)] sm:flex-initial"
+                >
+                  <FolderOpen className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                  {t('openSources')}
+                </Link>
+                <Link
+                  href={withFolderContext(`/workspaces/${workspaceId}/operator`)}
+                  className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
+                >
+                  <Bot className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  {t('openOperator')}
+                </Link>
+                <Link
+                  href={withFolderContext(`/workspaces/${workspaceId}/experiences`)}
+                  className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
+                >
+                  <Megaphone className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  {t('openMarketing')}
+                </Link>
+              </div>
             </div>
           </div>
 
