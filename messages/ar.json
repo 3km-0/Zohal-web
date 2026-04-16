@@ -40,7 +40,7 @@
     "dashboard": "لوحة التحكم",
     "ask": "اسأل",
     "automations": "الأتمتة",
-    "workspaces": "مساحات العمل",
+    "workspaces": "العقارات",
     "documents": "المستندات",
     "notes": "الملاحظات",
     "search": "البحث",
@@ -132,10 +132,10 @@
     }
   },
   "workspaces": {
-    "title": "مساحات العمل",
-    "create": "إنشاء مساحة عمل",
-    "empty": "لا توجد مساحات عمل",
-    "emptyDescription": "أنشئ أول مساحة عمل لبدء تنظيم مستنداتك.",
+    "title": "العقارات",
+    "create": "إنشاء عقار",
+    "empty": "لا توجد عقارات بعد",
+    "emptyDescription": "أنشئ أول عقار لتنظيم المصادر والعمليات.",
     "types": {
       "project": "مشروع",
       "case": "قضية",
@@ -147,6 +147,10 @@
       "other": "أخرى"
     }
   },
+  "documentViewer": {
+    "backToProperty": "العودة إلى العقار",
+    "documentNotFound": "المستند غير موجود"
+  },
   "folders": {
     "title": "المجلدات",
     "folder": "مجلد",
@@ -157,7 +161,7 @@
     "renameFolder": "إعادة تسمية المجلد",
     "deleteFolder": "حذف المجلد",
     "moveToFolder": "نقل إلى مجلد",
-    "workspaceRoot": "جذر مساحة العمل",
+    "workspaceRoot": "جذر العقار",
     "subfolders": "المجلدات الفرعية",
     "subfolder": "مجلد فرعي",
     "folderName": "اسم المجلد",
@@ -441,23 +445,47 @@
     "closeMenu": "إغلاق القائمة"
   },
   "workspaceTabs": {
-    "documents": "المستندات",
-    "operations": "التشغيل",
+    "dashboard": "لوحة التحكم",
+    "sources": "المصادر",
+    "operator": "المشغّل",
+    "marketing": "التسويق",
+    "more": "المزيد",
+    "templates": "القوالب",
+    "documents": "المصادر",
+    "operations": "لوحة التحكم",
     "ask": "اسأل",
     "notes": "الملاحظات",
     "reports": "التقارير",
     "pipelines": "خطوط المعالجة",
     "packs": "الحزم",
     "dataSources": "مصادر البيانات",
-    "experiences": "الواجهات الحية",
+    "experiences": "التسويق",
     "members": "الأعضاء"
   },
+  "propertyOperatorPage": {
+    "title": "المشغّل",
+    "subtitle": "ذكاء اصطناعي وإعدادات أتمتة خاصة بهذا العقار.",
+    "agentSectionTitle": "وكيل العقار",
+    "agentSectionDescription": "اسأل عبر مصادر هذا العقار. البحث الشامل يبقى في «اسأل» العام.",
+    "automationSectionTitle": "أتمتة العقار",
+    "automationSectionDescription": "مشغلات المعالجة والتحديث والتشغيل اليدوي لهذا العقار فقط.",
+    "openGlobalAutomations": "أتمتة كل العقارات"
+  },
   "workspaceOperationsPage": {
-    "title": "التشغيل",
-    "subtitle": "العقارات والموردون والطلبات وأوامر العمل والمستندات المرتبطة لهذه المساحة.",
+    "title": "لوحة التحكم",
+    "subtitle": "مركز قيادة العقار: العمل المفتوح والموردون ونشاط المصادر وحالة النشر.",
+    "commandNext": "الخطوات التالية",
+    "commandOpenRequests": "طلبات الخدمة المفتوحة",
+    "commandWorkOrders": "أوامر العمل",
+    "commandRecentDocs": "أحدث تحديثات المصادر",
+    "commandPublish": "التسويق / الرابط المباشر",
+    "openSources": "فتح المصادر",
+    "openMarketing": "فتح التسويق",
+    "needsAttention": "يحتاج متابعة",
+    "recordKeeping": "إضافة سجلات",
     "overview": {
-      "title": "نظرة تشغيلية عامة",
-      "description": "يعتمد هذا العرض الآن على الرسم التشغيلي القانوني أولًا، ثم يضيف فوقه طبقة الحالة المُحافَظ عليها للمراجعة والسرد."
+      "title": "لمحة",
+      "description": "أعداد من الرسم التشغيلي القانوني لهذا العقار."
     },
     "summary": {
       "properties": "العقارات",
@@ -560,8 +588,10 @@
     }
   },
   "experiencesPage": {
-    "title": "الواجهات الحية",
-    "subtitle": "ابنِ وتحقق وانشر وحدّث واجهتي السوق والفحص النافي للجهالة من داخل مساحة العمل.",
+    "title": "التسويق",
+    "subtitle": "انشر وحدّث سطح السوق الأساسي لهذا العقار. الأسطح المتقدمة أدناه.",
+    "advancedSurfacesTitle": "أسطح متقدمة",
+    "advancedSurfacesDescription": "الفحص النافي للجهالة وعائلات أخرى موجودة في الخلفية وليست جزءًا من المسار الأساسي بعد. اضبطها هنا للقراءة أو التشخيص.",
     "configure": {
       "title": "إعدادات الواجهة الحية",
       "description": "تحافظ مساحة العمل الداخلية على حقيقة العقار الجارية. ومن هنا تنشر السطح الخارجي المعتمد للسوق أو للفحص النافي للجهالة.",

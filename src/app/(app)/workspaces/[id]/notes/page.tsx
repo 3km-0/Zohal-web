@@ -91,7 +91,7 @@ export default function WorkspaceNotesPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="notes" showMembersTab={orgMultiUserEnabled} />
+      <WorkspaceTabs workspaceId={workspaceId} active="sources" showMembersLink={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (

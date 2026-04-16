@@ -268,7 +268,7 @@ export default function WorkspaceBundlesPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="packs" showMembersTab={orgMultiUserEnabled} />
+      <WorkspaceTabs workspaceId={workspaceId} active="sources" showMembersLink={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-5xl mx-auto space-y-4">

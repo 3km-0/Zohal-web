@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -319,10 +320,35 @@ export default function WorkspaceOperationsPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="operations" />
+      <WorkspaceTabs workspaceId={workspaceId} active="dashboard" />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-6xl space-y-6">
+          <div className="flex flex-col gap-4 rounded-scholar border border-border bg-surface p-4 shadow-[var(--shadowSm)] md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-text">{t('commandNext')}</div>
+              <p className="mt-1 text-sm text-text-soft">
+                {(state?.summary.open_service_request_count ?? 0) > 0 || (state?.summary.open_work_order_count ?? 0) > 0
+                  ? t('needsAttention')
+                  : t('subtitle')}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/workspaces/${workspaceId}`}
+                className="inline-flex min-h-[42px] items-center justify-center rounded-scholar bg-[color:var(--button-primary-bg)] px-5 py-2.5 text-sm font-semibold text-[color:var(--button-primary-text)] transition-all hover:bg-[color:var(--button-primary-bg-hover)]"
+              >
+                {t('openSources')}
+              </Link>
+              <Link
+                href={`/workspaces/${workspaceId}/experiences`}
+                className="inline-flex min-h-[42px] items-center justify-center rounded-scholar border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
+              >
+                {t('openMarketing')}
+              </Link>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>{t('overview.title')}</CardTitle>
@@ -349,7 +375,12 @@ export default function WorkspaceOperationsPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <details className="group rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] open:pb-2">
+            <summary className="cursor-pointer list-none p-4 text-base font-semibold text-text marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="underline-offset-4 group-open:underline">{t('recordKeeping')}</span>
+              <span className="ms-2 text-sm font-normal text-text-soft">({t('forms.propertyTitle')})</span>
+            </summary>
+            <div className="grid gap-6 px-4 pb-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>{t('forms.propertyTitle')}</CardTitle>
@@ -543,7 +574,8 @@ export default function WorkspaceOperationsPage() {
                 </Button>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          </details>
 
           <div className="grid gap-6 xl:grid-cols-2">
             <Card>

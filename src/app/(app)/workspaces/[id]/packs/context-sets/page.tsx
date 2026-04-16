@@ -129,7 +129,7 @@ export default function WorkspaceContextSetsPage() {
         }
       />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="packs" />
+      <WorkspaceTabs workspaceId={workspaceId} active="sources" />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
         <Card className="p-4">

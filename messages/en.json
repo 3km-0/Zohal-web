@@ -40,7 +40,7 @@
     "dashboard": "Dashboard",
     "ask": "Ask",
     "automations": "Automations",
-    "workspaces": "Workspaces",
+    "workspaces": "Properties",
     "documents": "Documents",
     "notes": "Notes",
     "search": "Search",
@@ -132,10 +132,10 @@
     }
   },
   "workspaces": {
-    "title": "Workspaces",
-    "create": "Create Workspace",
-    "empty": "No workspaces yet",
-    "emptyDescription": "Create your first workspace to start organizing your documents.",
+    "title": "Properties",
+    "create": "Create property",
+    "empty": "No properties yet",
+    "emptyDescription": "Create your first property to start organizing sources and operations.",
     "types": {
       "project": "Project",
       "case": "Case",
@@ -147,6 +147,10 @@
       "other": "Other"
     }
   },
+  "documentViewer": {
+    "backToProperty": "Back to property",
+    "documentNotFound": "Document not found"
+  },
   "folders": {
     "title": "Folders",
     "folder": "Folder",
@@ -157,7 +161,7 @@
     "renameFolder": "Rename Folder",
     "deleteFolder": "Delete Folder",
     "moveToFolder": "Move to Folder",
-    "workspaceRoot": "Workspace Root",
+    "workspaceRoot": "Property root",
     "subfolders": "Subfolders",
     "subfolder": "Subfolder",
     "folderName": "Folder Name",
@@ -441,23 +445,47 @@
     "closeMenu": "Close menu"
   },
   "workspaceTabs": {
-    "documents": "Documents",
-    "operations": "Operations",
+    "dashboard": "Dashboard",
+    "sources": "Sources",
+    "operator": "Operator",
+    "marketing": "Marketing",
+    "more": "More",
+    "templates": "Templates",
+    "documents": "Sources",
+    "operations": "Dashboard",
     "ask": "Ask",
     "notes": "Notes",
     "reports": "Reports",
     "pipelines": "Pipelines",
     "packs": "Packs",
     "dataSources": "Data Sources",
-    "experiences": "Living Interfaces",
+    "experiences": "Marketing",
     "members": "Members"
   },
+  "propertyOperatorPage": {
+    "title": "Operator",
+    "subtitle": "Property-scoped AI, source curation, and automation for this property.",
+    "agentSectionTitle": "Property agent",
+    "agentSectionDescription": "Ask across this property’s sources. Portfolio-wide search stays under global Ask.",
+    "automationSectionTitle": "Property automation",
+    "automationSectionDescription": "Ingestion triggers, refresh, and run controls for this property only.",
+    "openGlobalAutomations": "All properties automations"
+  },
   "workspaceOperationsPage": {
-    "title": "Operations",
-    "subtitle": "Canonical properties, vendors, requests, work orders, and linked documents for this workspace.",
+    "title": "Dashboard",
+    "subtitle": "Property command center: open work, vendors, sources activity, and publishing status at a glance.",
+    "commandNext": "Next actions",
+    "commandOpenRequests": "Open service requests",
+    "commandWorkOrders": "Work orders",
+    "commandRecentDocs": "Recent source updates",
+    "commandPublish": "Marketing / live link",
+    "openSources": "Open Sources",
+    "openMarketing": "Open Marketing",
+    "needsAttention": "Needs attention",
+    "recordKeeping": "Add records",
     "overview": {
-      "title": "Operations overview",
-      "description": "This view now loads from the canonical operations graph first, with maintained panels layered on top for review and narrative outputs."
+      "title": "Snapshot",
+      "description": "Counts from the canonical operations graph for this property."
     },
     "summary": {
       "properties": "Properties",
@@ -560,8 +588,10 @@
     }
   },
   "experiencesPage": {
-    "title": "Living Interfaces",
-    "subtitle": "Compile, validate, publish, and refresh the market and diligence Living Interfaces for this workspace.",
+    "title": "Marketing",
+    "subtitle": "Publish and refresh the primary market surface for this property. Advanced surfaces stay below.",
+    "advancedSurfacesTitle": "Advanced surfaces",
+    "advancedSurfacesDescription": "Diligence and other families exist in the backend but are not part of the primary workflow yet. Configure read-only or diagnostic use here.",
     "configure": {
       "title": "Living Interface configuration",
       "description": "The internal workspace keeps maintained property truth current. Publish the approved external market or diligence surface from here.",

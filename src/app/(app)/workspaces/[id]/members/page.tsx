@@ -148,7 +148,7 @@ export default function WorkspaceMembersPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title="Members" />
-      <WorkspaceTabs workspaceId={workspaceId} active="members" showMembersTab />
+      <WorkspaceTabs workspaceId={workspaceId} active="sources" showMembersLink />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-3xl mx-auto space-y-6">

@@ -130,7 +130,7 @@ export default function DataSourcesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <WorkspaceTabs workspaceId={workspaceId} active="data-sources" />
+      <WorkspaceTabs workspaceId={workspaceId} active="sources" />
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 md:px-6">
         <Card>
           <CardHeader>

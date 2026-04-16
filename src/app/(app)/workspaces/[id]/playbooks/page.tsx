@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, ChevronDown, ChevronRight, Plus, UploadCloud, Shield, ShieldCheck, Globe, Layers, Variable, Lock, Copy, Pencil } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import {
   Badge,
   Button,
@@ -653,6 +654,7 @@ export default function WorkspacePlaybooksPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader />
+      <WorkspaceTabs workspaceId={workspaceId} active="operator" />
       <div className="flex-1 overflow-auto">
       <div className="max-w-6xl mx-auto p-4 space-y-4">
         <div className="flex items-center justify-between">

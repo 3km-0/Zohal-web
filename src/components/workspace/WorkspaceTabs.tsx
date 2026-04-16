@@ -4,29 +4,49 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { Building2, Database, FileText, Rocket, StickyNote, Users } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, Megaphone, MoreHorizontal } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-type WorkspaceTabKey = 'documents' | 'operations' | 'notes' | 'data-sources' | 'experiences' | 'members' | 'packs';
-type VisibleWorkspaceTabKey = Exclude<WorkspaceTabKey, 'packs'>;
+/** Primary property shell tabs (presentation). Routes stay under `/workspaces`. */
+export type WorkspaceTabKey = 'dashboard' | 'sources' | 'operator' | 'marketing';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
-  active?: WorkspaceTabKey;
+  active: WorkspaceTabKey;
   className?: string;
-  showMembersTab?: boolean;
+  showMembersLink?: boolean;
+}
+
+export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
+  if (pathname.includes('/operations')) return 'dashboard';
+  if (pathname.includes('/operator')) return 'operator';
+  if (pathname.includes('/experiences')) return 'marketing';
+  if (pathname.includes('/playbooks')) return 'operator';
+  if (pathname.includes('/documents/')) return 'sources';
+  return 'sources';
 }
 
 export function WorkspaceTabs({
   workspaceId,
   active,
   className,
-  showMembersTab = false,
+  showMembersLink = false,
 }: WorkspaceTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations('workspaceTabs');
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement | null>(null);
   const fromFolderId = searchParams.get('fromFolder');
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
 
   const withFolderContext = (href: string) => {
     if (!fromFolderId) return href;
@@ -34,33 +54,47 @@ export function WorkspaceTabs({
     return `${href}${separator}fromFolder=${encodeURIComponent(fromFolderId)}`;
   };
 
-  const resolved: VisibleWorkspaceTabKey =
-    (active === 'packs' ? 'documents' : active) ||
-    (pathname.includes('/notes')
-      ? 'notes'
-      : pathname.includes('/operations')
-        ? 'operations'
-      : pathname.includes('/data-sources')
-        ? 'data-sources'
-      : pathname.includes('/experiences')
-        ? 'experiences'
-      : pathname.includes('/members')
-        ? 'members'
-      : 'documents');
+  const resolved: WorkspaceTabKey = active || resolveWorkspaceTabFromPath(pathname);
 
   const tabs: {
-    key: VisibleWorkspaceTabKey;
+    key: WorkspaceTabKey;
     label: string;
     href: string;
     icon: ComponentType<{ className?: string }>;
   }[] = [
-    { key: 'documents', label: t('documents'), href: withFolderContext(`/workspaces/${workspaceId}`), icon: FileText },
-    { key: 'operations', label: t('operations'), href: withFolderContext(`/workspaces/${workspaceId}/operations`), icon: Building2 },
-    { key: 'notes', label: t('notes'), href: withFolderContext(`/workspaces/${workspaceId}/notes`), icon: StickyNote },
-    { key: 'data-sources' as const, label: t('dataSources'), href: withFolderContext(`/workspaces/${workspaceId}/data-sources`), icon: Database },
-    { key: 'experiences', label: t('experiences'), href: withFolderContext(`/workspaces/${workspaceId}/experiences`), icon: Rocket },
-    ...(showMembersTab
-      ? [{ key: 'members' as const, label: t('members'), href: withFolderContext(`/workspaces/${workspaceId}/members`), icon: Users }]
+    {
+      key: 'dashboard',
+      label: t('dashboard'),
+      href: withFolderContext(`/workspaces/${workspaceId}/operations`),
+      icon: LayoutDashboard,
+    },
+    {
+      key: 'sources',
+      label: t('sources'),
+      href: withFolderContext(`/workspaces/${workspaceId}`),
+      icon: FolderOpen,
+    },
+    {
+      key: 'operator',
+      label: t('operator'),
+      href: withFolderContext(`/workspaces/${workspaceId}/operator`),
+      icon: Bot,
+    },
+    {
+      key: 'marketing',
+      label: t('marketing'),
+      href: withFolderContext(`/workspaces/${workspaceId}/experiences`),
+      icon: Megaphone,
+    },
+  ];
+
+  const secondaryLinks: { href: string; label: string }[] = [
+    { href: withFolderContext(`/workspaces/${workspaceId}/notes`), label: t('notes') },
+    { href: withFolderContext(`/workspaces/${workspaceId}/data-sources`), label: t('dataSources') },
+    { href: withFolderContext(`/workspaces/${workspaceId}/packs`), label: t('packs') },
+    { href: withFolderContext(`/workspaces/${workspaceId}/playbooks`), label: t('templates') },
+    ...(showMembersLink
+      ? [{ href: withFolderContext(`/workspaces/${workspaceId}/members`), label: t('members') }]
       : []),
   ];
 
@@ -78,12 +112,9 @@ export function WorkspaceTabs({
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center whitespace-nowrap py-2 px-1 transition-all duration-150 border-b-2 -mb-px',
-                  isActive
-                    ? 'border-accent'
-                    : 'border-transparent hover:border-border'
+                  isActive ? 'border-accent' : 'border-transparent hover:border-border'
                 )}
               >
-                {/* Pill wrapping icon + label */}
                 <span
                   className={cn(
                     'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-150',
@@ -104,6 +135,42 @@ export function WorkspaceTabs({
               </Link>
             );
           })}
+
+          <div className="relative py-2 ps-1" ref={moreRef}>
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-haspopup="menu"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMoreOpen((o) => !o);
+              }}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text'
+              )}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+              {t('more')}
+            </button>
+            {moreOpen ? (
+              <div
+                role="menu"
+                className="absolute end-0 top-full z-40 mt-1 min-w-[12rem] rounded-xl border border-border bg-surface py-1 shadow-[var(--shadowMd)]"
+              >
+                {secondaryLinks.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    role="menuitem"
+                    className="block px-3 py-2 text-sm text-text hover:bg-surface-alt"
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent" aria-hidden="true" />
       </div>

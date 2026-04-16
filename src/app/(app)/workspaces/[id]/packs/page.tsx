@@ -121,7 +121,7 @@ export default function WorkspacePacksPage() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
 
-      <WorkspaceTabs workspaceId={workspaceId} active="packs" showMembersTab={orgMultiUserEnabled} />
+      <WorkspaceTabs workspaceId={workspaceId} active="sources" showMembersLink={orgMultiUserEnabled} />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
         <Card className="p-4 border-dashed">

@@ -2,59 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, Clock3, Copy, ExternalLink, FileText, Globe2, Link2, X } from 'lucide-react';
+import { ChevronDown, Clock3, FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { useToast } from '@/components/ui/Toast';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { ContractAnalysisPane } from '@/components/analysis/ContractAnalysisPane';
 import { DocumentAgentActivityPanel } from '@/components/document/DocumentAgentActivityPanel';
-import {
-  openLiveExperience,
-  resolveCanonicalLiveExperienceUrl,
-} from '@/lib/experience-links';
-import type { WorkspaceAgentLiveExperience } from '@/lib/workspace-agent';
 import type { DocumentType } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
-import { useRouter } from 'next/navigation';
 
 const MIN_PANE_WIDTH = 280;
 const MAX_PANE_WIDTH_VW = 0.75;
-
-type WorkspaceExperienceSummary = {
-  experience_id: string;
-  experience_lane?: string | null;
-  public_url?: string | null;
-  host?: string | null;
-  path_family?: string | null;
-  path_key?: string | null;
-  document_id?: string | null;
-  corpus_id?: string | null;
-  updated_at: string;
-};
-
-type WorkspaceExperiencesEnvelope = {
-  ok: boolean;
-  experiences: WorkspaceExperienceSummary[];
-  message?: string;
-};
-
-const EXTERNAL_SURFACE_PATH_FAMILIES = new Set(['market', 'diligence']);
-
-function sortPublishedSurfaceSummaries(left: WorkspaceExperienceSummary, right: WorkspaceExperienceSummary) {
-  const familyRank = (value?: string | null) => (value === 'market' ? 0 : value === 'diligence' ? 1 : 2);
-  const leftRank = familyRank(left.path_family);
-  const rightRank = familyRank(right.path_family);
-  if (leftRank !== rightRank) return leftRank - rightRank;
-  return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-}
-
-function resolveWorkspaceExperienceUrl(experience: WorkspaceExperienceSummary): string | null {
-  if (experience.public_url?.trim()) return experience.public_url.trim();
-  if (experience.host?.trim() && experience.path_family?.trim() && experience.path_key?.trim()) {
-    return `https://${experience.host.trim()}/${experience.path_family.trim()}/${experience.path_key.trim()}`;
-  }
-  return null;
-}
 
 interface DocumentRightPaneProps {
   documentId: string;
@@ -81,97 +38,15 @@ export function DocumentRightPane({
   onWidthChange,
 }: DocumentRightPaneProps) {
   const t = useTranslations('aiPane');
-  const router = useRouter();
-  const toast = useToast();
   const topBarItemClass =
     'inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-text-soft transition-colors hover:bg-surface hover:text-text';
   const [analysisInitialView, setAnalysisInitialView] = useState<'results' | 'run'>('results');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [analysisMenuOpen, setAnalysisMenuOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [runConfigOpen, setRunConfigOpen] = useState(false);
-  const [liveExperience, setLiveExperience] = useState<WorkspaceAgentLiveExperience | null>(null);
-  const [isOpeningExperience, setIsOpeningExperience] = useState(false);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const analysisOpen = mode === 'analysis';
-  const canonicalExperienceUrl = resolveCanonicalLiveExperienceUrl(liveExperience);
-
-  const syncLiveExperience = useCallback((next: WorkspaceAgentLiveExperience | null) => {
-    if (!next) return;
-    setLiveExperience((current) => ({ ...current, ...next }));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLiveExperience(null);
-
-    async function loadLiveExperience() {
-      try {
-        const response = await fetch(
-          `/api/experiences/v1/experiences/workspaces/${encodeURIComponent(workspaceId)}/experiences`
-        );
-        const data = (await response.json().catch(() => null)) as WorkspaceExperiencesEnvelope | null;
-        if (!response.ok) {
-          throw new Error(data?.message || 'Failed to load the current Live Experience.');
-        }
-        const experiences = Array.isArray(data?.experiences) ? data!.experiences : [];
-        const matching = experiences
-          .filter(
-            (experience) =>
-              (experience.document_id === documentId || experience.corpus_id === documentId) &&
-              EXTERNAL_SURFACE_PATH_FAMILIES.has(String(experience.path_family || '').trim().toLowerCase())
-          )
-          .sort(sortPublishedSurfaceSummaries);
-        const current = matching[0];
-        if (cancelled) return;
-        if (!current) {
-          setLiveExperience(null);
-          return;
-        }
-        const canonicalUrl = resolveWorkspaceExperienceUrl(current);
-        setLiveExperience((existing) => ({
-          ...existing,
-          experience_id: current.experience_id,
-          experience_url: canonicalUrl,
-          live_url: canonicalUrl,
-          public_url: current.public_url ?? canonicalUrl,
-        }));
-      } catch {
-        if (!cancelled) {
-          setLiveExperience(null);
-        }
-      }
-    }
-
-    void loadLiveExperience();
-    return () => {
-      cancelled = true;
-    };
-  }, [documentId, workspaceId]);
-
-  const handleOpenExperience = useCallback(() => {
-    if (!liveExperience) return;
-    setIsOpeningExperience(true);
-    void openLiveExperience(liveExperience)
-      .catch((error) => {
-        toast.showError(error, 'experiences');
-      })
-      .finally(() => {
-        setIsOpeningExperience(false);
-      });
-  }, [liveExperience, toast]);
-
-  const handleCopyExperienceUrl = useCallback(() => {
-    if (!canonicalExperienceUrl) return;
-    void navigator.clipboard.writeText(canonicalExperienceUrl)
-      .then(() => {
-        toast.showSuccess(t('experienceUrlCopiedTitle'), t('experienceUrlCopiedBody'));
-      })
-      .catch((error) => {
-        toast.showError(error, 'experiences');
-      });
-  }, [canonicalExperienceUrl, t, toast]);
 
   const handleDragStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -186,8 +61,6 @@ export function DocumentRightPane({
       const onMove = (me: PointerEvent) => {
         if (!dragStateRef.current) return;
         const delta = me.clientX - dragStateRef.current.startX;
-        // LTR: pane is on the right, dragging the left handle leftward (negative delta) grows the pane.
-        // RTL: pane is on the left, dragging the right handle rightward (positive delta) grows the pane.
         const raw = isRtl
           ? dragStateRef.current.startWidth + delta
           : dragStateRef.current.startWidth - delta;
@@ -216,13 +89,11 @@ export function DocumentRightPane({
   useEffect(() => {
     if (!historyOpen) return;
     setAnalysisMenuOpen(false);
-    setMoreMenuOpen(false);
   }, [historyOpen]);
 
   useEffect(() => {
     if (!analysisOpen && !runConfigOpen) return;
     setAnalysisMenuOpen(false);
-    setMoreMenuOpen(false);
   }, [analysisOpen, runConfigOpen]);
 
   return (
@@ -230,7 +101,6 @@ export function DocumentRightPane({
       className="fixed inset-0 z-20 flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-surface md:relative md:z-auto md:h-full md:min-w-[17.5rem] md:max-w-[75vw] md:border-s md:border-border"
       style={width !== undefined ? { width: `${width}px` } as React.CSSProperties : undefined}
     >
-      {/* Drag handle — sits on the inline-start edge; flips automatically in RTL */}
       <div
         onPointerDown={handleDragStart}
         aria-hidden="true"
@@ -252,7 +122,7 @@ export function DocumentRightPane({
         <div className="shrink-0 border-b border-border bg-surface-alt px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-text">{t('agent')}</p>
+              <p className="text-sm font-semibold text-text">{t('title')}</p>
             </div>
             <button type="button" onClick={() => setHistoryOpen(true)} className={topBarItemClass}>
               {t('history')}
@@ -265,7 +135,6 @@ export function DocumentRightPane({
                   analysisOpen || runConfigOpen ? 'bg-surface text-text' : '',
                 ].join(' ')}
                 onClick={() => {
-                  setMoreMenuOpen(false);
                   setAnalysisMenuOpen((prev) => !prev);
                 }}
               >
@@ -300,34 +169,6 @@ export function DocumentRightPane({
                 </div>
               )}
             </div>
-            <div className="relative">
-              <button
-                type="button"
-                className={topBarItemClass}
-                onClick={() => {
-                  setAnalysisMenuOpen(false);
-                  setMoreMenuOpen((prev) => !prev);
-                }}
-              >
-                {t('actions')}
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-              {moreMenuOpen && (
-                <div className="absolute end-0 top-full z-30 mt-2 min-w-[12rem] rounded-2xl border border-border bg-surface p-2 shadow-xl">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      router.push(`/workspaces/${workspaceId}/experiences?document_id=${documentId}`);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-text transition-colors hover:bg-surface-alt"
-                  >
-                    <Globe2 className="h-4 w-4 text-accent" />
-                    {t('quickActions.experience')}
-                  </button>
-                </div>
-              )}
-            </div>
             <button
               type="button"
               onClick={onClose}
@@ -337,37 +178,6 @@ export function DocumentRightPane({
               <X className="h-4 w-4" />
             </button>
           </div>
-          {canonicalExperienceUrl ? (
-            <div className="mt-3 rounded-2xl border border-border bg-surface px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-3.5 w-3.5 flex-none text-accent" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">
-                    {t('experienceUrlLabel')}
-                  </p>
-                  <p className="truncate text-sm font-medium text-text">{canonicalExperienceUrl}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyExperienceUrl}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text"
-                  aria-label={t('copyExperienceUrl')}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">{t('copyExperienceUrl')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenExperience}
-                  disabled={isOpeningExperience}
-                  className="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1.5 text-xs font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-wait disabled:opacity-70"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>{t('openExperienceUrl')}</span>
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
 
         <div className="h-full">
@@ -376,7 +186,6 @@ export function DocumentRightPane({
             workspaceId={workspaceId}
             selectedText={selectedText}
             currentPage={currentPage}
-            onLiveExperienceChange={syncLiveExperience}
           />
         </div>
 

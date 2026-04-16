@@ -38,6 +38,7 @@ export default function DocumentViewerShell({
   const tTypes = useTranslations('documents.types');
   const tSidebar = useTranslations('sidebar');
   const tAI = useTranslations('aiPane');
+  const tDocViewer = useTranslations('documentViewer');
   const { openMobileSidebar } = useAppShell();
 
   const [document, setDocument] = useState<Document | null>(null);
@@ -337,11 +338,11 @@ export default function DocumentViewerShell({
   if (!document) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        <p className="text-text-soft">Document not found</p>
+        <p className="text-text-soft">{tDocViewer('documentNotFound')}</p>
         <Link href={`/workspaces/${workspaceId}`}>
           <Button variant="secondary">
             <ArrowLeft className="w-4 h-4" />
-            Back to Workspace
+            {tDocViewer('backToProperty')}
           </Button>
         </Link>
       </div>
@@ -530,7 +531,7 @@ export default function DocumentViewerShell({
                               Retry conversion
                             </Button>
                             <Button variant="secondary" onClick={() => router.push(`/workspaces/${workspaceId}`)}>
-                              Back to workspace
+                              {tDocViewer('backToProperty')}
                             </Button>
                           </div>
                         </div>

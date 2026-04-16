@@ -251,7 +251,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="experiences" />
+      <WorkspaceTabs workspaceId={workspaceId} active="marketing" />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -278,23 +278,33 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   </div>
                 </div>
               ) : null}
+              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                <div className="font-semibold text-text">{t('surfaceFamilies.market')}</div>
+                <p className="mt-1 text-text-soft">
+                  {t('configure.description')}
+                </p>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Input label={t('fields.experienceId')} value={experienceId} onChange={(e) => setExperienceId(e.target.value)} />
                 <Input label={t('fields.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
                 <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-text">{t('fields.surfaceFamily')}</label>
-                <select
-                  value={surfaceFamily}
-                  onChange={(e) => setSurfaceFamily(e.target.value as SurfaceFamily)}
-                  className="w-full min-h-[44px] rounded-scholar border border-border bg-surface px-4 py-3 text-text"
-                >
-                  <option value="market">{t('surfaceFamilies.market')}</option>
-                  <option value="diligence">{t('surfaceFamilies.diligence')}</option>
-                </select>
-              </div>
+              <details className="rounded-scholar border border-dashed border-border bg-surface-alt p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-text">{t('advancedSurfacesTitle')}</summary>
+                <p className="mt-2 text-sm text-text-soft">{t('advancedSurfacesDescription')}</p>
+                <div className="mt-3 space-y-1.5">
+                  <label className="block text-sm font-medium text-text">{t('fields.surfaceFamily')}</label>
+                  <select
+                    value={surfaceFamily}
+                    onChange={(e) => setSurfaceFamily(e.target.value as SurfaceFamily)}
+                    className="w-full min-h-[44px] rounded-scholar border border-border bg-surface px-4 py-3 text-text"
+                  >
+                    <option value="market">{t('surfaceFamilies.market')}</option>
+                    <option value="diligence">{t('surfaceFamilies.diligence')}</option>
+                  </select>
+                </div>
+              </details>
               <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
