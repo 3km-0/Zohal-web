@@ -173,21 +173,21 @@
   },
   "automations": {
     "title": "Automations",
-    "subtitle": "Configure the first blessed automation preset for each workspace.",
-    "workspaceLabel": "Workspace",
-    "workspacePlaceholder": "Select a workspace",
-    "presetTitle": "Analyze workspace uploads",
+    "subtitle": "Configure the first blessed automation preset for each property.",
+    "workspaceLabel": "Property",
+    "workspacePlaceholder": "Select a property",
+    "presetTitle": "Analyze property uploads",
     "presetDescription": "Run approved analysis after ingestion completes and keep the Living Interface current.",
     "enabled": "Enabled",
-    "enabledCaption": "Turn this automation preset on or off for the selected workspace.",
+    "enabledCaption": "Turn this automation preset on or off for the selected property.",
     "triggerOnIngestion": "Run after ingestion completes",
     "triggerOnIngestionCaption": "Use document_ingestion_completed as the real trigger for approved analysis.",
     "dailyRefresh": "Daily refresh",
-    "dailyRefreshCaption": "Run at most once per local day for this workspace when sources have changed.",
+    "dailyRefreshCaption": "Run at most once per local day for this property when sources have changed.",
     "privateLive": "Private live refresh",
     "privateLiveCaption": "Keep updates private-only in v1. No auto-publish side effects.",
     "autoRefreshPrivateLive": "Auto-refresh private live",
-    "autoRefreshPrivateLiveCaption": "Refresh the workspace Living Interface after canonical snapshot writes complete.",
+    "autoRefreshPrivateLiveCaption": "Refresh the property Living Interface after canonical snapshot writes complete.",
     "manualRunEnabled": "Allow Run now",
     "manualRunEnabledCaption": "Permit operators to trigger this preset manually.",
     "scheduleTime": "Daily refresh time",
@@ -197,7 +197,8 @@
     "currentStatus": "Current status",
     "recentRuns": "Recent runs",
     "activity": "Activity",
-    "noWorkspaces": "No accessible workspaces yet.",
+    "noWorkspaces": "No accessible properties yet.",
+    "uploadDescription": "Upload PDFs to this property to get started",
     "noRuns": "No automation runs yet.",
     "saved": "Automation updated",
     "running": "Automation started",
@@ -222,7 +223,6 @@
     "fromFiles": "From Files",
     "fromGoogleDrive": "From Google Drive",
     "noDocuments": "No Documents Yet",
-    "uploadDescription": "Upload PDFs to this workspace to get started",
     "types": {
       "textbook": "Textbook",
       "contract": "Contract",
@@ -281,7 +281,7 @@
     "documentAnalysis": "Document Analysis",
     "backToAI": "Back to AI",
     "openAnalysis": "Open analysis",
-    "analysisCardTitle": "Structured analysis is part of this workspace",
+    "analysisCardTitle": "Structured analysis is part of this property",
     "analysisCardBody": "Run structured extraction, review evidence-linked findings, and jump back to PDF proof without leaving the AI pane.",
     "selectedText": "Selected Text",
     "explain": "Explain",
@@ -300,7 +300,7 @@
     "loadingConversation": "Loading conversation...",
     "saveToNotes": "Save to Notes",
     "savedToNotesTitle": "Saved to Notes",
-    "savedToNotesBody": "This response is now available in workspace Notes.",
+    "savedToNotesBody": "This response is now available in property Notes.",
     "experienceUrlLabel": "Living Interface URL",
     "openExperienceUrl": "Open",
     "copyExperienceUrl": "Copy URL",
@@ -344,8 +344,8 @@
     "navTitle": "Ask",
     "globalTitle": "Ask",
     "workspaceTitle": "Ask",
-    "globalPlaceholder": "Ask anything across your workspaces…",
-    "workspacePlaceholder": "Ask anything in this workspace…",
+    "globalPlaceholder": "Ask anything across your properties…",
+    "workspacePlaceholder": "Ask anything in this property…",
     "activity": "Activity",
     "send": "Ask",
     "cancel": "Cancel",
@@ -368,7 +368,7 @@
     },
     "modes": {
       "ask": "Ask",
-      "workspaces": "Workspaces"
+      "workspaces": "Properties"
     }
   },
   "tasks": {
@@ -413,13 +413,13 @@
       "unlimitedDocuments": "Unlimited documents",
       "aiExplanations": "AI explanations",
       "unlimitedAI": "Unlimited AI usage",
-      "workspaces": "{count} workspaces",
-      "unlimitedWorkspaces": "Unlimited workspaces",
+      "workspaces": "{count} properties",
+      "unlimitedWorkspaces": "Unlimited properties",
       "allPlugins": "All plugins included",
       "calendarSync": "Add to calendar",
       "driveSync": "Google Drive sync",
       "prioritySupport": "Priority support",
-      "teamWorkspaces": "Team workspaces",
+      "teamWorkspaces": "Team properties",
       "apiAccess": "API access"
     }
   },
@@ -498,11 +498,11 @@
     },
     "forms": {
       "propertyTitle": "Add property",
-      "propertyDescription": "Create a canonical property record and link it to this workspace.",
+      "propertyDescription": "Create a canonical property record for this property shell (one property per shell).",
       "vendorTitle": "Add vendor",
       "vendorDescription": "Create a vendor and optionally attach it to a property scope.",
       "requestTitle": "Log service request",
-      "requestDescription": "Create a workspace-scoped intake record on top of the canonical property graph.",
+      "requestDescription": "Create a property-scoped intake record on top of the canonical property graph.",
       "workOrderTitle": "Create work order",
       "workOrderDescription": "Open a work order against the canonical property and vendor records."
     },
@@ -548,7 +548,7 @@
     },
     "lists": {
       "propertiesTitle": "Properties",
-      "propertiesDescription": "Canonical property roots linked to this workspace.",
+      "propertiesDescription": "Canonical property roots linked to this property.",
       "vendorsTitle": "Vendors",
       "vendorsDescription": "Vendors resolved against the canonical operations graph.",
       "requestsTitle": "Service requests",
@@ -595,10 +595,10 @@
     "advancedSurfacesTitle": "Diligence (advanced)",
     "advancedSurfacesDescription": "Not in the primary workflow yet. Open this section only when you need a diligence-family publication or diagnostics. Closing it returns you to the market workflow.",
     "diligenceAdvancedSummary": "Not in the primary workflow yet. Expand to draft or compile a diligence-family surface.",
-    "diligenceAdvancedOpenHint": "This workspace is now using the diligence template IDs and copy below. Collapse the section above to return to the primary market workflow.",
+    "diligenceAdvancedOpenHint": "This property is now using the diligence template IDs and copy below. Collapse the section above to return to the primary market workflow.",
     "configure": {
       "title": "Living Interface configuration",
-      "description": "The internal workspace keeps maintained property truth current. Publish the approved external market or diligence surface from here.",
+      "description": "The internal property keeps maintained property truth current. Publish the approved external market or diligence surface from here.",
       "relatedDocumentsTitle": "Related documents remembered from last analysis",
       "relatedDocumentsDescription": "Living Interface publication still compiles from the primary document only in this release."
     },
@@ -618,92 +618,92 @@
       "description": "Publish to a public live URL by default, with restricted access tools available when needed.",
       "latestLink": "Latest issued link"
     },
-  "operationsWorkspace": {
-    "title": "Internal workspace source boundary",
-    "description": "This workspace is optimized for property operations: maintenance intake, work-order activity, vendor contracts, SOPs, warranties, leasing files, and supporting property documents.",
-    "boundary": "The internal workspace remains the analysis system of record. Published Living Interfaces are downstream external surfaces, not the workspace itself."
-  },
-  "surfaceBoundary": {
-    "market": {
-      "title": "Market surface",
-      "description": "Publishes approved property facts, availability, documents, and inquiry-ready context for external market-facing viewers."
+    "operationsWorkspace": {
+      "title": "Internal property source boundary",
+      "description": "This property is optimized for property operations: maintenance intake, work-order activity, vendor contracts, SOPs, warranties, leasing files, and supporting property documents.",
+      "boundary": "The internal property remains the analysis system of record. Published Living Interfaces are downstream external surfaces, not the property itself."
     },
-    "diligence": {
-      "title": "Diligence surface",
-      "description": "Publishes a controlled diligence-facing view for owners, lenders, buyers, and other approved stakeholders reviewing risk, disclosures, and current condition."
-    }
-  },
-  "events": {
-    "title": "Recent events",
-    "description": "A lightweight view of publication activity for this Living Interface.",
-    "empty": "No publication events yet."
-  },
-  "manualCash": {
-    "title": "Manual cash inputs",
-    "description": "Maintain the entity-level cash inputs that feed projected liquidity in this workspace.",
-    "trustClass": "Manual operator input",
-    "boundary": "These rows drive projected liquidity only. They do not replace accounting, treasury, or bank source-of-truth balances.",
-    "listTitle": "Current cash rows",
-    "empty": "No manual cash inputs yet.",
+    "surfaceBoundary": {
+      "market": {
+        "title": "Market surface",
+        "description": "Publishes approved property facts, availability, documents, and inquiry-ready context for external market-facing viewers."
+      },
+      "diligence": {
+        "title": "Diligence surface",
+        "description": "Publishes a controlled diligence-facing view for owners, lenders, buyers, and other approved stakeholders reviewing risk, disclosures, and current condition."
+      }
+    },
+    "events": {
+      "title": "Recent events",
+      "description": "A lightweight view of publication activity for this Living Interface.",
+      "empty": "No publication events yet."
+    },
+    "manualCash": {
+      "title": "Manual cash inputs",
+      "description": "Maintain the entity-level cash inputs that feed projected liquidity in this property.",
+      "trustClass": "Manual operator input",
+      "boundary": "These rows drive projected liquidity only. They do not replace accounting, treasury, or bank source-of-truth balances.",
+      "listTitle": "Current cash rows",
+      "empty": "No manual cash inputs yet.",
+      "fields": {
+        "entityName": "Entity name",
+        "entityKey": "Entity key",
+        "currency": "Currency",
+        "effectiveAt": "Effective at",
+        "availableCash": "Available cash",
+        "reserveCash": "Reserve / unavailable cash",
+        "note": "Operator note",
+        "sourceNote": "Source note"
+      },
+      "placeholders": {
+        "entityName": "Al Noor Holdings",
+        "entityKey": "al_noor_holdings",
+        "currency": "USD",
+        "amount": "0.00",
+        "note": "Optional context for this liquidity input",
+        "sourceNote": "Optional source or reconciliation note"
+      },
+      "hints": {
+        "entityKey": "Leave blank to derive a stable key from the entity name."
+      },
+      "actions": {
+        "create": "Save cash row",
+        "update": "Update cash row",
+        "cancelEdit": "Cancel edit",
+        "refresh": "Refresh cash rows",
+        "edit": "Edit",
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "status": {
+        "active": "Active",
+        "superseded": "Superseded",
+        "archived": "Archived"
+      },
+      "summary": {
+        "available": "Available: {amount}",
+        "reserve": "Reserve: {amount}"
+      },
+      "rowMeta": "Entity key {entityKey} • Effective {effectiveAt}",
+      "sourceNoteLabel": "Source note: {sourceNote}",
+      "validation": {
+        "entityRequired": "Add an entity name or entity key before saving.",
+        "effectiveAtRequired": "Choose an effective timestamp before saving.",
+        "availableCashInvalid": "Available cash must be a valid number.",
+        "reserveCashInvalid": "Reserve cash must be a valid number."
+      },
+      "toast": {
+        "createdTitle": "Cash input saved",
+        "updatedTitle": "Cash input updated",
+        "archivedTitle": "Cash input archived",
+        "restoredTitle": "Cash input restored",
+        "savedBody": "Projected liquidity will pick up this row on the next property refresh."
+      }
+    },
     "fields": {
-      "entityName": "Entity name",
-      "entityKey": "Entity key",
-      "currency": "Currency",
-      "effectiveAt": "Effective at",
-      "availableCash": "Available cash",
-      "reserveCash": "Reserve / unavailable cash",
-      "note": "Operator note",
-      "sourceNote": "Source note"
-    },
-    "placeholders": {
-      "entityName": "Al Noor Holdings",
-      "entityKey": "al_noor_holdings",
-      "currency": "USD",
-      "amount": "0.00",
-      "note": "Optional context for this liquidity input",
-      "sourceNote": "Optional source or reconciliation note"
-    },
-    "hints": {
-      "entityKey": "Leave blank to derive a stable key from the entity name."
-    },
-    "actions": {
-      "create": "Save cash row",
-      "update": "Update cash row",
-      "cancelEdit": "Cancel edit",
-      "refresh": "Refresh cash rows",
-      "edit": "Edit",
-      "archive": "Archive",
-      "restore": "Restore"
-    },
-    "status": {
-      "active": "Active",
-      "superseded": "Superseded",
-      "archived": "Archived"
-    },
-    "summary": {
-      "available": "Available: {amount}",
-      "reserve": "Reserve: {amount}"
-    },
-    "rowMeta": "Entity key {entityKey} • Effective {effectiveAt}",
-    "sourceNoteLabel": "Source note: {sourceNote}",
-    "validation": {
-      "entityRequired": "Add an entity name or entity key before saving.",
-      "effectiveAtRequired": "Choose an effective timestamp before saving.",
-      "availableCashInvalid": "Available cash must be a valid number.",
-      "reserveCashInvalid": "Reserve cash must be a valid number."
-    },
-    "toast": {
-      "createdTitle": "Cash input saved",
-      "updatedTitle": "Cash input updated",
-      "archivedTitle": "Cash input archived",
-      "restoredTitle": "Cash input restored",
-      "savedBody": "Projected liquidity will pick up this row on the next workspace refresh."
-    }
-  },
-  "fields": {
-    "experienceId": "Living Interface ID",
-    "corpusId": "Corpus ID",
-    "includedSources": "Included sources",
+      "experienceId": "Living Interface ID",
+      "corpusId": "Corpus ID",
+      "includedSources": "Included sources",
       "surfaceFamily": "Surface family",
       "title": "Title",
       "host": "Host",
@@ -734,8 +734,8 @@
       "refreshPortal": "Refresh diagnostics"
     },
     "defaults": {
-      "subtitle": "Deterministic Operations Workspace Surface",
-      "summary": "Compile verified property-operations truth into the default Operations Workspace Living Interface.",
+      "subtitle": "Deterministic Operations Property Surface",
+      "summary": "Compile verified property-operations truth into the default Operations Property Living Interface.",
       "operationsWorkspaceMarketSubtitle": "Approved property facts, availability, and supporting files for market-facing visibility",
       "operationsWorkspaceMarketSummary": "Compile approved listing details, availability, plans, documents, and inquiry-ready property context into a market Living Interface.",
       "operationsWorkspaceDiligenceSubtitle": "Controlled owner and diligence visibility into property condition, obligations, and risk",
@@ -818,17 +818,17 @@
     "whatsappStatusLoadError": "Unable to load WhatsApp status. Try again.",
     "whatsappLinkedPhone": "Linked phone number",
     "whatsappBusinessNumber": "Zohal WhatsApp",
-    "whatsappPhoneMissing": "Add your phone number in Integrations before using WhatsApp import for this workspace.",
-    "whatsappWorkspaceName": "Workspace name",
-    "whatsappWorkspaceLinked": "This workspace is linked to your WhatsApp phone.",
-    "whatsappWorkspaceNotLinked": "Link this workspace to your phone before sending documents here.",
-    "whatsappStep1": "Step 1: Link this workspace",
-    "whatsappStep1Desc": "This lets Zohal match your WhatsApp message to the correct workspace without IDs or labels.",
-    "whatsappStep2": "Step 2: Send the workspace name and attach the document",
-    "whatsappStep2Desc": "Use the workspace name in the first line or caption, then attach the document in the same message.",
-    "whatsappBindWorkspace": "Link this workspace",
-    "whatsappBindWorkspaceSuccess": "Workspace linked to your WhatsApp phone.",
-    "whatsappBindWorkspaceError": "Unable to link this workspace right now. Try again.",
+    "whatsappPhoneMissing": "Add your phone number in Integrations before using WhatsApp import for this property.",
+    "whatsappWorkspaceName": "Property name",
+    "whatsappWorkspaceLinked": "This property is linked to your WhatsApp phone.",
+    "whatsappWorkspaceNotLinked": "Link this property to your phone before sending documents here.",
+    "whatsappStep1": "Step 1: Link this property",
+    "whatsappStep1Desc": "This lets Zohal match your WhatsApp message to the correct property without IDs or labels.",
+    "whatsappStep2": "Step 2: Send the property name and attach the document",
+    "whatsappStep2Desc": "Use the property name in the first line or caption, then attach the document in the same message.",
+    "whatsappBindWorkspace": "Link this property",
+    "whatsappBindWorkspaceSuccess": "Property linked to your WhatsApp phone.",
+    "whatsappBindWorkspaceError": "Unable to link this property right now. Try again.",
     "whatsappRefreshStatus": "Refresh status",
     "whatsappOpenChat": "Open WhatsApp chat",
     "maxSize": "PDF or JPG/PNG images, max 100MB each",
@@ -843,18 +843,18 @@
     "docxPrivateUnsupported": "DOCX files aren't supported in Privacy Mode."
   },
   "workspaceModal": {
-    "editWorkspace": "Edit Workspace",
+    "editWorkspace": "Edit Property",
     "name": "Name",
-    "namePlaceholder": "My Workspace",
+    "namePlaceholder": "My Property",
     "type": "Type",
     "customIcon": "Custom Icon (optional)",
     "iconPlaceholder": "📚",
     "iconHint": "Enter an emoji to use as custom icon",
     "description": "Description (optional)",
-    "descriptionPlaceholder": "What is this workspace for?",
+    "descriptionPlaceholder": "What is this property for?",
     "nameRequired": "Name is required",
     "saveChanges": "Save Changes",
-    "createWorkspace": "Create Workspace"
+    "createWorkspace": "Create Property"
   },
   "subscriptionPage": {
     "title": "Subscription",
@@ -936,9 +936,9 @@
       "aiExplanations2PerDay": "2 AI explanations/day",
       "unlimitedAi": "Unlimited AI explanations",
       "unlimitedAiUsage": "Unlimited AI usage",
-      "workspace1": "1 workspace",
-      "workspaces10": "10 workspaces",
-      "unlimitedWorkspaces": "Unlimited workspaces",
+      "workspace1": "1 property",
+      "workspaces10": "10 properties",
+      "unlimitedWorkspaces": "Unlimited properties",
       "unlimitedDocuments": "Unlimited documents",
       "storage100gb": "100GB storage",
       "allPlugins": "All plugins (STEM, Legal, Finance)",
@@ -957,7 +957,7 @@
       "billableOpsMonthly": "{count} billable ops / month",
       "allTools": "All document tools included",
       "importsIncluded": "Drive, OneDrive, and WhatsApp import",
-      "sharedWorkspaces": "Shared workspaces for team rollout"
+      "sharedWorkspaces": "Shared properties for team rollout"
     },
     "enterprise": {
       "title": "Enterprise",
@@ -1006,7 +1006,7 @@
     "priorityProcessing": "Priority processing",
     "driveSync": "Google Drive sync",
     "prioritySupport": "Priority support",
-    "teamCollaboration": "Shared workspaces and team controls",
+    "teamCollaboration": "Shared properties and team controls",
     "renewsOn": "Your subscription will renew on {date}",
     "trialEndsOn": "Your trial ends on {date}",
     "startUsing": "Start Using Zohal",
@@ -1024,7 +1024,7 @@
     "freePlanDesc": "1 GiB storage, metered AI tokens, and monthly ops",
     "proPlanDesc": "10 GiB storage with larger monthly token and ops pools",
     "premiumPlanDesc": "100 GiB storage with higher monthly token and ops pools",
-    "teamPlanDesc": "Pooled meters, shared workspaces, and collaboration controls",
+    "teamPlanDesc": "Pooled meters, shared properties, and collaboration controls",
     "upgradeToPro": "Upgrade to Pro",
     "dataLocality": "Data Locality",
     "integrations": "Integrations",
@@ -1043,7 +1043,7 @@
     "languageDesc": "Language can be changed using the language switcher in the header.",
     "dangerZone": "Danger Zone",
     "logOut": "Log Out",
-    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your workspaces, documents, and notes will be permanently deleted.",
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your properties, documents, and notes will be permanently deleted.",
     "yesDeleteAccount": "Yes, Delete My Account"
   },
   "integrationsPage": {
@@ -1051,7 +1051,7 @@
     "accountsTitle": "Connected Accounts",
     "description": "Connect cloud accounts and manage reusable API Sources from one place.",
     "whatsapp": "WhatsApp",
-    "whatsappDesc": "Link the phone number you will message from when sending documents into a workspace.",
+    "whatsappDesc": "Link the phone number you will message from when sending documents into a property.",
     "whatsappPhoneLabel": "Your WhatsApp number",
     "whatsappPhonePlaceholder": "+9665XXXXXXXX",
     "whatsappPhoneHint": "Use the same number you will use to message Zohal on WhatsApp.",
@@ -1068,14 +1068,14 @@
     "disconnect": "Disconnect",
     "apiSources": {
       "title": "API Sources",
-      "description": "Create reusable external data sources once, then attach them to the workspaces that need them.",
-      "reuseHint": "API Sources live here as a reusable library. Attach them per workspace so runs stay focused on source selection instead of setup.",
+      "description": "Create reusable external data sources once, then attach them to the properties that need them.",
+      "reuseHint": "API Sources live here as a reusable library. Attach them per property so runs stay focused on source selection instead of setup.",
       "loading": "Loading API Sources...",
       "emptyTitle": "No API Sources yet",
-      "emptyBody": "Create your first reusable source to start attaching live data to workspaces.",
+      "emptyBody": "Create your first reusable source to start attaching live data to properties.",
       "addSource": "Add API Source",
       "editSource": "Edit API Source",
-      "modalDescription": "Set up this source step by step, then attach it to any workspace that should use it.",
+      "modalDescription": "Set up this source step by step, then attach it to any property that should use it.",
       "createSource": "Create source",
       "saveChanges": "Save changes",
       "saveDraft": "Save as draft",
@@ -1160,12 +1160,12 @@
         "excludePaths": "Exclude paths (one per line)"
       },
       "attach": {
-        "title": "Attach this source to workspaces now?",
-        "description": "You can skip this and attach it later from any workspace.",
-        "loading": "Loading workspaces...",
-        "empty": "No active workspaces are available right now.",
+        "title": "Attach this source to properties now?",
+        "description": "You can skip this and attach it later from any property.",
+        "loading": "Loading properties...",
+        "empty": "No active properties are available right now.",
         "defaultLabel": "Enable by default for new runs",
-        "defaultCaption": "This source will start selected in Run Analysis for that workspace.",
+        "defaultCaption": "This source will start selected in Run Analysis for that property.",
         "skip": "Skip for now",
         "confirm": "Attach selected"
       },
@@ -1200,8 +1200,8 @@
     "manageLibrary": "Manage source library",
     "openIntegrations": "Open Integrations",
     "guidance": {
-      "createOnce": "Create reusable API Sources in Integrations once, then attach them to any workspace that should use them.",
-      "runSelection": "Run Analysis only shows sources attached to this workspace, and defaults come from the toggles below."
+      "createOnce": "Create reusable API Sources in Integrations once, then attach them to any property that should use them.",
+      "runSelection": "Run Analysis only shows sources attached to this property, and defaults come from the toggles below."
     },
     "authModes": {
       "none": "None",
@@ -1213,18 +1213,18 @@
     },
     "attached": {
       "title": "Attached Sources",
-      "description": "These sources are available in this workspace and can be preselected for new runs.",
+      "description": "These sources are available in this property and can be preselected for new runs.",
       "emptyTitle": "No sources attached yet",
       "emptyDescription": "Attach a source from your library or create one in Integrations first.",
       "detach": "Detach",
       "editInIntegrations": "Edit in Integrations",
       "lastSuccess": "Last success: {value}",
       "defaultLabel": "Enable by default for new runs",
-      "defaultCaption": "This source will start selected in Run Analysis for this workspace."
+      "defaultCaption": "This source will start selected in Run Analysis for this property."
     },
     "library": {
       "title": "Available From Your Library",
-      "description": "Attach reusable sources without recreating them per workspace.",
+      "description": "Attach reusable sources without recreating them per property.",
       "emptyTitle": "No unattached library sources",
       "emptyDescription": "Everything in your current library is already attached here, or you have not created any sources yet.",
       "attach": "Attach"
@@ -1238,19 +1238,19 @@
     "save": "Save",
     "accessControl": "Access Control",
     "multiUser": "Enterprise multi-user",
-    "multiUserDesc": "Enable workspace sharing via members. Safe to keep off until you're ready to flip.",
-    "workspaceMembers": "Workspace Members",
-    "workspaceMembersDesc": "Manage members and roles for each workspace in your organization.",
+    "multiUserDesc": "Enable property sharing via members. Safe to keep off until you're ready to flip.",
+    "workspaceMembers": "Property Members",
+    "workspaceMembersDesc": "Manage members and roles for each property in your organization.",
     "manageMembers": "Manage members"
   },
   "dataLocalityPage": {
     "title": "Data Locality",
     "orgLabel": "Organization",
-    "orgHint": "Manage one region for all organization workspaces.",
+    "orgHint": "Manage one region for all organization properties.",
     "noOrganizations": "No organizations available.",
-    "workspaceLabel": "Workspace",
-    "workspaceHint": "Select a workspace to view eligible regions and provision dedicated storage.",
-    "orgAppliesAllWorkspaces": "Applies to all organization workspaces ({count}).",
+    "workspaceLabel": "Property",
+    "workspaceHint": "Select a property to view eligible regions and provision dedicated storage.",
+    "orgAppliesAllWorkspaces": "Applies to all organization properties ({count}).",
     "loading": "Loading data locality configuration...",
     "currentRegion": "Current Team/Enterprise region: {region}",
     "sharedMode": "Current mode: shared platform infrastructure (Zohal-managed region)",
@@ -1259,7 +1259,7 @@
     "orgIneligibleBody": "Region selection is available on Team plans and Enterprise contracts.",
     "reasonOrgAdminRequired": "Organization admin access is required to manage data locality.",
     "reasonTeamRequired": "This organization must be on Team or Enterprise before region selection can be enabled.",
-    "noMigrationBody": "Important: existing documents are not migrated. New uploads and newly created workspaces will use the selected region.",
+    "noMigrationBody": "Important: existing documents are not migrated. New uploads and newly created properties will use the selected region.",
     "regionLockedBody": "Region selection is permanent in v1. This organization is locked to its current region.",
     "reason": "Reason",
     "confirmTitle": "Provision region {region}",
@@ -1383,7 +1383,7 @@
   "pipelines": {
     "disabled": {
       "title": "Pipeline Builder is not enabled",
-      "description": "This internal foundation feature is currently gated for selected workspaces."
+      "description": "This internal foundation feature is currently gated for selected properties."
     },
     "list": {
       "title": "Pipelines",
@@ -1478,7 +1478,7 @@
     "contextSetsManager": {
       "title": "Context Sets",
       "aboutTitle": "About",
-      "aboutBody": "Context Sets are reusable documents (policies, laws, standards) you can pin to a workspace and apply across analyses.",
+      "aboutBody": "Context Sets are reusable documents (policies, laws, standards) you can pin to a property and apply across analyses.",
       "newNamePlaceholder": "New context set name",
       "emptyTitle": "No context sets",
       "emptyDescription": "Create a context set to reuse across analyses.",
@@ -1506,7 +1506,7 @@
       "namePlaceholder": "Pack name (optional)",
       "type": "Type",
       "kind": "Kind",
-      "pin": "Pin to workspace"
+      "pin": "Pin to property"
     },
     "empty": {
       "title": "No packs",
@@ -1530,7 +1530,7 @@
   },
   "reportsPage": {
     "title": "Reports",
-    "subtitle": "Saved exports for this workspace",
+    "subtitle": "Saved exports for this property",
     "errors": {
       "loadFailed": "Failed to load reports",
       "openFailed": "Failed to open report",
@@ -1569,7 +1569,7 @@
       "label": "Related documents",
       "reset": "Reset to this document only",
       "prefill": "Using related documents from your last run.",
-      "searchPlaceholder": "Search workspace documents",
+      "searchPlaceholder": "Search property documents",
       "remove": "Remove",
       "add": "Add",
       "selectedCount": "{count} selected",
@@ -1625,8 +1625,8 @@
     },
     "apiSources": {
       "title": "API Sources",
-      "empty": "No API Sources are attached to this workspace yet.",
-      "manageWorkspace": "Manage workspace sources",
+      "empty": "No API Sources are attached to this property yet.",
+      "manageWorkspace": "Manage property sources",
       "openLibrary": "Open source library",
       "attachedBadge": "Attached source",
       "defaultBadge": "Default",
@@ -1647,7 +1647,7 @@
       "templatesAutoCreated": "Templates will be created automatically."
     },
     "reports": {
-      "savedToWorkspace": "Report saved to Workspace → Reports.",
+      "savedToWorkspace": "Report saved to Property → Reports.",
       "verificationFinalized": "Verification finalized."
     },
     "actions": {
@@ -1681,8 +1681,8 @@
       "savedPickerPlaceholder": "Use remembered related documents",
       "manageSaved": "Manage",
       "unnamed": "Unnamed related set",
-      "searchPlaceholder": "Search workspace documents",
-      "workspaceRoot": "Workspace Root",
+      "searchPlaceholder": "Search property documents",
+      "workspaceRoot": "Property Root",
       "remove": "Remove",
       "add": "Add",
       "selectedTitle": "{count} selected",
@@ -1939,13 +1939,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Turn files into workspaces",
-      "description": "Turn contracts, reports, and PDFs into source-linked workspaces with timelines, dashboards, and follow-ups your team can use."
+      "title": "Zohal — Turn files into properties",
+      "description": "Turn contracts, reports, and PDFs into source-linked properties with timelines, dashboards, and follow-ups your team can use."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Source-linked workspaces from your documents.",
+        "tagline": "Source-linked properties from your documents.",
         "theme": "scholar-neutral"
       },
       "nav": {
@@ -2005,7 +2005,7 @@
         ],
         "proofLine": "Source-linked answers • Private-data controls • Arabic + English",
         "mock": {
-          "title": "Living Workspace",
+          "title": "Living Property",
           "panels": [
             "Source PDF",
             "Key Facts",
@@ -2059,17 +2059,17 @@
         "title": "Stop digging through files.",
         "body": [
           "Dates, obligations, and changes are usually scattered across contracts, annexes, reports, and PDFs.",
-          "Zohal pulls them into one clear workspace with source-linked answers, live timelines, and follow-ups your team can use immediately."
+          "Zohal pulls them into one clear property with source-linked answers, live timelines, and follow-ups your team can use immediately."
         ],
         "sideCard": {
-          "title": "Dead files -> living workspace",
+          "title": "Dead files -> living property",
           "before": [
             "Teams hunt through folders and PDFs to answer simple operational questions",
             "Important changes stay buried in addendums, annexes, and revised versions",
             "Every handoff rebuilds the same context in email, slides, and spreadsheets"
           ],
           "after": [
-            "Answers, dates, obligations, and exceptions stay live in one shared workspace",
+            "Answers, dates, obligations, and exceptions stay live in one shared property",
             "Changes across related files surface as clear updates your team can review",
             "Every item can link back to the exact page and source text when needed"
           ]
@@ -2077,14 +2077,14 @@
       },
       "howItWorks": {
         "title": "What your team gets.",
-        "subhead": "Bring in the files, and Zohal returns a workspace built around the facts, dates, changes, and follow-ups that matter.",
+        "subhead": "Bring in the files, and Zohal returns a property built around the facts, dates, changes, and follow-ups that matter.",
         "steps": [
           {
             "title": "Bring in the files",
             "body": "Upload PDFs and related files from uploads, WhatsApp, Google Drive, and OneDrive."
           },
           {
-            "title": "Get the workspace",
+            "title": "Get the property",
             "body": "Zohal turns them into timelines, dashboards, source-linked facts, and follow-up views."
           },
           {
@@ -2188,14 +2188,14 @@
         "cards": [
           {
             "id": "contracts",
-            "title": "Contract Workspaces",
+            "title": "Contract Properties",
             "subtitle": "See obligations, renewal terms, and risk areas in one place instead of across PDFs and policy docs.",
             "bullets": [
               "Clause-level source links behind every surfaced item",
-              "Policy and contract language kept in one shared workspace"
+              "Policy and contract language kept in one shared property"
             ],
             "cta": {
-              "label": "See contract workspaces",
+              "label": "See contract properties",
               "href": "#product"
             }
           },
@@ -2214,14 +2214,14 @@
           },
           {
             "id": "bilingual-work",
-            "title": "Bilingual Workspaces",
+            "title": "Bilingual Properties",
             "subtitle": "Review Arabic and English versions together, with differences surfaced early.",
             "bullets": [
               "Side-by-side evidence across both languages",
               "Translation and localization mismatches surfaced early"
             ],
             "cta": {
-              "label": "See bilingual workspaces",
+              "label": "See bilingual properties",
               "href": "#product"
             }
           }
@@ -2249,7 +2249,7 @@
         "leftBullets": [
           "Customer files are not used to train models",
           "Regional deployment options cover supported GCP regions, including Saudi, UAE, and the US",
-          "Workspace access and review history support controlled collaboration",
+          "Property access and review history support controlled collaboration",
           "You can choose the model setup that fits your security, cost, and compliance needs"
         ],
         "rightCard": {
@@ -2275,8 +2275,8 @@
             "name": "Pro",
             "price": "SAR 149 / month",
             "bullets": [
-              "Best for one person turning recurring document sets into living workspaces",
-              "Core workspace builder, source-linked answers, and follow-up tracking",
+              "Best for one person turning recurring document sets into living properties",
+              "Core property builder, source-linked answers, and follow-up tracking",
               "Drive, OneDrive, and WhatsApp import included",
               "10 GiB storage, 120M metered AI tokens, and 1,500 billable ops each month"
             ],
@@ -2291,7 +2291,7 @@
             "price": "SAR 599 / month",
             "bullets": [
               "Best for heavier individual workflows and bilingual document operations",
-              "Advanced Arabic/English workspace building, localization, and verification tools",
+              "Advanced Arabic/English property building, localization, and verification tools",
               "Priority support and Google Drive sync",
               "100 GiB storage, 500M metered AI tokens, and 6,000 billable ops each month"
             ],
@@ -2308,7 +2308,7 @@
             "price": "14-day trial",
             "bullets": [
               "Best for a first live team rollout",
-              "Shared workspaces, permissions, and collaboration controls",
+              "Shared properties, permissions, and collaboration controls",
               "14-day trial with card setup through Moyasar",
               "250 GiB pooled storage, 1.5B metered tokens, and 20,000 pooled billable ops"
             ],
@@ -2335,7 +2335,7 @@
         ],
         "usageMeter": {
           "title": "Simple metering",
-          "body": "Plans are measured by storage, AI usage, and completed workspace or export actions. If you are unsure which tier fits your workflow, book a demo and we will help map it."
+          "body": "Plans are measured by storage, AI usage, and completed property or export actions. If you are unsure which tier fits your workflow, book a demo and we will help map it."
         }
       },
       "insights": {
@@ -2428,7 +2428,7 @@
         }
       },
       "finalCta": {
-        "title": "See your files as a workspace.",
+        "title": "See your files as a property.",
         "subhead": "We can show you what this looks like on your contracts, reports, and document sets.",
         "ctas": [
           {
@@ -2453,7 +2453,7 @@
                 "href": "#product"
               },
               {
-                "label": "Living Workspaces",
+                "label": "Living Properties",
                 "href": "#product"
               },
               {
@@ -2470,11 +2470,11 @@
             "title": "Use Cases",
             "links": [
               {
-                "label": "Contract Workspaces",
+                "label": "Contract Properties",
                 "href": "#workflows"
               },
               {
-                "label": "Bilingual Workspaces",
+                "label": "Bilingual Properties",
                 "href": "#workflows"
               },
               {
@@ -2525,12 +2525,12 @@
           "demoTitle": "See documents become software",
           "demoPlaceholderBody": "Sample pack preview placeholder.",
           "demoShowsLabel": "In this demo",
-          "demoShowsBody": "see how Zohal turns a document collection into a living workspace with source-linked facts, live updates, and clear next actions for the team.",
+          "demoShowsBody": "see how Zohal turns a document collection into a living property with source-linked facts, live updates, and clear next actions for the team.",
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Workspace Brief",
-          "samplePackTitle": "Commercial Lease Workspace - Arabic/English",
+          "decisionPackLabel": "Property Brief",
+          "samplePackTitle": "Commercial Lease Property - Arabic/English",
           "provisional": "Needs review",
           "finalized": "Live",
           "verifiedStatus": "Live",
@@ -2545,14 +2545,14 @@
           "sampleTermMonthsValue": "24 months",
           "documentViewer": "Source PDF",
           "verifiedVariables": "Key Facts",
-          "exports": "Workspace Outputs",
+          "exports": "Property Outputs",
           "showEvidence": "Show source",
           "hideEvidence": "Hide source",
           "evidence": "Evidence",
           "pageLabel": "Page {page}",
           "highlightSnippet": "Flagged update: renewal notice terms do not match across related files.",
           "verificationObjectFilename": "",
-          "uiMockLabel": "Workspace Preview",
+          "uiMockLabel": "Property Preview",
           "exceptionsQueueTitle": "Conflict routed for review",
           "exceptionsQueueBody": "Page 4 says \"30 days\" but Page 12 says \"60 days\".",
           "fieldEvidenceLabel": "Linked evidence",
@@ -2575,7 +2575,7 @@
           "buyersCareTitle": "What governance teams ask first"
         },
         "finalCta": {
-          "previewLabel": "Workspace preview"
+          "previewLabel": "Property preview"
         }
       }
     }

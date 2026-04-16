@@ -72,7 +72,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const [documentTitlesById, setDocumentTitlesById] = useState<Record<string, string>>({});
   const includedSourcesLabel = rememberedRelatedDocuments
     ? `${rememberedRelatedDocuments.documentIds.length} related documents from the latest successful analysis`
-    : 'Workspace sources are resolved automatically for this publication flow.';
+    : 'Property sources are resolved automatically for this publication flow.';
 
   const fetchDiagnostics = useCallback(
     async (options?: { refreshProbe?: boolean; candidateId?: string | null }) => {
