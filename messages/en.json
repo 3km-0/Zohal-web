@@ -448,7 +448,7 @@
     "dashboard": "Dashboard",
     "sources": "Sources",
     "operator": "Operator",
-    "marketing": "Marketing",
+    "marketing": "Surface",
     "more": "More",
     "templates": "Templates",
     "documents": "Sources",
@@ -459,7 +459,7 @@
     "pipelines": "Pipelines",
     "packs": "Packs",
     "dataSources": "Data Sources",
-    "experiences": "Marketing",
+    "experiences": "Surface",
     "members": "Members"
   },
   "propertyOperatorPage": {
@@ -478,10 +478,10 @@
     "commandOpenRequests": "Open service requests",
     "commandWorkOrders": "Work orders",
     "commandRecentDocs": "Recent source updates",
-    "commandPublish": "Marketing / live link",
+    "commandPublish": "Surface / live link",
     "openSources": "Open Sources",
     "openOperator": "Open Operator",
-    "openMarketing": "Open Marketing",
+    "openMarketing": "Open Surface",
     "whereToNext": "Where to next",
     "needsAttention": "Needs attention",
     "recordKeeping": "Add records",
@@ -590,17 +590,19 @@
     }
   },
   "experiencesPage": {
-    "title": "Marketing",
-    "subtitle": "Publish and refresh the primary market surface for this property. Diligence stays in an advanced section below.",
+    "title": "Surface",
+    "subtitle": "Turn approved property truth into a verified buyer-facing market surface. Diligence stays available below as a controlled secondary surface.",
     "advancedSurfacesTitle": "Diligence (advanced)",
-    "advancedSurfacesDescription": "Not in the primary workflow yet. Open this section only when you need a diligence-family publication or diagnostics. Closing it returns you to the market workflow.",
-    "diligenceAdvancedSummary": "Not in the primary workflow yet. Expand to draft or compile a diligence-family surface.",
-    "diligenceAdvancedOpenHint": "This property is now using the diligence template IDs and copy below. Collapse the section above to return to the primary market workflow.",
+    "advancedSurfacesDescription": "Keep this secondary. Open only when you need a diligence-family publication, controlled review flow, or diagnostics outside the buyer surface path.",
+    "diligenceAdvancedSummary": "Secondary review surface. Expand only when you need diligence-specific publishing.",
+    "diligenceAdvancedOpenHint": "This property is now configured for the diligence surface below. Collapse this section to return to the primary buyer-surface workflow.",
     "configure": {
-      "title": "Living Interface configuration",
-      "description": "The internal property keeps maintained property truth current. Publish the approved external market or diligence surface from here.",
+      "title": "Buyer surface workflow",
+      "description": "The internal property stays the maintained truth. Use this workflow to prepare, review, publish, customize, and monitor the approved external surface.",
       "relatedDocumentsTitle": "Related documents remembered from last analysis",
-      "relatedDocumentsDescription": "Living Interface publication still compiles from the primary document only in this release."
+      "relatedDocumentsDescription": "Publication still compiles from the primary document in this release, while preserving the related-source context shown here.",
+      "relatedDocumentsCount": "{count} related documents from the latest successful analysis",
+      "includedSourcesAuto": "Property sources are resolved automatically for this publication flow."
     },
     "status": {
       "title": "Publication status",
@@ -615,22 +617,40 @@
     },
     "sharing": {
       "title": "Access and sharing",
-      "description": "Publish to a public live URL by default, with restricted access tools available when needed.",
+      "description": "The default outcome is one stable live surface URL, with restricted sharing tools available when needed.",
       "latestLink": "Latest issued link"
+    },
+    "workflow": {
+      "title": "Primary workflow",
+      "description": "Move through the buyer-surface path without thinking in compile/promote terms.",
+      "prepare": "Prepare",
+      "review": "Review",
+      "publish": "Publish",
+      "customize": "Customize",
+      "monitor": "Monitor",
+      "complete": "Complete",
+      "pending": "Pending"
+    },
+    "readiness": {
+      "title": "Market readiness gate",
+      "ready": "Required market fields are present. This surface is ready to publish when review passes.",
+      "missingRequired": "Missing required fields",
+      "missingRecommended": "Missing recommended fields",
+      "notLoaded": "Market readiness will appear when a listing overlay exists for this property."
     },
     "operationsWorkspace": {
       "title": "Internal property source boundary",
-      "description": "This property is optimized for property operations: maintenance intake, work-order activity, vendor contracts, SOPs, warranties, leasing files, and supporting property documents.",
-      "boundary": "The internal property remains the analysis system of record. Published Living Interfaces are downstream external surfaces, not the property itself."
+      "description": "This property remains the maintained truth and operator control plane: source ingestion, document analysis, commercial overlays, and evidence-backed property state all stay here.",
+      "boundary": "The internal property is the system of record. Published surfaces are downstream verified views, not the property itself."
     },
     "surfaceBoundary": {
       "market": {
         "title": "Market surface",
-        "description": "Publishes approved property facts, availability, documents, and inquiry-ready context for external market-facing viewers."
+        "description": "Publishes approved property facts, trust state, buyer Q&A, finance guidance, and next-step contact paths for external buyers."
       },
       "diligence": {
         "title": "Diligence surface",
-        "description": "Publishes a controlled diligence-facing view for owners, lenders, buyers, and other approved stakeholders reviewing risk, disclosures, and current condition."
+        "description": "Publishes a controlled review surface for owners, lenders, buyers, and other approved stakeholders reviewing disclosures, risk, and current condition."
       }
     },
     "events": {
@@ -723,21 +743,22 @@
       "expiring": "Signed expiring link"
     },
     "actions": {
-      "compile": "Compile",
-      "validate": "Validate",
-      "promote": "Promote",
-      "rollback": "Rollback",
+      "compile": "Prepare surface",
+      "validate": "Review readiness",
+      "promote": "Publish live",
+      "rollback": "Restore previous",
+      "advanced": "Advanced controls",
       "issueLink": "Issue expiring link",
       "openRestrictedPreview": "Open restricted preview",
-      "openLive": "Open Living Interface",
-      "openPortal": "Open Living Interface",
-      "refreshPortal": "Refresh diagnostics"
+      "openLive": "Open live surface",
+      "openPortal": "Open live surface",
+      "refreshPortal": "Refresh monitor"
     },
     "defaults": {
       "subtitle": "Deterministic Operations Property Surface",
       "summary": "Compile verified property-operations truth into the default Operations Property Living Interface.",
-      "operationsWorkspaceMarketSubtitle": "Approved property facts, availability, and supporting files for market-facing visibility",
-      "operationsWorkspaceMarketSummary": "Compile approved listing details, availability, plans, documents, and inquiry-ready property context into a market Living Interface.",
+      "operationsWorkspaceMarketSubtitle": "Verified buyer-facing property surface built from approved facts, trust state, and next-step buyer guidance",
+      "operationsWorkspaceMarketSummary": "Compile approved listing facts, trust coverage, buyer Q&A, finance guidance, plans, and contact-ready context into one market Living Interface.",
       "operationsWorkspaceDiligenceSubtitle": "Controlled owner and diligence visibility into property condition, obligations, and risk",
       "operationsWorkspaceDiligenceSummary": "Compile evidence-backed diligence, disclosures, operating history, risk, and review queues into a diligence Living Interface."
     },

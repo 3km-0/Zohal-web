@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FolderOpen, Bot, Megaphone, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Bot, PanelTop, MoreHorizontal } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -84,7 +84,7 @@ export function WorkspaceTabs({
       key: 'marketing',
       label: t('marketing'),
       href: withFolderContext(`/workspaces/${workspaceId}/experiences`),
-      icon: Megaphone,
+      icon: PanelTop,
     },
   ];
 

@@ -16,6 +16,14 @@ interface ExperiencePublicationPanelProps {
   workspaceId: string;
 }
 
+interface ListingOverlayReadiness {
+  ready_to_publish: boolean;
+  last_completion_evaluation: {
+    missing_required?: string[];
+    missing_recommended?: string[];
+  } | null;
+}
+
 const OPERATIONS_WORKSPACE_TEMPLATE_ID = 'property_operations_workspace';
 type SurfaceFamily = 'market' | 'diligence';
 
@@ -70,9 +78,10 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [rememberedRelatedDocuments, setRememberedRelatedDocuments] = useState<RememberedRelatedDocuments | null>(null);
   const [documentTitlesById, setDocumentTitlesById] = useState<Record<string, string>>({});
+  const [marketReadiness, setMarketReadiness] = useState<ListingOverlayReadiness | null>(null);
   const includedSourcesLabel = rememberedRelatedDocuments
-    ? `${rememberedRelatedDocuments.documentIds.length} related documents from the latest successful analysis`
-    : 'Property sources are resolved automatically for this publication flow.';
+    ? t('configure.relatedDocumentsCount', { count: rememberedRelatedDocuments.documentIds.length })
+    : t('configure.includedSourcesAuto');
 
   const fetchDiagnostics = useCallback(
     async (options?: { refreshProbe?: boolean; candidateId?: string | null }) => {
@@ -102,6 +111,38 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     }, 10000);
     return () => window.clearInterval(timer);
   }, [fetchDiagnostics, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error: overlayError } = await supabase
+          .from('property_listing_overlays')
+          .select('ready_to_publish,last_completion_evaluation')
+          .eq('workspace_id', workspaceId)
+          .limit(1)
+          .maybeSingle();
+        if (cancelled || overlayError) return;
+        setMarketReadiness(
+          data
+            ? {
+                ready_to_publish: data.ready_to_publish === true,
+                last_completion_evaluation:
+                  data.last_completion_evaluation &&
+                  typeof data.last_completion_evaluation === 'object'
+                    ? (data.last_completion_evaluation as ListingOverlayReadiness['last_completion_evaluation'])
+                    : null,
+              }
+            : null
+        );
+      } catch {
+        if (!cancelled) setMarketReadiness(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
     if (!documentId) {
@@ -247,6 +288,20 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
 
   const latestCandidateId = diagnosticsEnvelope?.candidate_id || diagnosticsEnvelope?.diagnostics?.candidate?.candidate_id || null;
   const diagnostics = diagnosticsEnvelope?.diagnostics || null;
+  const missingRequired = marketReadiness?.last_completion_evaluation?.missing_required || [];
+  const missingRecommended = marketReadiness?.last_completion_evaluation?.missing_recommended || [];
+  const publishBlocked = surfaceFamily === 'market' && marketReadiness !== null && marketReadiness.ready_to_publish === false;
+  const workflowSteps = [
+    { key: 'prepare', label: t('workflow.prepare'), complete: Boolean(latestCandidateId) },
+    {
+      key: 'review',
+      label: t('workflow.review'),
+      complete: Boolean(diagnostics?.candidate?.validation_report || diagnostics?.candidate?.validation_summary),
+    },
+    { key: 'publish', label: t('workflow.publish'), complete: Boolean(diagnostics?.summary?.live_url) },
+    { key: 'customize', label: t('workflow.customize'), complete: Boolean(diagnostics?.customization_strategy || diagnostics?.customization_result) },
+    { key: 'monitor', label: t('workflow.monitor'), complete: Boolean(diagnostics?.live_probe) },
+  ];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -261,6 +316,61 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               <CardDescription>{t('configure.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-scholar border border-border bg-surface-alt p-4">
+                <div className="font-semibold text-text">{t('workflow.title')}</div>
+                <p className="mt-1 text-sm text-text-soft">{t('workflow.description')}</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-5">
+                  {workflowSteps.map((step, index) => (
+                    <div key={step.key} className="rounded-xl border border-border bg-surface px-3 py-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+                        {index + 1}
+                      </div>
+                      <div className="mt-1 font-medium text-text">{step.label}</div>
+                      <div className="mt-2 text-xs text-text-soft">
+                        {step.complete ? t('workflow.complete') : t('workflow.pending')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {surfaceFamily === 'market' ? (
+                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                  <div className="font-semibold text-text">{t('readiness.title')}</div>
+                  <p className="mt-1 text-text-soft">
+                    {marketReadiness ? t('readiness.ready') : t('readiness.notLoaded')}
+                  </p>
+                  {publishBlocked ? (
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+                          {t('readiness.missingRequired')}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {missingRequired.map((item) => (
+                            <span key={item} className="rounded-full border border-border px-2.5 py-1 text-xs text-text">
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      {missingRecommended.length ? (
+                        <div className="rounded-xl border border-border bg-surface p-3">
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+                            {t('readiness.missingRecommended')}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {missingRecommended.map((item) => (
+                              <span key={item} className="rounded-full border border-border px-2.5 py-1 text-xs text-text">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {rememberedRelatedDocuments ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                   <div className="font-semibold text-text">{t('configure.relatedDocumentsTitle')}</div>
@@ -326,30 +436,6 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
                 </div>
               ) : null}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-text">{t('fields.visibility')}</label>
-                  <select
-                    value={visibility}
-                    onChange={(e) => setVisibility(e.target.value)}
-                    className="w-full min-h-[44px] rounded-scholar border border-border bg-surface px-4 py-3 text-text"
-                  >
-                    <option value="public_indexed">{t('visibility.publicIndexed')}</option>
-                    <option value="public_unlisted">{t('visibility.publicUnlisted')}</option>
-                    <option value="password_share">{t('visibility.password')}</option>
-                    <option value="org_private">{t('visibility.org')}</option>
-                    <option value="expiry_share">{t('visibility.expiring')}</option>
-                  </select>
-                </div>
-                <Input
-                  label={t('fields.password')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  placeholder={t('fields.passwordPlaceholder')}
-                  disabled={visibility !== 'password_share'}
-                />
-              </div>
 
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -383,7 +469,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 </Button>
                 <Button
                   variant="secondary"
-                  disabled={!latestCandidateId}
+                  disabled={!latestCandidateId || publishBlocked}
                   isLoading={busy === 'promote'}
                   onClick={() =>
                     latestCandidateId &&
@@ -397,21 +483,58 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   <ExternalLink className="h-4 w-4" />
                   {t('actions.promote')}
                 </Button>
-                <Button
-                  variant="ghost"
-                  isLoading={busy === 'rollback'}
-                  onClick={() =>
-                    invoke('rollback', `/api/experiences/v1/experiences/publications/${encodeURIComponent(experienceId)}/rollback`, {
-                      method: 'POST',
-                      headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify({}),
-                    })
-                  }
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  {t('actions.rollback')}
-                </Button>
               </div>
+              <details className="rounded-scholar border border-dashed border-border bg-surface-alt p-4">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-text marker:content-none [&::-webkit-details-marker]:hidden">
+                  {t('actions.advanced')}
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input label={t('fields.experienceId')} value={experienceId} onChange={(e) => setExperienceId(e.target.value)} />
+                    <Input label={t('fields.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
+                    <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-text">{t('fields.visibility')}</label>
+                      <select
+                        value={visibility}
+                        onChange={(e) => setVisibility(e.target.value)}
+                        className="w-full min-h-[44px] rounded-scholar border border-border bg-surface px-4 py-3 text-text"
+                      >
+                        <option value="public_indexed">{t('visibility.publicIndexed')}</option>
+                        <option value="public_unlisted">{t('visibility.publicUnlisted')}</option>
+                        <option value="password_share">{t('visibility.password')}</option>
+                        <option value="org_private">{t('visibility.org')}</option>
+                        <option value="expiry_share">{t('visibility.expiring')}</option>
+                      </select>
+                    </div>
+                    <Input
+                      label={t('fields.password')}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      type="password"
+                      placeholder={t('fields.passwordPlaceholder')}
+                      disabled={visibility !== 'password_share'}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    isLoading={busy === 'rollback'}
+                    onClick={() =>
+                      invoke('rollback', `/api/experiences/v1/experiences/publications/${encodeURIComponent(experienceId)}/rollback`, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({}),
+                      })
+                    }
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    {t('actions.rollback')}
+                  </Button>
+                </div>
+              </details>
             </CardContent>
           </Card>
 
