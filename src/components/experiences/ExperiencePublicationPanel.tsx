@@ -6,6 +6,7 @@ import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from '
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { PortalDiagnosticsConsole } from '@/components/experiences/PortalDiagnosticsConsole';
+import { WorkspaceBuyerInboxPanel } from '@/components/experiences/WorkspaceBuyerInboxPanel';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
@@ -618,6 +619,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               .finally(() => setBusy(null));
           }}
         />
+
+        <WorkspaceBuyerInboxPanel workspaceId={workspaceId} />
 
         <Card>
           <CardHeader>

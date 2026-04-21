@@ -22,6 +22,7 @@ import {
   handleIngestionStartOcr,
   handleIngestionTask,
 } from "./handlers/ingestion.js";
+import { handleWhatsappOrchestrate } from "./handlers/whatsapp.js";
 import { sendJson, sendOptions, getRequestId, readJsonBody } from "./runtime/http.js";
 import { createLogger } from "./runtime/logging.js";
 
@@ -157,6 +158,14 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/ingestion/tasks") {
       return await handleIngestionTask(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/internal/whatsapp/orchestrate") {
+      return await handleWhatsappOrchestrate(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
     }
 
     return sendJson(res, 404, {
