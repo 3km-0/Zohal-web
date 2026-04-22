@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { WhatsAppPicker } from '@/components/document/WhatsAppPicker';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
-import { Bot, Building2, ClipboardList, FileText, FolderOpen, Megaphone, Wrench, Users } from 'lucide-react';
+import { Building2, ClipboardList, FileText, FolderOpen, MessageCircle, PanelTop, Wrench, Users } from 'lucide-react';
 
 type OperationsWorkspaceState = {
   summary: {
@@ -155,6 +156,7 @@ export default function WorkspaceOperationsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [state, setState] = useState<OperationsWorkspaceState | null>(null);
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   const [propertyForm, setPropertyForm] = useState<PropertyFormState>(EMPTY_PROPERTY_FORM);
   const [vendorForm, setVendorForm] = useState<VendorFormState>(EMPTY_VENDOR_FORM);
@@ -327,7 +329,7 @@ export default function WorkspaceOperationsPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="dashboard" />
+      <WorkspaceTabs workspaceId={workspaceId} active="overview" />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-6xl space-y-6">
@@ -351,18 +353,26 @@ export default function WorkspaceOperationsPage() {
                   {t('openSources')}
                 </Link>
                 <Link
-                  href={withFolderContext(`/workspaces/${workspaceId}/operator`)}
+                  href={withFolderContext(`/workspaces/${workspaceId}/projects`)}
                   className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
                 >
-                  <Bot className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-                  {t('openOperator')}
+                  <ClipboardList className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  {t('openProjects')}
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowWhatsApp(true)}
+                  className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
+                >
+                  <MessageCircle className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  {t('startOnWhatsApp')}
+                </button>
                 <Link
                   href={withFolderContext(`/workspaces/${workspaceId}/experiences`)}
                   className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
                 >
-                  <Megaphone className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-                  {t('openMarketing')}
+                  <PanelTop className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  {t('openBrochure')}
                 </Link>
               </div>
             </div>
@@ -766,6 +776,14 @@ export default function WorkspaceOperationsPage() {
           </div>
         </div>
       </div>
+
+      {showWhatsApp ? (
+        <WhatsAppPicker
+          workspaceId={workspaceId}
+          initialAction="project"
+          onClose={() => setShowWhatsApp(false)}
+        />
+      ) : null}
     </div>
   );
 }

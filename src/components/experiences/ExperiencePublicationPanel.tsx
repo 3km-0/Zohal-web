@@ -6,7 +6,6 @@ import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from '
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { PortalDiagnosticsConsole } from '@/components/experiences/PortalDiagnosticsConsole';
-import { WorkspaceProjectInboxPanel } from '@/components/experiences/WorkspaceProjectInboxPanel';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
@@ -296,7 +295,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="marketing" />
+      <WorkspaceTabs workspaceId={workspaceId} active="brochure" />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -377,7 +376,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 </div>
               ) : null}
               <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                <div className="font-semibold text-text">{t('surfaceFamilies.market')}</div>
+                <div className="font-semibold text-text">{t('surfaceFamilies.brochure')}</div>
                 <p className="mt-1 text-text-soft">{t('configure.description')}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -392,8 +391,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               </div>
               {analysisTemplateId === OPERATIONS_WORKSPACE_TEMPLATE_ID ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('surfaceBoundary.market.title')}</div>
-                  <p className="mt-1 text-text-soft">{t('surfaceBoundary.market.description')}</p>
+                  <div className="font-semibold text-text">{t('surfaceBoundary.brochure.title')}</div>
+                  <p className="mt-1 text-text-soft">{t('surfaceBoundary.brochure.description')}</p>
                   <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
                 </div>
               ) : null}
@@ -579,8 +578,6 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               .finally(() => setBusy(null));
           }}
         />
-
-        <WorkspaceProjectInboxPanel workspaceId={workspaceId} />
 
         <Card>
           <CardHeader>

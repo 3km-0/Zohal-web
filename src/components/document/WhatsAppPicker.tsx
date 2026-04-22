@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 
 interface WhatsAppPickerProps {
   workspaceId: string;
+  initialAction?: 'project' | 'ingestion';
   onClose: () => void;
 }
 
@@ -21,7 +22,7 @@ interface ChannelStatusResponse {
   };
 }
 
-export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
+export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClose }: WhatsAppPickerProps) {
   const supabase = createClient();
   const t = useTranslations('documentUpload');
   const [loading, setLoading] = useState(true);
@@ -34,8 +35,21 @@ export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
   const [bindingBusy, setBindingBusy] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
+  const [selectedAction, setSelectedAction] = useState<'project' | 'ingestion'>(initialAction);
 
-  const workspaceMessage = useMemo(() => workspaceName.trim(), [workspaceName]);
+  useEffect(() => {
+    setSelectedAction(initialAction);
+  }, [initialAction]);
+
+  const projectMessage = useMemo(
+    () => t('whatsappProjectTemplate', { workspace: workspaceName.trim() || 'Workspace' }),
+    [t, workspaceName]
+  );
+  const ingestionMessage = useMemo(
+    () => t('whatsappIngestionTemplate', { workspace: workspaceName.trim() || 'Workspace' }),
+    [t, workspaceName]
+  );
+  const workspaceMessage = selectedAction === 'project' ? projectMessage : ingestionMessage;
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -274,11 +288,41 @@ export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
                     </Button>
                   </div>
 
-                  <div className="rounded-scholar border border-border bg-surface-alt p-3">
-                    <div className="text-sm font-medium text-text">{t('whatsappStep2')}</div>
-                    <div className="text-xs text-text-soft mt-1">{t('whatsappStep2Desc')}</div>
-                    <div className="mt-2 p-2 bg-surface rounded border border-border text-xs text-text font-mono break-all">
-                      {workspaceMessage || '—'}
+                  <div className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                    <div>
+                      <div className="text-sm font-medium text-text">{t('whatsappStep2')}</div>
+                      <div className="text-xs text-text-soft mt-1">{t('whatsappStep2Desc')}</div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAction('project')}
+                      className={`w-full rounded-scholar border p-3 text-left transition ${
+                        selectedAction === 'project' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-text">{t('whatsappProjectAction')}</div>
+                      <div className="mt-1 text-xs text-text-soft">{t('whatsappProjectActionDesc')}</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAction('ingestion')}
+                      className={`w-full rounded-scholar border p-3 text-left transition ${
+                        selectedAction === 'ingestion' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-text">{t('whatsappIngestionAction')}</div>
+                      <div className="mt-1 text-xs text-text-soft">{t('whatsappIngestionActionDesc')}</div>
+                    </button>
+
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+                        {t('whatsappPreparedMessage')}
+                      </div>
+                      <div className="mt-2 p-2 bg-surface rounded border border-border text-xs text-text font-mono break-all">
+                        {workspaceMessage || '—'}
+                      </div>
                     </div>
                   </div>
                 </>

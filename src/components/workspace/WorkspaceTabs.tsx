@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FolderOpen, Bot, PanelTop, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, ClipboardList, PanelTop, MoreHorizontal } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 /** Primary property shell tabs (presentation). Routes stay under `/workspaces`. */
-export type WorkspaceTabKey = 'dashboard' | 'sources' | 'operator' | 'marketing';
+export type WorkspaceTabKey = 'overview' | 'sources' | 'projects' | 'brochure';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -19,10 +19,11 @@ interface WorkspaceTabsProps {
 }
 
 export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
-  if (pathname.includes('/operations')) return 'dashboard';
-  if (pathname.includes('/operator')) return 'operator';
-  if (pathname.includes('/experiences')) return 'marketing';
-  if (pathname.includes('/playbooks')) return 'operator';
+  if (pathname.includes('/operations') || pathname.includes('/overview')) return 'overview';
+  if (pathname.includes('/projects')) return 'projects';
+  if (pathname.includes('/operator')) return 'overview';
+  if (pathname.includes('/experiences')) return 'brochure';
+  if (pathname.includes('/playbooks')) return 'overview';
   if (pathname.includes('/documents/')) return 'sources';
   return 'sources';
 }
@@ -63,9 +64,9 @@ export function WorkspaceTabs({
     icon: ComponentType<{ className?: string }>;
   }[] = [
     {
-      key: 'dashboard',
-      label: t('dashboard'),
-      href: withFolderContext(`/workspaces/${workspaceId}/operations`),
+      key: 'overview',
+      label: t('overview'),
+      href: withFolderContext(`/workspaces/${workspaceId}/overview`),
       icon: LayoutDashboard,
     },
     {
@@ -75,14 +76,14 @@ export function WorkspaceTabs({
       icon: FolderOpen,
     },
     {
-      key: 'operator',
-      label: t('operator'),
-      href: withFolderContext(`/workspaces/${workspaceId}/operator`),
-      icon: Bot,
+      key: 'projects',
+      label: t('projects'),
+      href: withFolderContext(`/workspaces/${workspaceId}/projects`),
+      icon: ClipboardList,
     },
     {
-      key: 'marketing',
-      label: t('marketing'),
+      key: 'brochure',
+      label: t('brochure'),
       href: withFolderContext(`/workspaces/${workspaceId}/experiences`),
       icon: PanelTop,
     },

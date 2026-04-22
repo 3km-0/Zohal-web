@@ -446,9 +446,12 @@
   },
   "workspaceTabs": {
     "dashboard": "Dashboard",
+    "overview": "Overview",
     "sources": "Sources",
     "operator": "Operator",
     "marketing": "Surface",
+    "projects": "Projects",
+    "brochure": "Brochure",
     "more": "More",
     "templates": "Templates",
     "documents": "Sources",
@@ -472,22 +475,23 @@
     "openGlobalAutomations": "All properties automations"
   },
   "workspaceOperationsPage": {
-    "title": "Dashboard",
-    "subtitle": "Property command center: open work, vendors, sources activity, and publishing status at a glance.",
+    "title": "Overview",
+    "subtitle": "Calm workspace command view for project momentum, evidence intake, and brochure readiness.",
     "commandNext": "Next actions",
     "commandOpenRequests": "Open service requests",
     "commandWorkOrders": "Work orders",
     "commandRecentDocs": "Recent source updates",
-    "commandPublish": "Surface / live link",
+    "commandPublish": "Brochure status",
     "openSources": "Open Sources",
-    "openOperator": "Open Operator",
-    "openMarketing": "Open Surface",
+    "openProjects": "Open Projects",
+    "startOnWhatsApp": "Start on WhatsApp",
+    "openBrochure": "Open Brochure",
     "whereToNext": "Where to next",
     "needsAttention": "Needs attention",
     "recordKeeping": "Add records",
     "overview": {
-      "title": "Snapshot",
-      "description": "Counts from the canonical operations graph for this property."
+      "title": "Workspace pulse",
+      "description": "High-signal counts from the current property workspace."
     },
     "summary": {
       "properties": "Properties",
@@ -590,15 +594,11 @@
     }
   },
   "experiencesPage": {
-    "title": "Surface",
-    "subtitle": "Turn approved property truth into a verified buyer-facing market surface. Diligence stays available below as a controlled secondary surface.",
-    "advancedSurfacesTitle": "Diligence (advanced)",
-    "advancedSurfacesDescription": "Keep this secondary. Open only when you need a diligence-family publication, controlled review flow, or diagnostics outside the buyer surface path.",
-    "diligenceAdvancedSummary": "Secondary review surface. Expand only when you need diligence-specific publishing.",
-    "diligenceAdvancedOpenHint": "This property is now configured for the diligence surface below. Collapse this section to return to the primary buyer-surface workflow.",
+    "title": "Brochure",
+    "subtitle": "Prepare, review, publish, and monitor the external brochure for this property workspace.",
     "configure": {
-      "title": "Buyer surface workflow",
-      "description": "The internal property stays the maintained truth. Use this workflow to prepare, review, publish, customize, and monitor the approved external surface.",
+      "title": "Brochure workflow",
+      "description": "The internal property workspace stays the maintained truth. Use this workflow to prepare, review, publish, customize, and monitor the approved external brochure.",
       "relatedDocumentsTitle": "Related documents remembered from last analysis",
       "relatedDocumentsDescription": "Publication still compiles from the primary document in this release, while preserving the related-source context shown here.",
       "relatedDocumentsCount": "{count} related documents from the latest successful analysis",
@@ -632,25 +632,21 @@
       "pending": "Pending"
     },
     "readiness": {
-      "title": "Market readiness gate",
-      "ready": "Required market fields are present. This surface is ready to publish when review passes.",
+      "title": "Brochure readiness",
+      "ready": "Required brochure fields are present. This brochure is ready to publish when review passes.",
       "missingRequired": "Missing required fields",
       "missingRecommended": "Missing recommended fields",
-      "notLoaded": "Market readiness will appear when a listing overlay exists for this property."
+      "notLoaded": "Brochure readiness will appear when a brochure overlay exists for this property."
     },
     "operationsWorkspace": {
-      "title": "Internal property source boundary",
-      "description": "This property remains the maintained truth and operator control plane: source ingestion, document analysis, commercial overlays, and evidence-backed property state all stay here.",
-      "boundary": "The internal property is the system of record. Published surfaces are downstream verified views, not the property itself."
+      "title": "Internal workspace boundary",
+      "description": "This property workspace remains the maintained truth and control plane: source ingestion, document analysis, project flows, and evidence-backed state all stay here.",
+      "boundary": "The internal property workspace is the system of record. Published brochures are downstream verified views, not the workspace itself."
     },
     "surfaceBoundary": {
-      "market": {
-        "title": "Market surface",
-        "description": "Publishes approved property facts, trust state, buyer Q&A, finance guidance, and next-step contact paths for external buyers."
-      },
-      "diligence": {
-        "title": "Diligence surface",
-        "description": "Publishes a controlled review surface for owners, lenders, buyers, and other approved stakeholders reviewing disclosures, risk, and current condition."
+      "brochure": {
+        "title": "Brochure surface",
+        "description": "Publishes approved property facts, trusted evidence, and external-ready presentation for the current property workspace."
       }
     },
     "events": {
@@ -733,6 +729,7 @@
     },
     "surfaceFamilies": {
       "market": "Market surface",
+      "brochure": "Brochure surface",
       "diligence": "Diligence surface"
     },
     "visibility": {
@@ -856,6 +853,57 @@
     "archive": "Archive",
     "confirmDelete": "Are you sure you want to delete \"{name}\"?"
   },
+  "workspaceProjectsPage": {
+    "title": "Projects",
+    "subtitle": "Run project intake, missing-item handling, timelines, and WhatsApp progression from one place.",
+    "heroTitle": "Projects are the active center of this workspace",
+    "heroDescription": "Track project flows, review WhatsApp context, progress stages, and keep evidence-linked work moving without leaving the property workspace.",
+    "startOnWhatsApp": "Start project on WhatsApp",
+    "sendDocsOnWhatsApp": "Send documents or photos via WhatsApp",
+    "inbox": {
+      "title": "Project workbench",
+      "description": "Review project flows, threads, and routed WhatsApp conversations without leaving the workspace workflow.",
+      "loading": "Loading project workspace state…",
+      "loadError": "Unable to load the project workspace right now.",
+      "projectCount": "{count, plural, one {# project} other {# projects}}",
+      "conversationCount": "{count, plural, one {# conversation} other {# conversations}}",
+      "projectsTitle": "Project flows",
+      "projectsDescription": "Grouped by stage so active work stays legible.",
+      "emptyProjects": "No project flows for this workspace yet.",
+      "conversationsTitle": "WhatsApp conversations",
+      "conversationsDescription": "Recent routed WhatsApp conversations linked to this workspace.",
+      "emptyConversations": "No routed WhatsApp conversations yet.",
+      "emptyGoal": "No explicit project goal captured yet.",
+      "updatedAt": "Updated {value}",
+      "projectDetailTitle": "Project detail",
+      "projectDetailDescription": "Summary, missing items, threads, timeline, and next actions for the selected project.",
+      "detailHint": "Select a project flow to review activity and move the work forward.",
+      "summaryTitle": "Summary",
+      "projectKindLabel": "Project kind",
+      "workflowFocusLabel": "Workflow focus",
+      "workspaceReadinessLabel": "Workspace readiness",
+      "unknownValue": "Unknown",
+      "missingItemsTitle": "Missing items",
+      "emptyMissingItems": "No blocking items flagged right now.",
+      "threadsTitle": "Threads",
+      "emptyThreads": "No threads created for this project yet.",
+      "actionsTitle": "Next actions",
+      "markScoping": "Move to scoping",
+      "markQuoteReview": "Move to quote review",
+      "markPermitReady": "Mark permit ready",
+      "handoff": "Operator handoff",
+      "timelineTitle": "Timeline",
+      "emptyTimeline": "No project activity yet.",
+      "notesTitle": "Operator notes",
+      "notePlaceholder": "Add a short handoff or follow-up note for this project.",
+      "saveNote": "Save note",
+      "noteError": "Unable to save the operator note right now.",
+      "stageUpdateError": "Unable to update the project stage right now.",
+      "conversationTimelineTitle": "Conversation timeline",
+      "conversationHint": "Select a conversation to review routed WhatsApp events.",
+      "emptyConversationTimeline": "No conversation events yet."
+    }
+  },
   "documentUpload": {
     "title": "Upload Documents",
     "privacy": "Privacy",
@@ -881,16 +929,23 @@
     "whatsappLinkedPhone": "Linked phone number",
     "whatsappBusinessNumber": "Zohal WhatsApp",
     "whatsappPhoneMissing": "Add your phone number in Integrations before using WhatsApp import for this property.",
-    "whatsappWorkspaceName": "Property name",
-    "whatsappWorkspaceLinked": "This property is linked to your WhatsApp phone.",
-    "whatsappWorkspaceNotLinked": "Link this property to your phone before sending documents here.",
-    "whatsappStep1": "Step 1: Link this property",
-    "whatsappStep1Desc": "This lets Zohal match your WhatsApp message to the correct property without IDs or labels.",
-    "whatsappStep2": "Step 2: Send the property name and attach the document",
-    "whatsappStep2Desc": "Use the property name in the first line or caption, then attach the document in the same message.",
-    "whatsappBindWorkspace": "Link this property",
-    "whatsappBindWorkspaceSuccess": "Property linked to your WhatsApp phone.",
-    "whatsappBindWorkspaceError": "Unable to link this property right now. Try again.",
+    "whatsappWorkspaceName": "Workspace name",
+    "whatsappWorkspaceLinked": "This workspace is linked to your WhatsApp phone.",
+    "whatsappWorkspaceNotLinked": "Link this workspace to your phone before using WhatsApp here.",
+    "whatsappStep1": "Step 1: Link this workspace",
+    "whatsappStep1Desc": "This lets Zohal match your WhatsApp messages to the correct workspace without IDs or labels.",
+    "whatsappStep2": "Step 2: Choose your WhatsApp action",
+    "whatsappStep2Desc": "Use one path to start or continue a project, and the other to send evidence into the workspace.",
+    "whatsappProjectAction": "Start project on WhatsApp",
+    "whatsappProjectActionDesc": "Open the project-intake path for renovation, permit, quote, or change work.",
+    "whatsappIngestionAction": "Send documents or photos via WhatsApp",
+    "whatsappIngestionActionDesc": "Upload files, photos, or evidence directly into this workspace.",
+    "whatsappPreparedMessage": "Prepared message",
+    "whatsappProjectTemplate": "I want to start or continue a project for {workspace}.",
+    "whatsappIngestionTemplate": "{workspace}\nI’m sending documents or photos for this workspace.",
+    "whatsappBindWorkspace": "Link this workspace",
+    "whatsappBindWorkspaceSuccess": "Workspace linked to your WhatsApp phone.",
+    "whatsappBindWorkspaceError": "Unable to link this workspace right now. Try again.",
     "whatsappRefreshStatus": "Refresh status",
     "whatsappOpenChat": "Open WhatsApp chat",
     "maxSize": "PDF or JPG/PNG images, max 100MB each",
