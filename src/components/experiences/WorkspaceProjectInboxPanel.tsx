@@ -21,18 +21,19 @@ type ProjectCase = {
 
 type ProjectCaseActivity = {
   id: string;
-  activity_type: string;
-  direction: string;
+  event_type: string;
+  event_direction: string;
   body_text: string | null;
   created_at: string;
-  activity_payload: Record<string, unknown> | null;
+  event_payload: Record<string, unknown> | null;
 };
 
-type ProjectCaseMatch = {
+type ProjectThread = {
   id: string;
-  label: string | null;
-  surface_key: string | null;
-  result_source: string;
+  thread_kind: string;
+  status: string;
+  title: string;
+  summary: string | null;
   created_at: string;
 };
 
@@ -43,7 +44,7 @@ type WhatsappConversation = {
   language: string;
   last_user_goal: string | null;
   updated_at: string;
-  active_surface_key: string | null;
+  active_project_thread_id: string | null;
 };
 
 type WhatsappConversationEvent = {
@@ -75,13 +76,14 @@ function humanizeValue(value: string | null | undefined) {
 export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: string }) {
   const t = useTranslations('experiencesPage.whatsappInbox');
   const supabase = useMemo(() => createClient(), []);
+  const db = supabase as any;
   const [loading, setLoading] = useState(true);
   const [projectCases, setProjectCases] = useState<ProjectCase[]>([]);
   const [conversations, setConversations] = useState<WhatsappConversation[]>([]);
   const [selectedProjectCaseId, setSelectedProjectCaseId] = useState<string | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [activities, setActivities] = useState<ProjectCaseActivity[]>([]);
-  const [matches, setMatches] = useState<ProjectCaseMatch[]>([]);
+  const [threads, setThreads] = useState<ProjectThread[]>([]);
   const [events, setEvents] = useState<WhatsappConversationEvent[]>([]);
   const [noteText, setNoteText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -102,18 +104,18 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
       try {
         const [{ data: projectCaseRows, error: projectCaseError }, { data: conversationRows, error: conversationError }] =
           await Promise.all([
-            supabase
-              .from('buyer_opportunities')
+            db
+              .from('project_flows')
               .select(
                 'id,phone_number,stage,summary,updated_at,created_at,workspace_id,project_kind,workflow_focus,workspace_readiness,missing_items_json'
               )
               .eq('workspace_id', workspaceId)
               .order('updated_at', { ascending: false })
               .limit(20),
-            supabase
+            db
               .from('whatsapp_conversations')
-              .select('id,phone_number,mode,language,last_user_goal,updated_at,active_surface_key')
-              .eq('linked_workspace_id', workspaceId)
+              .select('id,phone_number,mode,language,last_user_goal,updated_at,active_project_thread_id')
+              .eq('active_workspace_id', workspaceId)
               .order('updated_at', { ascending: false })
               .limit(20),
           ]);
@@ -144,32 +146,32 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
     let cancelled = false;
     if (!selectedProjectCaseId) {
       setActivities([]);
-      setMatches([]);
+      setThreads([]);
       return;
     }
 
     (async () => {
       try {
-        const [{ data: activityRows, error: activityError }, { data: matchRows, error: matchError }] = await Promise.all([
-          supabase
-            .from('buyer_opportunity_activities')
-            .select('id,activity_type,direction,body_text,created_at,activity_payload')
-            .eq('opportunity_id', selectedProjectCaseId)
+        const [{ data: activityRows, error: activityError }, { data: threadRows, error: threadError }] = await Promise.all([
+          db
+            .from('project_flow_events')
+            .select('id,event_type,event_direction,body_text,created_at,event_payload')
+            .eq('project_flow_id', selectedProjectCaseId)
             .order('created_at', { ascending: false })
             .limit(30),
-          supabase
-            .from('buyer_opportunity_matches')
-            .select('id,label,surface_key,result_source,created_at')
-            .eq('opportunity_id', selectedProjectCaseId)
+          db
+            .from('project_threads')
+            .select('id,thread_kind,status,title,summary,created_at')
+            .eq('project_flow_id', selectedProjectCaseId)
             .order('created_at', { ascending: false })
             .limit(12),
         ]);
 
         if (cancelled) return;
         if (activityError) throw activityError;
-        if (matchError) throw matchError;
+        if (threadError) throw threadError;
         setActivities((activityRows || []) as ProjectCaseActivity[]);
-        setMatches((matchRows || []) as ProjectCaseMatch[]);
+        setThreads((threadRows || []) as ProjectThread[]);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : t('loadError'));
       }
@@ -178,7 +180,7 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectCaseId, supabase, t]);
+  }, [db, selectedProjectCaseId, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -189,7 +191,7 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
 
     (async () => {
       try {
-        const { data, error: eventError } = await supabase
+        const { data, error: eventError } = await db
           .from('whatsapp_conversation_events')
           .select('id,event_type,event_direction,created_at,event_payload')
           .eq('conversation_id', selectedConversationId)
@@ -206,14 +208,14 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
     return () => {
       cancelled = true;
     };
-  }, [selectedConversationId, supabase, t]);
+  }, [db, selectedConversationId, t]);
 
   async function updateStage(stage: string) {
     if (!selectedProjectCase) return;
     setBusy(`stage:${stage}`);
     setError(null);
     try {
-      const { error: updateError } = await supabase.from('buyer_opportunities').update({ stage }).eq('id', selectedProjectCase.id);
+      const { error: updateError } = await db.from('project_flows').update({ stage }).eq('id', selectedProjectCase.id);
       if (updateError) throw updateError;
       setProjectCases((current) => current.map((item) => (item.id === selectedProjectCase.id ? { ...item, stage } : item)));
     } catch (err) {
@@ -228,18 +230,18 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
     setBusy('note');
     setError(null);
     try {
-      const { data, error: insertError } = await supabase
-        .from('buyer_opportunity_activities')
+      const { data, error: insertError } = await db
+        .from('project_flow_events')
         .insert({
-          opportunity_id: selectedProjectCase.id,
+          project_flow_id: selectedProjectCase.id,
           workspace_id: workspaceId,
-          activity_type: 'operator_note',
-          direction: 'operator',
+          event_type: 'operator_note',
+          event_direction: 'operator',
           body_text: noteText.trim(),
           media_json: [],
-          activity_payload: { source: 'web_operator_note' },
+          event_payload: { source: 'web_operator_note' },
         })
-        .select('id,activity_type,direction,body_text,created_at,activity_payload')
+        .select('id,event_type,event_direction,body_text,created_at,event_payload')
         .single();
       if (insertError) throw insertError;
       setActivities((current) => [data as ProjectCaseActivity, ...current]);
@@ -397,16 +399,17 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
                   <div className="rounded-xl bg-surface p-3 text-sm text-text-soft">
                     <div className="text-xs uppercase tracking-wide">{t('matchesTitle')}</div>
                     <div className="mt-2 space-y-2">
-                      {matches.length === 0 ? (
+                      {threads.length === 0 ? (
                         <div>{t('emptyMatches')}</div>
                       ) : (
-                        matches.map((match) => (
-                          <div key={match.id} className="rounded-lg border border-border/60 bg-background px-3 py-2">
-                            <div className="font-medium text-text">{match.label || t('unnamedMatch')}</div>
+                        threads.map((thread) => (
+                          <div key={thread.id} className="rounded-lg border border-border/60 bg-background px-3 py-2">
+                            <div className="font-medium text-text">{thread.title}</div>
                             <div className="mt-1 text-xs text-text-soft">
-                              {match.result_source}
-                              {match.surface_key ? ` · ${match.surface_key}` : ''}
+                              {humanizeValue(thread.thread_kind)}
+                              {thread.status ? ` · ${humanizeValue(thread.status)}` : ''}
                             </div>
+                            {thread.summary ? <div className="mt-2 text-sm text-text">{thread.summary}</div> : null}
                           </div>
                         ))
                       )}
@@ -441,10 +444,10 @@ export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: strin
                       activities.map((activity) => (
                         <div key={activity.id} className="rounded-xl border border-border/70 p-3">
                           <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-text">{humanizeValue(activity.activity_type)}</div>
+                            <div className="text-sm font-medium text-text">{humanizeValue(activity.event_type)}</div>
                             <div className="text-xs text-text-soft">{formatDate(activity.created_at)}</div>
                           </div>
-                          <div className="mt-1 text-xs uppercase tracking-wide text-text-soft">{activity.direction}</div>
+                          <div className="mt-1 text-xs uppercase tracking-wide text-text-soft">{activity.event_direction}</div>
                           {activity.body_text ? <div className="mt-2 text-sm text-text">{activity.body_text}</div> : null}
                         </div>
                       ))

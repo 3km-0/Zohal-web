@@ -3,10 +3,9 @@ import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 
 const WHATSAPP_MODES = new Set([
-  "discovery",
-  "property_context",
   "project_intake",
   "workspace_context",
+  "thread_context",
   "progression",
   "document_ingestion",
 ]);
@@ -420,7 +419,7 @@ export function decideWhatsappMode({
     if (conversation?.awaiting_upload_kind && conversation.awaiting_upload_kind !== "none") {
       return { handled: true, mode: "progression", reason: "awaiting_upload" };
     }
-    if (conversation?.linked_workspace_id || workspaceSession?.workspace_id) {
+    if (conversation?.active_workspace_id || workspaceSession?.workspace_id) {
       return { handled: true, mode: "document_ingestion", reason: "workspace_bound_media" };
     }
     return { handled: true, mode: activeMode, reason: "media_without_workspace" };
@@ -438,9 +437,16 @@ export function decideWhatsappMode({
   }
 
   if (
-    (conversation?.linked_workspace_id || workspaceSession?.workspace_id) &&
-    (listIncludesKeyword(text, WORKSPACE_CONTEXT_KEYWORDS) || activeMode === "workspace_context")
+    (conversation?.active_workspace_id || workspaceSession?.workspace_id) &&
+    (
+      listIncludesKeyword(text, WORKSPACE_CONTEXT_KEYWORDS) ||
+      activeMode === "workspace_context" ||
+      activeMode === "thread_context"
+    )
   ) {
+    if (conversation?.active_project_thread_id) {
+      return { handled: true, mode: "thread_context", reason: "thread_context_keywords" };
+    }
     return { handled: true, mode: "workspace_context", reason: "workspace_context_keywords" };
   }
 
@@ -657,7 +663,7 @@ async function loadConversationByPhone(supabase, phoneNumber) {
 
 async function loadProjectProfile(supabase, phoneNumber) {
   const { data, error } = await supabase
-    .from("whatsapp_buyer_profiles")
+    .from("whatsapp_contact_profiles")
     .select("*")
     .eq("phone_number", phoneNumber)
     .maybeSingle();
@@ -690,7 +696,7 @@ async function upsertConversation(supabase, payload) {
 
 async function upsertProjectProfile(supabase, payload) {
   const { data, error } = await supabase
-    .from("whatsapp_buyer_profiles")
+    .from("whatsapp_contact_profiles")
     .upsert(payload, { onConflict: "phone_number" })
     .select("*")
     .single();
@@ -736,8 +742,8 @@ function buildProfilePatch({ existingProfile, phoneNumber, linkedProfileId, lang
     phone_number: phoneNumber,
     linked_profile_id: normalizeUuid(linkedProfileId),
     preferred_language: language,
-    intent: existingProfile?.intent || "unknown",
-    financing_interest: existingProfile?.financing_interest || "unknown",
+    relationship_role: existingProfile?.relationship_role || "unknown",
+    project_readiness: existingProfile?.project_readiness || "unknown",
     readiness_score: Math.max(
       Number(existingProfile?.readiness_score || 0),
       signals.materialTypes.length >= 2 ? 0.65 : signals.tokens.length >= 4 ? 0.35 : 0.15,
@@ -775,6 +781,14 @@ function deriveCaseStage(workflowFocus, uploadKind) {
   return "intake";
 }
 
+function threadKindForWorkflow(workflowFocus, projectKind) {
+  if (workflowFocus === "quote_explanation") return "quote";
+  if (workflowFocus === "permit_support" || projectKind === "permit_support") return "permit";
+  if (workflowFocus === "variation_review" || projectKind === "variation_review") return "change";
+  if (workflowFocus === "project_intake") return "intake";
+  return "general";
+}
+
 async function createOrUpdateProjectCase(supabase, payload) {
   const conversationId = normalizeUuid(payload.conversation_id);
   const workspaceId = normalizeUuid(payload.workspace_id);
@@ -782,7 +796,7 @@ async function createOrUpdateProjectCase(supabase, payload) {
   if (!phoneNumber) return null;
 
   let query = supabase
-    .from("buyer_opportunities")
+    .from("project_flows")
     .select("*")
     .eq("phone_number", phoneNumber)
     .order("updated_at", { ascending: false })
@@ -798,7 +812,7 @@ async function createOrUpdateProjectCase(supabase, payload) {
 
   const nextPayload = {
     phone_number: phoneNumber,
-    conversation_id: conversationId,
+    originating_conversation_id: conversationId,
     workspace_id: workspaceId,
     property_id: null,
     surface_key: null,
@@ -811,9 +825,10 @@ async function createOrUpdateProjectCase(supabase, payload) {
     financing_status: null,
     viewing_readiness: null,
     assigned_operator_id: normalizeUuid(payload.assigned_operator_id),
+    title: payload.title || payload.summary || null,
     summary: payload.summary || null,
     metadata_json: payload.metadata_json || {},
-    marketing_inquiry_id: null,
+    brochure_inquiry_id: null,
     project_kind: payload.project_kind || null,
     workflow_focus: payload.workflow_focus || null,
     workspace_readiness: payload.workspace_readiness || null,
@@ -822,7 +837,7 @@ async function createOrUpdateProjectCase(supabase, payload) {
 
   if (existing?.id) {
     const { data, error } = await supabase
-      .from("buyer_opportunities")
+      .from("project_flows")
       .update(nextPayload)
       .eq("id", existing.id)
       .select("*")
@@ -834,7 +849,7 @@ async function createOrUpdateProjectCase(supabase, payload) {
   }
 
   const { data, error } = await supabase
-    .from("buyer_opportunities")
+    .from("project_flows")
     .insert(nextPayload)
     .select("*")
     .single();
@@ -844,18 +859,61 @@ async function createOrUpdateProjectCase(supabase, payload) {
   return data;
 }
 
-async function insertCaseMatch(supabase, payload) {
-  const { error } = await supabase
-    .from("buyer_opportunity_matches")
-    .insert(payload);
-  if (error) {
-    throw new Error(`Failed to insert project case match: ${error.message}`);
+async function createOrUpdateProjectThread(supabase, payload) {
+  const projectFlowId = normalizeUuid(payload.project_flow_id);
+  const workspaceId = normalizeUuid(payload.workspace_id);
+  if (!projectFlowId || !workspaceId) return null;
+
+  const threadKind = payload.thread_kind || "general";
+  const { data: existing, error: existingError } = await supabase
+    .from("project_threads")
+    .select("*")
+    .eq("project_flow_id", projectFlowId)
+    .eq("thread_kind", threadKind)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) {
+    throw new Error(`Failed to load project thread: ${existingError.message}`);
   }
+
+  const nextPayload = {
+    project_flow_id: projectFlowId,
+    workspace_id: workspaceId,
+    thread_kind: threadKind,
+    status: payload.status || "active",
+    title: payload.title || payload.summary || "Project thread",
+    summary: payload.summary || null,
+    metadata_json: payload.metadata_json || {},
+  };
+
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .from("project_threads")
+      .update(nextPayload)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw new Error(`Failed to update project thread: ${error?.message || "unknown"}`);
+    }
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from("project_threads")
+    .insert(nextPayload)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to insert project thread: ${error?.message || "unknown"}`);
+  }
+  return data;
 }
 
 async function insertCaseActivity(supabase, payload) {
   const { data, error } = await supabase
-    .from("buyer_opportunity_activities")
+    .from("project_flow_events")
     .insert(payload)
     .select("*")
     .single();
@@ -866,7 +924,7 @@ async function insertCaseActivity(supabase, payload) {
 }
 
 function buildImportRequest({ body, conversation, workspaceSession }) {
-  const activeWorkspaceId = normalizeUuid(conversation?.linked_workspace_id || workspaceSession?.workspace_id);
+  const activeWorkspaceId = normalizeUuid(conversation?.active_workspace_id || workspaceSession?.workspace_id);
   const userId = normalizeUuid(conversation?.linked_profile_id || workspaceSession?.user_id);
   if (!activeWorkspaceId || !userId || !body.media?.length) return null;
   const media = body.media[0];
@@ -894,7 +952,7 @@ async function handleProjectIntake({
 }) {
   const workspace = await loadWorkspaceSummary(
     supabase,
-    normalizeUuid(conversation.linked_workspace_id),
+    normalizeUuid(conversation.active_workspace_id),
   );
 
   const nextConversation = await upsertConversation(supabase, {
@@ -903,13 +961,11 @@ async function handleProjectIntake({
     phone_number: body.phone_number,
     mode: "project_intake",
     language,
-    active_surface_key: null,
-    active_property_id: null,
-    active_search_id: null,
+    active_workspace_id: conversation.active_workspace_id || null,
+    active_project_flow_id: conversation.active_project_flow_id || null,
+    active_project_thread_id: conversation.active_project_thread_id || null,
     awaiting_upload_kind: "none",
-    last_result_set_id: null,
     linked_profile_id: conversation.linked_profile_id || null,
-    linked_workspace_id: conversation.linked_workspace_id || null,
     last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
@@ -935,9 +991,10 @@ async function handleProjectIntake({
   const projectCase = await createOrUpdateProjectCase(supabase, {
     phone_number: body.phone_number,
     conversation_id: nextConversation.id,
-    workspace_id: nextConversation.linked_workspace_id || null,
+    workspace_id: nextConversation.active_workspace_id || null,
     stage: deriveCaseStage(signals.workflowFocus, "none"),
     current_intent: normalizeText(body.text_body) || null,
+    title: buildProjectTitle(signals).replace(/_/g, " "),
     summary: buildProjectTitle(signals).replace(/_/g, " "),
     metadata_json: {
       latest_message: normalizeText(body.text_body),
@@ -951,33 +1008,30 @@ async function handleProjectIntake({
     missing_items_json: missingItems,
   });
 
-  if (projectCase?.id && nextConversation.linked_workspace_id && workspace?.name) {
-    await insertCaseMatch(supabase, {
-      opportunity_id: projectCase.id,
-      workspace_id: nextConversation.linked_workspace_id,
-      property_id: null,
-      surface_key: null,
-      result_source: "zohal_native",
-      external_candidate_id: null,
-      label: workspace.name,
-      match_payload: {
-        kind: "workspace",
-        workspace_id: workspace.id,
-        workspace_name: workspace.name,
-        workflow_focus: signals.workflowFocus,
-      },
-    });
-  }
+  const projectThread = projectCase?.id && nextConversation.active_workspace_id
+    ? await createOrUpdateProjectThread(supabase, {
+        project_flow_id: projectCase.id,
+        workspace_id: nextConversation.active_workspace_id,
+        thread_kind: threadKindForWorkflow(signals.workflowFocus, signals.projectKind),
+        title: workspace?.name ? `${workspace.name} ${signals.workflowFocus.replace(/_/g, " ")}` : buildProjectTitle(signals).replace(/_/g, " "),
+        summary: normalizeText(body.text_body) || null,
+        metadata_json: {
+          workflow_focus: signals.workflowFocus,
+          project_kind: signals.projectKind,
+        },
+      })
+    : null;
 
-  if (projectCase?.id && nextConversation.linked_workspace_id) {
+  if (projectCase?.id && nextConversation.active_workspace_id) {
     await insertCaseActivity(supabase, {
-      opportunity_id: projectCase.id,
-      workspace_id: nextConversation.linked_workspace_id,
-      activity_type: "project_intake",
-      direction: "inbound",
+      project_flow_id: projectCase.id,
+      project_thread_id: projectThread?.id || null,
+      workspace_id: nextConversation.active_workspace_id,
+      event_type: "project_intake",
+      event_direction: "inbound",
       body_text: normalizeText(body.text_body) || null,
       media_json: body.media || [],
-      activity_payload: {
+      event_payload: {
         workflow_focus: signals.workflowFocus,
         project_kind: signals.projectKind,
         missing_items: missingItems,
@@ -999,7 +1053,7 @@ async function handleProjectIntake({
         workspaceReadiness,
       }),
     }],
-    crm_updates: projectCase ? { opportunity_id: projectCase.id } : null,
+    crm_updates: projectCase ? { project_flow_id: projectCase.id, project_thread_id: projectThread?.id || null } : null,
     import_request: null,
   };
 }
@@ -1014,22 +1068,34 @@ async function handleWorkspaceContext({
 }) {
   const workspace = await loadWorkspaceSummary(
     supabase,
-    normalizeUuid(conversation.linked_workspace_id),
+    normalizeUuid(conversation.active_workspace_id),
   );
+
+  const projectThread = conversation.active_project_flow_id && conversation.active_workspace_id
+    ? await createOrUpdateProjectThread(supabase, {
+        project_flow_id: conversation.active_project_flow_id,
+        workspace_id: conversation.active_workspace_id,
+        thread_kind: threadKindForWorkflow(signals.workflowFocus, signals.projectKind),
+        title: workspace?.name ? `${workspace.name} ${signals.workflowFocus.replace(/_/g, " ")}` : humanizeWorkflow(language, signals.workflowFocus),
+        summary: normalizeText(body.text_body) || null,
+        metadata_json: {
+          workflow_focus: signals.workflowFocus,
+          project_kind: signals.projectKind,
+        },
+      })
+    : null;
 
   const nextConversation = await upsertConversation(supabase, {
     id: conversation.id,
     channel: "whatsapp",
     phone_number: conversation.phone_number,
-    mode: "workspace_context",
+    mode: projectThread?.id ? "thread_context" : "workspace_context",
     language,
-    active_surface_key: null,
-    active_property_id: null,
-    active_search_id: null,
+    active_workspace_id: conversation.active_workspace_id || null,
+    active_project_flow_id: conversation.active_project_flow_id || null,
+    active_project_thread_id: projectThread?.id || conversation.active_project_thread_id || null,
     awaiting_upload_kind: "none",
-    last_result_set_id: null,
     linked_profile_id: conversation.linked_profile_id || null,
-    linked_workspace_id: conversation.linked_workspace_id || null,
     last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
@@ -1042,9 +1108,9 @@ async function handleWorkspaceContext({
   });
 
   return {
-    mode: "workspace_context",
+    mode: projectThread?.id ? "thread_context" : "workspace_context",
     conversation: nextConversation,
-    side_effects: ["workspace_context_ready"],
+    side_effects: [projectThread?.id ? "thread_context_ready" : "workspace_context_ready"],
     outbound_messages: [{
       type: "text",
       body: buildWorkspaceContextReply({
@@ -1074,9 +1140,10 @@ async function handleProgression({
   const projectCase = await createOrUpdateProjectCase(supabase, {
     phone_number: body.phone_number,
     conversation_id: conversation.id,
-    workspace_id: conversation.linked_workspace_id || null,
+    workspace_id: conversation.active_workspace_id || null,
     stage,
     current_intent: normalizeText(body.text_body) || projectProfile?.summary || null,
+    title: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
     summary: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
     metadata_json: {
       latest_message: normalizeText(body.text_body),
@@ -1089,15 +1156,30 @@ async function handleProgression({
     missing_items_json: missingItems,
   });
 
-  if (projectCase?.id && conversation.linked_workspace_id) {
+  const projectThread = projectCase?.id && conversation.active_workspace_id
+    ? await createOrUpdateProjectThread(supabase, {
+        project_flow_id: projectCase.id,
+        workspace_id: conversation.active_workspace_id,
+        thread_kind: threadKindForWorkflow(signals.workflowFocus, signals.projectKind),
+        title: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
+        summary: normalizeText(body.text_body) || null,
+        metadata_json: {
+          workflow_focus: signals.workflowFocus,
+          upload_kind: uploadKind,
+        },
+      })
+    : null;
+
+  if (projectCase?.id && conversation.active_workspace_id) {
     await insertCaseActivity(supabase, {
-      opportunity_id: projectCase.id,
-      workspace_id: conversation.linked_workspace_id,
-      activity_type: uploadKind === "none" ? "progression_request" : uploadKind,
-      direction: "inbound",
+      project_flow_id: projectCase.id,
+      project_thread_id: projectThread?.id || null,
+      workspace_id: conversation.active_workspace_id,
+      event_type: uploadKind === "none" ? "progression_request" : uploadKind,
+      event_direction: "inbound",
       body_text: normalizeText(body.text_body) || null,
       media_json: body.media || [],
-      activity_payload: {
+      event_payload: {
         workflow_focus: signals.workflowFocus,
         stage,
       },
@@ -1110,17 +1192,16 @@ async function handleProgression({
     phone_number: conversation.phone_number,
     mode: "progression",
     language,
-    active_surface_key: null,
-    active_property_id: null,
-    active_search_id: null,
+    active_workspace_id: conversation.active_workspace_id || null,
+    active_project_flow_id: projectCase?.id || conversation.active_project_flow_id || null,
+    active_project_thread_id: projectThread?.id || conversation.active_project_thread_id || null,
     awaiting_upload_kind: uploadKind,
-    last_result_set_id: null,
     linked_profile_id: conversation.linked_profile_id || null,
-    linked_workspace_id: conversation.linked_workspace_id || null,
     last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
-      active_opportunity_id: projectCase?.id || null,
+      active_project_flow_id: projectCase?.id || null,
+      active_project_thread_id: projectThread?.id || null,
       project_signals: signals,
       missing_items: missingItems,
       awaiting_upload_kind: uploadKind,
@@ -1137,7 +1218,7 @@ async function handleProgression({
       type: "text",
       body: buildProgressionReply({ language, uploadKind, stage }),
     }],
-    crm_updates: projectCase ? { opportunity_id: projectCase.id } : null,
+    crm_updates: projectCase ? { project_flow_id: projectCase.id, project_thread_id: projectThread?.id || null } : null,
     import_request: null,
   };
 }
@@ -1148,8 +1229,9 @@ async function handleProgressionUpload({
   body,
   language,
 }) {
-  const opportunityId = normalizeUuid(conversation?.state_json?.active_opportunity_id);
-  if (!opportunityId || !conversation.linked_workspace_id) {
+  const projectFlowId = normalizeUuid(conversation?.state_json?.active_project_flow_id || conversation?.active_project_flow_id);
+  const projectThreadId = normalizeUuid(conversation?.state_json?.active_project_thread_id || conversation?.active_project_thread_id);
+  if (!projectFlowId || !conversation.active_workspace_id) {
     return {
       mode: "progression",
       conversation,
@@ -1171,13 +1253,14 @@ async function handleProgressionUpload({
   const uploadKind = conversation.awaiting_upload_kind || detectProgressionUploadKind(body.text_body, media);
 
   await insertCaseActivity(supabase, {
-    opportunity_id: opportunityId,
-    workspace_id: conversation.linked_workspace_id,
-    activity_type: uploadKind || "upload",
-    direction: "inbound",
+    project_flow_id: projectFlowId,
+    project_thread_id: projectThreadId || null,
+    workspace_id: conversation.active_workspace_id,
+    event_type: uploadKind || "upload",
+    event_direction: "inbound",
     body_text: normalizeText(body.text_body) || null,
     media_json: media,
-    activity_payload: {
+    event_payload: {
       source_message_id: normalizeText(body.message_id) || null,
       upload_kind: uploadKind || "none",
     },
@@ -1202,7 +1285,7 @@ async function handleProgressionUpload({
       type: "text",
       body: buildUploadAcknowledgementReply({ language, uploadKind }),
     }],
-    crm_updates: { opportunity_id: opportunityId },
+    crm_updates: { project_flow_id: projectFlowId, project_thread_id: projectThreadId || null },
     import_request: null,
   };
 }
@@ -1244,13 +1327,11 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
     phone_number: phoneNumber,
     mode: "project_intake",
     language: detectLanguageFromText(body.text_body, "auto"),
-    active_surface_key: null,
-    active_property_id: null,
-    active_search_id: null,
+    active_workspace_id: normalizeUuid(workspaceSession?.workspace_id),
+    active_project_flow_id: null,
+    active_project_thread_id: null,
     awaiting_upload_kind: "none",
-    last_result_set_id: null,
     linked_profile_id: normalizeUuid(workspaceSession?.user_id),
-    linked_workspace_id: normalizeUuid(workspaceSession?.workspace_id),
     last_user_goal: null,
     state_json: {},
     last_inbound_message_id: null,
@@ -1269,7 +1350,7 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
     stage: signals.stage,
   });
   const workspaceReadiness = computeWorkspaceReadiness({
-    linkedWorkspaceId: seededConversation.linked_workspace_id || workspaceSession?.workspace_id,
+    linkedWorkspaceId: seededConversation.active_workspace_id || workspaceSession?.workspace_id,
     materialTypes: signals.materialTypes,
     textBody,
     projectKind: signals.projectKind,
@@ -1277,8 +1358,9 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
 
   const inboundEvent = await insertConversationEvent(supabase, {
     conversation_id: seededConversation.id,
-    workspace_id: normalizeUuid(seededConversation.linked_workspace_id || workspaceSession?.workspace_id),
-    opportunity_id: normalizeUuid(seededConversation.state_json?.active_opportunity_id),
+    workspace_id: normalizeUuid(seededConversation.active_workspace_id || workspaceSession?.workspace_id),
+    project_flow_id: normalizeUuid(seededConversation.state_json?.active_project_flow_id || seededConversation.active_project_flow_id),
+    project_thread_id: normalizeUuid(seededConversation.state_json?.active_project_thread_id || seededConversation.active_project_thread_id),
     event_type: hasMedia ? "inbound_media" : "inbound_text",
     event_direction: "inbound",
     message_id: messageId,
@@ -1346,9 +1428,9 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
         last_message_at: new Date().toISOString(),
       });
       result = {
-        mode: "document_ingestion",
-        conversation: nextConversation,
-        side_effects: ["legacy_import_requested"],
+      mode: "document_ingestion",
+      conversation: nextConversation,
+      side_effects: ["legacy_import_requested"],
         outbound_messages: [],
         crm_updates: null,
         import_request: importRequest,
@@ -1368,7 +1450,7 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
       side_effects: ["ambiguous_media_clarified"],
       outbound_messages: [{
         type: "text",
-        body: chooseCopy(
+      body: chooseCopy(
           language,
           "I received the file. Tell me if this is drawings, BOQ, quote docs, permit docs, site photos, or change evidence. If it belongs in a linked workspace, I can import it there too.",
           "وصلني الملف. قل لي هل هو مخططات أو مقايسة أو عرض سعر أو مستندات تصريح أو صور موقع أو أدلة تغيير. وإذا كان يجب ربطه بمساحة عمل مرتبطة فأقدر أستوره هناك أيضًا.",
@@ -1413,8 +1495,9 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
   for (const outbound of result.outbound_messages || []) {
     await insertConversationEvent(supabase, {
       conversation_id: result.conversation.id,
-      workspace_id: normalizeUuid(result.conversation.linked_workspace_id),
-      opportunity_id: normalizeUuid(result.conversation.state_json?.active_opportunity_id),
+      workspace_id: normalizeUuid(result.conversation.active_workspace_id),
+      project_flow_id: normalizeUuid(result.conversation.state_json?.active_project_flow_id || result.conversation.active_project_flow_id),
+      project_thread_id: normalizeUuid(result.conversation.state_json?.active_project_thread_id || result.conversation.active_project_thread_id),
       event_type: "outbound_text",
       event_direction: "outbound",
       message_id: null,
@@ -1433,12 +1516,10 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
       conversation_id: result.conversation.id,
       mode: result.conversation.mode,
       language: result.conversation.language,
-      active_surface_key: result.conversation.active_surface_key,
-      active_property_id: result.conversation.active_property_id,
-      active_search_id: result.conversation.active_search_id,
+      active_workspace_id: result.conversation.active_workspace_id,
+      active_project_flow_id: result.conversation.active_project_flow_id,
+      active_project_thread_id: result.conversation.active_project_thread_id,
       awaiting_upload_kind: result.conversation.awaiting_upload_kind,
-      last_result_set_id: result.conversation.last_result_set_id,
-      linked_workspace_id: result.conversation.linked_workspace_id,
     },
     side_effects: result.side_effects || [],
     outbound_messages: result.outbound_messages || [],

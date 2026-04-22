@@ -181,10 +181,10 @@ type OpenPrivateLiveEnvelope = {
   redeem_url?: string | null;
 };
 
-const EXTERNAL_SURFACE_PATH_FAMILIES = new Set(['market', 'diligence']);
+const EXTERNAL_SURFACE_PATH_FAMILIES = new Set(['market']);
 
 function sortPublishedSurfaceSummaries(left: WorkspaceExperienceSummary, right: WorkspaceExperienceSummary) {
-  const familyRank = (value?: string | null) => (value === 'market' ? 0 : value === 'diligence' ? 1 : 2);
+  const familyRank = (value?: string | null) => (value === 'market' ? 0 : 1);
   const leftRank = familyRank(left.path_family);
   const rightRank = familyRank(right.path_family);
   if (leftRank !== rightRank) return leftRank - rightRank;

@@ -74,7 +74,7 @@ export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
         .eq('id', workspaceId)
         .single(),
       db
-        .from('workspace_whatsapp_bindings')
+        .from('whatsapp_ingestion_bindings')
         .select('id')
         .eq('user_id', user.id)
         .eq('workspace_id', workspaceId)
@@ -136,7 +136,7 @@ export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
     setInfoMessage('');
     const db = supabase as any;
     const { data: existingBindings, error: bindingsError } = await db
-      .from('workspace_whatsapp_bindings')
+      .from('whatsapp_ingestion_bindings')
       .select('workspace_id, is_default')
       .eq('user_id', userId)
       .eq('phone_number', linkedPhoneNumber);
@@ -150,7 +150,7 @@ export function WhatsAppPicker({ workspaceId, onClose }: WhatsAppPickerProps) {
     const isDefault = currentBinding
       ? currentBinding.is_default === true
       : rows.length === 0;
-    const { error: upsertError } = await db.from('workspace_whatsapp_bindings').upsert(
+    const { error: upsertError } = await db.from('whatsapp_ingestion_bindings').upsert(
       {
         user_id: userId,
         phone_number: linkedPhoneNumber,

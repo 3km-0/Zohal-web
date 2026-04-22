@@ -50,7 +50,7 @@ test("decideWhatsappMode routes linked workspace follow-ups into workspace conte
   const route = decideWhatsappMode({
     textBody: "What changed in the latest BOQ and what is still missing?",
     hasMedia: false,
-    conversation: { mode: "workspace_context", linked_workspace_id: "workspace-1" },
+    conversation: { mode: "workspace_context", active_workspace_id: "workspace-1" },
     workspaceSession: { workspace_id: "workspace-1" },
   });
 

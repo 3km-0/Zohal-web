@@ -26,34 +26,22 @@ interface ListingOverlayReadiness {
 }
 
 const OPERATIONS_WORKSPACE_TEMPLATE_ID = 'property_operations_workspace';
-type SurfaceFamily = 'market' | 'diligence';
+type SurfaceFamily = 'brochure';
 
 const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
   SurfaceFamily,
   {
     slug: string;
     title: string;
-    subtitleKey:
-      | 'operationsWorkspaceMarketSubtitle'
-      | 'operationsWorkspaceDiligenceSubtitle'
-      | 'subtitle';
-    summaryKey:
-      | 'operationsWorkspaceMarketSummary'
-      | 'operationsWorkspaceDiligenceSummary'
-      | 'summary';
+    subtitleKey: 'operationsWorkspaceMarketSubtitle' | 'subtitle';
+    summaryKey: 'operationsWorkspaceMarketSummary' | 'summary';
   }
 > = {
-  market: {
-    slug: 'market',
-    title: 'Property Market Surface',
+  brochure: {
+    slug: 'brochure',
+    title: 'Property Brochure Surface',
     subtitleKey: 'operationsWorkspaceMarketSubtitle',
     summaryKey: 'operationsWorkspaceMarketSummary',
-  },
-  diligence: {
-    slug: 'diligence',
-    title: 'Property Diligence Surface',
-    subtitleKey: 'operationsWorkspaceDiligenceSubtitle',
-    summaryKey: 'operationsWorkspaceDiligenceSummary',
   },
 };
 
@@ -61,10 +49,11 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const t = useTranslations('experiencesPage');
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
+  const db = supabase as any;
   const documentId = searchParams.get('document_id');
   const analysisTemplateId = OPERATIONS_WORKSPACE_TEMPLATE_ID;
   const workspaceSlug = workspaceId.replace(/-/g, '_');
-  const [surfaceFamily, setSurfaceFamily] = useState<SurfaceFamily>('market');
+  const surfaceFamily: SurfaceFamily = 'brochure';
   const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[surfaceFamily];
   const templateSlug = `${analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}_${templateDefaults.slug}`;
   const [experienceId, setExperienceId] = useState(`exp_${workspaceSlug}_${templateSlug}`);
@@ -117,8 +106,8 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     let cancelled = false;
     (async () => {
       try {
-        const { data, error: overlayError } = await supabase
-          .from('property_listing_overlays')
+        const { data, error: overlayError } = await db
+          .from('property_brochure_overlays')
           .select('ready_to_publish,last_completion_evaluation')
           .eq('workspace_id', workspaceId)
           .limit(1)
@@ -143,7 +132,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     return () => {
       cancelled = true;
     };
-  }, [supabase, workspaceId]);
+  }, [db, workspaceId]);
 
   useEffect(() => {
     if (!documentId) {
@@ -291,7 +280,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const diagnostics = diagnosticsEnvelope?.diagnostics || null;
   const missingRequired = marketReadiness?.last_completion_evaluation?.missing_required || [];
   const missingRecommended = marketReadiness?.last_completion_evaluation?.missing_recommended || [];
-  const publishBlocked = surfaceFamily === 'market' && marketReadiness !== null && marketReadiness.ready_to_publish === false;
+  const publishBlocked = marketReadiness !== null && marketReadiness.ready_to_publish === false;
   const workflowSteps = [
     { key: 'prepare', label: t('workflow.prepare'), complete: Boolean(latestCandidateId) },
     {
@@ -334,44 +323,42 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   ))}
                 </div>
               </div>
-              {surfaceFamily === 'market' ? (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('readiness.title')}</div>
-                  <p className="mt-1 text-text-soft">
-                    {marketReadiness ? t('readiness.ready') : t('readiness.notLoaded')}
-                  </p>
-                  {publishBlocked ? (
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                <div className="font-semibold text-text">{t('readiness.title')}</div>
+                <p className="mt-1 text-text-soft">
+                  {marketReadiness ? t('readiness.ready') : t('readiness.notLoaded')}
+                </p>
+                {publishBlocked ? (
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl border border-border bg-surface p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+                        {t('readiness.missingRequired')}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {missingRequired.map((item) => (
+                          <span key={item} className="rounded-full border border-border px-2.5 py-1 text-xs text-text">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {missingRecommended.length ? (
                       <div className="rounded-xl border border-border bg-surface p-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                          {t('readiness.missingRequired')}
+                          {t('readiness.missingRecommended')}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {missingRequired.map((item) => (
+                          {missingRecommended.map((item) => (
                             <span key={item} className="rounded-full border border-border px-2.5 py-1 text-xs text-text">
                               {item}
                             </span>
                           ))}
                         </div>
                       </div>
-                      {missingRecommended.length ? (
-                        <div className="rounded-xl border border-border bg-surface p-3">
-                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                            {t('readiness.missingRecommended')}
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {missingRecommended.map((item) => (
-                              <span key={item} className="rounded-full border border-border px-2.5 py-1 text-xs text-text">
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
               {rememberedRelatedDocuments ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                   <div className="font-semibold text-text">{t('configure.relatedDocumentsTitle')}</div>
@@ -389,51 +376,24 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   </div>
                 </div>
               ) : null}
-              {surfaceFamily === 'market' ? (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('surfaceFamilies.market')}</div>
-                  <p className="mt-1 text-text-soft">{t('configure.description')}</p>
-                </div>
-              ) : (
-                <div className="rounded-scholar border border-dashed border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('surfaceFamilies.diligence')}</div>
-                  <p className="mt-1 text-text-soft">{t('advancedSurfacesDescription')}</p>
-                </div>
-              )}
+              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                <div className="font-semibold text-text">{t('surfaceFamilies.market')}</div>
+                <p className="mt-1 text-text-soft">{t('configure.description')}</p>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Input label={t('fields.experienceId')} value={experienceId} onChange={(e) => setExperienceId(e.target.value)} />
                 <Input label={t('fields.title')} value={title} onChange={(e) => setTitle(e.target.value)} />
                 <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
                 <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
               </div>
-              <details
-                className="group rounded-scholar border border-dashed border-border bg-surface-alt p-4"
-                onToggle={(e) => {
-                  const el = e.currentTarget;
-                  if (el.open) {
-                    setSurfaceFamily('diligence');
-                  } else {
-                    setSurfaceFamily('market');
-                  }
-                }}
-              >
-                <summary className="cursor-pointer list-none text-sm font-semibold text-text marker:content-none [&::-webkit-details-marker]:hidden">
-                  <span className="underline-offset-4 group-open:underline">{t('advancedSurfacesTitle')}</span>
-                  <span className="mt-1 block text-xs font-normal text-text-soft">
-                    {t('diligenceAdvancedSummary')}
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-text-soft">{t('advancedSurfacesDescription')}</p>
-                <p className="mt-3 text-sm font-medium text-text">{t('diligenceAdvancedOpenHint')}</p>
-              </details>
               <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
               {analysisTemplateId === OPERATIONS_WORKSPACE_TEMPLATE_ID ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t(`surfaceBoundary.${surfaceFamily}.title`)}</div>
-                  <p className="mt-1 text-text-soft">{t(`surfaceBoundary.${surfaceFamily}.description`)}</p>
+                  <div className="font-semibold text-text">{t('surfaceBoundary.market.title')}</div>
+                  <p className="mt-1 text-text-soft">{t('surfaceBoundary.market.description')}</p>
                   <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
                 </div>
               ) : null}
