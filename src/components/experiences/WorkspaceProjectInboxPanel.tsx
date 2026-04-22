@@ -5,20 +5,21 @@ import { useTranslations } from 'next-intl';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 
-type BuyerOpportunity = {
+type ProjectCase = {
   id: string;
   phone_number: string;
   stage: string;
   summary: string | null;
   updated_at: string;
   created_at: string;
-  property_id: string | null;
-  surface_key: string | null;
-  result_source: string | null;
   workspace_id: string | null;
+  project_kind: string | null;
+  workflow_focus: string | null;
+  workspace_readiness: string | null;
+  missing_items_json: string[] | null;
 };
 
-type BuyerOpportunityActivity = {
+type ProjectCaseActivity = {
   id: string;
   activity_type: string;
   direction: string;
@@ -27,7 +28,7 @@ type BuyerOpportunityActivity = {
   activity_payload: Record<string, unknown> | null;
 };
 
-type BuyerOpportunityMatch = {
+type ProjectCaseMatch = {
   id: string;
   label: string | null;
   surface_key: string | null;
@@ -53,7 +54,7 @@ type WhatsappConversationEvent = {
   event_payload: Record<string, unknown> | null;
 };
 
-const STAGE_OPTIONS = ['new', 'qualified', 'viewing', 'finance', 'broker_handoff', 'converted', 'archived'];
+const DEFAULT_STAGE_OPTIONS = ['intake', 'scoping', 'quote_review', 'permit_ready', 'variation_review', 'operator_handoff', 'active', 'archived'];
 
 function formatDate(value: string) {
   try {
@@ -66,23 +67,32 @@ function formatDate(value: string) {
   }
 }
 
-export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string }) {
+function humanizeValue(value: string | null | undefined) {
+  if (!value) return null;
+  return value.replace(/_/g, ' ');
+}
+
+export function WorkspaceProjectInboxPanel({ workspaceId }: { workspaceId: string }) {
   const t = useTranslations('experiencesPage.whatsappInbox');
   const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
-  const [opportunities, setOpportunities] = useState<BuyerOpportunity[]>([]);
+  const [projectCases, setProjectCases] = useState<ProjectCase[]>([]);
   const [conversations, setConversations] = useState<WhatsappConversation[]>([]);
-  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
+  const [selectedProjectCaseId, setSelectedProjectCaseId] = useState<string | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [activities, setActivities] = useState<BuyerOpportunityActivity[]>([]);
-  const [matches, setMatches] = useState<BuyerOpportunityMatch[]>([]);
+  const [activities, setActivities] = useState<ProjectCaseActivity[]>([]);
+  const [matches, setMatches] = useState<ProjectCaseMatch[]>([]);
   const [events, setEvents] = useState<WhatsappConversationEvent[]>([]);
   const [noteText, setNoteText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedOpportunity = opportunities.find((item) => item.id === selectedOpportunityId) || null;
+  const selectedProjectCase = projectCases.find((item) => item.id === selectedProjectCaseId) || null;
   const selectedConversation = conversations.find((item) => item.id === selectedConversationId) || null;
+  const stageOptions = selectedProjectCase?.stage && !DEFAULT_STAGE_OPTIONS.includes(selectedProjectCase.stage)
+    ? [selectedProjectCase.stage, ...DEFAULT_STAGE_OPTIONS]
+    : DEFAULT_STAGE_OPTIONS;
+  const missingItems = Array.isArray(selectedProjectCase?.missing_items_json) ? selectedProjectCase?.missing_items_json || [] : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -90,11 +100,13 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
       setLoading(true);
       setError(null);
       try {
-        const [{ data: opportunityRows, error: opportunityError }, { data: conversationRows, error: conversationError }] =
+        const [{ data: projectCaseRows, error: projectCaseError }, { data: conversationRows, error: conversationError }] =
           await Promise.all([
             supabase
               .from('buyer_opportunities')
-              .select('id,phone_number,stage,summary,updated_at,created_at,property_id,surface_key,result_source,workspace_id')
+              .select(
+                'id,phone_number,stage,summary,updated_at,created_at,workspace_id,project_kind,workflow_focus,workspace_readiness,missing_items_json'
+              )
               .eq('workspace_id', workspaceId)
               .order('updated_at', { ascending: false })
               .limit(20),
@@ -107,14 +119,14 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
           ]);
 
         if (cancelled) return;
-        if (opportunityError) throw opportunityError;
+        if (projectCaseError) throw projectCaseError;
         if (conversationError) throw conversationError;
 
-        const nextOpportunities = (opportunityRows || []) as BuyerOpportunity[];
+        const nextProjectCases = (projectCaseRows || []) as ProjectCase[];
         const nextConversations = (conversationRows || []) as WhatsappConversation[];
-        setOpportunities(nextOpportunities);
+        setProjectCases(nextProjectCases);
         setConversations(nextConversations);
-        setSelectedOpportunityId((current) => current || nextOpportunities[0]?.id || null);
+        setSelectedProjectCaseId((current) => current || nextProjectCases[0]?.id || null);
         setSelectedConversationId((current) => current || nextConversations[0]?.id || null);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : t('loadError'));
@@ -130,7 +142,7 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
 
   useEffect(() => {
     let cancelled = false;
-    if (!selectedOpportunityId) {
+    if (!selectedProjectCaseId) {
       setActivities([]);
       setMatches([]);
       return;
@@ -142,13 +154,13 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
           supabase
             .from('buyer_opportunity_activities')
             .select('id,activity_type,direction,body_text,created_at,activity_payload')
-            .eq('opportunity_id', selectedOpportunityId)
+            .eq('opportunity_id', selectedProjectCaseId)
             .order('created_at', { ascending: false })
             .limit(30),
           supabase
             .from('buyer_opportunity_matches')
             .select('id,label,surface_key,result_source,created_at')
-            .eq('opportunity_id', selectedOpportunityId)
+            .eq('opportunity_id', selectedProjectCaseId)
             .order('created_at', { ascending: false })
             .limit(12),
         ]);
@@ -156,8 +168,8 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
         if (cancelled) return;
         if (activityError) throw activityError;
         if (matchError) throw matchError;
-        setActivities((activityRows || []) as BuyerOpportunityActivity[]);
-        setMatches((matchRows || []) as BuyerOpportunityMatch[]);
+        setActivities((activityRows || []) as ProjectCaseActivity[]);
+        setMatches((matchRows || []) as ProjectCaseMatch[]);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : t('loadError'));
       }
@@ -166,7 +178,7 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
     return () => {
       cancelled = true;
     };
-  }, [selectedOpportunityId, supabase, t]);
+  }, [selectedProjectCaseId, supabase, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,16 +209,13 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
   }, [selectedConversationId, supabase, t]);
 
   async function updateStage(stage: string) {
-    if (!selectedOpportunity) return;
+    if (!selectedProjectCase) return;
     setBusy(`stage:${stage}`);
     setError(null);
     try {
-      const { error: updateError } = await supabase
-        .from('buyer_opportunities')
-        .update({ stage })
-        .eq('id', selectedOpportunity.id);
+      const { error: updateError } = await supabase.from('buyer_opportunities').update({ stage }).eq('id', selectedProjectCase.id);
       if (updateError) throw updateError;
-      setOpportunities((current) => current.map((item) => (item.id === selectedOpportunity.id ? { ...item, stage } : item)));
+      setProjectCases((current) => current.map((item) => (item.id === selectedProjectCase.id ? { ...item, stage } : item)));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('stageUpdateError'));
     } finally {
@@ -215,14 +224,14 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
   }
 
   async function addOperatorNote() {
-    if (!selectedOpportunity || !noteText.trim()) return;
+    if (!selectedProjectCase || !noteText.trim()) return;
     setBusy('note');
     setError(null);
     try {
       const { data, error: insertError } = await supabase
         .from('buyer_opportunity_activities')
         .insert({
-          opportunity_id: selectedOpportunity.id,
+          opportunity_id: selectedProjectCase.id,
           workspace_id: workspaceId,
           activity_type: 'operator_note',
           direction: 'operator',
@@ -233,7 +242,7 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
         .select('id,activity_type,direction,body_text,created_at,activity_payload')
         .single();
       if (insertError) throw insertError;
-      setActivities((current) => [data as BuyerOpportunityActivity, ...current]);
+      setActivities((current) => [data as ProjectCaseActivity, ...current]);
       setNoteText('');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('noteError'));
@@ -258,30 +267,32 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
               <div className="text-sm font-medium text-text">{t('opportunitiesTitle')}</div>
               <div className="text-xs text-text-soft">{t('opportunitiesDescription')}</div>
             </div>
-            {opportunities.length === 0 ? (
+            {projectCases.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-4 text-sm text-text-soft">{t('emptyOpportunities')}</div>
             ) : (
-              opportunities.map((opportunity) => (
+              projectCases.map((projectCase) => (
                 <button
-                  key={opportunity.id}
+                  key={projectCase.id}
                   type="button"
-                  onClick={() => setSelectedOpportunityId(opportunity.id)}
+                  onClick={() => setSelectedProjectCaseId(projectCase.id)}
                   className={`w-full rounded-xl border p-4 text-left transition ${
-                    selectedOpportunityId === opportunity.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
+                    selectedProjectCaseId === projectCase.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium text-text">{opportunity.summary || opportunity.phone_number}</div>
-                      <div className="mt-1 text-xs text-text-soft">{opportunity.phone_number}</div>
+                      <div className="font-medium text-text">{projectCase.summary || projectCase.phone_number}</div>
+                      <div className="mt-1 text-xs text-text-soft">{projectCase.phone_number}</div>
                     </div>
                     <div className="rounded-full bg-surface px-2 py-1 text-[11px] uppercase tracking-wide text-text-soft">
-                      {opportunity.stage}
+                      {humanizeValue(projectCase.stage)}
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-text-soft">
-                    {t('updatedAt', { value: formatDate(opportunity.updated_at) })}
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-soft">
+                    {projectCase.project_kind ? <span>{humanizeValue(projectCase.project_kind)}</span> : null}
+                    {projectCase.workflow_focus ? <span>· {humanizeValue(projectCase.workflow_focus)}</span> : null}
                   </div>
+                  <div className="mt-2 text-xs text-text-soft">{t('updatedAt', { value: formatDate(projectCase.updated_at) })}</div>
                 </button>
               ))
             )}
@@ -310,7 +321,7 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
                       <div className="mt-1 text-xs text-text-soft">{conversation.last_user_goal || t('noGoal')}</div>
                     </div>
                     <div className="rounded-full bg-surface px-2 py-1 text-[11px] uppercase tracking-wide text-text-soft">
-                      {conversation.mode}
+                      {humanizeValue(conversation.mode)}
                     </div>
                   </div>
                   <div className="mt-2 text-xs text-text-soft">
@@ -327,29 +338,64 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-medium text-text">{t('detailTitle')}</div>
-                <div className="text-xs text-text-soft">{selectedOpportunity?.summary || t('detailHint')}</div>
+                <div className="text-xs text-text-soft">{selectedProjectCase?.summary || t('detailHint')}</div>
               </div>
-              {selectedOpportunity ? (
+              {selectedProjectCase ? (
                 <select
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-text"
-                  value={selectedOpportunity.stage}
+                  value={selectedProjectCase.stage}
                   onChange={(event) => void updateStage(event.target.value)}
                   disabled={busy !== null}
                 >
-                  {STAGE_OPTIONS.map((stage) => (
+                  {stageOptions.map((stage) => (
                     <option key={stage} value={stage}>
-                      {stage}
+                      {humanizeValue(stage)}
                     </option>
                   ))}
                 </select>
               ) : null}
             </div>
 
-            {selectedOpportunity ? (
+            {selectedProjectCase ? (
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl bg-surface p-3 text-sm text-text-soft">
-                    <div className="text-xs uppercase tracking-wide">{t('matchedProperties')}</div>
+                    <div className="text-xs uppercase tracking-wide">{t('caseSummaryTitle')}</div>
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wide">{t('projectKindLabel')}</div>
+                        <div className="mt-1 text-sm text-text">{humanizeValue(selectedProjectCase.project_kind) || t('unknownValue')}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wide">{t('workflowFocusLabel')}</div>
+                        <div className="mt-1 text-sm text-text">{humanizeValue(selectedProjectCase.workflow_focus) || t('unknownValue')}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wide">{t('workspaceReadinessLabel')}</div>
+                        <div className="mt-1 text-sm text-text">{humanizeValue(selectedProjectCase.workspace_readiness) || t('unknownValue')}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-surface p-3 text-sm text-text-soft">
+                    <div className="text-xs uppercase tracking-wide">{t('missingItemsTitle')}</div>
+                    <div className="mt-2 space-y-2">
+                      {missingItems.length === 0 ? (
+                        <div>{t('emptyMissingItems')}</div>
+                      ) : (
+                        missingItems.map((item) => (
+                          <div key={item} className="rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-text">
+                            {humanizeValue(item)}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl bg-surface p-3 text-sm text-text-soft">
+                    <div className="text-xs uppercase tracking-wide">{t('matchesTitle')}</div>
                     <div className="mt-2 space-y-2">
                       {matches.length === 0 ? (
                         <div>{t('emptyMatches')}</div>
@@ -370,13 +416,16 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
                   <div className="rounded-xl bg-surface p-3 text-sm text-text-soft">
                     <div className="text-xs uppercase tracking-wide">{t('actionsTitle')}</div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => void updateStage('viewing')} disabled={busy !== null}>
-                        {t('markViewing')}
+                      <Button size="sm" variant="secondary" onClick={() => void updateStage('scoping')} disabled={busy !== null}>
+                        {t('markScoping')}
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => void updateStage('finance')} disabled={busy !== null}>
-                        {t('markFinance')}
+                      <Button size="sm" variant="secondary" onClick={() => void updateStage('quote_review')} disabled={busy !== null}>
+                        {t('markQuoteReview')}
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => void updateStage('broker_handoff')} disabled={busy !== null}>
+                      <Button size="sm" variant="secondary" onClick={() => void updateStage('permit_ready')} disabled={busy !== null}>
+                        {t('markPermitReady')}
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => void updateStage('operator_handoff')} disabled={busy !== null}>
                         {t('handoff')}
                       </Button>
                     </div>
@@ -392,7 +441,7 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
                       activities.map((activity) => (
                         <div key={activity.id} className="rounded-xl border border-border/70 p-3">
                           <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-text">{activity.activity_type}</div>
+                            <div className="text-sm font-medium text-text">{humanizeValue(activity.activity_type)}</div>
                             <div className="text-xs text-text-soft">{formatDate(activity.created_at)}</div>
                           </div>
                           <div className="mt-1 text-xs uppercase tracking-wide text-text-soft">{activity.direction}</div>
@@ -433,14 +482,12 @@ export function WorkspaceBuyerInboxPanel({ workspaceId }: { workspaceId: string 
                 events.map((event) => (
                   <div key={event.id} className="rounded-xl border border-border/70 p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-medium text-text">{event.event_type}</div>
+                      <div className="text-sm font-medium text-text">{humanizeValue(event.event_type)}</div>
                       <div className="text-xs text-text-soft">{formatDate(event.created_at)}</div>
                     </div>
                     <div className="mt-1 text-xs uppercase tracking-wide text-text-soft">{event.event_direction}</div>
                     {event.event_payload?.body || event.event_payload?.text_body ? (
-                      <div className="mt-2 text-sm text-text">
-                        {String(event.event_payload?.body || event.event_payload?.text_body || '')}
-                      </div>
+                      <div className="mt-2 text-sm text-text">{String(event.event_payload?.body || event.event_payload?.text_body || '')}</div>
                     ) : null}
                   </div>
                 ))

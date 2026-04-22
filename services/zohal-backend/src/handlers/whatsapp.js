@@ -2,9 +2,11 @@ import { requireInternalCaller } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 
-const BUYER_MODES = new Set([
+const WHATSAPP_MODES = new Set([
   "discovery",
   "property_context",
+  "project_intake",
+  "workspace_context",
   "progression",
   "document_ingestion",
 ]);
@@ -16,150 +18,200 @@ const STOPWORDS = new Set([
   "a",
   "an",
   "the",
-  "show",
-  "find",
-  "looking",
+  "to",
   "for",
-  "property",
-  "properties",
-  "home",
-  "house",
   "with",
   "in",
   "at",
-  "to",
-  "near",
-  "need",
-  "want",
-  "under",
-  "budget",
-  "please",
-  "can",
-  "you",
-  "send",
-  "share",
-  "compare",
-  "more",
-  "about",
+  "of",
+  "and",
+  "or",
+  "on",
   "this",
   "that",
-  "the",
-  "one",
-  "ones",
+  "it",
+  "we",
+  "you",
+  "our",
+  "need",
+  "want",
+  "help",
+  "please",
+  "can",
+  "could",
+  "project",
+  "job",
+  "renovation",
+  "remodel",
+  "work",
   "ابي",
   "ابغى",
+  "أبي",
+  "أبغى",
   "اريد",
+  "أريد",
   "محتاج",
-  "ابيها",
-  "عقار",
-  "عقارات",
-  "بيت",
-  "شقة",
+  "احتاج",
+  "أحتاج",
+  "هذا",
+  "هذه",
   "في",
+  "على",
   "من",
   "الى",
-  "على",
+  "إلى",
   "مع",
   "عن",
   "لو",
   "سمحت",
   "ممكن",
-  "اعرض",
-  "ورني",
-  "أبي",
-  "أبغى",
-  "أريد",
+  "نحتاج",
+  "مشروع",
+  "شغل",
+  "ترميم",
 ]);
 
-const DISCOVERY_KEYWORDS = [
-  "find",
-  "show",
-  "looking",
-  "search",
-  "available",
+const PROJECT_INTAKE_KEYWORDS = [
+  "renovate",
+  "renovation",
+  "remodel",
+  "fit out",
+  "fit-out",
+  "fitout",
+  "contractor",
+  "boq",
+  "drawing",
+  "drawings",
+  "quote",
+  "quotation",
+  "scope",
+  "permit",
+  "approval",
+  "variation",
+  "change order",
+  "revised",
+  "revision",
+  "missing",
+  "explain this quote",
+  "kitchen",
+  "bathroom",
   "villa",
-  "apartment",
-  "duplex",
-  "townhouse",
-  "land",
-  "commercial",
-  "bedroom",
-  "bedrooms",
-  "under",
-  "budget",
-  "riyadh",
-  "jeddah",
-  "villa",
-  "شقة",
-  "فلل",
-  "فيلا",
-  "دور",
-  "أرض",
-  "ارضي",
-  "تجاري",
-  "غرف",
-  "غرفة",
-  "ميزانية",
-  "سعر",
-  "ابحث",
-  "أبحث",
-  "ورني",
-  "اعرض",
-  "أرني",
+  "office",
+  "site photos",
+  "ترميم",
+  "تشطيب",
+  "تجديد",
+  "مقاول",
+  "مقاولات",
+  "مخطط",
+  "مخططات",
+  "رسومات",
+  "مقايسة",
+  "عرض سعر",
+  "تسعيرة",
+  "نطاق",
+  "تصريح",
+  "اعتماد",
+  "اعتمادات",
+  "مراجعة",
+  "تعديل",
+  "تغييرات",
+  "مفقود",
+  "ما الناقص",
+];
+
+const WORKSPACE_CONTEXT_KEYWORDS = [
+  "latest version",
+  "what changed",
+  "change",
+  "changed",
+  "compare",
+  "revision",
+  "revised",
+  "missing",
+  "exclude",
+  "excluded",
+  "included",
+  "quote",
+  "boq",
+  "scope",
+  "permit",
+  "approval",
+  "variation",
+  "continue",
+  "continue the permit",
+  "show me the latest",
+  "latest drawing",
+  "latest boq",
+  "آخر نسخة",
+  "آخر إصدار",
+  "وش تغير",
+  "ما تغير",
+  "قارن",
+  "مقارنة",
+  "مراجعة",
+  "تعديل",
+  "ناقص",
+  "استبعاد",
+  "مشمول",
+  "غير مشمول",
+  "عرض السعر",
+  "المقايسة",
+  "النطاق",
+  "التصريح",
+  "الاعتماد",
+  "التغيير",
+  "كمل",
+  "كمّل",
 ];
 
 const PROGRESSION_KEYWORDS = [
-  "viewing",
-  "visit",
-  "schedule",
-  "tour",
-  "mortgage",
-  "finance",
-  "financing",
-  "broker",
-  "agent",
-  "call me",
-  "callback",
-  "contact me",
-  "documents",
-  "docs",
-  "loan",
-  "زيارة",
-  "معاينة",
-  "موعد",
-  "تمويل",
-  "رهن",
-  "وسيط",
-  "سمسار",
-  "اتصل",
-  "كلمني",
-  "أوراق",
-  "اوراق",
-  "مستندات",
+  "permit",
+  "submit",
+  "submission",
+  "approval",
+  "operator",
+  "review",
+  "handoff",
+  "escalate",
+  "variation",
+  "claim",
+  "evidence",
+  "site visit",
+  "inspect",
+  "urgent",
+  "تصريح",
+  "اعتماد",
+  "اعتمادات",
+  "مراجعة",
+  "مشغل",
+  "المشغل",
+  "تصعيد",
+  "تسليم",
+  "مطالبة",
+  "أدلة",
+  "ادلة",
+  "زيارة موقع",
+  "مستعجل",
+  "عاجل",
 ];
 
-const PROPERTY_CONTEXT_KEYWORDS = [
-  "floor plan",
-  "photos",
-  "price",
-  "district",
-  "location",
-  "details",
-  "about it",
-  "about this",
-  "more about",
-  "المخطط",
-  "صور",
-  "السعر",
-  "الموقع",
-  "الحي",
-  "تفاصيل",
-  "المزيد",
-];
+const DRAWING_KEYWORDS = ["drawing", "drawings", "plan", "plans", "elevation", "layout", "مخطط", "مخططات", "رسومات"];
+const BOQ_KEYWORDS = ["boq", "bill of quantities", "bill quantities", "مقايسة", "كميات"];
+const QUOTE_KEYWORDS = ["quote", "quotation", "pricing", "عرض سعر", "تسعيرة", "سعر"];
+const PERMIT_DOC_KEYWORDS = ["permit", "approval", "license", "submission", "تصريح", "اعتماد", "رخصة"];
+const SITE_PHOTO_KEYWORDS = ["photo", "photos", "site photo", "site photos", "image", "images", "صورة", "صور", "صور الموقع"];
+const CHANGE_EVIDENCE_KEYWORDS = ["variation", "change", "revised", "revision", "claim", "evidence", "تغيير", "تعديل", "مراجعة", "أدلة", "ادلة"];
+const VOICE_NOTE_KEYWORDS = ["voice", "voice note", "audio", "صوت", "ملاحظة صوتية", "رسالة صوتية"];
 
-const FINANCE_DOC_KEYWORDS = ["finance", "mortgage", "loan", "تمويل", "رهن"];
-const IDENTITY_DOC_KEYWORDS = ["id", "identity", "iqama", "هوية", "اقامة", "إقامة"];
-const PROPERTY_DOC_KEYWORDS = ["deed", "title", "property docs", "صك", "مخطط", "رخصة"];
+const DEFAULT_MISSING_ITEMS = {
+  renovation: ["drawings", "site_photos", "scope_boundaries"],
+  fit_out: ["drawings", "boq", "material_selections"],
+  permit_support: ["permit_docs", "drawings", "site_photos"],
+  variation_review: ["change_evidence", "revised_drawings", "prior_scope"],
+  quote_explanation: ["quote_docs", "drawings", "scope_boundaries"],
+  general_contracting: ["drawings", "site_photos", "project_brief"],
+};
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -207,327 +259,389 @@ function listIncludesKeyword(text, keywords) {
   return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
 }
 
-function parseBudget(text) {
+function findFirstKeyword(text, keywords) {
   const lower = normalizeText(text).toLowerCase();
-  const millionMatch = lower.match(/(\d+(?:\.\d+)?)\s*(m|mn|million|مليون)/i);
-  if (millionMatch) return Math.round(Number(millionMatch[1]) * 1_000_000);
-  const thousandMatch = lower.match(/(\d+(?:\.\d+)?)\s*(k|thousand|الف|ألف)/i);
-  if (thousandMatch) return Math.round(Number(thousandMatch[1]) * 1_000);
-  const underMatch = lower.match(
-    /(?:under|below|budget|less than|اقل من|أقل من|ميزانية)\s*([\d,]+)/i,
-  );
-  if (underMatch) return Number(underMatch[1].replace(/,/g, ""));
-  const bare = lower.match(/([\d,]{5,})/);
-  if (bare) return Number(bare[1].replace(/,/g, ""));
-  return null;
+  return keywords.find((keyword) => lower.includes(keyword.toLowerCase())) || null;
 }
 
-function parseBedrooms(text) {
-  const lower = normalizeText(text).toLowerCase();
-  const match = lower.match(/(\d+)\s*(?:bed|beds|bedroom|bedrooms|br|غرف|غرفة)/i);
-  return match ? Number(match[1]) : null;
-}
-
-function parsePropertyType(text) {
-  const lower = normalizeText(text).toLowerCase();
-  if (/(villa|فيلا|فلل)/i.test(lower)) return "villa";
-  if (/(apartment|flat|شقة|شقق)/i.test(lower)) return "apartment";
-  if (/(duplex|دوبلكس)/i.test(lower)) return "duplex";
-  if (/(townhouse|تاون هاوس)/i.test(lower)) return "townhouse";
-  if (/(land|أرض|ارض)/i.test(lower)) return "land";
-  if (/(commercial|تجاري)/i.test(lower)) return "commercial";
-  return null;
-}
-
-function extractSearchHints(text) {
+function parseLocationHints(text) {
   const tokens = tokenize(text);
-  const propertyType = parsePropertyType(text);
-  const budgetMax = parseBudget(text);
-  const bedrooms = parseBedrooms(text);
-  const areas = tokens.filter((token) => token.length >= 3).slice(0, 6);
+  const knownCities = [
+    "riyadh",
+    "jeddah",
+    "khobar",
+    "dammam",
+    "mecca",
+    "makkah",
+    "medina",
+    "madinah",
+    "الرياض",
+    "جدة",
+    "الخبر",
+    "الدمام",
+    "مكة",
+    "المدينة",
+  ];
+  return [...new Set(tokens.filter((token) => knownCities.includes(token)).slice(0, 4))];
+}
+
+function parseProjectKind(text) {
+  const lower = normalizeText(text).toLowerCase();
+  if (/(permit|approval|submission|تصريح|اعتماد|رخصة)/i.test(lower)) return "permit_support";
+  if (/(variation|change order|claim|evidence|تغيير|مطالبة|أدلة|ادلة)/i.test(lower)) return "variation_review";
+  if (/(quote|quotation|pricing|عرض سعر|تسعيرة)/i.test(lower)) return "quote_explanation";
+  if (/(fit out|fit-out|fitout|تشطيب|تجهيز مكتب|تأثيث)/i.test(lower)) return "fit_out";
+  if (/(renovate|renovation|remodel|ترميم|تجديد)/i.test(lower)) return "renovation";
+  return "general_contracting";
+}
+
+function parseAssetType(text) {
+  const lower = normalizeText(text).toLowerCase();
+  if (/(office|commercial|retail|warehouse|مكتب|تجاري|محل|مستودع)/i.test(lower)) return "commercial";
+  if (/(villa|apartment|flat|house|kitchen|bathroom|فيلا|شقة|منزل|مطبخ|حمام)/i.test(lower)) return "residential";
+  return "unknown";
+}
+
+function parseProjectStage(text) {
+  const lower = normalizeText(text).toLowerCase();
+  if (/(revised|revision|variation|change|updated|آخر نسخة|تعديل|تغيير|مراجعة)/i.test(lower)) return "active_update";
+  if (/(permit|approval|submission|تصريح|اعتماد)/i.test(lower)) return "permit_flow";
+  if (/(quote|quotation|pricing|عرض سعر|تسعيرة)/i.test(lower)) return "quote_review";
+  if (/(urgent|asap|today|tomorrow|مستعجل|عاجل|اليوم|بكرة|غدًا)/i.test(lower)) return "urgent";
+  return "new_intake";
+}
+
+function parseUrgency(text) {
+  const lower = normalizeText(text).toLowerCase();
+  if (/(urgent|asap|today|tomorrow|this week|مستعجل|عاجل|اليوم|بكرة|غدًا|هذا الأسبوع)/i.test(lower)) return "high";
+  return "normal";
+}
+
+function inferMaterialTypes(text, media = []) {
+  const inferred = new Set();
+  if (listIncludesKeyword(text, DRAWING_KEYWORDS)) inferred.add("drawings");
+  if (listIncludesKeyword(text, BOQ_KEYWORDS)) inferred.add("boq");
+  if (listIncludesKeyword(text, QUOTE_KEYWORDS)) inferred.add("quote_docs");
+  if (listIncludesKeyword(text, PERMIT_DOC_KEYWORDS)) inferred.add("permit_docs");
+  if (listIncludesKeyword(text, SITE_PHOTO_KEYWORDS)) inferred.add("site_photos");
+  if (listIncludesKeyword(text, CHANGE_EVIDENCE_KEYWORDS)) inferred.add("change_evidence");
+  if (listIncludesKeyword(text, VOICE_NOTE_KEYWORDS)) inferred.add("voice_notes");
+
+  for (const item of Array.isArray(media) ? media : []) {
+    const mime = normalizeText(item?.mime_type).toLowerCase();
+    if (!mime) continue;
+    if (mime.startsWith("image/")) inferred.add("site_photos");
+    if (mime.startsWith("audio/")) inferred.add("voice_notes");
+    if (mime.includes("pdf") || mime.includes("document") || mime.includes("word")) {
+      inferred.add("quote_docs");
+    }
+  }
+
+  return [...inferred];
+}
+
+function determineWorkflowFocus(text, projectKind, materialTypes) {
+  if (projectKind === "permit_support") return "permit_support";
+  if (projectKind === "variation_review") return "variation_review";
+  if (projectKind === "quote_explanation") return "quote_explanation";
+  if (materialTypes.includes("boq") || materialTypes.includes("quote_docs")) return "scope_alignment";
+  if (materialTypes.includes("drawings") || materialTypes.includes("site_photos")) return "workspace_setup";
+  return "project_intake";
+}
+
+function computeMissingItems({ projectKind, materialTypes, assetType, stage }) {
+  const baseline = DEFAULT_MISSING_ITEMS[projectKind] || DEFAULT_MISSING_ITEMS.general_contracting;
+  const missing = baseline.filter((item) => !materialTypes.includes(item));
+
+  if (assetType === "commercial" && !materialTypes.includes("drawings")) {
+    missing.push("dimensions");
+  }
+  if (stage === "active_update" && !materialTypes.includes("change_evidence")) {
+    missing.push("change_evidence");
+  }
+  return [...new Set(missing)];
+}
+
+function computeWorkspaceReadiness({ linkedWorkspaceId, materialTypes, textBody, projectKind }) {
+  if (linkedWorkspaceId) return "linked_workspace";
+  if (materialTypes.length >= 2) return "ready_to_route";
+  if (projectKind === "permit_support" || projectKind === "variation_review") return "needs_more_context";
+  if (normalizeText(textBody).length >= 20) return "draft_ready";
+  return "needs_more_context";
+}
+
+export function extractProjectSignals(text, media = []) {
+  const normalized = normalizeText(text);
+  const projectKind = parseProjectKind(normalized);
+  const assetType = parseAssetType(normalized);
+  const stage = parseProjectStage(normalized);
+  const urgency = parseUrgency(normalized);
+  const locationHints = parseLocationHints(normalized);
+  const materialTypes = inferMaterialTypes(normalized, media);
+  const workflowFocus = determineWorkflowFocus(normalized, projectKind, materialTypes);
+  const tokens = tokenize(normalized).slice(0, 12);
+
   return {
-    propertyType,
-    budgetMax,
-    bedrooms,
-    areas,
+    projectKind,
+    assetType,
+    stage,
+    urgency,
+    locationHints,
+    materialTypes,
+    workflowFocus,
     tokens,
   };
 }
 
-function detectProgressionUploadKind(text) {
-  if (listIncludesKeyword(text, FINANCE_DOC_KEYWORDS)) return "finance_docs";
-  if (listIncludesKeyword(text, IDENTITY_DOC_KEYWORDS)) return "identity_docs";
-  if (listIncludesKeyword(text, PROPERTY_DOC_KEYWORDS)) return "property_docs";
+function detectProgressionUploadKind(text, media = []) {
+  if (listIncludesKeyword(text, DRAWING_KEYWORDS)) return "drawings";
+  if (listIncludesKeyword(text, BOQ_KEYWORDS)) return "boq";
+  if (listIncludesKeyword(text, QUOTE_KEYWORDS)) return "quote_docs";
+  if (listIncludesKeyword(text, PERMIT_DOC_KEYWORDS)) return "permit_docs";
+  if (listIncludesKeyword(text, SITE_PHOTO_KEYWORDS)) return "site_photos";
+  if (listIncludesKeyword(text, CHANGE_EVIDENCE_KEYWORDS)) return "change_evidence";
+  if (listIncludesKeyword(text, VOICE_NOTE_KEYWORDS)) return "voice_notes";
+  if (Array.isArray(media) && media.some((item) => normalizeText(item?.mime_type).toLowerCase().startsWith("image/"))) {
+    return "site_photos";
+  }
   return "none";
-}
-
-export function extractOrdinalSelection(text) {
-  const lower = normalizeText(text).toLowerCase();
-  if (!lower) return null;
-  const wantsCompare = lower.includes("compare") || lower.includes("comparison") ||
-    lower.includes("قارن") || lower.includes("مقارنة");
-  if (wantsCompare) {
-    if (/(first|1|one|الأول|اول|١).*(second|2|two|الثاني|ثاني|٢)/.test(lower)) {
-      return [0, 1];
-    }
-    return "compare";
-  }
-  if (/\b(first|1|one|الأول|اول|١)\b/.test(lower)) return [0];
-  if (/\b(second|2|two|الثاني|ثاني|٢)\b/.test(lower)) return [1];
-  if (/\b(third|3|three|الثالث|ثالث|٣)\b/.test(lower)) return [2];
-  return null;
-}
-
-function toNumber(value) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-}
-
-function extractListingSnapshot(row) {
-  const overlay = row?.overlay_json && typeof row.overlay_json === "object"
-    ? row.overlay_json
-    : {};
-  const listing = overlay?.listing && typeof overlay.listing === "object"
-    ? overlay.listing
-    : {};
-  const geo = overlay?.geo && typeof overlay.geo === "object"
-    ? overlay.geo
-    : {};
-  const dimensions = overlay?.dimensions && typeof overlay.dimensions === "object"
-    ? overlay.dimensions
-    : {};
-  const description = overlay?.description && typeof overlay.description === "object"
-    ? overlay.description
-    : {};
-  const agent = overlay?.agent && typeof overlay.agent === "object"
-    ? overlay.agent
-    : {};
-  const property = row?.properties && typeof row.properties === "object"
-    ? row.properties
-    : {};
-  const headline = normalizeText(
-    listing.headline ||
-      listing.title ||
-      description.headline ||
-      property.name,
-  );
-  const gallery = Array.isArray(overlay?.media?.gallery) ? overlay.media.gallery : [];
-  return {
-    workspace_id: normalizeUuid(row.workspace_id),
-    property_id: normalizeUuid(row.property_id),
-    property_name: normalizeText(property.name) || headline,
-    property_type: normalizeText(property.property_type || listing.property_type || row.property_kind),
-    surface_key: normalizeText(
-      listing.surface_key ||
-        listing.public_id ||
-        overlay.surface_key ||
-        overlay.public_id,
-    ) || null,
-    headline,
-    city: normalizeText(geo.city),
-    district: normalizeText(geo.district),
-    asking_price: toNumber(listing.asking_price),
-    currency: normalizeText(listing.currency) || "SAR",
-    bedrooms: toNumber(dimensions.bedrooms),
-    bathrooms: toNumber(dimensions.bathrooms_full),
-    built_area_m2: toNumber(dimensions.built_area_m2),
-    description: Array.isArray(description.long_paragraphs)
-      ? description.long_paragraphs.map((item) => normalizeText(item)).filter(Boolean).join(" ")
-      : normalizeText(description.summary || description.short || ""),
-    features: Array.isArray(overlay.features)
-      ? overlay.features.map((item) => normalizeText(item)).filter(Boolean)
-      : [],
-    floor_plan_ref: normalizeText(overlay?.media?.floor_plan_ref) || null,
-    media_count: gallery.length,
-    agent_name: normalizeText(agent.name),
-    agent_phone: normalizeText(agent.phone),
-  };
-}
-
-function scoreListing(listing, hints) {
-  let score = 0;
-  const haystack = [
-    listing.property_name,
-    listing.headline,
-    listing.city,
-    listing.district,
-    listing.description,
-    ...(listing.features || []),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  for (const token of hints.tokens) {
-    if (haystack.includes(token)) score += 2;
-  }
-
-  if (hints.propertyType) {
-    const kind = `${listing.property_type} ${listing.headline}`.toLowerCase();
-    if (kind.includes(hints.propertyType.toLowerCase())) score += 4;
-  }
-
-  if (hints.bedrooms && listing.bedrooms) {
-    score += listing.bedrooms === hints.bedrooms ? 4 : Math.max(0, 2 - Math.abs(listing.bedrooms - hints.bedrooms));
-  }
-
-  if (hints.budgetMax && listing.asking_price) {
-    if (listing.asking_price <= hints.budgetMax) {
-      score += 5;
-    } else {
-      score -= Math.min(3, Math.ceil((listing.asking_price - hints.budgetMax) / Math.max(hints.budgetMax, 1) * 10));
-    }
-  }
-
-  if (listing.city) score += 1;
-  if (listing.district) score += 1;
-  if (listing.media_count > 0) score += 1;
-  if (listing.floor_plan_ref) score += 1;
-
-  return score;
-}
-
-function summarizePrice(listing) {
-  if (!listing.asking_price) return "";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 0,
-    }).format(listing.asking_price);
-  } catch {
-    return String(listing.asking_price);
-  }
-}
-
-function buildMarketUrl(surfaceKey) {
-  const host = normalizeText(process.env.WHATSAPP_MARKET_HOST || "live.zohal.ai");
-  if (!surfaceKey) return null;
-  return `https://${host}/market/${encodeURIComponent(surfaceKey)}`;
-}
-
-function buildDiscoveryReply({ language, results, usedExternalFallback = false }) {
-  if (!results.length) {
-    return chooseCopy(
-      language,
-      "I couldn't find a strong property match yet. Tell me the area, budget, and property type and I’ll narrow it down.",
-      "ما لقيت تطابق قوي حتى الآن. أرسل لي الحي والميزانية ونوع العقار وأنا أضيّق لك الخيارات.",
-    );
-  }
-
-  const lines = results.slice(0, 3).map((result, index) => {
-    const location = [result.district, result.city].filter(Boolean).join(", ");
-    const pieces = [
-      `${index + 1}. ${result.property_name || result.headline || chooseCopy(language, "Property", "العقار")}`,
-      location,
-      result.asking_price ? `${summarizePrice(result)} ${result.currency}` : null,
-      result.bedrooms ? chooseCopy(language, `${result.bedrooms} bed`, `${result.bedrooms} غرف`) : null,
-      result.result_source === "external"
-        ? chooseCopy(language, "external", "خارجي")
-        : null,
-    ].filter(Boolean);
-    const url = result.public_url || buildMarketUrl(result.surface_key);
-    return url ? `${pieces.join(" · ")}\n${url}` : pieces.join(" · ");
-  });
-
-  const intro = usedExternalFallback
-    ? chooseCopy(
-      language,
-      "I relaxed the Zohal search and included external fallback options:",
-      "وسّعت بحث زحل وأضفت خيارات خارجية احتياطية:",
-    )
-    : chooseCopy(
-      language,
-      "Here are the best Zohal matches I found:",
-      "هذه أفضل الخيارات التي وجدتها داخل زحل:",
-    );
-  const outro = chooseCopy(
-    language,
-    "Reply with 1, 2, or 3 for details, or ask me to compare the first two.",
-    "رد برقم 1 أو 2 أو 3 للتفاصيل، أو اطلب مني مقارنة أول خيارين.",
-  );
-  return `${intro}\n\n${lines.join("\n\n")}\n\n${outro}`;
-}
-
-function buildPropertyContextReply({ language, listing }) {
-  const location = [listing.district, listing.city].filter(Boolean).join(", ");
-  const parts = [
-    `${listing.property_name || listing.headline}`,
-    location || null,
-    listing.asking_price ? `${summarizePrice(listing)} ${listing.currency}` : null,
-    listing.bedrooms ? chooseCopy(language, `${listing.bedrooms} bedrooms`, `${listing.bedrooms} غرف`) : null,
-    listing.bathrooms ? chooseCopy(language, `${listing.bathrooms} bathrooms`, `${listing.bathrooms} حمامات`) : null,
-    listing.built_area_m2
-      ? chooseCopy(language, `${listing.built_area_m2} m2 built area`, `${listing.built_area_m2} م2 مساحة مبنية`)
-      : null,
-  ].filter(Boolean);
-  const detail = listing.description
-    ? listing.description.slice(0, 260)
-    : chooseCopy(
-      language,
-      "I can also share floor-plan, finance, and viewing next steps for this property.",
-      "أقدر كذلك أساعدك بخطوات المخطط والتمويل والمعاينة لهذا العقار.",
-    );
-  const url = listing.public_url || buildMarketUrl(listing.surface_key);
-  return url ? `${parts.join(" · ")}\n\n${detail}\n\n${url}` : `${parts.join(" · ")}\n\n${detail}`;
-}
-
-function buildComparisonReply({ language, listings }) {
-  const items = listings.slice(0, 2).map((listing) => {
-    const price = listing.asking_price ? `${summarizePrice(listing)} ${listing.currency}` : chooseCopy(language, "price pending", "السعر غير متاح");
-    const beds = listing.bedrooms
-      ? chooseCopy(language, `${listing.bedrooms} bed`, `${listing.bedrooms} غرف`)
-      : null;
-    return `${listing.property_name}: ${[price, beds, listing.district].filter(Boolean).join(" · ")}`;
-  });
-  const suffix = chooseCopy(
-    language,
-    "Tell me which one you want to view, finance, or explore in more detail.",
-    "قل لي أي واحد تريد معاينته أو تمويله أو التعمق فيه أكثر.",
-  );
-  return `${items.join("\n")}\n\n${suffix}`;
 }
 
 export function decideWhatsappMode({
   textBody,
-  messageType,
   hasMedia,
   conversation,
   workspaceSession,
 }) {
   const text = normalizeText(textBody);
-  const activeMode = BUYER_MODES.has(conversation?.mode) ? conversation.mode : "discovery";
+  const activeMode = WHATSAPP_MODES.has(conversation?.mode) ? conversation.mode : "project_intake";
+
   if (hasMedia) {
     if (conversation?.awaiting_upload_kind && conversation.awaiting_upload_kind !== "none") {
       return { handled: true, mode: "progression", reason: "awaiting_upload" };
     }
-    if (workspaceSession?.workspace_id) {
+    if (conversation?.linked_workspace_id || workspaceSession?.workspace_id) {
       return { handled: true, mode: "document_ingestion", reason: "workspace_bound_media" };
     }
-    return { handled: true, mode: activeMode, reason: "ambiguous_media" };
+    return { handled: true, mode: activeMode, reason: "media_without_workspace" };
   }
+
   if (!text) {
     if (workspaceSession?.workspace_id) {
       return { handled: false, mode: null, reason: "legacy_non_text" };
     }
     return { handled: true, mode: activeMode, reason: "unsupported_non_text" };
   }
+
   if (listIncludesKeyword(text, PROGRESSION_KEYWORDS)) {
     return { handled: true, mode: "progression", reason: "progression_keywords" };
   }
+
   if (
-    (conversation?.active_property_id || conversation?.active_surface_key) &&
-    (listIncludesKeyword(text, PROPERTY_CONTEXT_KEYWORDS) || activeMode === "property_context")
+    (conversation?.linked_workspace_id || workspaceSession?.workspace_id) &&
+    (listIncludesKeyword(text, WORKSPACE_CONTEXT_KEYWORDS) || activeMode === "workspace_context")
   ) {
-    return { handled: true, mode: "property_context", reason: "active_property_context" };
+    return { handled: true, mode: "workspace_context", reason: "workspace_context_keywords" };
   }
-  if (extractOrdinalSelection(text)) {
-    return { handled: true, mode: conversation?.last_result_set_id ? "property_context" : "discovery", reason: "ordinal_selection" };
+
+  if (listIncludesKeyword(text, PROJECT_INTAKE_KEYWORDS)) {
+    return { handled: true, mode: "project_intake", reason: "project_intake_keywords" };
   }
-  if (listIncludesKeyword(text, DISCOVERY_KEYWORDS)) {
-    return { handled: true, mode: "discovery", reason: "discovery_keywords" };
-  }
+
   if (workspaceSession?.workspace_id) {
     return { handled: false, mode: null, reason: "legacy_workspace_text" };
   }
-  return { handled: true, mode: activeMode, reason: "buyer_default" };
+
+  return { handled: true, mode: activeMode, reason: "project_default" };
+}
+
+function buildProjectTitle(signals) {
+  const parts = [];
+  if (signals.assetType && signals.assetType !== "unknown") parts.push(signals.assetType);
+  parts.push(signals.projectKind);
+  return parts.filter(Boolean).join("_");
+}
+
+function humanizeMissingItem(language, item) {
+  const labels = {
+    drawings: chooseCopy(language, "drawings", "المخططات"),
+    boq: chooseCopy(language, "BOQ", "المقايسة"),
+    quote_docs: chooseCopy(language, "quote or pricing file", "عرض السعر أو ملف التسعير"),
+    permit_docs: chooseCopy(language, "permit documents", "مستندات التصريح"),
+    site_photos: chooseCopy(language, "site photos", "صور الموقع"),
+    change_evidence: chooseCopy(language, "change evidence", "أدلة التغيير"),
+    dimensions: chooseCopy(language, "dimensions", "الأبعاد"),
+    material_selections: chooseCopy(language, "material selections", "اختيارات المواد"),
+    scope_boundaries: chooseCopy(language, "scope boundaries", "حدود النطاق"),
+    revised_drawings: chooseCopy(language, "revised drawings", "المخططات المعدلة"),
+    prior_scope: chooseCopy(language, "prior approved scope", "النطاق السابق المعتمد"),
+    project_brief: chooseCopy(language, "brief project note", "ملخص قصير للمشروع"),
+  };
+  return labels[item] || item;
+}
+
+function humanizeStage(language, stage) {
+  const labels = {
+    new_intake: chooseCopy(language, "new intake", "بداية مشروع"),
+    active_update: chooseCopy(language, "active update", "تحديث على مشروع قائم"),
+    permit_flow: chooseCopy(language, "permit flow", "مسار تصريح"),
+    quote_review: chooseCopy(language, "quote review", "مراجعة عرض سعر"),
+    urgent: chooseCopy(language, "urgent follow-up", "متابعة عاجلة"),
+  };
+  return labels[stage] || stage;
+}
+
+function humanizeWorkflow(language, workflowFocus) {
+  const labels = {
+    project_intake: chooseCopy(language, "project intake", "بدء المشروع"),
+    scope_alignment: chooseCopy(language, "scope alignment", "مواءمة النطاق"),
+    quote_explanation: chooseCopy(language, "quote explanation", "شرح عرض السعر"),
+    permit_support: chooseCopy(language, "permit support", "دعم التصريح"),
+    variation_review: chooseCopy(language, "variation review", "مراجعة التغيير"),
+    workspace_setup: chooseCopy(language, "workspace setup", "تهيئة مساحة العمل"),
+  };
+  return labels[workflowFocus] || workflowFocus;
+}
+
+function buildProjectIntakeReply({ language, workspace, signals, missingItems, workspaceReadiness }) {
+  const summary = [];
+  summary.push(
+    chooseCopy(
+      language,
+      `I understand this as a ${humanizeWorkflow(language, signals.workflowFocus)} request for a ${signals.assetType === "unknown" ? "project" : signals.assetType} ${signals.projectKind.replace(/_/g, " ")}.`,
+      `أفهم هذا كطلب ${humanizeWorkflow(language, signals.workflowFocus)} لمشروع ${signals.projectKind.replace(/_/g, " ")} ${signals.assetType === "unknown" ? "" : signals.assetType === "commercial" ? "تجاري" : "سكني"}.`,
+    ),
+  );
+
+  if (signals.locationHints.length) {
+    summary.push(
+      chooseCopy(
+        language,
+        `Location hints: ${signals.locationHints.join(", ")}.`,
+        `مؤشرات الموقع: ${signals.locationHints.join("، ")}.`,
+      ),
+    );
+  }
+
+  summary.push(
+    chooseCopy(
+      language,
+      `Current stage looks like ${humanizeStage(language, signals.stage)}.`,
+      `المرحلة الحالية تبدو ${humanizeStage(language, signals.stage)}.`,
+    ),
+  );
+
+  if (workspace?.name) {
+    summary.push(
+      chooseCopy(
+        language,
+        `I can keep working inside the workspace "${workspace.name}" and attach new materials there.`,
+        `أقدر أكمل داخل مساحة العمل "${workspace.name}" وأربط المواد الجديدة بها.`,
+      ),
+    );
+  } else {
+    summary.push(
+      chooseCopy(
+        language,
+        workspaceReadiness === "ready_to_route" || workspaceReadiness === "draft_ready"
+          ? "There is enough context to draft a useful workspace lane once the core files land."
+          : "We can keep this moving without heavy intake first, then tighten the workspace once the core files arrive.",
+        workspaceReadiness === "ready_to_route" || workspaceReadiness === "draft_ready"
+          ? "فيه سياق كافٍ لبدء مسار مساحة عمل مفيد بمجرد وصول الملفات الأساسية."
+          : "نقدر نمشي بالمشروع بدون استمارة ثقيلة أولاً، ثم نثبّت مساحة العمل بعد وصول الملفات الأساسية.",
+      ),
+    );
+  }
+
+  if (missingItems.length) {
+    const missing = missingItems.slice(0, 3).map((item) => humanizeMissingItem(language, item)).join(language === "ar" ? "، " : ", ");
+    summary.push(
+      chooseCopy(
+        language,
+        `Most useful next items: ${missing}.`,
+        `أكثر العناصر فائدة الآن: ${missing}.`,
+      ),
+    );
+  }
+
+  summary.push(
+    chooseCopy(
+      language,
+      "If you want, send drawings, BOQ, quote, site photos, or revised files and I’ll organize the next step around them.",
+      "إذا أردت، أرسل المخططات أو المقايسة أو عرض السعر أو صور الموقع أو النسخ المعدلة وسأرتب الخطوة التالية حولها.",
+    ),
+  );
+
+  return summary.join("\n\n");
+}
+
+function buildWorkspaceContextReply({ language, workspace, signals, missingItems }) {
+  const lines = [];
+  if (workspace?.name) {
+    lines.push(
+      chooseCopy(
+        language,
+        `Continuing inside workspace "${workspace.name}".`,
+        `نكمل داخل مساحة العمل "${workspace.name}".`,
+      ),
+    );
+  }
+
+  lines.push(
+    chooseCopy(
+      language,
+      `Primary lane right now: ${humanizeWorkflow(language, signals.workflowFocus)}.`,
+      `المسار الأهم الآن: ${humanizeWorkflow(language, signals.workflowFocus)}.`,
+    ),
+  );
+
+  if (missingItems.length) {
+    lines.push(
+      chooseCopy(
+        language,
+        `Still likely missing: ${missingItems.slice(0, 3).map((item) => humanizeMissingItem(language, item)).join(", ")}.`,
+        `ما يزال غالبًا ناقصًا: ${missingItems.slice(0, 3).map((item) => humanizeMissingItem(language, item)).join("، ")}.`,
+      ),
+    );
+  }
+
+  lines.push(
+    chooseCopy(
+      language,
+      "You can ask me what changed, what is excluded, what is still missing, or continue the permit / quote / revision flow.",
+      "تقدر تسألني ما الذي تغيّر، وما المستبعد، وما الذي ما يزال ناقصًا، أو نكمل مسار التصريح أو عرض السعر أو المراجعة.",
+    ),
+  );
+  return lines.join("\n\n");
+}
+
+function buildProgressionReply({ language, uploadKind, stage }) {
+  if (uploadKind !== "none") {
+    return chooseCopy(
+      language,
+      `Understood. Send the ${humanizeMissingItem(language, uploadKind)} here and I’ll attach them to the project case and update the workspace lane.`,
+      `تمام. أرسل ${humanizeMissingItem(language, uploadKind)} هنا وسأربطها بملف المشروع وأحدث مسار مساحة العمل.`,
+    );
+  }
+
+  return chooseCopy(
+    language,
+    `I opened this as a project case in ${stage.replace(/_/g, " ")} mode. I can help next with scope clarification, quote review, permit support, variation evidence, or operator follow-up.`,
+    `فتحت هذا كحالة مشروع في وضع ${stage.replace(/_/g, " ")}. أقدر أساعدك الآن في توضيح النطاق أو مراجعة عرض السعر أو دعم التصريح أو أدلة التغيير أو المتابعة التشغيلية.`,
+  );
+}
+
+function buildUploadAcknowledgementReply({ language, uploadKind }) {
+  return chooseCopy(
+    language,
+    `Received. I attached the ${humanizeMissingItem(language, uploadKind)} to the project case and kept the timeline updated.`,
+    `وصلت. ربطت ${humanizeMissingItem(language, uploadKind)} بحالة المشروع وحدّثت الخط الزمني.`,
+  );
+}
+
+function toNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
 }
 
 async function loadConversationByPhone(supabase, phoneNumber) {
@@ -541,13 +655,13 @@ async function loadConversationByPhone(supabase, phoneNumber) {
   return data || null;
 }
 
-async function loadBuyerProfile(supabase, phoneNumber) {
+async function loadProjectProfile(supabase, phoneNumber) {
   const { data, error } = await supabase
     .from("whatsapp_buyer_profiles")
     .select("*")
     .eq("phone_number", phoneNumber)
     .maybeSingle();
-  if (error) throw new Error(`Failed to load WhatsApp buyer profile: ${error.message}`);
+  if (error) throw new Error(`Failed to load WhatsApp profile memory: ${error.message}`);
   return data || null;
 }
 
@@ -574,14 +688,14 @@ async function upsertConversation(supabase, payload) {
   return data;
 }
 
-async function upsertBuyerProfile(supabase, payload) {
+async function upsertProjectProfile(supabase, payload) {
   const { data, error } = await supabase
     .from("whatsapp_buyer_profiles")
     .upsert(payload, { onConflict: "phone_number" })
     .select("*")
     .single();
   if (error || !data) {
-    throw new Error(`Failed to upsert WhatsApp buyer profile: ${error?.message || "unknown"}`);
+    throw new Error(`Failed to upsert WhatsApp profile memory: ${error?.message || "unknown"}`);
   }
   return data;
 }
@@ -598,200 +712,112 @@ async function insertConversationEvent(supabase, payload) {
   return data;
 }
 
-async function insertResultSet(supabase, payload) {
+async function loadWorkspaceSummary(supabase, workspaceId) {
+  if (!workspaceId) return null;
   const { data, error } = await supabase
-    .from("whatsapp_result_sets")
-    .insert(payload)
-    .select("*")
-    .single();
-  if (error || !data) {
-    throw new Error(`Failed to insert WhatsApp result set: ${error?.message || "unknown"}`);
-  }
-  return data;
-}
-
-async function loadResultSet(supabase, resultSetId) {
-  if (!resultSetId) return null;
-  const { data, error } = await supabase
-    .from("whatsapp_result_sets")
-    .select("*")
-    .eq("id", resultSetId)
+    .from("workspaces")
+    .select("id,name,description,analysis_brief,preparation_status")
+    .eq("id", workspaceId)
     .maybeSingle();
-  if (error) throw new Error(`Failed to load WhatsApp result set: ${error.message}`);
+  if (error) throw new Error(`Failed to load workspace summary: ${error.message}`);
   return data || null;
 }
 
-async function loadPropertyListing(supabase, propertyId, workspaceId = null) {
-  if (!propertyId) return null;
-  let query = supabase
-    .from("property_listing_overlays")
-    .select("workspace_id, property_id, property_kind, overlay_json, properties(name, property_type)")
-    .eq("property_id", propertyId)
-    .eq("surface_family", "market")
-    .eq("ready_to_publish", true)
-    .limit(1);
-  if (workspaceId) query = query.eq("workspace_id", workspaceId);
-  const { data, error } = await query.maybeSingle();
-  if (error) throw new Error(`Failed to load property listing overlay: ${error.message}`);
-  return data ? extractListingSnapshot(data) : null;
-}
-
-async function searchNativeListings(supabase, { textBody, hints }) {
-  const { data, error } = await supabase
-    .from("property_listing_overlays")
-    .select("workspace_id, property_id, property_kind, overlay_json, properties(name, property_type)")
-    .eq("surface_family", "market")
-    .eq("ready_to_publish", true)
-    .limit(60);
-
-  if (error) {
-    throw new Error(`Failed to search listing overlays: ${error.message}`);
-  }
-
-  const rows = (data || []).map((row) => {
-    const listing = extractListingSnapshot(row);
-    const score = scoreListing(listing, hints);
-    return {
-      ...listing,
-      result_source: "zohal_native",
-      score,
-      public_url: buildMarketUrl(listing.surface_key),
-    };
-  });
-
-  const strong = rows
-    .filter((row) => row.score > 0)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 6);
-
-  return {
-    results: strong,
-    thresholdMet: strong.length > 0 && strong[0].score >= 4,
-    query_text: textBody,
-    provider: "zohal_native",
-  };
-}
-
-async function searchExternalFallback({ textBody, hints, requestId, log }) {
-  const baseUrl = normalizeText(process.env.WHATSAPP_EXTERNAL_SEARCH_URL);
-  if (!baseUrl) {
-    log.info("External WhatsApp fallback not configured", { requestId });
-    return { results: [], provider: "external_v1", unavailable: true };
-  }
-
-  const response = await fetch(baseUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-request-id": requestId },
-    body: JSON.stringify({ query: textBody, hints }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`External WhatsApp fallback failed (${response.status})`);
-  }
-
-  const json = await response.json().catch(() => ({}));
-  const results = Array.isArray(json.results) ? json.results : [];
-  return {
-    provider: "external_v1",
-    results: results.slice(0, 6).map((item) => ({
-      property_name: normalizeText(item.property_name || item.title || item.headline) || "External listing",
-      headline: normalizeText(item.headline || item.title || item.property_name),
-      city: normalizeText(item.city),
-      district: normalizeText(item.district),
-      asking_price: toNumber(item.asking_price),
-      currency: normalizeText(item.currency) || "SAR",
-      bedrooms: toNumber(item.bedrooms),
-      bathrooms: toNumber(item.bathrooms),
-      built_area_m2: toNumber(item.built_area_m2),
-      description: normalizeText(item.description),
-      features: Array.isArray(item.features) ? item.features.map((feature) => normalizeText(feature)).filter(Boolean) : [],
-      surface_key: null,
-      workspace_id: null,
-      property_id: null,
-      result_source: "external",
-      external_candidate_id: normalizeText(item.external_candidate_id || item.id) || null,
-      public_url: normalizeText(item.public_url) || null,
-    })),
-  };
-}
-
-function buildProfilePatch({ existingProfile, phoneNumber, linkedProfileId, language, hints }) {
+function buildProfilePatch({ existingProfile, phoneNumber, linkedProfileId, language, signals, missingItems }) {
   const previous = existingProfile?.profile_json && typeof existingProfile.profile_json === "object"
     ? existingProfile.profile_json
     : {};
-  const areas = Array.isArray(previous.preferred_areas) ? previous.preferred_areas : [];
-  const mergedAreas = [...new Set([...areas, ...hints.areas].filter(Boolean))].slice(0, 8);
+  const priorLocations = Array.isArray(previous.location_hints) ? previous.location_hints : [];
+  const mergedLocations = [...new Set([...priorLocations, ...signals.locationHints].filter(Boolean))].slice(0, 8);
+  const priorMaterials = Array.isArray(previous.material_types) ? previous.material_types : [];
+  const mergedMaterials = [...new Set([...priorMaterials, ...signals.materialTypes].filter(Boolean))].slice(0, 12);
+
   return {
     phone_number: phoneNumber,
     linked_profile_id: normalizeUuid(linkedProfileId),
     preferred_language: language,
     intent: existingProfile?.intent || "unknown",
-    financing_interest: listIncludesKeyword(hints.tokens.join(" "), FINANCE_DOC_KEYWORDS)
-      ? "interested"
-      : (existingProfile?.financing_interest || "unknown"),
-    readiness_score: Math.max(Number(existingProfile?.readiness_score || 0), hints.budgetMax ? 0.35 : 0.15),
+    financing_interest: existingProfile?.financing_interest || "unknown",
+    readiness_score: Math.max(
+      Number(existingProfile?.readiness_score || 0),
+      signals.materialTypes.length >= 2 ? 0.65 : signals.tokens.length >= 4 ? 0.35 : 0.15,
+    ),
     profile_json: {
       ...previous,
-      preferred_areas: mergedAreas,
-      property_type: hints.propertyType || previous.property_type || null,
-      budget_max: hints.budgetMax || previous.budget_max || null,
-      bedrooms: hints.bedrooms || previous.bedrooms || null,
-      last_query_tokens: hints.tokens.slice(0, 12),
+      project_kind: signals.projectKind,
+      asset_type: signals.assetType,
+      project_stage: signals.stage,
+      workflow_focus: signals.workflowFocus,
+      urgency: signals.urgency,
+      location_hints: mergedLocations,
+      material_types: mergedMaterials,
+      missing_items: missingItems,
+      last_query_tokens: signals.tokens,
     },
     confidence_json: {
       ...(existingProfile?.confidence_json && typeof existingProfile.confidence_json === "object"
         ? existingProfile.confidence_json
         : {}),
-      budget_max: hints.budgetMax ? 0.75 : 0.2,
-      property_type: hints.propertyType ? 0.8 : 0.2,
-      areas: hints.areas.length ? 0.65 : 0.15,
+      project_kind: signals.projectKind === "general_contracting" ? 0.45 : 0.8,
+      asset_type: signals.assetType === "unknown" ? 0.3 : 0.75,
+      material_types: signals.materialTypes.length ? 0.8 : 0.2,
+      location_hints: signals.locationHints.length ? 0.65 : 0.15,
     },
-    summary: hints.tokens.length
-      ? `Latest search: ${hints.tokens.slice(0, 6).join(", ")}`
-      : existingProfile?.summary || null,
+    summary: `${signals.projectKind.replace(/_/g, " ")} · ${signals.workflowFocus.replace(/_/g, " ")}`,
   };
 }
 
-async function createOrUpdateOpportunity(supabase, payload) {
+function deriveCaseStage(workflowFocus, uploadKind) {
+  if (uploadKind === "permit_docs" || workflowFocus === "permit_support") return "permit_ready";
+  if (uploadKind === "change_evidence" || workflowFocus === "variation_review") return "variation_review";
+  if (uploadKind === "quote_docs" || uploadKind === "boq" || workflowFocus === "quote_explanation") return "quote_review";
+  if (workflowFocus === "scope_alignment" || workflowFocus === "workspace_setup") return "scoping";
+  return "intake";
+}
+
+async function createOrUpdateProjectCase(supabase, payload) {
   const conversationId = normalizeUuid(payload.conversation_id);
   const workspaceId = normalizeUuid(payload.workspace_id);
-  const propertyId = normalizeUuid(payload.property_id);
   const phoneNumber = normalizePhone(payload.phone_number);
-  if (!workspaceId || !phoneNumber) return null;
+  if (!phoneNumber) return null;
 
   let query = supabase
     .from("buyer_opportunities")
     .select("*")
-    .eq("workspace_id", workspaceId)
     .eq("phone_number", phoneNumber)
     .order("updated_at", { ascending: false })
     .limit(1);
-  if (propertyId) query = query.eq("property_id", propertyId);
+
+  if (workspaceId) query = query.eq("workspace_id", workspaceId);
   if (conversationId) query = query.eq("conversation_id", conversationId);
 
   const { data: existing, error: existingError } = await query.maybeSingle();
   if (existingError) {
-    throw new Error(`Failed to load buyer opportunity: ${existingError.message}`);
+    throw new Error(`Failed to load project case: ${existingError.message}`);
   }
 
   const nextPayload = {
     phone_number: phoneNumber,
     conversation_id: conversationId,
     workspace_id: workspaceId,
-    property_id: propertyId,
-    surface_key: normalizeText(payload.surface_key) || null,
-    stage: payload.stage || "qualified",
+    property_id: null,
+    surface_key: null,
+    stage: payload.stage || "intake",
     source_channel: "whatsapp",
-    result_source: payload.result_source || null,
+    result_source: workspaceId ? "zohal_native" : null,
     current_intent: payload.current_intent || null,
-    budget_band: payload.budget_band || null,
-    area_summary: payload.area_summary || null,
-    financing_status: payload.financing_status || null,
-    viewing_readiness: payload.viewing_readiness || null,
+    budget_band: null,
+    area_summary: null,
+    financing_status: null,
+    viewing_readiness: null,
     assigned_operator_id: normalizeUuid(payload.assigned_operator_id),
     summary: payload.summary || null,
     metadata_json: payload.metadata_json || {},
-    marketing_inquiry_id: normalizeUuid(payload.marketing_inquiry_id),
+    marketing_inquiry_id: null,
+    project_kind: payload.project_kind || null,
+    workflow_focus: payload.workflow_focus || null,
+    workspace_readiness: payload.workspace_readiness || null,
+    missing_items_json: payload.missing_items_json || [],
   };
 
   if (existing?.id) {
@@ -802,7 +828,7 @@ async function createOrUpdateOpportunity(supabase, payload) {
       .select("*")
       .single();
     if (error || !data) {
-      throw new Error(`Failed to update buyer opportunity: ${error?.message || "unknown"}`);
+      throw new Error(`Failed to update project case: ${error?.message || "unknown"}`);
     }
     return data;
   }
@@ -813,54 +839,30 @@ async function createOrUpdateOpportunity(supabase, payload) {
     .select("*")
     .single();
   if (error || !data) {
-    throw new Error(`Failed to insert buyer opportunity: ${error?.message || "unknown"}`);
+    throw new Error(`Failed to insert project case: ${error?.message || "unknown"}`);
   }
   return data;
 }
 
-async function insertOpportunityMatch(supabase, payload) {
+async function insertCaseMatch(supabase, payload) {
   const { error } = await supabase
     .from("buyer_opportunity_matches")
     .insert(payload);
   if (error) {
-    throw new Error(`Failed to insert buyer opportunity match: ${error.message}`);
+    throw new Error(`Failed to insert project case match: ${error.message}`);
   }
 }
 
-async function insertOpportunityActivity(supabase, payload) {
+async function insertCaseActivity(supabase, payload) {
   const { data, error } = await supabase
     .from("buyer_opportunity_activities")
     .insert(payload)
     .select("*")
     .single();
   if (error || !data) {
-    throw new Error(`Failed to insert buyer opportunity activity: ${error?.message || "unknown"}`);
+    throw new Error(`Failed to insert project case activity: ${error?.message || "unknown"}`);
   }
   return data;
-}
-
-async function insertMarketingInquiryCompatibility(supabase, payload) {
-  if (!payload.workspace_id || !payload.surface_key) return null;
-  const { data, error } = await supabase
-    .from("marketing_inquiries")
-    .insert({
-      workspace_id: payload.workspace_id,
-      property_id: payload.property_id || null,
-      surface_key: payload.surface_key,
-      channel: "whatsapp_click",
-      inquirer_name: payload.inquirer_name || null,
-      inquirer_phone: payload.inquirer_phone || null,
-      inquirer_email: payload.inquirer_email || null,
-      message: payload.message || null,
-      source_locale: payload.source_locale || "en",
-      raw_payload: payload.raw_payload || {},
-    })
-    .select("id")
-    .single();
-  if (error || !data) {
-    throw new Error(`Failed to insert marketing inquiry compatibility row: ${error?.message || "unknown"}`);
-  }
-  return data.id;
 }
 
 function buildImportRequest({ body, conversation, workspaceSession }) {
@@ -880,182 +882,178 @@ function buildImportRequest({ body, conversation, workspaceSession }) {
   };
 }
 
-async function handleDiscovery({
+async function handleProjectIntake({
   supabase,
   conversation,
-  buyerProfile,
+  projectProfile,
   body,
   language,
-  hints,
-  requestId,
-  log,
+  signals,
+  missingItems,
+  workspaceReadiness,
 }) {
-  const nativeSearch = await searchNativeListings(supabase, {
-    textBody: body.text_body,
-    hints,
-  });
-
-  let results = nativeSearch.results;
-  let provider = "zohal_native";
-  let usedExternalFallback = false;
-
-  if (!nativeSearch.thresholdMet) {
-    const external = await searchExternalFallback({
-      textBody: body.text_body,
-      hints,
-      requestId,
-      log,
-    });
-    if (external.results.length) {
-      results = results.length ? [...results, ...external.results].slice(0, 6) : external.results;
-      provider = external.provider;
-      usedExternalFallback = true;
-    }
-  }
-
-  const resultSet = await insertResultSet(supabase, {
-    conversation_id: conversation.id,
-    provider,
-    phone_number: body.phone_number,
-    workspace_id: results[0]?.workspace_id || null,
-    query_text: body.text_body,
-    search_state_json: hints,
-    results_json: results,
-    result_count: results.length,
-  });
+  const workspace = await loadWorkspaceSummary(
+    supabase,
+    normalizeUuid(conversation.linked_workspace_id),
+  );
 
   const nextConversation = await upsertConversation(supabase, {
     id: conversation.id,
     channel: "whatsapp",
     phone_number: body.phone_number,
-    mode: "discovery",
+    mode: "project_intake",
     language,
     active_surface_key: null,
     active_property_id: null,
-    active_search_id: resultSet.id,
+    active_search_id: null,
     awaiting_upload_kind: "none",
-    last_result_set_id: resultSet.id,
+    last_result_set_id: null,
     linked_profile_id: conversation.linked_profile_id || null,
-    linked_workspace_id: results[0]?.workspace_id || conversation.linked_workspace_id || null,
+    linked_workspace_id: conversation.linked_workspace_id || null,
     last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
-      last_discovery_reason: "search",
-      last_result_provider: provider,
+      project_signals: signals,
+      missing_items: missingItems,
+      workspace_readiness: workspaceReadiness,
+      active_workspace_snapshot: workspace,
     },
     last_inbound_message_id: normalizeText(body.message_id) || null,
     last_message_at: new Date().toISOString(),
   });
 
   const profilePatch = buildProfilePatch({
-    existingProfile: buyerProfile,
+    existingProfile: projectProfile,
     phoneNumber: body.phone_number,
     linkedProfileId: conversation.linked_profile_id,
     language,
-    hints,
+    signals,
+    missingItems,
   });
-  await upsertBuyerProfile(supabase, profilePatch);
+  await upsertProjectProfile(supabase, profilePatch);
 
-  const reply = buildDiscoveryReply({ language, results, usedExternalFallback });
+  const projectCase = await createOrUpdateProjectCase(supabase, {
+    phone_number: body.phone_number,
+    conversation_id: nextConversation.id,
+    workspace_id: nextConversation.linked_workspace_id || null,
+    stage: deriveCaseStage(signals.workflowFocus, "none"),
+    current_intent: normalizeText(body.text_body) || null,
+    summary: buildProjectTitle(signals).replace(/_/g, " "),
+    metadata_json: {
+      latest_message: normalizeText(body.text_body),
+      material_types: signals.materialTypes,
+      location_hints: signals.locationHints,
+      urgency: signals.urgency,
+    },
+    project_kind: signals.projectKind,
+    workflow_focus: signals.workflowFocus,
+    workspace_readiness: workspaceReadiness,
+    missing_items_json: missingItems,
+  });
+
+  if (projectCase?.id && nextConversation.linked_workspace_id && workspace?.name) {
+    await insertCaseMatch(supabase, {
+      opportunity_id: projectCase.id,
+      workspace_id: nextConversation.linked_workspace_id,
+      property_id: null,
+      surface_key: null,
+      result_source: "zohal_native",
+      external_candidate_id: null,
+      label: workspace.name,
+      match_payload: {
+        kind: "workspace",
+        workspace_id: workspace.id,
+        workspace_name: workspace.name,
+        workflow_focus: signals.workflowFocus,
+      },
+    });
+  }
+
+  if (projectCase?.id && nextConversation.linked_workspace_id) {
+    await insertCaseActivity(supabase, {
+      opportunity_id: projectCase.id,
+      workspace_id: nextConversation.linked_workspace_id,
+      activity_type: "project_intake",
+      direction: "inbound",
+      body_text: normalizeText(body.text_body) || null,
+      media_json: body.media || [],
+      activity_payload: {
+        workflow_focus: signals.workflowFocus,
+        project_kind: signals.projectKind,
+        missing_items: missingItems,
+      },
+    });
+  }
+
   return {
-    mode: "discovery",
+    mode: "project_intake",
     conversation: nextConversation,
-    side_effects: ["result_set_persisted", provider],
-    outbound_messages: [{ type: "text", body: reply }],
-    crm_updates: null,
+    side_effects: ["project_profile_updated", workspaceReadiness],
+    outbound_messages: [{
+      type: "text",
+      body: buildProjectIntakeReply({
+        language,
+        workspace,
+        signals,
+        missingItems,
+        workspaceReadiness,
+      }),
+    }],
+    crm_updates: projectCase ? { opportunity_id: projectCase.id } : null,
     import_request: null,
   };
 }
 
-async function handlePropertyContext({
+async function handleWorkspaceContext({
   supabase,
   conversation,
   body,
   language,
+  signals,
+  missingItems,
 }) {
-  const selection = extractOrdinalSelection(body.text_body);
-  let listing = null;
-
-  if (Array.isArray(selection) && selection.length > 0 && conversation.last_result_set_id) {
-    const resultSet = await loadResultSet(supabase, conversation.last_result_set_id);
-    const results = Array.isArray(resultSet?.results_json) ? resultSet.results_json : [];
-    if (selection.length > 1) {
-      const pair = selection
-        .map((index) => results[index])
-        .filter(Boolean);
-      if (pair.length >= 2) {
-        const nextConversation = await upsertConversation(supabase, {
-          ...conversation,
-          mode: "property_context",
-          last_inbound_message_id: normalizeText(body.message_id) || null,
-          last_message_at: new Date().toISOString(),
-        });
-        return {
-          mode: "property_context",
-          conversation: nextConversation,
-          side_effects: ["comparison_ready"],
-          outbound_messages: [{ type: "text", body: buildComparisonReply({ language, listings: pair }) }],
-          crm_updates: null,
-          import_request: null,
-        };
-      }
-    }
-    listing = results[selection[0]] || null;
-  }
-
-  if (!listing && conversation.active_property_id) {
-    listing = await loadPropertyListing(
-      supabase,
-      conversation.active_property_id,
-      conversation.linked_workspace_id,
-    );
-  }
-
-  if (!listing) {
-    return {
-      mode: "property_context",
-      conversation,
-      side_effects: [],
-      outbound_messages: [{
-        type: "text",
-        body: chooseCopy(
-          language,
-          "Tell me which result you want by replying with 1, 2, or 3.",
-          "حدّد النتيجة التي تريدها بالرد بالرقم 1 أو 2 أو 3.",
-        ),
-      }],
-      crm_updates: null,
-      import_request: null,
-    };
-  }
+  const workspace = await loadWorkspaceSummary(
+    supabase,
+    normalizeUuid(conversation.linked_workspace_id),
+  );
 
   const nextConversation = await upsertConversation(supabase, {
     id: conversation.id,
     channel: "whatsapp",
     phone_number: conversation.phone_number,
-    mode: "property_context",
+    mode: "workspace_context",
     language,
-    active_surface_key: listing.surface_key,
-    active_property_id: listing.property_id,
-    active_search_id: conversation.active_search_id || null,
+    active_surface_key: null,
+    active_property_id: null,
+    active_search_id: null,
     awaiting_upload_kind: "none",
-    last_result_set_id: conversation.last_result_set_id || null,
+    last_result_set_id: null,
     linked_profile_id: conversation.linked_profile_id || null,
-    linked_workspace_id: listing.workspace_id || conversation.linked_workspace_id || null,
+    linked_workspace_id: conversation.linked_workspace_id || null,
     last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
-      active_property_snapshot: listing,
+      project_signals: signals,
+      missing_items: missingItems,
+      active_workspace_snapshot: workspace,
     },
     last_inbound_message_id: normalizeText(body.message_id) || null,
     last_message_at: new Date().toISOString(),
   });
 
   return {
-    mode: "property_context",
+    mode: "workspace_context",
     conversation: nextConversation,
-    side_effects: ["active_property_updated"],
-    outbound_messages: [{ type: "text", body: buildPropertyContextReply({ language, listing }) }],
+    side_effects: ["workspace_context_ready"],
+    outbound_messages: [{
+      type: "text",
+      body: buildWorkspaceContextReply({
+        language,
+        workspace,
+        signals,
+        missingItems,
+      }),
+    }],
     crm_updates: null,
     import_request: null,
   };
@@ -1064,90 +1062,44 @@ async function handlePropertyContext({
 async function handleProgression({
   supabase,
   conversation,
-  buyerProfile,
+  projectProfile,
   body,
   language,
+  signals,
+  missingItems,
+  workspaceReadiness,
 }) {
-  const uploadKind = detectProgressionUploadKind(body.text_body);
-  let listing = null;
-  if (conversation.active_property_id) {
-    listing = await loadPropertyListing(
-      supabase,
-      conversation.active_property_id,
-      conversation.linked_workspace_id,
-    );
-  }
-
-  const opportunitySummary = listing
-    ? `${listing.property_name} · ${listing.district || listing.city || ""}`.trim()
-    : normalizeText(body.text_body);
-
-  let marketingInquiryId = null;
-  if (listing?.workspace_id && listing?.surface_key) {
-    marketingInquiryId = await insertMarketingInquiryCompatibility(supabase, {
-      workspace_id: listing.workspace_id,
-      property_id: listing.property_id,
-      surface_key: listing.surface_key,
-      inquirer_phone: body.phone_number,
-      message: body.text_body,
-      source_locale: language,
-      raw_payload: {
-        source: "whatsapp_orchestrator",
-        action: "progression",
-      },
-    });
-  }
-
-  const opportunity = await createOrUpdateOpportunity(supabase, {
+  const uploadKind = detectProgressionUploadKind(body.text_body, body.media || []);
+  const stage = deriveCaseStage(signals.workflowFocus, uploadKind);
+  const projectCase = await createOrUpdateProjectCase(supabase, {
     phone_number: body.phone_number,
     conversation_id: conversation.id,
-    workspace_id: listing?.workspace_id || conversation.linked_workspace_id || null,
-    property_id: listing?.property_id || conversation.active_property_id || null,
-    surface_key: listing?.surface_key || conversation.active_surface_key || null,
-    stage: uploadKind === "finance_docs" ? "finance" : "qualified",
-    result_source: listing ? "zohal_native" : "external",
-    current_intent: normalizeText(body.text_body) || buyerProfile?.intent || null,
-    budget_band: buyerProfile?.profile_json?.budget_max
-      ? `<= ${buyerProfile.profile_json.budget_max}`
-      : null,
-    area_summary: Array.isArray(buyerProfile?.profile_json?.preferred_areas)
-      ? buyerProfile.profile_json.preferred_areas.slice(0, 3).join(", ")
-      : null,
-    financing_status: uploadKind === "finance_docs" ? "awaiting_docs" : null,
-    viewing_readiness: listIncludesKeyword(body.text_body, ["viewing", "visit", "زيارة", "معاينة"])
-      ? "requested"
-      : null,
-    summary: opportunitySummary,
+    workspace_id: conversation.linked_workspace_id || null,
+    stage,
+    current_intent: normalizeText(body.text_body) || projectProfile?.summary || null,
+    summary: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
     metadata_json: {
       latest_message: normalizeText(body.text_body),
       upload_kind: uploadKind,
+      urgency: signals.urgency,
     },
-    marketing_inquiry_id: marketingInquiryId,
+    project_kind: signals.projectKind,
+    workflow_focus: signals.workflowFocus,
+    workspace_readiness: workspaceReadiness,
+    missing_items_json: missingItems,
   });
 
-  if (opportunity?.id && opportunity.workspace_id && listing) {
-    await insertOpportunityMatch(supabase, {
-      opportunity_id: opportunity.id,
-      workspace_id: opportunity.workspace_id,
-      property_id: listing.property_id,
-      surface_key: listing.surface_key,
-      result_source: "zohal_native",
-      external_candidate_id: null,
-      label: listing.property_name,
-      match_payload: listing,
-    });
-  }
-
-  if (opportunity?.id && opportunity.workspace_id) {
-    await insertOpportunityActivity(supabase, {
-      opportunity_id: opportunity.id,
-      workspace_id: opportunity.workspace_id,
+  if (projectCase?.id && conversation.linked_workspace_id) {
+    await insertCaseActivity(supabase, {
+      opportunity_id: projectCase.id,
+      workspace_id: conversation.linked_workspace_id,
       activity_type: uploadKind === "none" ? "progression_request" : uploadKind,
       direction: "inbound",
       body_text: normalizeText(body.text_body) || null,
-      media_json: [],
+      media_json: body.media || [],
       activity_payload: {
-        requested_action: normalizeText(body.text_body),
+        workflow_focus: signals.workflowFocus,
+        stage,
       },
     });
   }
@@ -1158,41 +1110,34 @@ async function handleProgression({
     phone_number: conversation.phone_number,
     mode: "progression",
     language,
-    active_surface_key: listing?.surface_key || conversation.active_surface_key || null,
-    active_property_id: listing?.property_id || conversation.active_property_id || null,
-    active_search_id: conversation.active_search_id || null,
+    active_surface_key: null,
+    active_property_id: null,
+    active_search_id: null,
     awaiting_upload_kind: uploadKind,
-    last_result_set_id: conversation.last_result_set_id || null,
+    last_result_set_id: null,
     linked_profile_id: conversation.linked_profile_id || null,
-    linked_workspace_id: listing?.workspace_id || conversation.linked_workspace_id || opportunity?.workspace_id || null,
+    linked_workspace_id: conversation.linked_workspace_id || null,
     last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
-      active_opportunity_id: opportunity?.id || null,
+      active_opportunity_id: projectCase?.id || null,
+      project_signals: signals,
+      missing_items: missingItems,
       awaiting_upload_kind: uploadKind,
     },
     last_inbound_message_id: normalizeText(body.message_id) || null,
     last_message_at: new Date().toISOString(),
   });
 
-  const reply = uploadKind !== "none"
-    ? chooseCopy(
-      language,
-      "Understood. Send the documents here and I’ll attach them to your buyer case and keep the operator updated.",
-      "تمام. أرسل المستندات هنا وسأربطها بملف المشتري وأحدّث المشغّل مباشرة.",
-    )
-    : chooseCopy(
-      language,
-      "I’ve opened this as a buyer opportunity. I can help with viewing, finance, broker contact, or required documents next.",
-      "فتحت هذا كفرصة مشتري. أقدر أساعدك الآن في المعاينة أو التمويل أو التواصل مع الوسيط أو المستندات المطلوبة.",
-    );
-
   return {
     mode: "progression",
     conversation: nextConversation,
-    side_effects: ["buyer_opportunity_upserted"],
-    outbound_messages: [{ type: "text", body: reply }],
-    crm_updates: opportunity ? { opportunity_id: opportunity.id } : null,
+    side_effects: ["project_case_upserted"],
+    outbound_messages: [{
+      type: "text",
+      body: buildProgressionReply({ language, uploadKind, stage }),
+    }],
+    crm_updates: projectCase ? { opportunity_id: projectCase.id } : null,
     import_request: null,
   };
 }
@@ -1213,8 +1158,8 @@ async function handleProgressionUpload({
         type: "text",
         body: chooseCopy(
           language,
-          "I don’t have an active buyer case ready for uploads yet. Tell me what you need first and I’ll set it up.",
-          "لا يوجد عندي ملف مشتري جاهز لاستقبال المرفقات بعد. قل لي أولاً ماذا تحتاج وسأجهزه لك.",
+          "I don’t have an active project case ready for uploads yet. Tell me whether you want help with scope, quote, permit, or revisions first.",
+          "لا يوجد عندي ملف مشروع جاهز للمرفقات بعد. قل لي أولاً هل تريد المساعدة في النطاق أو عرض السعر أو التصريح أو المراجعات.",
         ),
       }],
       crm_updates: null,
@@ -1223,16 +1168,18 @@ async function handleProgressionUpload({
   }
 
   const media = Array.isArray(body.media) ? body.media : [];
-  await insertOpportunityActivity(supabase, {
+  const uploadKind = conversation.awaiting_upload_kind || detectProgressionUploadKind(body.text_body, media);
+
+  await insertCaseActivity(supabase, {
     opportunity_id: opportunityId,
     workspace_id: conversation.linked_workspace_id,
-    activity_type: conversation.awaiting_upload_kind || "upload",
+    activity_type: uploadKind || "upload",
     direction: "inbound",
     body_text: normalizeText(body.text_body) || null,
     media_json: media,
     activity_payload: {
       source_message_id: normalizeText(body.message_id) || null,
-      upload_kind: conversation.awaiting_upload_kind || "none",
+      upload_kind: uploadKind || "none",
     },
   });
 
@@ -1250,21 +1197,17 @@ async function handleProgressionUpload({
   return {
     mode: "progression",
     conversation: nextConversation,
-    side_effects: ["progression_upload_attached"],
+    side_effects: ["project_upload_attached"],
     outbound_messages: [{
       type: "text",
-      body: chooseCopy(
-        language,
-        "Received. I attached the files to your buyer case and the operator can review them now.",
-        "وصلت. ربطت الملفات بملف المشتري ويمكن للمشغّل مراجعتها الآن.",
-      ),
+      body: buildUploadAcknowledgementReply({ language, uploadKind }),
     }],
     crm_updates: { opportunity_id: opportunityId },
     import_request: null,
   };
 }
 
-async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
+async function orchestrateWhatsappMessage({ supabase, body }) {
   const phoneNumber = normalizePhone(body.phone_number);
   if (!phoneNumber) {
     const error = new Error("Missing phone_number");
@@ -1282,7 +1225,7 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
     if (priorEvent?.id) {
       return {
         handled: true,
-        mode: body.conversation_snapshot?.mode || "discovery",
+        mode: body.conversation_snapshot?.mode || "project_intake",
         conversation_updates: {},
         side_effects: ["duplicate_message"],
         outbound_messages: [],
@@ -1299,7 +1242,7 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
   const seededConversation = existingConversation || await upsertConversation(supabase, {
     channel: "whatsapp",
     phone_number: phoneNumber,
-    mode: "discovery",
+    mode: "project_intake",
     language: detectLanguageFromText(body.text_body, "auto"),
     active_surface_key: null,
     active_property_id: null,
@@ -1314,16 +1257,27 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
     last_message_at: null,
   });
 
-  const buyerProfile = await loadBuyerProfile(supabase, phoneNumber);
+  const projectProfile = await loadProjectProfile(supabase, phoneNumber);
   const textBody = normalizeText(body.text_body);
   const language = detectLanguageFromText(textBody, seededConversation.language);
   const hasMedia = Array.isArray(body.media) && body.media.length > 0;
+  const signals = extractProjectSignals(textBody, body.media || []);
+  const missingItems = computeMissingItems({
+    projectKind: signals.projectKind,
+    materialTypes: signals.materialTypes,
+    assetType: signals.assetType,
+    stage: signals.stage,
+  });
+  const workspaceReadiness = computeWorkspaceReadiness({
+    linkedWorkspaceId: seededConversation.linked_workspace_id || workspaceSession?.workspace_id,
+    materialTypes: signals.materialTypes,
+    textBody,
+    projectKind: signals.projectKind,
+  });
 
   const inboundEvent = await insertConversationEvent(supabase, {
     conversation_id: seededConversation.id,
-    workspace_id: normalizeUuid(
-      seededConversation.linked_workspace_id || workspaceSession?.workspace_id,
-    ),
+    workspace_id: normalizeUuid(seededConversation.linked_workspace_id || workspaceSession?.workspace_id),
     opportunity_id: normalizeUuid(seededConversation.state_json?.active_opportunity_id),
     event_type: hasMedia ? "inbound_media" : "inbound_text",
     event_direction: "inbound",
@@ -1334,12 +1288,12 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
       media: body.media || [],
       timestamp: body.timestamp || null,
       message_type: body.message_type || null,
+      project_signals: signals,
     },
   });
 
   const route = decideWhatsappMode({
     textBody,
-    messageType: body.message_type,
     hasMedia,
     conversation: seededConversation,
     workspaceSession,
@@ -1362,7 +1316,6 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
   }
 
   let result;
-  const hints = extractSearchHints(textBody);
   if (route.mode === "document_ingestion") {
     const importRequest = buildImportRequest({
       body,
@@ -1378,8 +1331,8 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
           type: "text",
           body: chooseCopy(
             language,
-            "I need either an active property upload step or a linked workspace before I can import that file here.",
-            "أحتاج خطوة رفع نشطة أو عقار/مساحة مرتبطة قبل أن أستورد هذا الملف هنا.",
+            "I need a linked workspace before I can import that file into the project timeline here.",
+            "أحتاج مساحة عمل مرتبطة قبل أن أستورد هذا الملف داخل خط المشروع هنا.",
           ),
         }],
         crm_updates: null,
@@ -1417,8 +1370,8 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
         type: "text",
         body: chooseCopy(
           language,
-          "I received the file. If this is for a buyer step, tell me whether it is finance, identity, or property documents. If it is for a workspace import, link the property first and resend it.",
-          "وصلني الملف. إذا كان ضمن خطوة مشتري قل لي هل هو تمويل أو هوية أو مستندات عقار. وإذا كان للاستيراد إلى عقار مرتبط فقم بربط العقار أولاً ثم أعد الإرسال.",
+          "I received the file. Tell me if this is drawings, BOQ, quote docs, permit docs, site photos, or change evidence. If it belongs in a linked workspace, I can import it there too.",
+          "وصلني الملف. قل لي هل هو مخططات أو مقايسة أو عرض سعر أو مستندات تصريح أو صور موقع أو أدلة تغيير. وإذا كان يجب ربطه بمساحة عمل مرتبطة فأقدر أستوره هناك أيضًا.",
         ),
       }],
       crm_updates: null,
@@ -1428,27 +1381,32 @@ async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
     result = await handleProgression({
       supabase,
       conversation: seededConversation,
-      buyerProfile,
+      projectProfile,
       body,
       language,
+      signals,
+      missingItems,
+      workspaceReadiness,
     });
-  } else if (route.mode === "property_context") {
-    result = await handlePropertyContext({
+  } else if (route.mode === "workspace_context") {
+    result = await handleWorkspaceContext({
       supabase,
       conversation: seededConversation,
       body,
       language,
+      signals,
+      missingItems,
     });
   } else {
-    result = await handleDiscovery({
+    result = await handleProjectIntake({
       supabase,
       conversation: seededConversation,
-      buyerProfile,
+      projectProfile,
       body,
       language,
-      hints,
-      requestId,
-      log,
+      signals,
+      missingItems,
+      workspaceReadiness,
     });
   }
 
