@@ -6,21 +6,21 @@ import { useTranslations } from 'next-intl';
 import { MessageCircle, FileUp } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
-import { WorkspaceProjectInboxPanel } from '@/components/experiences/WorkspaceProjectInboxPanel';
+import { WorkspaceAcquisitionOpportunityPanel } from '@/components/experiences/WorkspaceAcquisitionOpportunityPanel';
 import { WhatsAppPicker } from '@/components/document/WhatsAppPicker';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
 
-export default function WorkspaceProjectsPage() {
+export default function WorkspaceOpportunitiesPage() {
   const params = useParams();
   const workspaceId = params.id as string;
   const t = useTranslations('workspaceProjectsPage');
   const [showWhatsApp, setShowWhatsApp] = useState(false);
-  const [initialAction, setInitialAction] = useState<'project' | 'ingestion'>('project');
+  const [initialAction, setInitialAction] = useState<'acquisition' | 'ingestion'>('acquisition');
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="projects" />
+      <WorkspaceTabs workspaceId={workspaceId} active="opportunities" />
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -32,7 +32,7 @@ export default function WorkspaceProjectsPage() {
             <CardContent className="flex flex-wrap gap-3">
               <Button
                 onClick={() => {
-                  setInitialAction('project');
+                  setInitialAction('acquisition');
                   setShowWhatsApp(true);
                 }}
               >
@@ -52,7 +52,7 @@ export default function WorkspaceProjectsPage() {
             </CardContent>
           </Card>
 
-          <WorkspaceProjectInboxPanel workspaceId={workspaceId} />
+          <WorkspaceAcquisitionOpportunityPanel workspaceId={workspaceId} />
         </div>
       </div>
 

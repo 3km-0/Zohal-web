@@ -6,6 +6,11 @@ import {
   handleAnalysisStart,
   handleAnalysisTask,
 } from "./handlers/analysis.js";
+import {
+  handleAcquisitionApi,
+  handleAcquisitionInternal,
+  isAcquisitionApiRoute,
+} from "./handlers/acquisition.js";
 import { handleConvertToPdf } from "./handlers/convert-to-pdf.js";
 import {
   handleIngestionChunk,
@@ -54,6 +59,22 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/convert-to-pdf") {
       return await handleConvertToPdf(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (isAcquisitionApiRoute(req.method, url.pathname)) {
+      return await handleAcquisitionApi(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (url.pathname.startsWith("/internal/acquisition/")) {
+      return await handleAcquisitionInternal(req, res, {
         requestId,
         log,
         readJsonBody,

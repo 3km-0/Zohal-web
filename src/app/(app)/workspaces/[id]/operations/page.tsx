@@ -353,7 +353,7 @@ export default function WorkspaceOperationsPage() {
                   {t('openSources')}
                 </Link>
                 <Link
-                  href={withFolderContext(`/workspaces/${workspaceId}/projects`)}
+                  href={withFolderContext(`/workspaces/${workspaceId}/opportunities`)}
                   className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
                 >
                   <ClipboardList className="h-4 w-4 shrink-0 text-accent" aria-hidden />
@@ -372,7 +372,7 @@ export default function WorkspaceOperationsPage() {
                   className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt sm:flex-initial"
                 >
                   <PanelTop className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-                  {t('openBrochure')}
+                  {t('openLivingInterface')}
                 </Link>
               </div>
             </div>
@@ -780,7 +780,7 @@ export default function WorkspaceOperationsPage() {
       {showWhatsApp ? (
         <WhatsAppPicker
           workspaceId={workspaceId}
-          initialAction="project"
+          initialAction="acquisition"
           onClose={() => setShowWhatsApp(false)}
         />
       ) : null}

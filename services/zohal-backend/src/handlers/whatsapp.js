@@ -3,214 +3,48 @@ import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 
 const WHATSAPP_MODES = new Set([
-  "project_intake",
-  "workspace_context",
-  "thread_context",
-  "progression",
+  "mandate_intake",
+  "opportunity_submission",
+  "screening",
+  "workspace_coordination",
+  "diligence_followup",
   "document_ingestion",
 ]);
 
 const STOPWORDS = new Set([
-  "i",
-  "me",
-  "my",
-  "a",
-  "an",
-  "the",
-  "to",
-  "for",
-  "with",
-  "in",
-  "at",
-  "of",
-  "and",
-  "or",
-  "on",
-  "this",
-  "that",
-  "it",
-  "we",
-  "you",
-  "our",
-  "need",
-  "want",
-  "help",
-  "please",
-  "can",
-  "could",
-  "project",
-  "job",
-  "renovation",
-  "remodel",
-  "work",
-  "ابي",
-  "ابغى",
-  "أبي",
-  "أبغى",
-  "اريد",
-  "أريد",
-  "محتاج",
-  "احتاج",
-  "أحتاج",
-  "هذا",
-  "هذه",
-  "في",
-  "على",
-  "من",
-  "الى",
-  "إلى",
-  "مع",
-  "عن",
-  "لو",
-  "سمحت",
-  "ممكن",
-  "نحتاج",
-  "مشروع",
-  "شغل",
-  "ترميم",
+  "i", "me", "my", "a", "an", "the", "to", "for", "with", "in", "at", "of", "and", "or", "on",
+  "this", "that", "it", "we", "you", "our", "need", "want", "help", "please", "can", "could",
+  "ابي", "ابغى", "أبي", "أبغى", "اريد", "أريد", "محتاج", "احتاج", "أحتاج", "هذا", "هذه",
+  "في", "على", "من", "الى", "إلى", "مع", "عن", "لو", "سمحت", "ممكن", "نحتاج",
 ]);
 
-const PROJECT_INTAKE_KEYWORDS = [
-  "renovate",
-  "renovation",
-  "remodel",
-  "fit out",
-  "fit-out",
-  "fitout",
-  "contractor",
-  "boq",
-  "drawing",
-  "drawings",
-  "quote",
-  "quotation",
-  "scope",
-  "permit",
-  "approval",
-  "variation",
-  "change order",
-  "revised",
-  "revision",
-  "missing",
-  "explain this quote",
-  "kitchen",
-  "bathroom",
-  "villa",
-  "office",
-  "site photos",
-  "ترميم",
-  "تشطيب",
-  "تجديد",
-  "مقاول",
-  "مقاولات",
-  "مخطط",
-  "مخططات",
-  "رسومات",
-  "مقايسة",
-  "عرض سعر",
-  "تسعيرة",
-  "نطاق",
-  "تصريح",
-  "اعتماد",
-  "اعتمادات",
-  "مراجعة",
-  "تعديل",
-  "تغييرات",
-  "مفقود",
-  "ما الناقص",
+const MANDATE_KEYWORDS = [
+  "buy box", "mandate", "criteria", "target", "looking for", "want to buy", "budget", "range",
+  "risk appetite", "areas", "neighborhoods", "invest", "investment", "acquire", "acquisition",
+  "ابي اشتري", "أبغى أشتري", "معايير", "تفويض", "ميزانية", "استثمار", "استحواذ", "مناطق",
 ];
 
-const WORKSPACE_CONTEXT_KEYWORDS = [
-  "latest version",
-  "what changed",
-  "change",
-  "changed",
-  "compare",
-  "revision",
-  "revised",
-  "missing",
-  "exclude",
-  "excluded",
-  "included",
-  "quote",
-  "boq",
-  "scope",
-  "permit",
-  "approval",
-  "variation",
-  "continue",
-  "continue the permit",
-  "show me the latest",
-  "latest drawing",
-  "latest boq",
-  "آخر نسخة",
-  "آخر إصدار",
-  "وش تغير",
-  "ما تغير",
-  "قارن",
-  "مقارنة",
-  "مراجعة",
-  "تعديل",
-  "ناقص",
-  "استبعاد",
-  "مشمول",
-  "غير مشمول",
-  "عرض السعر",
-  "المقايسة",
-  "النطاق",
-  "التصريح",
-  "الاعتماد",
-  "التغيير",
-  "كمل",
-  "كمّل",
+const OPPORTUNITY_KEYWORDS = [
+  "broker", "listing", "deal", "opportunity", "property", "villa", "apartment", "land", "building",
+  "asking", "price", "sqm", "m2", "sent me", "worth", "screen this", "فيلا", "شقة", "أرض",
+  "عمارة", "عقار", "وسيط", "عرض", "صفقة", "سعر", "متر",
 ];
 
-const PROGRESSION_KEYWORDS = [
-  "permit",
-  "submit",
-  "submission",
-  "approval",
-  "operator",
-  "review",
-  "handoff",
-  "escalate",
-  "variation",
-  "claim",
-  "evidence",
-  "site visit",
-  "inspect",
-  "urgent",
-  "تصريح",
-  "اعتماد",
-  "اعتمادات",
-  "مراجعة",
-  "مشغل",
-  "المشغل",
-  "تصعيد",
-  "تسليم",
-  "مطالبة",
-  "أدلة",
-  "ادلة",
-  "زيارة موقع",
-  "مستعجل",
-  "عاجل",
+const SCREENING_KEYWORDS = [
+  "screen", "underwrite", "pursue", "pass", "watch", "worth it", "evaluate", "decision", "missing",
+  "follow up", "draft reply", "broker reply", "حلل", "قيّم", "هل يستاهل", "نلاحق", "نرفض",
+  "ناقص", "رد", "الوسيط",
 ];
 
-const DRAWING_KEYWORDS = ["drawing", "drawings", "plan", "plans", "elevation", "layout", "مخطط", "مخططات", "رسومات"];
-const BOQ_KEYWORDS = ["boq", "bill of quantities", "bill quantities", "مقايسة", "كميات"];
-const QUOTE_KEYWORDS = ["quote", "quotation", "pricing", "عرض سعر", "تسعيرة", "سعر"];
-const PERMIT_DOC_KEYWORDS = ["permit", "approval", "license", "submission", "تصريح", "اعتماد", "رخصة"];
-const SITE_PHOTO_KEYWORDS = ["photo", "photos", "site photo", "site photos", "image", "images", "صورة", "صور", "صور الموقع"];
-const CHANGE_EVIDENCE_KEYWORDS = ["variation", "change", "revised", "revision", "claim", "evidence", "تغيير", "تعديل", "مراجعة", "أدلة", "ادلة"];
-const VOICE_NOTE_KEYWORDS = ["voice", "voice note", "audio", "صوت", "ملاحظة صوتية", "رسالة صوتية"];
+const DOCUMENT_KEYWORDS = [
+  "deed", "title deed", "listing pdf", "valuation", "photos", "photo", "floor plan", "survey",
+  "document", "pdf", "image", "صك", "تقييم", "صور", "مخطط", "مستند", "ملف",
+];
 
-const DEFAULT_MISSING_ITEMS = {
-  renovation: ["drawings", "site_photos", "scope_boundaries"],
-  fit_out: ["drawings", "boq", "material_selections"],
-  permit_support: ["permit_docs", "drawings", "site_photos"],
-  variation_review: ["change_evidence", "revised_drawings", "prior_scope"],
-  quote_explanation: ["quote_docs", "drawings", "scope_boundaries"],
-  general_contracting: ["drawings", "site_photos", "project_brief"],
-};
+const KNOWN_LOCATIONS = [
+  "riyadh", "jeddah", "khobar", "dammam", "makkah", "mecca", "madinah", "medina",
+  "diriyah", "north riyadh", "الرياض", "جدة", "الخبر", "الدمام", "مكة", "المدينة", "الدرعية", "شمال الرياض",
+];
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -218,11 +52,9 @@ function normalizeText(value) {
 
 function normalizePhone(value) {
   const raw = normalizeText(value);
-  if (!raw) return "";
   const hasPlus = raw.startsWith("+");
   const digits = raw.replace(/[^\d]/g, "");
-  if (!digits) return "";
-  return `${hasPlus ? "+" : ""}${digits}`;
+  return digits ? `${hasPlus ? "+" : ""}${digits}` : "";
 }
 
 function normalizeUuid(value) {
@@ -245,6 +77,11 @@ function chooseCopy(language, english, arabic) {
   return language === "ar" ? arabic : english;
 }
 
+function listIncludesKeyword(text, keywords) {
+  const lower = normalizeText(text).toLowerCase();
+  return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
+}
+
 function tokenize(text) {
   return normalizeText(text)
     .toLowerCase()
@@ -253,401 +90,242 @@ function tokenize(text) {
     .filter((token) => token && !STOPWORDS.has(token));
 }
 
-function listIncludesKeyword(text, keywords) {
+function parseLocations(text) {
   const lower = normalizeText(text).toLowerCase();
-  return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
-}
-
-function findFirstKeyword(text, keywords) {
-  const lower = normalizeText(text).toLowerCase();
-  return keywords.find((keyword) => lower.includes(keyword.toLowerCase())) || null;
-}
-
-function parseLocationHints(text) {
   const tokens = tokenize(text);
-  const knownCities = [
-    "riyadh",
-    "jeddah",
-    "khobar",
-    "dammam",
-    "mecca",
-    "makkah",
-    "medina",
-    "madinah",
-    "الرياض",
-    "جدة",
-    "الخبر",
-    "الدمام",
-    "مكة",
-    "المدينة",
-  ];
-  return [...new Set(tokens.filter((token) => knownCities.includes(token)).slice(0, 4))];
+  const fromKnown = KNOWN_LOCATIONS.filter((location) => lower.includes(location.toLowerCase()));
+  const directional = tokens.filter((token) => /^(north|south|east|west|شمال|جنوب|شرق|غرب)$/i.test(token));
+  return [...new Set([...fromKnown, ...directional])].slice(0, 6);
 }
 
-function parseProjectKind(text) {
-  const lower = normalizeText(text).toLowerCase();
-  if (/(permit|approval|submission|تصريح|اعتماد|رخصة)/i.test(lower)) return "permit_support";
-  if (/(variation|change order|claim|evidence|تغيير|مطالبة|أدلة|ادلة)/i.test(lower)) return "variation_review";
-  if (/(quote|quotation|pricing|عرض سعر|تسعيرة)/i.test(lower)) return "quote_explanation";
-  if (/(fit out|fit-out|fitout|تشطيب|تجهيز مكتب|تأثيث)/i.test(lower)) return "fit_out";
-  if (/(renovate|renovation|remodel|ترميم|تجديد)/i.test(lower)) return "renovation";
-  return "general_contracting";
+function parseBudgetRange(text) {
+  const normalized = normalizeText(text).replace(/,/g, "");
+  const matches = [...normalized.matchAll(/(\d+(?:\.\d+)?)\s*(m|mn|million|مليون|k|thousand|ألف|الف)?/gi)];
+  const values = matches
+    .map((match) => {
+      const base = Number(match[1]);
+      const unit = String(match[2] || "").toLowerCase();
+      if (!Number.isFinite(base)) return null;
+      if (["m", "mn", "million", "مليون"].includes(unit)) return base * 1_000_000;
+      if (["k", "thousand", "ألف", "الف"].includes(unit)) return base * 1_000;
+      return base;
+    })
+    .filter((value) => value && value >= 10_000)
+    .slice(0, 4);
+  if (!values.length) return {};
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    currency: /sar|ريال|ر\.س/i.test(normalized) ? "SAR" : "SAR",
+  };
 }
 
-function parseAssetType(text) {
+function parsePropertyType(text) {
   const lower = normalizeText(text).toLowerCase();
-  if (/(office|commercial|retail|warehouse|مكتب|تجاري|محل|مستودع)/i.test(lower)) return "commercial";
-  if (/(villa|apartment|flat|house|kitchen|bathroom|فيلا|شقة|منزل|مطبخ|حمام)/i.test(lower)) return "residential";
+  if (/(villa|فيلا)/i.test(lower)) return "villa";
+  if (/(apartment|flat|شقة)/i.test(lower)) return "apartment";
+  if (/(land|plot|أرض|ارض)/i.test(lower)) return "land";
+  if (/(building|عمارة|مبنى)/i.test(lower)) return "building";
+  if (/(office|retail|commercial|مكتب|تجاري)/i.test(lower)) return "commercial";
   return "unknown";
-}
-
-function parseProjectStage(text) {
-  const lower = normalizeText(text).toLowerCase();
-  if (/(revised|revision|variation|change|updated|آخر نسخة|تعديل|تغيير|مراجعة)/i.test(lower)) return "active_update";
-  if (/(permit|approval|submission|تصريح|اعتماد)/i.test(lower)) return "permit_flow";
-  if (/(quote|quotation|pricing|عرض سعر|تسعيرة)/i.test(lower)) return "quote_review";
-  if (/(urgent|asap|today|tomorrow|مستعجل|عاجل|اليوم|بكرة|غدًا)/i.test(lower)) return "urgent";
-  return "new_intake";
-}
-
-function parseUrgency(text) {
-  const lower = normalizeText(text).toLowerCase();
-  if (/(urgent|asap|today|tomorrow|this week|مستعجل|عاجل|اليوم|بكرة|غدًا|هذا الأسبوع)/i.test(lower)) return "high";
-  return "normal";
 }
 
 function inferMaterialTypes(text, media = []) {
   const inferred = new Set();
-  if (listIncludesKeyword(text, DRAWING_KEYWORDS)) inferred.add("drawings");
-  if (listIncludesKeyword(text, BOQ_KEYWORDS)) inferred.add("boq");
-  if (listIncludesKeyword(text, QUOTE_KEYWORDS)) inferred.add("quote_docs");
-  if (listIncludesKeyword(text, PERMIT_DOC_KEYWORDS)) inferred.add("permit_docs");
-  if (listIncludesKeyword(text, SITE_PHOTO_KEYWORDS)) inferred.add("site_photos");
-  if (listIncludesKeyword(text, CHANGE_EVIDENCE_KEYWORDS)) inferred.add("change_evidence");
-  if (listIncludesKeyword(text, VOICE_NOTE_KEYWORDS)) inferred.add("voice_notes");
-
+  if (listIncludesKeyword(text, DOCUMENT_KEYWORDS)) inferred.add("source_document");
+  if (/(photo|image|صور|صورة)/i.test(text)) inferred.add("photos");
+  if (/(deed|title deed|صك)/i.test(text)) inferred.add("title_deed");
+  if (/(valuation|تقييم)/i.test(text)) inferred.add("valuation");
   for (const item of Array.isArray(media) ? media : []) {
     const mime = normalizeText(item?.mime_type).toLowerCase();
-    if (!mime) continue;
-    if (mime.startsWith("image/")) inferred.add("site_photos");
-    if (mime.startsWith("audio/")) inferred.add("voice_notes");
-    if (mime.includes("pdf") || mime.includes("document") || mime.includes("word")) {
-      inferred.add("quote_docs");
-    }
+    if (mime.startsWith("image/")) inferred.add("photos");
+    if (mime.includes("pdf") || mime.includes("document") || mime.includes("word")) inferred.add("source_document");
   }
-
   return [...inferred];
 }
 
-function determineWorkflowFocus(text, projectKind, materialTypes) {
-  if (projectKind === "permit_support") return "permit_support";
-  if (projectKind === "variation_review") return "variation_review";
-  if (projectKind === "quote_explanation") return "quote_explanation";
-  if (materialTypes.includes("boq") || materialTypes.includes("quote_docs")) return "scope_alignment";
-  if (materialTypes.includes("drawings") || materialTypes.includes("site_photos")) return "workspace_setup";
-  return "project_intake";
+function inferOpportunityKind(text) {
+  if (listIncludesKeyword(text, MANDATE_KEYWORDS) && !listIncludesKeyword(text, OPPORTUNITY_KEYWORDS)) return "mandate";
+  if (listIncludesKeyword(text, OPPORTUNITY_KEYWORDS)) return "property_submission";
+  if (listIncludesKeyword(text, SCREENING_KEYWORDS)) return "screening_request";
+  return "general_acquisition";
 }
 
-function computeMissingItems({ projectKind, materialTypes, assetType, stage }) {
-  const baseline = DEFAULT_MISSING_ITEMS[projectKind] || DEFAULT_MISSING_ITEMS.general_contracting;
-  const missing = baseline.filter((item) => !materialTypes.includes(item));
-
-  if (assetType === "commercial" && !materialTypes.includes("drawings")) {
-    missing.push("dimensions");
-  }
-  if (stage === "active_update" && !materialTypes.includes("change_evidence")) {
-    missing.push("change_evidence");
-  }
-  return [...new Set(missing)];
+function computeMissingInfo({ materialTypes, propertyType, budgetRange, locations, textBody }) {
+  const missing = [];
+  if (!locations.length) missing.push("target_location");
+  if (!budgetRange.min && !budgetRange.max) missing.push("budget_or_asking_price");
+  if (propertyType === "unknown") missing.push("property_type");
+  if (!materialTypes.includes("source_document") && normalizeText(textBody).length < 80) missing.push("source_document_or_listing_text");
+  if (!materialTypes.includes("photos")) missing.push("photos");
+  return [...new Set(missing)].slice(0, 6);
 }
 
-function computeWorkspaceReadiness({ linkedWorkspaceId, materialTypes, textBody, projectKind }) {
-  if (linkedWorkspaceId) return "linked_workspace";
-  if (materialTypes.length >= 2) return "ready_to_route";
-  if (projectKind === "permit_support" || projectKind === "variation_review") return "needs_more_context";
-  if (normalizeText(textBody).length >= 20) return "draft_ready";
-  return "needs_more_context";
+function computeScreeningRecommendation({ missingInfo, textBody, budgetRange }) {
+  const lower = normalizeText(textBody).toLowerCase();
+  if (missingInfo.length >= 3) return "insufficient_info";
+  if (/(overpriced|too expensive|bad|reject|pass|ارفض|غالي|سيء)/i.test(lower)) return "pass";
+  if (/(strong|good deal|below market|distressed|urgent sale|pursue|ممتاز|فرصة|نلاحق)/i.test(lower)) return "pursue";
+  if (budgetRange.max && budgetRange.max > 0) return "watch";
+  return "insufficient_info";
 }
 
-export function extractProjectSignals(text, media = []) {
+function computeConfidence({ missingInfo, materialTypes, locations }) {
+  const score = 0.35 + Math.min(materialTypes.length, 3) * 0.12 + Math.min(locations.length, 2) * 0.08 - missingInfo.length * 0.06;
+  return Math.max(0.15, Math.min(0.86, Number(score.toFixed(2))));
+}
+
+export function extractAcquisitionSignals(text, media = []) {
   const normalized = normalizeText(text);
-  const projectKind = parseProjectKind(normalized);
-  const assetType = parseAssetType(normalized);
-  const stage = parseProjectStage(normalized);
-  const urgency = parseUrgency(normalized);
-  const locationHints = parseLocationHints(normalized);
+  const propertyType = parsePropertyType(normalized);
+  const locations = parseLocations(normalized);
+  const budgetRange = parseBudgetRange(normalized);
   const materialTypes = inferMaterialTypes(normalized, media);
-  const workflowFocus = determineWorkflowFocus(normalized, projectKind, materialTypes);
-  const tokens = tokenize(normalized).slice(0, 12);
+  const opportunityKind = inferOpportunityKind(normalized);
+  const missingInfo = computeMissingInfo({ materialTypes, propertyType, budgetRange, locations, textBody: normalized });
+  const recommendation = computeScreeningRecommendation({ missingInfo, textBody: normalized, budgetRange });
+  const confidence = computeConfidence({ missingInfo, materialTypes, locations });
 
   return {
-    projectKind,
-    assetType,
-    stage,
-    urgency,
-    locationHints,
+    opportunityKind,
+    acquisitionFocus: opportunityKind === "mandate" ? "mandate_fit" : "screening",
+    propertyType,
+    locations,
+    budgetRange,
     materialTypes,
-    workflowFocus,
-    tokens,
+    missingInfo,
+    recommendation,
+    confidence,
+    tokens: tokenize(normalized).slice(0, 16),
   };
 }
 
-function detectProgressionUploadKind(text, media = []) {
-  if (listIncludesKeyword(text, DRAWING_KEYWORDS)) return "drawings";
-  if (listIncludesKeyword(text, BOQ_KEYWORDS)) return "boq";
-  if (listIncludesKeyword(text, QUOTE_KEYWORDS)) return "quote_docs";
-  if (listIncludesKeyword(text, PERMIT_DOC_KEYWORDS)) return "permit_docs";
-  if (listIncludesKeyword(text, SITE_PHOTO_KEYWORDS)) return "site_photos";
-  if (listIncludesKeyword(text, CHANGE_EVIDENCE_KEYWORDS)) return "change_evidence";
-  if (listIncludesKeyword(text, VOICE_NOTE_KEYWORDS)) return "voice_notes";
-  if (Array.isArray(media) && media.some((item) => normalizeText(item?.mime_type).toLowerCase().startsWith("image/"))) {
-    return "site_photos";
-  }
-  return "none";
-}
-
-export function decideWhatsappMode({
-  textBody,
-  hasMedia,
-  conversation,
-  workspaceSession,
-}) {
+export function decideWhatsappMode({ textBody, hasMedia, conversation, workspaceSession }) {
   const text = normalizeText(textBody);
-  const activeMode = WHATSAPP_MODES.has(conversation?.mode) ? conversation.mode : "project_intake";
+  const activeMode = WHATSAPP_MODES.has(conversation?.mode) ? conversation.mode : "mandate_intake";
+  const hasWorkspace = Boolean(conversation?.active_workspace_id || workspaceSession?.workspace_id);
 
   if (hasMedia) {
     if (conversation?.awaiting_upload_kind && conversation.awaiting_upload_kind !== "none") {
-      return { handled: true, mode: "progression", reason: "awaiting_upload" };
+      return { handled: true, mode: "diligence_followup", reason: "awaiting_upload" };
     }
-    if (conversation?.active_workspace_id || workspaceSession?.workspace_id) {
-      return { handled: true, mode: "document_ingestion", reason: "workspace_bound_media" };
-    }
-    return { handled: true, mode: activeMode, reason: "media_without_workspace" };
+    return { handled: true, mode: hasWorkspace ? "document_ingestion" : "opportunity_submission", reason: "media_submission" };
   }
 
   if (!text) {
-    if (workspaceSession?.workspace_id) {
-      return { handled: false, mode: null, reason: "legacy_non_text" };
-    }
-    return { handled: true, mode: activeMode, reason: "unsupported_non_text" };
+    return { handled: true, mode: activeMode, reason: "empty_message" };
   }
 
-  if (listIncludesKeyword(text, PROGRESSION_KEYWORDS)) {
-    return { handled: true, mode: "progression", reason: "progression_keywords" };
+  if (listIncludesKeyword(text, SCREENING_KEYWORDS)) {
+    return { handled: true, mode: "screening", reason: "screening_keywords" };
   }
-
-  if (
-    (conversation?.active_workspace_id || workspaceSession?.workspace_id) &&
-    (
-      listIncludesKeyword(text, WORKSPACE_CONTEXT_KEYWORDS) ||
-      activeMode === "workspace_context" ||
-      activeMode === "thread_context"
-    )
-  ) {
-    if (conversation?.active_project_thread_id) {
-      return { handled: true, mode: "thread_context", reason: "thread_context_keywords" };
-    }
-    return { handled: true, mode: "workspace_context", reason: "workspace_context_keywords" };
+  if (listIncludesKeyword(text, MANDATE_KEYWORDS)) {
+    return { handled: true, mode: "mandate_intake", reason: "mandate_keywords" };
   }
-
-  if (listIncludesKeyword(text, PROJECT_INTAKE_KEYWORDS)) {
-    return { handled: true, mode: "project_intake", reason: "project_intake_keywords" };
+  if (listIncludesKeyword(text, OPPORTUNITY_KEYWORDS)) {
+    return { handled: true, mode: "opportunity_submission", reason: "opportunity_keywords" };
   }
-
-  if (workspaceSession?.workspace_id) {
-    return { handled: false, mode: null, reason: "legacy_workspace_text" };
+  if (hasWorkspace) {
+    return { handled: true, mode: "workspace_coordination", reason: "workspace_context" };
   }
-
-  return { handled: true, mode: activeMode, reason: "project_default" };
+  return { handled: true, mode: activeMode, reason: "mandate_default" };
 }
 
-function buildProjectTitle(signals) {
-  const parts = [];
-  if (signals.assetType && signals.assetType !== "unknown") parts.push(signals.assetType);
-  parts.push(signals.projectKind);
-  return parts.filter(Boolean).join("_");
-}
-
-function humanizeMissingItem(language, item) {
+function humanize(language, value) {
   const labels = {
-    drawings: chooseCopy(language, "drawings", "المخططات"),
-    boq: chooseCopy(language, "BOQ", "المقايسة"),
-    quote_docs: chooseCopy(language, "quote or pricing file", "عرض السعر أو ملف التسعير"),
-    permit_docs: chooseCopy(language, "permit documents", "مستندات التصريح"),
-    site_photos: chooseCopy(language, "site photos", "صور الموقع"),
-    change_evidence: chooseCopy(language, "change evidence", "أدلة التغيير"),
-    dimensions: chooseCopy(language, "dimensions", "الأبعاد"),
-    material_selections: chooseCopy(language, "material selections", "اختيارات المواد"),
-    scope_boundaries: chooseCopy(language, "scope boundaries", "حدود النطاق"),
-    revised_drawings: chooseCopy(language, "revised drawings", "المخططات المعدلة"),
-    prior_scope: chooseCopy(language, "prior approved scope", "النطاق السابق المعتمد"),
-    project_brief: chooseCopy(language, "brief project note", "ملخص قصير للمشروع"),
+    insufficient_info: chooseCopy(language, "insufficient information", "معلومات غير كافية"),
+    pursue: chooseCopy(language, "pursue", "متابعة"),
+    watch: chooseCopy(language, "watch", "مراقبة"),
+    pass: chooseCopy(language, "pass", "رفض"),
+    source_document_or_listing_text: chooseCopy(language, "source document or listing text", "مستند المصدر أو نص الإعلان"),
+    budget_or_asking_price: chooseCopy(language, "budget or asking price", "الميزانية أو السعر المطلوب"),
+    target_location: chooseCopy(language, "target location", "الموقع المستهدف"),
+    property_type: chooseCopy(language, "property type", "نوع العقار"),
+    photos: chooseCopy(language, "photos", "الصور"),
   };
-  return labels[item] || item;
+  return labels[value] || String(value || "").replace(/_/g, " ");
 }
 
-function humanizeStage(language, stage) {
-  const labels = {
-    new_intake: chooseCopy(language, "new intake", "بداية مشروع"),
-    active_update: chooseCopy(language, "active update", "تحديث على مشروع قائم"),
-    permit_flow: chooseCopy(language, "permit flow", "مسار تصريح"),
-    quote_review: chooseCopy(language, "quote review", "مراجعة عرض سعر"),
-    urgent: chooseCopy(language, "urgent follow-up", "متابعة عاجلة"),
+function buildOpportunityTitle(signals, textBody) {
+  if (signals.propertyType !== "unknown" && signals.locations.length) {
+    return `${signals.propertyType.replace(/_/g, " ")} · ${signals.locations[0]}`;
+  }
+  const first = normalizeText(textBody).split(/\s+/).slice(0, 8).join(" ");
+  return first || "Acquisition opportunity";
+}
+
+function buildScreeningPayload(signals) {
+  return {
+    recommendation: signals.recommendation,
+    confidence: signals.confidence,
+    reasons: [
+      signals.locations.length ? "Location signal captured." : "Location is not yet clear.",
+      signals.budgetRange.max ? "Budget or asking price signal captured." : "Budget or asking price is missing.",
+      signals.materialTypes.length ? "Source material is attached or referenced." : "Source material still needs to be attached.",
+    ],
+    evidence_backed_facts: {
+      property_type: signals.propertyType,
+      locations: signals.locations,
+      budget_range: signals.budgetRange,
+      material_types: signals.materialTypes,
+    },
+    assumptions: signals.missingInfo.length ? ["Recommendation is preliminary until missing information is resolved."] : [],
+    missing_information: signals.missingInfo,
+    next_action: signals.missingInfo.length ? "Request missing information from the broker or investor." : "Review scenario assumptions and decide whether to pursue.",
   };
-  return labels[stage] || stage;
 }
 
-function humanizeWorkflow(language, workflowFocus) {
-  const labels = {
-    project_intake: chooseCopy(language, "project intake", "بدء المشروع"),
-    scope_alignment: chooseCopy(language, "scope alignment", "مواءمة النطاق"),
-    quote_explanation: chooseCopy(language, "quote explanation", "شرح عرض السعر"),
-    permit_support: chooseCopy(language, "permit support", "دعم التصريح"),
-    variation_review: chooseCopy(language, "variation review", "مراجعة التغيير"),
-    workspace_setup: chooseCopy(language, "workspace setup", "تهيئة مساحة العمل"),
-  };
-  return labels[workflowFocus] || workflowFocus;
-}
-
-function buildProjectIntakeReply({ language, workspace, signals, missingItems, workspaceReadiness }) {
-  const summary = [];
-  summary.push(
-    chooseCopy(
-      language,
-      `I understand this as a ${humanizeWorkflow(language, signals.workflowFocus)} request for a ${signals.assetType === "unknown" ? "project" : signals.assetType} ${signals.projectKind.replace(/_/g, " ")}.`,
-      `أفهم هذا كطلب ${humanizeWorkflow(language, signals.workflowFocus)} لمشروع ${signals.projectKind.replace(/_/g, " ")} ${signals.assetType === "unknown" ? "" : signals.assetType === "commercial" ? "تجاري" : "سكني"}.`,
-    ),
-  );
-
-  if (signals.locationHints.length) {
-    summary.push(
-      chooseCopy(
-        language,
-        `Location hints: ${signals.locationHints.join(", ")}.`,
-        `مؤشرات الموقع: ${signals.locationHints.join("، ")}.`,
-      ),
-    );
-  }
-
-  summary.push(
-    chooseCopy(
-      language,
-      `Current stage looks like ${humanizeStage(language, signals.stage)}.`,
-      `المرحلة الحالية تبدو ${humanizeStage(language, signals.stage)}.`,
-    ),
-  );
-
-  if (workspace?.name) {
-    summary.push(
-      chooseCopy(
-        language,
-        `I can keep working inside the workspace "${workspace.name}" and attach new materials there.`,
-        `أقدر أكمل داخل مساحة العمل "${workspace.name}" وأربط المواد الجديدة بها.`,
-      ),
-    );
-  } else {
-    summary.push(
-      chooseCopy(
-        language,
-        workspaceReadiness === "ready_to_route" || workspaceReadiness === "draft_ready"
-          ? "There is enough context to draft a useful workspace lane once the core files land."
-          : "We can keep this moving without heavy intake first, then tighten the workspace once the core files arrive.",
-        workspaceReadiness === "ready_to_route" || workspaceReadiness === "draft_ready"
-          ? "فيه سياق كافٍ لبدء مسار مساحة عمل مفيد بمجرد وصول الملفات الأساسية."
-          : "نقدر نمشي بالمشروع بدون استمارة ثقيلة أولاً، ثم نثبّت مساحة العمل بعد وصول الملفات الأساسية.",
-      ),
-    );
-  }
-
-  if (missingItems.length) {
-    const missing = missingItems.slice(0, 3).map((item) => humanizeMissingItem(language, item)).join(language === "ar" ? "، " : ", ");
-    summary.push(
-      chooseCopy(
-        language,
-        `Most useful next items: ${missing}.`,
-        `أكثر العناصر فائدة الآن: ${missing}.`,
-      ),
-    );
-  }
-
-  summary.push(
-    chooseCopy(
-      language,
-      "If you want, send drawings, BOQ, quote, site photos, or revised files and I’ll organize the next step around them.",
-      "إذا أردت، أرسل المخططات أو المقايسة أو عرض السعر أو صور الموقع أو النسخ المعدلة وسأرتب الخطوة التالية حولها.",
-    ),
-  );
-
-  return summary.join("\n\n");
-}
-
-function buildWorkspaceContextReply({ language, workspace, signals, missingItems }) {
+function buildAcquisitionReply({ language, mode, workspace, signals }) {
+  const screening = buildScreeningPayload(signals);
   const lines = [];
-  if (workspace?.name) {
-    lines.push(
-      chooseCopy(
-        language,
-        `Continuing inside workspace "${workspace.name}".`,
-        `نكمل داخل مساحة العمل "${workspace.name}".`,
-      ),
-    );
+  if (mode === "mandate_intake") {
+    lines.push(chooseCopy(language, "I captured this as an acquisition mandate.", "سجلت هذا كتفويض استحواذ."));
+  } else {
+    lines.push(chooseCopy(language, "I captured this as an acquisition opportunity.", "سجلت هذا كفرصة استحواذ."));
   }
-
+  if (workspace?.name) {
+    lines.push(chooseCopy(language, `Workspace: ${workspace.name}.`, `مساحة العمل: ${workspace.name}.`));
+  }
   lines.push(
     chooseCopy(
       language,
-      `Primary lane right now: ${humanizeWorkflow(language, signals.workflowFocus)}.`,
-      `المسار الأهم الآن: ${humanizeWorkflow(language, signals.workflowFocus)}.`,
+      `Current screen: ${humanize(language, screening.recommendation)} (${Math.round(signals.confidence * 100)}% confidence).`,
+      `الفرز الحالي: ${humanize(language, screening.recommendation)} (ثقة ${Math.round(signals.confidence * 100)}%).`,
     ),
   );
-
-  if (missingItems.length) {
+  if (signals.missingInfo.length) {
     lines.push(
       chooseCopy(
         language,
-        `Still likely missing: ${missingItems.slice(0, 3).map((item) => humanizeMissingItem(language, item)).join(", ")}.`,
-        `ما يزال غالبًا ناقصًا: ${missingItems.slice(0, 3).map((item) => humanizeMissingItem(language, item)).join("، ")}.`,
+        `Missing next: ${signals.missingInfo.slice(0, 4).map((item) => humanize(language, item)).join(", ")}.`,
+        `الناقص الآن: ${signals.missingInfo.slice(0, 4).map((item) => humanize(language, item)).join("، ")}.`,
       ),
     );
   }
-
   lines.push(
     chooseCopy(
       language,
-      "You can ask me what changed, what is excluded, what is still missing, or continue the permit / quote / revision flow.",
-      "تقدر تسألني ما الذي تغيّر، وما المستبعد، وما الذي ما يزال ناقصًا، أو نكمل مسار التصريح أو عرض السعر أو المراجعة.",
+      "I will keep facts, assumptions, and evidence labels separate before any decision.",
+      "سأفصل الحقائق والافتراضات وتسميات الأدلة قبل أي قرار.",
     ),
   );
   return lines.join("\n\n");
 }
 
-function buildProgressionReply({ language, uploadKind, stage }) {
-  if (uploadKind !== "none") {
+function buildBrokerDraft(language, signals) {
+  const missing = signals.missingInfo.slice(0, 4).map((item) => humanize(language, item));
+  if (!missing.length) {
     return chooseCopy(
       language,
-      `Understood. Send the ${humanizeMissingItem(language, uploadKind)} here and I’ll attach them to the project case and update the workspace lane.`,
-      `تمام. أرسل ${humanizeMissingItem(language, uploadKind)} هنا وسأربطها بملف المشروع وأحدث مسار مساحة العمل.`,
+      "Draft reply: Thanks, we have enough to start screening. Please confirm whether there are any title, occupancy, or pricing constraints we should know before a serious review.",
+      "مسودة الرد: شكرًا، لدينا ما يكفي لبدء الفرز. فضلاً أكد إذا كان هناك أي قيود على الصك أو الإشغال أو السعر قبل المراجعة الجادة.",
     );
   }
-
   return chooseCopy(
     language,
-    `I opened this as a project case in ${stage.replace(/_/g, " ")} mode. I can help next with scope clarification, quote review, permit support, variation evidence, or operator follow-up.`,
-    `فتحت هذا كحالة مشروع في وضع ${stage.replace(/_/g, " ")}. أقدر أساعدك الآن في توضيح النطاق أو مراجعة عرض السعر أو دعم التصريح أو أدلة التغيير أو المتابعة التشغيلية.`,
+    `Draft reply: Thanks for sending this. Before we screen seriously, please share: ${missing.join(", ")}.`,
+    `مسودة الرد: شكرًا على الإرسال. قبل الفرز الجاد، فضلاً أرسل: ${missing.join("، ")}.`,
   );
-}
-
-function buildUploadAcknowledgementReply({ language, uploadKind }) {
-  return chooseCopy(
-    language,
-    `Received. I attached the ${humanizeMissingItem(language, uploadKind)} to the project case and kept the timeline updated.`,
-    `وصلت. ربطت ${humanizeMissingItem(language, uploadKind)} بحالة المشروع وحدّثت الخط الزمني.`,
-  );
-}
-
-function toNumber(value) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
 }
 
 async function loadConversationByPhone(supabase, phoneNumber) {
@@ -658,16 +336,6 @@ async function loadConversationByPhone(supabase, phoneNumber) {
     .eq("phone_number", phoneNumber)
     .maybeSingle();
   if (error) throw new Error(`Failed to load WhatsApp conversation: ${error.message}`);
-  return data || null;
-}
-
-async function loadProjectProfile(supabase, phoneNumber) {
-  const { data, error } = await supabase
-    .from("whatsapp_contact_profiles")
-    .select("*")
-    .eq("phone_number", phoneNumber)
-    .maybeSingle();
-  if (error) throw new Error(`Failed to load WhatsApp profile memory: ${error.message}`);
   return data || null;
 }
 
@@ -688,21 +356,7 @@ async function upsertConversation(supabase, payload) {
     .upsert(payload, { onConflict: "channel,phone_number" })
     .select("*")
     .single();
-  if (error || !data) {
-    throw new Error(`Failed to upsert WhatsApp conversation: ${error?.message || "unknown"}`);
-  }
-  return data;
-}
-
-async function upsertProjectProfile(supabase, payload) {
-  const { data, error } = await supabase
-    .from("whatsapp_contact_profiles")
-    .upsert(payload, { onConflict: "phone_number" })
-    .select("*")
-    .single();
-  if (error || !data) {
-    throw new Error(`Failed to upsert WhatsApp profile memory: ${error?.message || "unknown"}`);
-  }
+  if (error || !data) throw new Error(`Failed to upsert WhatsApp conversation: ${error?.message || "unknown"}`);
   return data;
 }
 
@@ -712,9 +366,7 @@ async function insertConversationEvent(supabase, payload) {
     .insert(payload)
     .select("*")
     .single();
-  if (error || !data) {
-    throw new Error(`Failed to insert WhatsApp conversation event: ${error?.message || "unknown"}`);
-  }
+  if (error || !data) throw new Error(`Failed to insert WhatsApp conversation event: ${error?.message || "unknown"}`);
   return data;
 }
 
@@ -729,198 +381,184 @@ async function loadWorkspaceSummary(supabase, workspaceId) {
   return data || null;
 }
 
-function buildProfilePatch({ existingProfile, phoneNumber, linkedProfileId, language, signals, missingItems }) {
-  const previous = existingProfile?.profile_json && typeof existingProfile.profile_json === "object"
-    ? existingProfile.profile_json
-    : {};
-  const priorLocations = Array.isArray(previous.location_hints) ? previous.location_hints : [];
-  const mergedLocations = [...new Set([...priorLocations, ...signals.locationHints].filter(Boolean))].slice(0, 8);
-  const priorMaterials = Array.isArray(previous.material_types) ? previous.material_types : [];
-  const mergedMaterials = [...new Set([...priorMaterials, ...signals.materialTypes].filter(Boolean))].slice(0, 12);
+async function createOrUpdateMandate(supabase, { workspaceId, userId, phoneNumber, textBody, signals }) {
+  const query = supabase
+    .from("acquisition_mandates")
+    .select("*")
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const scoped = workspaceId ? query.eq("workspace_id", workspaceId) : query.eq("buy_box_json->>phone_number", phoneNumber);
+  const { data: existing, error: existingError } = await scoped.maybeSingle();
+  if (existingError) throw new Error(`Failed to load acquisition mandate: ${existingError.message}`);
 
-  return {
-    phone_number: phoneNumber,
-    linked_profile_id: normalizeUuid(linkedProfileId),
-    preferred_language: language,
-    relationship_role: existingProfile?.relationship_role || "unknown",
-    project_readiness: existingProfile?.project_readiness || "unknown",
-    readiness_score: Math.max(
-      Number(existingProfile?.readiness_score || 0),
-      signals.materialTypes.length >= 2 ? 0.65 : signals.tokens.length >= 4 ? 0.35 : 0.15,
-    ),
-    profile_json: {
-      ...previous,
-      project_kind: signals.projectKind,
-      asset_type: signals.assetType,
-      project_stage: signals.stage,
-      workflow_focus: signals.workflowFocus,
-      urgency: signals.urgency,
-      location_hints: mergedLocations,
-      material_types: mergedMaterials,
-      missing_items: missingItems,
-      last_query_tokens: signals.tokens,
+  const payload = {
+    workspace_id: workspaceId,
+    user_id: userId,
+    status: "active",
+    title: signals.locations[0] ? `Mandate · ${signals.locations[0]}` : "Acquisition mandate",
+    buy_box_json: {
+      ...(existing?.buy_box_json && typeof existing.buy_box_json === "object" ? existing.buy_box_json : {}),
+      phone_number: phoneNumber,
+      latest_text: textBody,
+      property_type: signals.propertyType,
+      material_types: signals.materialTypes,
     },
-    confidence_json: {
-      ...(existingProfile?.confidence_json && typeof existingProfile.confidence_json === "object"
-        ? existingProfile.confidence_json
-        : {}),
-      project_kind: signals.projectKind === "general_contracting" ? 0.45 : 0.8,
-      asset_type: signals.assetType === "unknown" ? 0.3 : 0.75,
-      material_types: signals.materialTypes.length ? 0.8 : 0.2,
-      location_hints: signals.locationHints.length ? 0.65 : 0.15,
-    },
-    summary: `${signals.projectKind.replace(/_/g, " ")} · ${signals.workflowFocus.replace(/_/g, " ")}`,
+    target_locations_json: signals.locations,
+    budget_range_json: signals.budgetRange,
+    risk_appetite: null,
+    excluded_criteria_json: existing?.excluded_criteria_json || [],
+    confidence_json: { mandate: signals.confidence },
   };
+
+  const request = existing?.id
+    ? supabase.from("acquisition_mandates").update(payload).eq("id", existing.id)
+    : supabase.from("acquisition_mandates").insert(payload);
+  const { data, error } = await request.select("*").single();
+  if (error || !data) throw new Error(`Failed to save acquisition mandate: ${error?.message || "unknown"}`);
+  return data;
 }
 
-function deriveCaseStage(workflowFocus, uploadKind) {
-  if (uploadKind === "permit_docs" || workflowFocus === "permit_support") return "permit_ready";
-  if (uploadKind === "change_evidence" || workflowFocus === "variation_review") return "variation_review";
-  if (uploadKind === "quote_docs" || uploadKind === "boq" || workflowFocus === "quote_explanation") return "quote_review";
-  if (workflowFocus === "scope_alignment" || workflowFocus === "workspace_setup") return "scoping";
-  return "intake";
-}
-
-function threadKindForWorkflow(workflowFocus, projectKind) {
-  if (workflowFocus === "quote_explanation") return "quote";
-  if (workflowFocus === "permit_support" || projectKind === "permit_support") return "permit";
-  if (workflowFocus === "variation_review" || projectKind === "variation_review") return "change";
-  if (workflowFocus === "project_intake") return "intake";
-  return "general";
-}
-
-async function createOrUpdateProjectCase(supabase, payload) {
-  const conversationId = normalizeUuid(payload.conversation_id);
-  const workspaceId = normalizeUuid(payload.workspace_id);
-  const phoneNumber = normalizePhone(payload.phone_number);
-  if (!phoneNumber) return null;
-
-  let query = supabase
-    .from("project_flows")
+async function createOrUpdateOpportunity(supabase, { conversationId, workspaceId, phoneNumber, textBody, signals }) {
+  const query = supabase
+    .from("acquisition_opportunities")
     .select("*")
     .eq("phone_number", phoneNumber)
     .order("updated_at", { ascending: false })
     .limit(1);
+  const scoped = workspaceId ? query.eq("workspace_id", workspaceId) : query.eq("originating_conversation_id", conversationId);
+  const { data: existing, error: existingError } = await scoped.maybeSingle();
+  if (existingError) throw new Error(`Failed to load acquisition opportunity: ${existingError.message}`);
 
-  if (workspaceId) query = query.eq("workspace_id", workspaceId);
-  if (conversationId) query = query.eq("conversation_id", conversationId);
-
-  const { data: existing, error: existingError } = await query.maybeSingle();
-  if (existingError) {
-    throw new Error(`Failed to load project case: ${existingError.message}`);
-  }
-
-  const nextPayload = {
+  const screening = buildScreeningPayload(signals);
+  const payload = {
     phone_number: phoneNumber,
     originating_conversation_id: conversationId,
     workspace_id: workspaceId,
     property_id: null,
     surface_key: null,
-    stage: payload.stage || "intake",
+    stage: signals.recommendation === "insufficient_info" ? "needs_info" : signals.recommendation,
     source_channel: "whatsapp",
     result_source: workspaceId ? "zohal_native" : null,
-    current_intent: payload.current_intent || null,
-    budget_band: null,
-    area_summary: null,
+    current_intent: textBody || null,
+    budget_band: signals.budgetRange.max ? `${signals.budgetRange.min || signals.budgetRange.max}-${signals.budgetRange.max} SAR` : null,
+    area_summary: signals.locations.join(", ") || null,
     financing_status: null,
     viewing_readiness: null,
-    assigned_operator_id: normalizeUuid(payload.assigned_operator_id),
-    title: payload.title || payload.summary || null,
-    summary: payload.summary || null,
-    metadata_json: payload.metadata_json || {},
-    brochure_inquiry_id: null,
-    project_kind: payload.project_kind || null,
-    workflow_focus: payload.workflow_focus || null,
-    workspace_readiness: payload.workspace_readiness || null,
-    missing_items_json: payload.missing_items_json || [],
+    assigned_operator_id: null,
+    title: buildOpportunityTitle(signals, textBody),
+    summary: screening.next_action,
+    metadata_json: {
+      latest_message: textBody,
+      screening,
+      broker_draft: buildBrokerDraft("en", signals),
+      property_type: signals.propertyType,
+      material_types: signals.materialTypes,
+      locations: signals.locations,
+    },
+    living_interface_inquiry_id: null,
+    opportunity_kind: signals.opportunityKind,
+    acquisition_focus: signals.acquisitionFocus,
+    screening_readiness: signals.missingInfo.length ? "needs_info" : "screened",
+    missing_info_json: signals.missingInfo,
   };
 
-  if (existing?.id) {
-    const { data, error } = await supabase
-      .from("project_flows")
-      .update(nextPayload)
-      .eq("id", existing.id)
-      .select("*")
-      .single();
-    if (error || !data) {
-      throw new Error(`Failed to update project case: ${error?.message || "unknown"}`);
-    }
-    return data;
-  }
-
-  const { data, error } = await supabase
-    .from("project_flows")
-    .insert(nextPayload)
-    .select("*")
-    .single();
-  if (error || !data) {
-    throw new Error(`Failed to insert project case: ${error?.message || "unknown"}`);
-  }
+  const request = existing?.id
+    ? supabase.from("acquisition_opportunities").update(payload).eq("id", existing.id)
+    : supabase.from("acquisition_opportunities").insert(payload);
+  const { data, error } = await request.select("*").single();
+  if (error || !data) throw new Error(`Failed to save acquisition opportunity: ${error?.message || "unknown"}`);
   return data;
 }
 
-async function createOrUpdateProjectThread(supabase, payload) {
-  const projectFlowId = normalizeUuid(payload.project_flow_id);
-  const workspaceId = normalizeUuid(payload.workspace_id);
-  if (!projectFlowId || !workspaceId) return null;
-
-  const threadKind = payload.thread_kind || "general";
+async function createOrUpdateAcquisitionThread(supabase, { opportunityId, workspaceId, threadKind, title, summary, metadata }) {
+  if (!opportunityId || !workspaceId) return null;
   const { data: existing, error: existingError } = await supabase
-    .from("project_threads")
+    .from("acquisition_threads")
     .select("*")
-    .eq("project_flow_id", projectFlowId)
+    .eq("opportunity_id", opportunityId)
     .eq("thread_kind", threadKind)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (existingError) {
-    throw new Error(`Failed to load project thread: ${existingError.message}`);
-  }
-
-  const nextPayload = {
-    project_flow_id: projectFlowId,
+  if (existingError) throw new Error(`Failed to load acquisition thread: ${existingError.message}`);
+  const payload = {
+    opportunity_id: opportunityId,
     workspace_id: workspaceId,
     thread_kind: threadKind,
-    status: payload.status || "active",
-    title: payload.title || payload.summary || "Project thread",
-    summary: payload.summary || null,
-    metadata_json: payload.metadata_json || {},
+    status: "active",
+    title,
+    summary,
+    metadata_json: metadata || {},
   };
-
-  if (existing?.id) {
-    const { data, error } = await supabase
-      .from("project_threads")
-      .update(nextPayload)
-      .eq("id", existing.id)
-      .select("*")
-      .single();
-    if (error || !data) {
-      throw new Error(`Failed to update project thread: ${error?.message || "unknown"}`);
-    }
-    return data;
-  }
-
-  const { data, error } = await supabase
-    .from("project_threads")
-    .insert(nextPayload)
-    .select("*")
-    .single();
-  if (error || !data) {
-    throw new Error(`Failed to insert project thread: ${error?.message || "unknown"}`);
-  }
+  const request = existing?.id
+    ? supabase.from("acquisition_threads").update(payload).eq("id", existing.id)
+    : supabase.from("acquisition_threads").insert(payload);
+  const { data, error } = await request.select("*").single();
+  if (error || !data) throw new Error(`Failed to save acquisition thread: ${error?.message || "unknown"}`);
   return data;
 }
 
-async function insertCaseActivity(supabase, payload) {
+async function insertAcquisitionEvent(supabase, payload) {
   const { data, error } = await supabase
-    .from("project_flow_events")
+    .from("acquisition_events")
     .insert(payload)
     .select("*")
     .single();
-  if (error || !data) {
-    throw new Error(`Failed to insert project case activity: ${error?.message || "unknown"}`);
-  }
+  if (error || !data) throw new Error(`Failed to insert acquisition event: ${error?.message || "unknown"}`);
   return data;
+}
+
+async function ensureAcquisitionArtifacts(supabase, { opportunity, signals, workspaceId }) {
+  if (!opportunity?.id) return;
+  const screening = buildScreeningPayload(signals);
+  const claimRows = [
+    ["property_type", signals.propertyType, signals.propertyType === "unknown" ? "uncertain" : "counterparty_provided"],
+    ["locations", signals.locations, signals.locations.length ? "counterparty_provided" : "uncertain"],
+    ["budget_range", signals.budgetRange, signals.budgetRange.max ? "counterparty_provided" : "uncertain"],
+    ["screening_recommendation", screening.recommendation, "modeled_output"],
+  ].map(([factKey, value, basis]) => ({
+    opportunity_id: opportunity.id,
+    workspace_id: workspaceId,
+    fact_key: factKey,
+    value_json: { value },
+    basis_label: basis,
+    confidence: signals.confidence,
+    source_channel: "whatsapp",
+    evidence_refs_json: [],
+  }));
+
+  await supabase.from("acquisition_claims").insert(claimRows);
+  await supabase.from("acquisition_scenarios").insert({
+    opportunity_id: opportunity.id,
+    workspace_id: workspaceId,
+    scenario_kind: "base",
+    title: "Base scenario",
+    assumptions_json: {
+      budget_range: signals.budgetRange,
+      missing_information: signals.missingInfo,
+    },
+    outputs_json: {
+      recommendation: signals.recommendation,
+      confidence: signals.confidence,
+    },
+    editable: true,
+  });
+
+  if (signals.missingInfo.length) {
+    await supabase.from("acquisition_diligence_items").insert(
+      signals.missingInfo.map((item) => ({
+        opportunity_id: opportunity.id,
+        workspace_id: workspaceId,
+        title: humanize("en", item),
+        item_type: "missing_info",
+        priority: item === "budget_or_asking_price" || item === "source_document_or_listing_text" ? "high" : "medium",
+        status: "open",
+        owner_kind: "broker",
+        evidence_refs_json: [],
+      })),
+    );
+  }
 }
 
 function buildImportRequest({ body, conversation, workspaceSession }) {
@@ -940,353 +578,130 @@ function buildImportRequest({ body, conversation, workspaceSession }) {
   };
 }
 
-async function handleProjectIntake({
-  supabase,
-  conversation,
-  projectProfile,
-  body,
-  language,
-  signals,
-  missingItems,
-  workspaceReadiness,
-}) {
-  const workspace = await loadWorkspaceSummary(
-    supabase,
-    normalizeUuid(conversation.active_workspace_id),
-  );
+async function handleAcquisitionRoute({ supabase, conversation, body, language, signals, route, workspaceSession }) {
+  const workspaceId = normalizeUuid(conversation.active_workspace_id || workspaceSession?.workspace_id);
+  const workspace = await loadWorkspaceSummary(supabase, workspaceId);
+  const userId = normalizeUuid(conversation.linked_profile_id || workspaceSession?.user_id);
+  const textBody = normalizeText(body.text_body);
+  const phoneNumber = normalizePhone(body.phone_number);
 
-  const nextConversation = await upsertConversation(supabase, {
-    id: conversation.id,
-    channel: "whatsapp",
-    phone_number: body.phone_number,
-    mode: "project_intake",
-    language,
-    active_workspace_id: conversation.active_workspace_id || null,
-    active_project_flow_id: conversation.active_project_flow_id || null,
-    active_project_thread_id: conversation.active_project_thread_id || null,
-    awaiting_upload_kind: "none",
-    linked_profile_id: conversation.linked_profile_id || null,
-    last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
-    state_json: {
-      ...(conversation.state_json || {}),
-      project_signals: signals,
-      missing_items: missingItems,
-      workspace_readiness: workspaceReadiness,
-      active_workspace_snapshot: workspace,
-    },
-    last_inbound_message_id: normalizeText(body.message_id) || null,
-    last_message_at: new Date().toISOString(),
-  });
-
-  const profilePatch = buildProfilePatch({
-    existingProfile: projectProfile,
-    phoneNumber: body.phone_number,
-    linkedProfileId: conversation.linked_profile_id,
-    language,
-    signals,
-    missingItems,
-  });
-  await upsertProjectProfile(supabase, profilePatch);
-
-  const projectCase = await createOrUpdateProjectCase(supabase, {
-    phone_number: body.phone_number,
-    conversation_id: nextConversation.id,
-    workspace_id: nextConversation.active_workspace_id || null,
-    stage: deriveCaseStage(signals.workflowFocus, "none"),
-    current_intent: normalizeText(body.text_body) || null,
-    title: buildProjectTitle(signals).replace(/_/g, " "),
-    summary: buildProjectTitle(signals).replace(/_/g, " "),
-    metadata_json: {
-      latest_message: normalizeText(body.text_body),
-      material_types: signals.materialTypes,
-      location_hints: signals.locationHints,
-      urgency: signals.urgency,
-    },
-    project_kind: signals.projectKind,
-    workflow_focus: signals.workflowFocus,
-    workspace_readiness: workspaceReadiness,
-    missing_items_json: missingItems,
-  });
-
-  const projectThread = projectCase?.id && nextConversation.active_workspace_id
-    ? await createOrUpdateProjectThread(supabase, {
-        project_flow_id: projectCase.id,
-        workspace_id: nextConversation.active_workspace_id,
-        thread_kind: threadKindForWorkflow(signals.workflowFocus, signals.projectKind),
-        title: workspace?.name ? `${workspace.name} ${signals.workflowFocus.replace(/_/g, " ")}` : buildProjectTitle(signals).replace(/_/g, " "),
-        summary: normalizeText(body.text_body) || null,
-        metadata_json: {
-          workflow_focus: signals.workflowFocus,
-          project_kind: signals.projectKind,
-        },
-      })
+  const mandate = route.mode === "mandate_intake"
+    ? await createOrUpdateMandate(supabase, { workspaceId, userId, phoneNumber, textBody, signals })
     : null;
 
-  if (projectCase?.id && nextConversation.active_workspace_id) {
-    await insertCaseActivity(supabase, {
-      project_flow_id: projectCase.id,
-      project_thread_id: projectThread?.id || null,
-      workspace_id: nextConversation.active_workspace_id,
-      event_type: "project_intake",
-      event_direction: "inbound",
-      body_text: normalizeText(body.text_body) || null,
-      media_json: body.media || [],
-      event_payload: {
-        workflow_focus: signals.workflowFocus,
-        project_kind: signals.projectKind,
-        missing_items: missingItems,
-      },
-    });
+  const opportunity = route.mode === "mandate_intake"
+    ? null
+    : await createOrUpdateOpportunity(supabase, {
+        conversationId: conversation.id,
+        workspaceId,
+        phoneNumber,
+        textBody,
+        signals,
+      });
+
+  if (opportunity?.id) {
+    await ensureAcquisitionArtifacts(supabase, { opportunity, signals, workspaceId });
   }
 
-  return {
-    mode: "project_intake",
-    conversation: nextConversation,
-    side_effects: ["project_profile_updated", workspaceReadiness],
-    outbound_messages: [{
-      type: "text",
-      body: buildProjectIntakeReply({
-        language,
-        workspace,
-        signals,
-        missingItems,
-        workspaceReadiness,
-      }),
-    }],
-    crm_updates: projectCase ? { project_flow_id: projectCase.id, project_thread_id: projectThread?.id || null } : null,
-    import_request: null,
-  };
-}
-
-async function handleWorkspaceContext({
-  supabase,
-  conversation,
-  body,
-  language,
-  signals,
-  missingItems,
-}) {
-  const workspace = await loadWorkspaceSummary(
-    supabase,
-    normalizeUuid(conversation.active_workspace_id),
-  );
-
-  const projectThread = conversation.active_project_flow_id && conversation.active_workspace_id
-    ? await createOrUpdateProjectThread(supabase, {
-        project_flow_id: conversation.active_project_flow_id,
-        workspace_id: conversation.active_workspace_id,
-        thread_kind: threadKindForWorkflow(signals.workflowFocus, signals.projectKind),
-        title: workspace?.name ? `${workspace.name} ${signals.workflowFocus.replace(/_/g, " ")}` : humanizeWorkflow(language, signals.workflowFocus),
-        summary: normalizeText(body.text_body) || null,
-        metadata_json: {
-          workflow_focus: signals.workflowFocus,
-          project_kind: signals.projectKind,
-        },
+  const thread = opportunity?.id && workspaceId
+    ? await createOrUpdateAcquisitionThread(supabase, {
+        opportunityId: opportunity.id,
+        workspaceId,
+        threadKind: route.mode === "screening" ? "screening" : "broker",
+        title: buildOpportunityTitle(signals, textBody),
+        summary: textBody || null,
+        metadata: { recommendation: signals.recommendation, confidence: signals.confidence },
       })
     : null;
 
-  const nextConversation = await upsertConversation(supabase, {
-    id: conversation.id,
-    channel: "whatsapp",
-    phone_number: conversation.phone_number,
-    mode: projectThread?.id ? "thread_context" : "workspace_context",
-    language,
-    active_workspace_id: conversation.active_workspace_id || null,
-    active_project_flow_id: conversation.active_project_flow_id || null,
-    active_project_thread_id: projectThread?.id || conversation.active_project_thread_id || null,
-    awaiting_upload_kind: "none",
-    linked_profile_id: conversation.linked_profile_id || null,
-    last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
-    state_json: {
-      ...(conversation.state_json || {}),
-      project_signals: signals,
-      missing_items: missingItems,
-      active_workspace_snapshot: workspace,
-    },
-    last_inbound_message_id: normalizeText(body.message_id) || null,
-    last_message_at: new Date().toISOString(),
-  });
-
-  return {
-    mode: projectThread?.id ? "thread_context" : "workspace_context",
-    conversation: nextConversation,
-    side_effects: [projectThread?.id ? "thread_context_ready" : "workspace_context_ready"],
-    outbound_messages: [{
-      type: "text",
-      body: buildWorkspaceContextReply({
-        language,
-        workspace,
-        signals,
-        missingItems,
-      }),
-    }],
-    crm_updates: null,
-    import_request: null,
-  };
-}
-
-async function handleProgression({
-  supabase,
-  conversation,
-  projectProfile,
-  body,
-  language,
-  signals,
-  missingItems,
-  workspaceReadiness,
-}) {
-  const uploadKind = detectProgressionUploadKind(body.text_body, body.media || []);
-  const stage = deriveCaseStage(signals.workflowFocus, uploadKind);
-  const projectCase = await createOrUpdateProjectCase(supabase, {
-    phone_number: body.phone_number,
-    conversation_id: conversation.id,
-    workspace_id: conversation.active_workspace_id || null,
-    stage,
-    current_intent: normalizeText(body.text_body) || projectProfile?.summary || null,
-    title: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
-    summary: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
-    metadata_json: {
-      latest_message: normalizeText(body.text_body),
-      upload_kind: uploadKind,
-      urgency: signals.urgency,
-    },
-    project_kind: signals.projectKind,
-    workflow_focus: signals.workflowFocus,
-    workspace_readiness: workspaceReadiness,
-    missing_items_json: missingItems,
-  });
-
-  const projectThread = projectCase?.id && conversation.active_workspace_id
-    ? await createOrUpdateProjectThread(supabase, {
-        project_flow_id: projectCase.id,
-        workspace_id: conversation.active_workspace_id,
-        thread_kind: threadKindForWorkflow(signals.workflowFocus, signals.projectKind),
-        title: normalizeText(body.text_body) || buildProjectTitle(signals).replace(/_/g, " "),
-        summary: normalizeText(body.text_body) || null,
-        metadata_json: {
-          workflow_focus: signals.workflowFocus,
-          upload_kind: uploadKind,
-        },
-      })
-    : null;
-
-  if (projectCase?.id && conversation.active_workspace_id) {
-    await insertCaseActivity(supabase, {
-      project_flow_id: projectCase.id,
-      project_thread_id: projectThread?.id || null,
-      workspace_id: conversation.active_workspace_id,
-      event_type: uploadKind === "none" ? "progression_request" : uploadKind,
+  if (opportunity?.id && workspaceId) {
+    await insertAcquisitionEvent(supabase, {
+      opportunity_id: opportunity.id,
+      acquisition_thread_id: thread?.id || null,
+      workspace_id: workspaceId,
+      event_type: route.mode,
       event_direction: "inbound",
-      body_text: normalizeText(body.text_body) || null,
+      body_text: textBody || null,
       media_json: body.media || [],
-      event_payload: {
-        workflow_focus: signals.workflowFocus,
-        stage,
-      },
+      event_payload: buildScreeningPayload(signals),
     });
   }
 
   const nextConversation = await upsertConversation(supabase, {
     id: conversation.id,
     channel: "whatsapp",
-    phone_number: conversation.phone_number,
-    mode: "progression",
+    phone_number: phoneNumber,
+    mode: route.mode,
     language,
-    active_workspace_id: conversation.active_workspace_id || null,
-    active_project_flow_id: projectCase?.id || conversation.active_project_flow_id || null,
-    active_project_thread_id: projectThread?.id || conversation.active_project_thread_id || null,
-    awaiting_upload_kind: uploadKind,
-    linked_profile_id: conversation.linked_profile_id || null,
-    last_user_goal: normalizeText(body.text_body) || conversation.last_user_goal || null,
+    active_workspace_id: workspaceId,
+    active_opportunity_id: opportunity?.id || conversation.active_opportunity_id || null,
+    active_acquisition_thread_id: thread?.id || conversation.active_acquisition_thread_id || null,
+    awaiting_upload_kind: "none",
+    linked_profile_id: conversation.linked_profile_id || userId,
+    last_user_goal: textBody || conversation.last_user_goal || null,
     state_json: {
       ...(conversation.state_json || {}),
-      active_project_flow_id: projectCase?.id || null,
-      active_project_thread_id: projectThread?.id || null,
-      project_signals: signals,
-      missing_items: missingItems,
-      awaiting_upload_kind: uploadKind,
+      active_mandate_id: mandate?.id || conversation.state_json?.active_mandate_id || null,
+      active_opportunity_id: opportunity?.id || conversation.active_opportunity_id || null,
+      active_acquisition_thread_id: thread?.id || conversation.active_acquisition_thread_id || null,
+      acquisition_signals: signals,
     },
     last_inbound_message_id: normalizeText(body.message_id) || null,
     last_message_at: new Date().toISOString(),
   });
 
   return {
-    mode: "progression",
+    mode: route.mode,
     conversation: nextConversation,
-    side_effects: ["project_case_upserted"],
+    side_effects: [
+      mandate?.id ? "mandate_saved" : null,
+      opportunity?.id ? "opportunity_saved" : null,
+      signals.missingInfo.length ? "diligence_items_created" : null,
+    ].filter(Boolean),
     outbound_messages: [{
       type: "text",
-      body: buildProgressionReply({ language, uploadKind, stage }),
+      body: [
+        buildAcquisitionReply({ language, mode: route.mode, workspace, signals }),
+        route.mode === "screening" || signals.missingInfo.length ? buildBrokerDraft(language, signals) : null,
+      ].filter(Boolean).join("\n\n"),
     }],
-    crm_updates: projectCase ? { project_flow_id: projectCase.id, project_thread_id: projectThread?.id || null } : null,
+    crm_updates: opportunity ? { opportunity_id: opportunity.id, acquisition_thread_id: thread?.id || null } : null,
     import_request: null,
   };
 }
 
-async function handleProgressionUpload({
-  supabase,
-  conversation,
-  body,
-  language,
-}) {
-  const projectFlowId = normalizeUuid(conversation?.state_json?.active_project_flow_id || conversation?.active_project_flow_id);
-  const projectThreadId = normalizeUuid(conversation?.state_json?.active_project_thread_id || conversation?.active_project_thread_id);
-  if (!projectFlowId || !conversation.active_workspace_id) {
+async function handleDocumentIngestion({ supabase, conversation, body, language, workspaceSession }) {
+  const importRequest = buildImportRequest({ body, conversation, workspaceSession });
+  if (!importRequest) {
     return {
-      mode: "progression",
+      mode: "document_ingestion",
       conversation,
-      side_effects: [],
+      side_effects: ["media_missing_import_context"],
       outbound_messages: [{
         type: "text",
         body: chooseCopy(
           language,
-          "I don’t have an active project case ready for uploads yet. Tell me whether you want help with scope, quote, permit, or revisions first.",
-          "لا يوجد عندي ملف مشروع جاهز للمرفقات بعد. قل لي أولاً هل تريد المساعدة في النطاق أو عرض السعر أو التصريح أو المراجعات.",
+          "I need a linked workspace before I can import that file into the acquisition workspace.",
+          "أحتاج مساحة عمل مرتبطة قبل أن أستورد الملف داخل مساحة الاستحواذ.",
         ),
       }],
       crm_updates: null,
       import_request: null,
     };
   }
-
-  const media = Array.isArray(body.media) ? body.media : [];
-  const uploadKind = conversation.awaiting_upload_kind || detectProgressionUploadKind(body.text_body, media);
-
-  await insertCaseActivity(supabase, {
-    project_flow_id: projectFlowId,
-    project_thread_id: projectThreadId || null,
-    workspace_id: conversation.active_workspace_id,
-    event_type: uploadKind || "upload",
-    event_direction: "inbound",
-    body_text: normalizeText(body.text_body) || null,
-    media_json: media,
-    event_payload: {
-      source_message_id: normalizeText(body.message_id) || null,
-      upload_kind: uploadKind || "none",
-    },
-  });
-
   const nextConversation = await upsertConversation(supabase, {
     ...conversation,
-    awaiting_upload_kind: "none",
+    mode: "document_ingestion",
     last_inbound_message_id: normalizeText(body.message_id) || null,
     last_message_at: new Date().toISOString(),
-    state_json: {
-      ...(conversation.state_json || {}),
-      awaiting_upload_kind: "none",
-    },
   });
-
   return {
-    mode: "progression",
+    mode: "document_ingestion",
     conversation: nextConversation,
-    side_effects: ["project_upload_attached"],
-    outbound_messages: [{
-      type: "text",
-      body: buildUploadAcknowledgementReply({ language, uploadKind }),
-    }],
-    crm_updates: { project_flow_id: projectFlowId, project_thread_id: projectThreadId || null },
-    import_request: null,
+    side_effects: ["import_requested"],
+    outbound_messages: [],
+    crm_updates: null,
+    import_request: importRequest,
   };
 }
 
@@ -1308,7 +723,7 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
     if (priorEvent?.id) {
       return {
         handled: true,
-        mode: body.conversation_snapshot?.mode || "project_intake",
+        mode: body.conversation_snapshot?.mode || "mandate_intake",
         conversation_updates: {},
         side_effects: ["duplicate_message"],
         outbound_messages: [],
@@ -1325,11 +740,11 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
   const seededConversation = existingConversation || await upsertConversation(supabase, {
     channel: "whatsapp",
     phone_number: phoneNumber,
-    mode: "project_intake",
+    mode: "mandate_intake",
     language: detectLanguageFromText(body.text_body, "auto"),
     active_workspace_id: normalizeUuid(workspaceSession?.workspace_id),
-    active_project_flow_id: null,
-    active_project_thread_id: null,
+    active_opportunity_id: null,
+    active_acquisition_thread_id: null,
     awaiting_upload_kind: "none",
     linked_profile_id: normalizeUuid(workspaceSession?.user_id),
     last_user_goal: null,
@@ -1338,29 +753,16 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
     last_message_at: null,
   });
 
-  const projectProfile = await loadProjectProfile(supabase, phoneNumber);
   const textBody = normalizeText(body.text_body);
   const language = detectLanguageFromText(textBody, seededConversation.language);
   const hasMedia = Array.isArray(body.media) && body.media.length > 0;
-  const signals = extractProjectSignals(textBody, body.media || []);
-  const missingItems = computeMissingItems({
-    projectKind: signals.projectKind,
-    materialTypes: signals.materialTypes,
-    assetType: signals.assetType,
-    stage: signals.stage,
-  });
-  const workspaceReadiness = computeWorkspaceReadiness({
-    linkedWorkspaceId: seededConversation.active_workspace_id || workspaceSession?.workspace_id,
-    materialTypes: signals.materialTypes,
-    textBody,
-    projectKind: signals.projectKind,
-  });
+  const signals = extractAcquisitionSignals(textBody, body.media || []);
 
   const inboundEvent = await insertConversationEvent(supabase, {
     conversation_id: seededConversation.id,
     workspace_id: normalizeUuid(seededConversation.active_workspace_id || workspaceSession?.workspace_id),
-    project_flow_id: normalizeUuid(seededConversation.state_json?.active_project_flow_id || seededConversation.active_project_flow_id),
-    project_thread_id: normalizeUuid(seededConversation.state_json?.active_project_thread_id || seededConversation.active_project_thread_id),
+    opportunity_id: normalizeUuid(seededConversation.state_json?.active_opportunity_id || seededConversation.active_opportunity_id),
+    acquisition_thread_id: normalizeUuid(seededConversation.state_json?.active_acquisition_thread_id || seededConversation.active_acquisition_thread_id),
     event_type: hasMedia ? "inbound_media" : "inbound_text",
     event_direction: "inbound",
     message_id: messageId,
@@ -1370,142 +772,27 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
       media: body.media || [],
       timestamp: body.timestamp || null,
       message_type: body.message_type || null,
-      project_signals: signals,
+      acquisition_signals: signals,
     },
   });
 
-  const route = decideWhatsappMode({
-    textBody,
-    hasMedia,
-    conversation: seededConversation,
-    workspaceSession,
-  });
+  const route = decideWhatsappMode({ textBody, hasMedia, conversation: seededConversation, workspaceSession });
 
-  if (!route.handled) {
-    return {
-      handled: false,
-      mode: null,
-      conversation_updates: {
-        conversation_id: seededConversation.id,
-        inbound_event_id: inboundEvent.id,
-        routing_reason: route.reason,
-      },
-      side_effects: ["continue_legacy"],
-      outbound_messages: [],
-      import_request: null,
-      crm_updates: null,
-    };
-  }
-
-  let result;
-  if (route.mode === "document_ingestion") {
-    const importRequest = buildImportRequest({
-      body,
-      conversation: seededConversation,
-      workspaceSession,
-    });
-    if (!importRequest) {
-      result = {
-        mode: "document_ingestion",
-        conversation: seededConversation,
-        side_effects: ["media_missing_import_context"],
-        outbound_messages: [{
-          type: "text",
-          body: chooseCopy(
-            language,
-            "I need a linked workspace before I can import that file into the project timeline here.",
-            "أحتاج مساحة عمل مرتبطة قبل أن أستورد هذا الملف داخل خط المشروع هنا.",
-          ),
-        }],
-        crm_updates: null,
-        import_request: null,
-      };
-    } else {
-      const nextConversation = await upsertConversation(supabase, {
-        ...seededConversation,
-        mode: "document_ingestion",
-        last_inbound_message_id: messageId,
-        last_message_at: new Date().toISOString(),
-      });
-      result = {
-      mode: "document_ingestion",
-      conversation: nextConversation,
-      side_effects: ["legacy_import_requested"],
-        outbound_messages: [],
-        crm_updates: null,
-        import_request: importRequest,
-      };
-    }
-  } else if (hasMedia && seededConversation.awaiting_upload_kind && seededConversation.awaiting_upload_kind !== "none") {
-    result = await handleProgressionUpload({
-      supabase,
-      conversation: seededConversation,
-      body,
-      language,
-    });
-  } else if (hasMedia) {
-    result = {
-      mode: route.mode,
-      conversation: seededConversation,
-      side_effects: ["ambiguous_media_clarified"],
-      outbound_messages: [{
-        type: "text",
-      body: chooseCopy(
-          language,
-          "I received the file. Tell me if this is drawings, BOQ, quote docs, permit docs, site photos, or change evidence. If it belongs in a linked workspace, I can import it there too.",
-          "وصلني الملف. قل لي هل هو مخططات أو مقايسة أو عرض سعر أو مستندات تصريح أو صور موقع أو أدلة تغيير. وإذا كان يجب ربطه بمساحة عمل مرتبطة فأقدر أستوره هناك أيضًا.",
-        ),
-      }],
-      crm_updates: null,
-      import_request: null,
-    };
-  } else if (route.mode === "progression") {
-    result = await handleProgression({
-      supabase,
-      conversation: seededConversation,
-      projectProfile,
-      body,
-      language,
-      signals,
-      missingItems,
-      workspaceReadiness,
-    });
-  } else if (route.mode === "workspace_context") {
-    result = await handleWorkspaceContext({
-      supabase,
-      conversation: seededConversation,
-      body,
-      language,
-      signals,
-      missingItems,
-    });
-  } else {
-    result = await handleProjectIntake({
-      supabase,
-      conversation: seededConversation,
-      projectProfile,
-      body,
-      language,
-      signals,
-      missingItems,
-      workspaceReadiness,
-    });
-  }
+  const result = route.mode === "document_ingestion"
+    ? await handleDocumentIngestion({ supabase, conversation: seededConversation, body, language, workspaceSession })
+    : await handleAcquisitionRoute({ supabase, conversation: seededConversation, body, language, signals, route, workspaceSession });
 
   for (const outbound of result.outbound_messages || []) {
     await insertConversationEvent(supabase, {
       conversation_id: result.conversation.id,
       workspace_id: normalizeUuid(result.conversation.active_workspace_id),
-      project_flow_id: normalizeUuid(result.conversation.state_json?.active_project_flow_id || result.conversation.active_project_flow_id),
-      project_thread_id: normalizeUuid(result.conversation.state_json?.active_project_thread_id || result.conversation.active_project_thread_id),
+      opportunity_id: normalizeUuid(result.conversation.state_json?.active_opportunity_id || result.conversation.active_opportunity_id),
+      acquisition_thread_id: normalizeUuid(result.conversation.state_json?.active_acquisition_thread_id || result.conversation.active_acquisition_thread_id),
       event_type: "outbound_text",
       event_direction: "outbound",
       message_id: null,
       result_source: null,
-      event_payload: {
-        body: outbound.body,
-        type: outbound.type,
-      },
+      event_payload: { body: outbound.body, type: outbound.type },
     });
   }
 
@@ -1514,11 +801,12 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
     mode: result.mode,
     conversation_updates: {
       conversation_id: result.conversation.id,
+      inbound_event_id: inboundEvent.id,
       mode: result.conversation.mode,
       language: result.conversation.language,
       active_workspace_id: result.conversation.active_workspace_id,
-      active_project_flow_id: result.conversation.active_project_flow_id,
-      active_project_thread_id: result.conversation.active_project_thread_id,
+      active_opportunity_id: result.conversation.active_opportunity_id,
+      active_acquisition_thread_id: result.conversation.active_acquisition_thread_id,
       awaiting_upload_kind: result.conversation.awaiting_upload_kind,
     },
     side_effects: result.side_effects || [],
@@ -1533,12 +821,7 @@ export async function handleWhatsappOrchestrate(req, res, { requestId, log, read
     requireInternalCaller(req.headers);
     const body = await readJsonBody(req);
     const supabase = createServiceClient();
-    const response = await orchestrateWhatsappMessage({
-      supabase,
-      body,
-      requestId,
-      log,
-    });
+    const response = await orchestrateWhatsappMessage({ supabase, body, requestId, log });
     return sendJson(res, 200, response);
   } catch (error) {
     const statusCode = Number(error?.statusCode || 500);

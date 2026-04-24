@@ -6,43 +6,43 @@ import {
   supportsStructuredAnalysis,
 } from '@/lib/document-analysis';
 
-const operationsWorkspacePlaybook = {
-  id: 'pb-operations-workspace',
-  name: 'Operations Workspace',
+const acquisitionWorkspacePlaybook = {
+  id: 'pb-acquisition-workspace',
+  name: 'Acquisition Workspace',
   is_system_preset: true,
   current_version: {
-    id: 'v-operations-workspace',
+    id: 'v-acquisition-workspace',
     version_number: 1,
     spec_json: {
-      template_id: 'property_operations_workspace',
+      template_id: 'acquisition_workspace',
       meta: {
-        aliases: ['Operations Workspace'],
+        aliases: ['Acquisition Workspace'],
       },
     },
   },
 };
 
 describe('document analysis template recommendations', () => {
-  it('always recommends Operations Workspace as the user-facing system template', () => {
+  it('always recommends Acquisition Workspace as the user-facing system template', () => {
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'contract',
         title: 'Retail Asset lease amendment and rent roll review',
       }),
-    ).toEqual(['Operations Workspace']);
+    ).toEqual(['Acquisition Workspace']);
 
     expect(
       recommendedSystemPlaybookNames({
         documentType: 'invoice',
         title: 'April payment ledger export',
       }),
-    ).toEqual(['Operations Workspace']);
+    ).toEqual(['Acquisition Workspace']);
   });
 
-  it('selects the visible Operations Workspace playbook when present', () => {
+  it('selects the visible Acquisition Workspace playbook when present', () => {
     const playbook = selectRecommendedPlaybook(
       [
-        operationsWorkspacePlaybook,
+        acquisitionWorkspacePlaybook,
         {
           id: 'pb-custom',
           name: 'Custom user template',
@@ -60,25 +60,25 @@ describe('document analysis template recommendations', () => {
       },
     );
 
-    expect(playbook?.name).toBe('Operations Workspace');
+    expect(playbook?.name).toBe('Acquisition Workspace');
   });
 
-  it('resolves classifier-ranked real-estate template ids onto Operations Workspace', () => {
+  it('resolves classifier-ranked real-estate template ids onto Acquisition Workspace', () => {
     const playbook = resolveRecommendedPlaybook(
-      [operationsWorkspacePlaybook],
+      [acquisitionWorkspacePlaybook],
       {
         documentType: 'financial_report',
         title: 'Portfolio receivables ledger',
-        recommendedTemplateIds: ['property_operations_workspace'],
+        recommendedTemplateIds: ['acquisition_workspace'],
       },
     );
 
-    expect(playbook?.name).toBe('Operations Workspace');
+    expect(playbook?.name).toBe('Acquisition Workspace');
   });
 
-  it('falls back to Operations Workspace when a hidden legacy template id is suggested', () => {
+  it('falls back to Acquisition Workspace when a hidden legacy template id is suggested', () => {
     const playbook = resolveRecommendedPlaybook(
-      [operationsWorkspacePlaybook],
+      [acquisitionWorkspacePlaybook],
       {
         documentType: 'research',
         title: 'Legacy template metadata should not leak into the product path',
@@ -86,7 +86,7 @@ describe('document analysis template recommendations', () => {
       },
     );
 
-    expect(playbook?.name).toBe('Operations Workspace');
+    expect(playbook?.name).toBe('Acquisition Workspace');
   });
 
   it('keeps structured analysis enabled for supported document classes', () => {

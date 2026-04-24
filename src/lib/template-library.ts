@@ -15,18 +15,18 @@ type TemplateDefinition = {
 
 const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   {
-    canonicalName: 'Operations Workspace',
+    canonicalName: 'Acquisition Workspace',
     group: 'zohal_templates',
     rank: 10,
     emoji: '🏡',
     description:
-      'Operations Workspace turns maintenance intake, triage, vendor coordination, and property documents into an evidence-linked operating workspace.',
-    descriptionAr: 'مساحة العمل التشغيلية تحول طلبات الصيانة والفرز وتنسيق الموردين ووثائق العقار إلى مساحة تشغيل مرتبطة بالأدلة.',
-    aliases: ['Property Operations'],
+      'Acquisition Workspace turns mandates, broker submissions, source documents, scenarios, and diligence into an evidence-linked acquisition decision workspace.',
+    descriptionAr: 'مساحة الاستحواذ تحول التفويضات وعروض الوسطاء والمستندات والسيناريوهات والعناية الواجبة إلى مساحة قرار مرتبطة بالأدلة.',
+    aliases: ['Acquisition Workspace'],
   },
 ];
 
-const PRIMARY_TEMPLATE_CANONICAL_NAME = 'Operations Workspace';
+const PRIMARY_TEMPLATE_CANONICAL_NAME = 'Acquisition Workspace';
 
 const NAME_TO_DEFINITION = new Map<string, TemplateDefinition>();
 for (const definition of TEMPLATE_DEFINITIONS) {
@@ -37,7 +37,7 @@ for (const definition of TEMPLATE_DEFINITIONS) {
 }
 
 const TEMPLATE_ID_TO_DEFINITION = new Map<string, TemplateDefinition>([
-  ['property_operations_workspace', TEMPLATE_DEFINITIONS[0]],
+  ['acquisition_workspace', TEMPLATE_DEFINITIONS[0]],
 ]);
 
 function specMeta(playbook: TemplateLibraryPlaybookLike): Record<string, unknown> {

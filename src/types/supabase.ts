@@ -14,6 +14,851 @@ export type Database = {
   }
   public: {
     Tables: {
+      acquisition_claims: {
+        Row: {
+          basis_label: string
+          candidate_id: string | null
+          confidence: number
+          created_at: string
+          created_by: string | null
+          evidence_refs_json: Json
+          fact_key: string
+          id: string
+          opportunity_id: string | null
+          source_channel: string | null
+          updated_at: string
+          value_json: Json
+          workspace_id: string | null
+        }
+        Insert: {
+          basis_label: string
+          candidate_id?: string | null
+          confidence?: number
+          created_at?: string
+          created_by?: string | null
+          evidence_refs_json?: Json
+          fact_key: string
+          id?: string
+          opportunity_id?: string | null
+          source_channel?: string | null
+          updated_at?: string
+          value_json?: Json
+          workspace_id?: string | null
+        }
+        Update: {
+          basis_label?: string
+          candidate_id?: string | null
+          confidence?: number
+          created_at?: string
+          created_by?: string | null
+          evidence_refs_json?: Json
+          fact_key?: string
+          id?: string
+          opportunity_id?: string | null
+          source_channel?: string | null
+          updated_at?: string
+          value_json?: Json
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_claims_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_candidate_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_claims_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_claims_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_adapter_runs: {
+        Row: {
+          cards_seen: number
+          candidates_created: number
+          completed_at: string | null
+          created_at: string
+          detail_pages_fetched: number
+          error_json: Json
+          failure_count: number
+          id: string
+          limited_snapshot_refs_json: Json
+          screenshot_refs_json: Json
+          search_run_id: string | null
+          source: string
+          started_at: string
+          status: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          cards_seen?: number
+          candidates_created?: number
+          completed_at?: string | null
+          created_at?: string
+          detail_pages_fetched?: number
+          error_json?: Json
+          failure_count?: number
+          id?: string
+          limited_snapshot_refs_json?: Json
+          screenshot_refs_json?: Json
+          search_run_id?: string | null
+          source: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          cards_seen?: number
+          candidates_created?: number
+          completed_at?: string | null
+          created_at?: string
+          detail_pages_fetched?: number
+          error_json?: Json
+          failure_count?: number
+          id?: string
+          limited_snapshot_refs_json?: Json
+          screenshot_refs_json?: Json
+          search_run_id?: string | null
+          source?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_adapter_runs_search_run_id_fkey"
+            columns: ["search_run_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_search_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_adapter_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_candidate_opportunities: {
+        Row: {
+          area_sqm: number | null
+          asking_price: number | null
+          bathroom_count: number | null
+          bedroom_count: number | null
+          captured_at: string
+          city: string | null
+          created_at: string
+          district: string | null
+          expires_at: string | null
+          id: string
+          investor_id: string | null
+          limited_evidence_snapshot_json: Json
+          mandate_id: string | null
+          photo_refs_json: Json
+          promoted_opportunity_id: string | null
+          property_type: string | null
+          screening_decision: string | null
+          screening_output_json: Json
+          search_run_id: string | null
+          short_description: string | null
+          source: string
+          source_fingerprint: string
+          source_url: string | null
+          status: string
+          terms_policy: string
+          title: string | null
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          area_sqm?: number | null
+          asking_price?: number | null
+          bathroom_count?: number | null
+          bedroom_count?: number | null
+          captured_at?: string
+          city?: string | null
+          created_at?: string
+          district?: string | null
+          expires_at?: string | null
+          id?: string
+          investor_id?: string | null
+          limited_evidence_snapshot_json?: Json
+          mandate_id?: string | null
+          photo_refs_json?: Json
+          promoted_opportunity_id?: string | null
+          property_type?: string | null
+          screening_decision?: string | null
+          screening_output_json?: Json
+          search_run_id?: string | null
+          short_description?: string | null
+          source: string
+          source_fingerprint: string
+          source_url?: string | null
+          status?: string
+          terms_policy?: string
+          title?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          area_sqm?: number | null
+          asking_price?: number | null
+          bathroom_count?: number | null
+          bedroom_count?: number | null
+          captured_at?: string
+          city?: string | null
+          created_at?: string
+          district?: string | null
+          expires_at?: string | null
+          id?: string
+          investor_id?: string | null
+          limited_evidence_snapshot_json?: Json
+          mandate_id?: string | null
+          photo_refs_json?: Json
+          promoted_opportunity_id?: string | null
+          property_type?: string | null
+          screening_decision?: string | null
+          screening_output_json?: Json
+          search_run_id?: string | null
+          short_description?: string | null
+          source?: string
+          source_fingerprint?: string
+          source_url?: string | null
+          status?: string
+          terms_policy?: string
+          title?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_candidate_opportunities_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_candidate_opportunities_promoted_opportunity_id_fkey"
+            columns: ["promoted_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_candidate_opportunities_search_run_id_fkey"
+            columns: ["search_run_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_search_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_candidate_opportunities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_candidate_sources: {
+        Row: {
+          candidate_id: string
+          id: string
+          limited_evidence_snapshot_json: Json
+          metadata_json: Json
+          search_run_id: string | null
+          seen_at: string
+          source: string
+          source_fingerprint: string
+          source_url: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          candidate_id: string
+          id?: string
+          limited_evidence_snapshot_json?: Json
+          metadata_json?: Json
+          search_run_id?: string | null
+          seen_at?: string
+          source: string
+          source_fingerprint: string
+          source_url?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          id?: string
+          limited_evidence_snapshot_json?: Json
+          metadata_json?: Json
+          search_run_id?: string | null
+          seen_at?: string
+          source?: string
+          source_fingerprint?: string
+          source_url?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_candidate_sources_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_candidate_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_candidate_sources_search_run_id_fkey"
+            columns: ["search_run_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_search_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_search_runs: {
+        Row: {
+          candidate_count: number
+          completed_at: string | null
+          created_at: string
+          error_summary: string | null
+          id: string
+          limits_json: Json
+          mandate_id: string | null
+          query_description: string
+          source_search_urls_json: Json
+          sources_json: Json
+          started_at: string | null
+          status: string
+          trigger_kind: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          candidate_count?: number
+          completed_at?: string | null
+          created_at?: string
+          error_summary?: string | null
+          id?: string
+          limits_json?: Json
+          mandate_id?: string | null
+          query_description?: string
+          source_search_urls_json?: Json
+          sources_json?: Json
+          started_at?: string | null
+          status?: string
+          trigger_kind?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          candidate_count?: number
+          completed_at?: string | null
+          created_at?: string
+          error_summary?: string | null
+          id?: string
+          limits_json?: Json
+          mandate_id?: string | null
+          query_description?: string
+          source_search_urls_json?: Json
+          sources_json?: Json
+          started_at?: string | null
+          status?: string
+          trigger_kind?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_search_runs_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_search_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_diligence_items: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          due_at: string | null
+          evidence_refs_json: Json
+          id: string
+          item_type: string
+          opportunity_id: string | null
+          owner_kind: string
+          priority: string
+          related_claim_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          evidence_refs_json?: Json
+          id?: string
+          item_type?: string
+          opportunity_id?: string | null
+          owner_kind?: string
+          priority?: string
+          related_claim_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          evidence_refs_json?: Json
+          id?: string
+          item_type?: string
+          opportunity_id?: string | null
+          owner_kind?: string
+          priority?: string
+          related_claim_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_diligence_items_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_candidate_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_diligence_items_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_diligence_items_related_claim_id_fkey"
+            columns: ["related_claim_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_diligence_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_events: {
+        Row: {
+          acquisition_thread_id: string | null
+          body_text: string | null
+          conversation_event_id: string | null
+          created_at: string
+          created_by: string | null
+          event_direction: string
+          event_payload: Json
+          event_type: string
+          id: string
+          media_json: Json
+          opportunity_id: string
+          workspace_id: string
+        }
+        Insert: {
+          acquisition_thread_id?: string | null
+          body_text?: string | null
+          conversation_event_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_direction?: string
+          event_payload?: Json
+          event_type: string
+          id?: string
+          media_json?: Json
+          opportunity_id: string
+          workspace_id: string
+        }
+        Update: {
+          acquisition_thread_id?: string | null
+          body_text?: string | null
+          conversation_event_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_direction?: string
+          event_payload?: Json
+          event_type?: string
+          id?: string
+          media_json?: Json
+          opportunity_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_events_acquisition_thread_id_fkey"
+            columns: ["acquisition_thread_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_events_conversation_event_id_fkey"
+            columns: ["conversation_event_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversation_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_events_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_mandates: {
+        Row: {
+          budget_range_json: Json
+          buy_box_json: Json
+          confidence_json: Json
+          created_at: string
+          excluded_criteria_json: Json
+          id: string
+          organization_id: string | null
+          risk_appetite: string | null
+          status: string
+          target_locations_json: Json
+          title: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          budget_range_json?: Json
+          buy_box_json?: Json
+          confidence_json?: Json
+          created_at?: string
+          excluded_criteria_json?: Json
+          id?: string
+          organization_id?: string | null
+          risk_appetite?: string | null
+          status?: string
+          target_locations_json?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          budget_range_json?: Json
+          buy_box_json?: Json
+          confidence_json?: Json
+          created_at?: string
+          excluded_criteria_json?: Json
+          id?: string
+          organization_id?: string | null
+          risk_appetite?: string | null
+          status?: string
+          target_locations_json?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_mandates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_mandates_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_opportunities: {
+        Row: {
+          acquisition_focus: string | null
+          area_summary: string | null
+          assigned_operator_id: string | null
+          budget_band: string | null
+          created_at: string
+          current_intent: string | null
+          financing_status: string | null
+          id: string
+          living_interface_inquiry_id: string | null
+          metadata_json: Json
+          missing_info_json: Json
+          opportunity_kind: string | null
+          originating_conversation_id: string | null
+          phone_number: string
+          property_id: string | null
+          result_source: string | null
+          screening_readiness: string | null
+          source_channel: string
+          stage: string
+          summary: string | null
+          surface_key: string | null
+          title: string | null
+          updated_at: string
+          viewing_readiness: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          acquisition_focus?: string | null
+          area_summary?: string | null
+          assigned_operator_id?: string | null
+          budget_band?: string | null
+          created_at?: string
+          current_intent?: string | null
+          financing_status?: string | null
+          id?: string
+          living_interface_inquiry_id?: string | null
+          metadata_json?: Json
+          missing_info_json?: Json
+          opportunity_kind?: string | null
+          originating_conversation_id?: string | null
+          phone_number: string
+          property_id?: string | null
+          result_source?: string | null
+          screening_readiness?: string | null
+          source_channel?: string
+          stage?: string
+          summary?: string | null
+          surface_key?: string | null
+          title?: string | null
+          updated_at?: string
+          viewing_readiness?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          acquisition_focus?: string | null
+          area_summary?: string | null
+          assigned_operator_id?: string | null
+          budget_band?: string | null
+          created_at?: string
+          current_intent?: string | null
+          financing_status?: string | null
+          id?: string
+          living_interface_inquiry_id?: string | null
+          metadata_json?: Json
+          missing_info_json?: Json
+          opportunity_kind?: string | null
+          originating_conversation_id?: string | null
+          phone_number?: string
+          property_id?: string | null
+          result_source?: string | null
+          screening_readiness?: string | null
+          source_channel?: string
+          stage?: string
+          summary?: string | null
+          surface_key?: string | null
+          title?: string | null
+          updated_at?: string
+          viewing_readiness?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_opportunities_assigned_operator_id_fkey"
+            columns: ["assigned_operator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_opportunities_conversation_id_fkey"
+            columns: ["originating_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_opportunities_living_interface_inquiry_id_fkey"
+            columns: ["living_interface_inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "living_interface_inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_opportunities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_opportunities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_scenarios: {
+        Row: {
+          assumptions_json: Json
+          created_at: string
+          editable: boolean
+          id: string
+          opportunity_id: string
+          outputs_json: Json
+          scenario_kind: string
+          title: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          assumptions_json?: Json
+          created_at?: string
+          editable?: boolean
+          id?: string
+          opportunity_id: string
+          outputs_json?: Json
+          scenario_kind?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          assumptions_json?: Json
+          created_at?: string
+          editable?: boolean
+          id?: string
+          opportunity_id?: string
+          outputs_json?: Json
+          scenario_kind?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_scenarios_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_scenarios_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_threads: {
+        Row: {
+          created_at: string
+          id: string
+          metadata_json: Json
+          opportunity_id: string
+          status: string
+          summary: string | null
+          thread_kind: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata_json?: Json
+          opportunity_id: string
+          status?: string
+          summary?: string | null
+          thread_kind: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata_json?: Json
+          opportunity_id?: string
+          status?: string
+          summary?: string | null
+          thread_kind?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_threads_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_threads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       actions: {
         Row: {
           action_type: string
@@ -1231,78 +2076,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      brochure_inquiries: {
-        Row: {
-          channel: string
-          created_at: string
-          id: string
-          inquirer_email: string | null
-          inquirer_name: string | null
-          inquirer_phone: string | null
-          message: string | null
-          property_id: string | null
-          raw_payload: Json | null
-          source_ip_hash: string | null
-          source_locale: string | null
-          source_user_agent: string | null
-          status: string
-          surface_key: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          channel?: string
-          created_at?: string
-          id?: string
-          inquirer_email?: string | null
-          inquirer_name?: string | null
-          inquirer_phone?: string | null
-          message?: string | null
-          property_id?: string | null
-          raw_payload?: Json | null
-          source_ip_hash?: string | null
-          source_locale?: string | null
-          source_user_agent?: string | null
-          status?: string
-          surface_key: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          channel?: string
-          created_at?: string
-          id?: string
-          inquirer_email?: string | null
-          inquirer_name?: string | null
-          inquirer_phone?: string | null
-          message?: string | null
-          property_id?: string | null
-          raw_payload?: Json | null
-          source_ip_hash?: string | null
-          source_locale?: string | null
-          source_user_agent?: string | null
-          status?: string
-          surface_key?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "marketing_inquiries_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marketing_inquiries_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -5463,6 +6236,78 @@ export type Database = {
           },
         ]
       }
+      living_interface_inquiries: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          inquirer_email: string | null
+          inquirer_name: string | null
+          inquirer_phone: string | null
+          message: string | null
+          property_id: string | null
+          raw_payload: Json | null
+          source_ip_hash: string | null
+          source_locale: string | null
+          source_user_agent: string | null
+          status: string
+          surface_key: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          inquirer_email?: string | null
+          inquirer_name?: string | null
+          inquirer_phone?: string | null
+          message?: string | null
+          property_id?: string | null
+          raw_payload?: Json | null
+          source_ip_hash?: string | null
+          source_locale?: string | null
+          source_user_agent?: string | null
+          status?: string
+          surface_key: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          inquirer_email?: string | null
+          inquirer_name?: string | null
+          inquirer_phone?: string | null
+          message?: string | null
+          property_id?: string | null
+          raw_payload?: Json | null
+          source_ip_hash?: string | null
+          source_locale?: string | null
+          source_user_agent?: string | null
+          status?: string
+          surface_key?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_inquiries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_inquiries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mathpix_pdf_jobs: {
         Row: {
           completed_at: string | null
@@ -7840,261 +8685,6 @@ export type Database = {
           },
         ]
       }
-      project_flow_events: {
-        Row: {
-          body_text: string | null
-          conversation_event_id: string | null
-          created_at: string
-          created_by: string | null
-          event_direction: string
-          event_payload: Json
-          event_type: string
-          id: string
-          media_json: Json
-          project_flow_id: string
-          project_thread_id: string | null
-          workspace_id: string
-        }
-        Insert: {
-          body_text?: string | null
-          conversation_event_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          event_direction?: string
-          event_payload?: Json
-          event_type: string
-          id?: string
-          media_json?: Json
-          project_flow_id: string
-          project_thread_id?: string | null
-          workspace_id: string
-        }
-        Update: {
-          body_text?: string | null
-          conversation_event_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          event_direction?: string
-          event_payload?: Json
-          event_type?: string
-          id?: string
-          media_json?: Json
-          project_flow_id?: string
-          project_thread_id?: string | null
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "buyer_opportunity_activities_conversation_event_id_fkey"
-            columns: ["conversation_event_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_conversation_events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunity_activities_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunity_activities_opportunity_id_fkey"
-            columns: ["project_flow_id"]
-            isOneToOne: false
-            referencedRelation: "project_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunity_activities_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_flow_events_project_thread_id_fkey"
-            columns: ["project_thread_id"]
-            isOneToOne: false
-            referencedRelation: "project_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_flows: {
-        Row: {
-          area_summary: string | null
-          assigned_operator_id: string | null
-          brochure_inquiry_id: string | null
-          budget_band: string | null
-          created_at: string
-          current_intent: string | null
-          financing_status: string | null
-          id: string
-          metadata_json: Json
-          missing_items_json: Json
-          originating_conversation_id: string | null
-          phone_number: string
-          project_kind: string | null
-          property_id: string | null
-          result_source: string | null
-          source_channel: string
-          stage: string
-          summary: string | null
-          surface_key: string | null
-          title: string | null
-          updated_at: string
-          viewing_readiness: string | null
-          workflow_focus: string | null
-          workspace_id: string | null
-          workspace_readiness: string | null
-        }
-        Insert: {
-          area_summary?: string | null
-          assigned_operator_id?: string | null
-          brochure_inquiry_id?: string | null
-          budget_band?: string | null
-          created_at?: string
-          current_intent?: string | null
-          financing_status?: string | null
-          id?: string
-          metadata_json?: Json
-          missing_items_json?: Json
-          originating_conversation_id?: string | null
-          phone_number: string
-          project_kind?: string | null
-          property_id?: string | null
-          result_source?: string | null
-          source_channel?: string
-          stage?: string
-          summary?: string | null
-          surface_key?: string | null
-          title?: string | null
-          updated_at?: string
-          viewing_readiness?: string | null
-          workflow_focus?: string | null
-          workspace_id?: string | null
-          workspace_readiness?: string | null
-        }
-        Update: {
-          area_summary?: string | null
-          assigned_operator_id?: string | null
-          brochure_inquiry_id?: string | null
-          budget_band?: string | null
-          created_at?: string
-          current_intent?: string | null
-          financing_status?: string | null
-          id?: string
-          metadata_json?: Json
-          missing_items_json?: Json
-          originating_conversation_id?: string | null
-          phone_number?: string
-          project_kind?: string | null
-          property_id?: string | null
-          result_source?: string | null
-          source_channel?: string
-          stage?: string
-          summary?: string | null
-          surface_key?: string | null
-          title?: string | null
-          updated_at?: string
-          viewing_readiness?: string | null
-          workflow_focus?: string | null
-          workspace_id?: string | null
-          workspace_readiness?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "buyer_opportunities_assigned_operator_id_fkey"
-            columns: ["assigned_operator_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunities_conversation_id_fkey"
-            columns: ["originating_conversation_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunities_marketing_inquiry_id_fkey"
-            columns: ["brochure_inquiry_id"]
-            isOneToOne: false
-            referencedRelation: "brochure_inquiries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunities_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "buyer_opportunities_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_threads: {
-        Row: {
-          created_at: string
-          id: string
-          metadata_json: Json
-          project_flow_id: string
-          status: string
-          summary: string | null
-          thread_kind: string
-          title: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          metadata_json?: Json
-          project_flow_id: string
-          status?: string
-          summary?: string | null
-          thread_kind: string
-          title: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          metadata_json?: Json
-          project_flow_id?: string
-          status?: string
-          summary?: string | null
-          thread_kind?: string
-          title?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_threads_project_flow_id_fkey"
-            columns: ["project_flow_id"]
-            isOneToOne: false
-            referencedRelation: "project_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_threads_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       properties: {
         Row: {
           address_json: Json
@@ -8155,60 +8745,6 @@ export type Database = {
           },
         ]
       }
-      property_brochure_overlays: {
-        Row: {
-          created_at: string
-          id: string
-          last_completion_evaluation: Json | null
-          overlay_json: Json
-          property_id: string
-          property_kind: string
-          ready_to_publish: boolean
-          surface_family: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_completion_evaluation?: Json | null
-          overlay_json?: Json
-          property_id: string
-          property_kind?: string
-          ready_to_publish?: boolean
-          surface_family?: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_completion_evaluation?: Json | null
-          overlay_json?: Json
-          property_id?: string
-          property_kind?: string
-          ready_to_publish?: boolean
-          surface_family?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "property_listing_overlays_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_listing_overlays_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       property_components: {
         Row: {
           attributes_json: Json
@@ -8259,6 +8795,60 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_living_interface_overlays: {
+        Row: {
+          created_at: string
+          id: string
+          last_completion_evaluation: Json | null
+          overlay_json: Json
+          property_id: string
+          property_kind: string
+          ready_to_publish: boolean
+          surface_family: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_completion_evaluation?: Json | null
+          overlay_json?: Json
+          property_id: string
+          property_kind?: string
+          ready_to_publish?: boolean
+          surface_family?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_completion_evaluation?: Json | null
+          overlay_json?: Json
+          property_id?: string
+          property_kind?: string
+          ready_to_publish?: boolean
+          surface_family?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_listing_overlays_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_listing_overlays_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -9952,6 +10542,7 @@ export type Database = {
       }
       whatsapp_conversation_events: {
         Row: {
+          acquisition_thread_id: string | null
           conversation_id: string
           created_at: string
           event_direction: string
@@ -9959,12 +10550,12 @@ export type Database = {
           event_type: string
           id: string
           message_id: string | null
-          project_flow_id: string | null
-          project_thread_id: string | null
+          opportunity_id: string | null
           result_source: string | null
           workspace_id: string | null
         }
         Insert: {
+          acquisition_thread_id?: string | null
           conversation_id: string
           created_at?: string
           event_direction?: string
@@ -9972,12 +10563,12 @@ export type Database = {
           event_type: string
           id?: string
           message_id?: string | null
-          project_flow_id?: string | null
-          project_thread_id?: string | null
+          opportunity_id?: string | null
           result_source?: string | null
           workspace_id?: string | null
         }
         Update: {
+          acquisition_thread_id?: string | null
           conversation_id?: string
           created_at?: string
           event_direction?: string
@@ -9985,12 +10576,18 @@ export type Database = {
           event_type?: string
           id?: string
           message_id?: string | null
-          project_flow_id?: string | null
-          project_thread_id?: string | null
+          opportunity_id?: string | null
           result_source?: string | null
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversation_events_acquisition_thread_id_fkey"
+            columns: ["acquisition_thread_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_threads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_conversation_events_conversation_id_fkey"
             columns: ["conversation_id"]
@@ -10000,16 +10597,9 @@ export type Database = {
           },
           {
             foreignKeyName: "whatsapp_conversation_events_opportunity_id_fkey"
-            columns: ["project_flow_id"]
+            columns: ["opportunity_id"]
             isOneToOne: false
-            referencedRelation: "project_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "whatsapp_conversation_events_project_thread_id_fkey"
-            columns: ["project_thread_id"]
-            isOneToOne: false
-            referencedRelation: "project_threads"
+            referencedRelation: "acquisition_opportunities"
             referencedColumns: ["id"]
           },
           {
@@ -10023,8 +10613,8 @@ export type Database = {
       }
       whatsapp_conversations: {
         Row: {
-          active_project_flow_id: string | null
-          active_project_thread_id: string | null
+          active_acquisition_thread_id: string | null
+          active_opportunity_id: string | null
           active_workspace_id: string | null
           awaiting_upload_kind: string
           channel: string
@@ -10041,8 +10631,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          active_project_flow_id?: string | null
-          active_project_thread_id?: string | null
+          active_acquisition_thread_id?: string | null
+          active_opportunity_id?: string | null
           active_workspace_id?: string | null
           awaiting_upload_kind?: string
           channel?: string
@@ -10059,8 +10649,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          active_project_flow_id?: string | null
-          active_project_thread_id?: string | null
+          active_acquisition_thread_id?: string | null
+          active_opportunity_id?: string | null
           active_workspace_id?: string | null
           awaiting_upload_kind?: string
           channel?: string
@@ -10078,17 +10668,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "whatsapp_conversations_active_project_flow_id_fkey"
-            columns: ["active_project_flow_id"]
+            foreignKeyName: "whatsapp_conversations_active_acquisition_thread_id_fkey"
+            columns: ["active_acquisition_thread_id"]
             isOneToOne: false
-            referencedRelation: "project_flows"
+            referencedRelation: "acquisition_threads"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "whatsapp_conversations_active_project_thread_id_fkey"
-            columns: ["active_project_thread_id"]
+            foreignKeyName: "whatsapp_conversations_active_opportunity_id_fkey"
+            columns: ["active_opportunity_id"]
             isOneToOne: false
-            referencedRelation: "project_threads"
+            referencedRelation: "acquisition_opportunities"
             referencedColumns: ["id"]
           },
           {

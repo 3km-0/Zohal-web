@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FolderOpen, ClipboardList, PanelTop, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, ClipboardList, PanelsTopLeft, MoreHorizontal } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
-/** Primary property shell tabs (presentation). Routes stay under `/workspaces`. */
-export type WorkspaceTabKey = 'overview' | 'sources' | 'projects' | 'brochure';
+/** Primary acquisition workspace shell tabs. Routes stay under `/workspaces`. */
+export type WorkspaceTabKey = 'overview' | 'sources' | 'opportunities' | 'livingInterface';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -20,9 +20,9 @@ interface WorkspaceTabsProps {
 
 export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
   if (pathname.includes('/operations') || pathname.includes('/overview')) return 'overview';
-  if (pathname.includes('/projects')) return 'projects';
+  if (pathname.includes('/opportunities')) return 'opportunities';
   if (pathname.includes('/operator')) return 'overview';
-  if (pathname.includes('/experiences')) return 'brochure';
+  if (pathname.includes('/experiences')) return 'livingInterface';
   if (pathname.includes('/playbooks')) return 'overview';
   if (pathname.includes('/documents/')) return 'sources';
   return 'sources';
@@ -76,16 +76,16 @@ export function WorkspaceTabs({
       icon: FolderOpen,
     },
     {
-      key: 'projects',
-      label: t('projects'),
-      href: withFolderContext(`/workspaces/${workspaceId}/projects`),
+      key: 'opportunities',
+      label: t('opportunities'),
+      href: withFolderContext(`/workspaces/${workspaceId}/opportunities`),
       icon: ClipboardList,
     },
     {
-      key: 'brochure',
-      label: t('brochure'),
+      key: 'livingInterface',
+      label: t('livingInterface'),
       href: withFolderContext(`/workspaces/${workspaceId}/experiences`),
-      icon: PanelTop,
+      icon: PanelsTopLeft,
     },
   ];
 

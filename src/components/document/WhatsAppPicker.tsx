@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 
 interface WhatsAppPickerProps {
   workspaceId: string;
-  initialAction?: 'project' | 'ingestion';
+  initialAction?: 'acquisition' | 'ingestion';
   onClose: () => void;
 }
 
@@ -35,13 +35,13 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
   const [bindingBusy, setBindingBusy] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
-  const [selectedAction, setSelectedAction] = useState<'project' | 'ingestion'>(initialAction);
+  const [selectedAction, setSelectedAction] = useState<'acquisition' | 'ingestion'>(initialAction);
 
   useEffect(() => {
     setSelectedAction(initialAction);
   }, [initialAction]);
 
-  const projectMessage = useMemo(
+  const acquisitionMessage = useMemo(
     () => t('whatsappProjectTemplate', { workspace: workspaceName.trim() || 'Workspace' }),
     [t, workspaceName]
   );
@@ -49,7 +49,7 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
     () => t('whatsappIngestionTemplate', { workspace: workspaceName.trim() || 'Workspace' }),
     [t, workspaceName]
   );
-  const workspaceMessage = selectedAction === 'project' ? projectMessage : ingestionMessage;
+  const workspaceMessage = selectedAction === 'acquisition' ? acquisitionMessage : ingestionMessage;
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -296,9 +296,9 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
 
                     <button
                       type="button"
-                      onClick={() => setSelectedAction('project')}
+                      onClick={() => setSelectedAction('acquisition')}
                       className={`w-full rounded-scholar border p-3 text-left transition ${
-                        selectedAction === 'project' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
+                        selectedAction === 'acquisition' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
                       }`}
                     >
                       <div className="text-sm font-medium text-text">{t('whatsappProjectAction')}</div>

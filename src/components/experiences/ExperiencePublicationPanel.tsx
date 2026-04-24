@@ -24,8 +24,8 @@ interface ListingOverlayReadiness {
   } | null;
 }
 
-const OPERATIONS_WORKSPACE_TEMPLATE_ID = 'property_operations_workspace';
-type SurfaceFamily = 'brochure';
+const ACQUISITION_WORKSPACE_TEMPLATE_ID = 'acquisition_workspace';
+type SurfaceFamily = 'living_interface';
 
 const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
   SurfaceFamily,
@@ -36,9 +36,9 @@ const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
     summaryKey: 'operationsWorkspaceMarketSummary' | 'summary';
   }
 > = {
-  brochure: {
-    slug: 'brochure',
-    title: 'Property Brochure Surface',
+  living_interface: {
+    slug: 'living-interface',
+    title: 'Acquisition Living Interface',
     subtitleKey: 'operationsWorkspaceMarketSubtitle',
     summaryKey: 'operationsWorkspaceMarketSummary',
   },
@@ -50,9 +50,9 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const supabase = useMemo(() => createClient(), []);
   const db = supabase as any;
   const documentId = searchParams.get('document_id');
-  const analysisTemplateId = OPERATIONS_WORKSPACE_TEMPLATE_ID;
+  const analysisTemplateId = ACQUISITION_WORKSPACE_TEMPLATE_ID;
   const workspaceSlug = workspaceId.replace(/-/g, '_');
-  const surfaceFamily: SurfaceFamily = 'brochure';
+  const surfaceFamily: SurfaceFamily = 'living_interface';
   const templateDefaults = EXPERIENCE_TEMPLATE_DEFAULTS[surfaceFamily];
   const templateSlug = `${analysisTemplateId.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}_${templateDefaults.slug}`;
   const [experienceId, setExperienceId] = useState(`exp_${workspaceSlug}_${templateSlug}`);
@@ -106,7 +106,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
     (async () => {
       try {
         const { data, error: overlayError } = await db
-          .from('property_brochure_overlays')
+          .from('property_living_interface_overlays')
           .select('ready_to_publish,last_completion_evaluation')
           .eq('workspace_id', workspaceId)
           .limit(1)
@@ -295,7 +295,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="brochure" />
+      <WorkspaceTabs workspaceId={workspaceId} active="livingInterface" />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -376,7 +376,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 </div>
               ) : null}
               <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                <div className="font-semibold text-text">{t('surfaceFamilies.brochure')}</div>
+                <div className="font-semibold text-text">{t('surfaceFamilies.livingInterface')}</div>
                 <p className="mt-1 text-text-soft">{t('configure.description')}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -389,10 +389,10 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
-              {analysisTemplateId === OPERATIONS_WORKSPACE_TEMPLATE_ID ? (
+              {analysisTemplateId === ACQUISITION_WORKSPACE_TEMPLATE_ID ? (
                 <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
-                  <div className="font-semibold text-text">{t('surfaceBoundary.brochure.title')}</div>
-                  <p className="mt-1 text-text-soft">{t('surfaceBoundary.brochure.description')}</p>
+                  <div className="font-semibold text-text">{t('surfaceBoundary.livingInterface.title')}</div>
+                  <p className="mt-1 text-text-soft">{t('surfaceBoundary.livingInterface.description')}</p>
                   <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
                 </div>
               ) : null}

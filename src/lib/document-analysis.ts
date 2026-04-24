@@ -8,7 +8,7 @@ import type { TemplateLibraryPlaybookLike, TemplateRecord } from '@/types/templa
 
 type PlaybookLike = TemplateLibraryPlaybookLike & Pick<TemplateRecord, 'id' | 'current_version_id'>;
 
-const OPERATIONS_WORKSPACE_TEMPLATE_NAME = 'Operations Workspace';
+const ACQUISITION_WORKSPACE_TEMPLATE_NAME = 'Acquisition Workspace';
 
 type DocumentMetadata = {
   documentType?: string | null;
@@ -53,7 +53,7 @@ export function getAnalysisLabelKey(documentType?: string | null) {
 
 export function recommendedSystemPlaybookNames(metadata: DocumentMetadata): string[] {
   void metadata;
-  return [OPERATIONS_WORKSPACE_TEMPLATE_NAME];
+  return [ACQUISITION_WORKSPACE_TEMPLATE_NAME];
 }
 
 export function selectRecommendedPlaybook<T extends PlaybookLike>(playbooks: T[], metadata: DocumentMetadata): T | null {
@@ -92,10 +92,10 @@ export function resolveRecommendedPlaybook<T extends PlaybookLike>(
   const visibleSystemPlaybooks = sortSystemPlaybooks(
     playbooks.filter((playbook) => playbook.is_system_preset && !isHiddenSystemPlaybook(playbook))
   );
-  const operationsWorkspacePlaybook = visibleSystemPlaybooks.find((playbook) =>
-    playbookTemplateId(playbook) === 'property_operations_workspace'
+  const acquisitionWorkspacePlaybook = visibleSystemPlaybooks.find((playbook) =>
+    playbookTemplateId(playbook) === 'acquisition_workspace'
   );
-  if (operationsWorkspacePlaybook) return operationsWorkspacePlaybook;
+  if (acquisitionWorkspacePlaybook) return acquisitionWorkspacePlaybook;
 
   return selectRecommendedPlaybook(playbooks, metadata);
 }
