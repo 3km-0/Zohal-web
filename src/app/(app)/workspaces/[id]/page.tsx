@@ -11,7 +11,6 @@ import {
   FileText,
   ListChecks,
   MessageSquare,
-  PanelsTopLeft,
   Search,
   Sparkles,
   TrendingUp,
@@ -188,15 +187,22 @@ export default function WorkspaceCockpitPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <FileText className="h-4 w-4 text-accent" />
-                      {t('evidenceLayer')}
+                      <ListChecks className="h-4 w-4 text-accent" />
+                      {t('mandateMonitoring')}
                     </CardTitle>
+                    <CardDescription>{t('mandateMonitoringDescription')}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-text-soft">
-                    <p>{t('sourceDocuments', { count: documentCount })}</p>
-                    <Link className="font-medium text-accent hover:underline" href={`/workspaces/${workspaceId}/sources`}>
-                      {t('openSources')}
-                    </Link>
+                  <CardContent className="space-y-2 text-sm">
+                    <MandateRow label={t('buyBox')} value={t('notSet')} />
+                    <MandateRow label={t('targetLocations')} value={t('notSet')} />
+                    <MandateRow label={t('budgetRange')} value={t('notSet')} />
+                    <MandateRow label={t('riskAppetite')} value={t('notSet')} />
+                    <MandateRow label={t('exclusions')} value={t('notSet')} />
+                    <MandateRow label={t('searchSources')} value={t('defaultSearchSources')} />
+                    <MandateRow label={t('monitoringFrequency')} value={t('manualMonitoring')} />
+                    <MandateRow label={t('goodMatch')} value={t('goodMatchDefault')} />
+                    <MandateRow label={t('notificationPreferences')} value={t('notificationDefault')} />
+                    <MandateRow label={t('customInstruction')} value={workspace?.description || t('notSet')} />
                   </CardContent>
                 </Card>
               </section>
@@ -271,15 +277,13 @@ export default function WorkspaceCockpitPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <PanelsTopLeft className="h-4 w-4 text-accent" />
-                      {t('publish')}
+                      <FileText className="h-4 w-4 text-accent" />
+                      {t('evidenceLayer')}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 text-sm text-text-soft">
-                    <p>{t('publishBody')}</p>
-                    <Link className="font-medium text-accent hover:underline" href={`/workspaces/${workspaceId}/publish`}>
-                      {t('openPublish')}
-                    </Link>
+                  <CardContent className="space-y-2 text-sm text-text-soft">
+                    <p>{t('sourceDocuments', { count: documentCount })}</p>
+                    <p>{t('evidenceBody')}</p>
                   </CardContent>
                 </Card>
               </section>
@@ -327,6 +331,15 @@ function DecisionBlock({ title, body }: { title: string; body: string }) {
     <div className="rounded-lg border border-border bg-surface-alt p-4">
       <p className="text-sm font-semibold text-text">{title}</p>
       <p className="mt-2 text-sm text-text-soft">{body}</p>
+    </div>
+  );
+}
+
+function MandateRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[minmax(110px,0.7fr)_minmax(0,1fr)] gap-3 border-b border-border py-2 last:border-0">
+      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-text-muted">{label}</span>
+      <span className="text-sm text-text-soft">{value}</span>
     </div>
   );
 }

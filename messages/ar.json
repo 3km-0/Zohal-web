@@ -52,7 +52,8 @@
     "library": "المكتبة",
     "trash": "السلة",
     "integrations": "التكاملات",
-    "organization": "المؤسسة"
+    "organization": "المؤسسة",
+    "updates": "التحديثات"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -466,7 +467,8 @@
     "experiences": "السطح",
     "members": "الأعضاء",
     "workspace": "مساحة العمل",
-    "publish": "النشر"
+    "publish": "النشر",
+    "automations": "الأتمتة"
   },
   "propertyOperatorPage": {
     "title": "المشغّل",
@@ -2756,6 +2758,32 @@
     "openPublish": "فتح النشر",
     "workspaceScope": "نطاق مساحة العمل: {id}",
     "close": "إغلاق",
-    "notSet": "غير محدد"
+    "notSet": "غير محدد",
+    "mandateMonitoring": "التفويض والمراقبة",
+    "mandateMonitoringDescription": "الملخص المنظم الذي يستخدمه زُحل للبحث والفرز والتنبيه.",
+    "buyBox": "معايير الشراء",
+    "targetLocations": "المواقع المستهدفة",
+    "budgetRange": "نطاق الميزانية",
+    "riskAppetite": "شهية المخاطر",
+    "exclusions": "الاستبعادات",
+    "searchSources": "مصادر البحث",
+    "defaultSearchSources": "عقار، بيوت، والإدخال اليدوي",
+    "monitoringFrequency": "تكرار المراقبة",
+    "manualMonitoring": "تشغيل يدوي في نسخة MVP",
+    "goodMatch": "ما يعتبر فرصة جيدة",
+    "goodMatchDefault": "ملاءمة التفويض، جودة الأدلة، تعرض الكابكس، ومخاطر الهبوط",
+    "notificationPreferences": "تفضيلات التنبيه",
+    "notificationDefault": "تحديثات مساحة العمل والقنوات المتصلة",
+    "customInstruction": "تعليمات اختيارية",
+    "evidenceBody": "الأدلة تبقى في Sources؛ هنا تظهر فقط حالة التغطية وما ينقص القرار."
+  },
+  "updatesPage": {
+    "title": "التحديثات",
+    "subtitle": "آخر حركة عبر مساحات العمل والقنوات والمتابعة.",
+    "empty": "لا توجد تحديثات بعد.",
+    "latest": "آخر تحديثات مساحات العمل",
+    "latestDescription": "افتح مساحة عمل للانتقال إلى القمرة الخاصة بها.",
+    "workspace": "مساحة عمل",
+    "workspaceUpdated": "تم تحديث مساحة العمل"
   }
 }

@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   House,
+  Clock3,
   FolderOpen,
   Search,
   Settings,
@@ -60,7 +61,9 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
 
   const navItems = [
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
+    { href: '/updates', label: t('updates'), icon: Clock3 },
     { href: '/ask', label: t('search'), icon: Search },
+    { href: '/settings', label: t('settings'), icon: Settings },
     ...(showOrgTab
       ? [{ href: '/organization', label: t('organization'), icon: Building2 }]
       : []),
@@ -69,7 +72,6 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const bottomItems = [
     { href: '/home', label: t('home'), icon: House },
     { href: '/subscription', label: tSidebar('subscription'), icon: Crown },
-    { href: '/settings', label: t('settings'), icon: Settings },
   ];
 
   const isActive = (href: string) => {

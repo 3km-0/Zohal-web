@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FolderOpen, PanelsTopLeft, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, PanelsTopLeft, MoreHorizontal, Bolt } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 /** Primary acquisition workspace shell tabs. Routes stay under `/workspaces`. */
-export type WorkspaceTabKey = 'workspace' | 'sources' | 'publish';
+export type WorkspaceTabKey = 'workspace' | 'sources' | 'automations' | 'publish';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -20,8 +20,10 @@ interface WorkspaceTabsProps {
 
 export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
   if (pathname.includes('/publish') || pathname.includes('/experiences')) return 'publish';
+  if (pathname.includes('/automations')) return 'automations';
   if (pathname.includes('/sources') || pathname.includes('/documents/')) return 'sources';
-  if (pathname.includes('/operations') || pathname.includes('/overview') || pathname.includes('/operator')) return 'workspace';
+  if (pathname.includes('/operations') || pathname.includes('/operator')) return 'automations';
+  if (pathname.includes('/overview')) return 'workspace';
   if (pathname.includes('/playbooks')) return 'workspace';
   if (pathname.includes('/documents/')) return 'sources';
   return 'workspace';
@@ -73,6 +75,12 @@ export function WorkspaceTabs({
       label: t('sources'),
       href: withFolderContext(`/workspaces/${workspaceId}/sources`),
       icon: FolderOpen,
+    },
+    {
+      key: 'automations',
+      label: t('automations'),
+      href: withFolderContext(`/workspaces/${workspaceId}/automations`),
+      icon: Bolt,
     },
     {
       key: 'publish',

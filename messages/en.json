@@ -52,7 +52,8 @@
     "library": "Library",
     "trash": "Trash",
     "integrations": "Integrations",
-    "organization": "Organization"
+    "organization": "Organization",
+    "updates": "Updates"
   },
   "auth": {
     "login": "Log In",
@@ -465,7 +466,8 @@
     "experiences": "Surface",
     "members": "Members",
     "workspace": "Workspace",
-    "publish": "Publish"
+    "publish": "Publish",
+    "automations": "Automations"
   },
   "propertyOperatorPage": {
     "title": "Operator",
@@ -2755,6 +2757,32 @@
     "openPublish": "Open Publish",
     "workspaceScope": "Workspace scope: {id}",
     "close": "Close",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "mandateMonitoring": "Mandate & Monitoring",
+    "mandateMonitoringDescription": "The structured brief Zohal uses to search, screen, and notify.",
+    "buyBox": "Buy box",
+    "targetLocations": "Target locations",
+    "budgetRange": "Budget range",
+    "riskAppetite": "Risk appetite",
+    "exclusions": "Exclusions",
+    "searchSources": "Search sources",
+    "defaultSearchSources": "Aqar, Bayut, manual intake",
+    "monitoringFrequency": "Monitoring frequency",
+    "manualMonitoring": "Manual runs for MVP",
+    "goodMatch": "What counts as a good match",
+    "goodMatchDefault": "Mandate fit, evidence quality, capex exposure, and downside risk",
+    "notificationPreferences": "Notification preferences",
+    "notificationDefault": "Workspace updates and connected channels",
+    "customInstruction": "Optional custom instruction",
+    "evidenceBody": "Evidence stays organized in Sources; the cockpit only shows coverage and decision gaps."
+  },
+  "updatesPage": {
+    "title": "Updates",
+    "subtitle": "Recent movement across workspaces, channels, and follow-up.",
+    "empty": "No updates yet.",
+    "latest": "Latest workspace updates",
+    "latestDescription": "Open a workspace to continue in its cockpit.",
+    "workspace": "Workspace",
+    "workspaceUpdated": "Workspace updated"
   }
 }
