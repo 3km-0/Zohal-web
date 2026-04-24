@@ -7,6 +7,7 @@ import {
   User,
   CreditCard,
   Globe,
+  Link2,
   Moon,
   Sun,
   Trash2,
@@ -211,6 +212,24 @@ export default function SettingsPage() {
               </Button>
             )}
 
+          </Card>
+
+          {/* Channels & Integrations */}
+          <Card padding="lg">
+            <div className="flex items-center gap-3 mb-6">
+              <Link2 className="w-5 h-5 text-accent" />
+              <h2 className="text-lg font-semibold text-text">{tSettings('channelsIntegrations')}</h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-scholar bg-surface-alt p-4">
+              <div>
+                <p className="font-medium text-text">{tSettings('channelsIntegrationsTitle')}</p>
+                <p className="text-sm text-text-soft">{tSettings('channelsIntegrationsDesc')}</p>
+              </div>
+              <Button variant="secondary" onClick={() => router.push('/integrations')}>
+                {tSettings('manage')}
+              </Button>
+            </div>
           </Card>
 
           {/* Appearance Section */}

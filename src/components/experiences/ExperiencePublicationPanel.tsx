@@ -295,7 +295,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="livingInterface" />
+      <WorkspaceTabs workspaceId={workspaceId} active="publish" />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">

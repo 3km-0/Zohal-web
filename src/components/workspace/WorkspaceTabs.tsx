@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FolderOpen, ClipboardList, PanelsTopLeft, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, PanelsTopLeft, MoreHorizontal } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 /** Primary acquisition workspace shell tabs. Routes stay under `/workspaces`. */
-export type WorkspaceTabKey = 'overview' | 'sources' | 'opportunities' | 'livingInterface';
+export type WorkspaceTabKey = 'workspace' | 'sources' | 'publish';
 
 interface WorkspaceTabsProps {
   workspaceId: string;
@@ -19,13 +19,12 @@ interface WorkspaceTabsProps {
 }
 
 export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
-  if (pathname.includes('/operations') || pathname.includes('/overview')) return 'overview';
-  if (pathname.includes('/opportunities')) return 'opportunities';
-  if (pathname.includes('/operator')) return 'overview';
-  if (pathname.includes('/experiences')) return 'livingInterface';
-  if (pathname.includes('/playbooks')) return 'overview';
+  if (pathname.includes('/publish') || pathname.includes('/experiences')) return 'publish';
+  if (pathname.includes('/sources') || pathname.includes('/documents/')) return 'sources';
+  if (pathname.includes('/operations') || pathname.includes('/overview') || pathname.includes('/operator')) return 'workspace';
+  if (pathname.includes('/playbooks')) return 'workspace';
   if (pathname.includes('/documents/')) return 'sources';
-  return 'sources';
+  return 'workspace';
 }
 
 export function WorkspaceTabs({
@@ -64,27 +63,21 @@ export function WorkspaceTabs({
     icon: ComponentType<{ className?: string }>;
   }[] = [
     {
-      key: 'overview',
-      label: t('overview'),
-      href: withFolderContext(`/workspaces/${workspaceId}/overview`),
+      key: 'workspace',
+      label: t('workspace'),
+      href: withFolderContext(`/workspaces/${workspaceId}`),
       icon: LayoutDashboard,
     },
     {
       key: 'sources',
       label: t('sources'),
-      href: withFolderContext(`/workspaces/${workspaceId}`),
+      href: withFolderContext(`/workspaces/${workspaceId}/sources`),
       icon: FolderOpen,
     },
     {
-      key: 'opportunities',
-      label: t('opportunities'),
-      href: withFolderContext(`/workspaces/${workspaceId}/opportunities`),
-      icon: ClipboardList,
-    },
-    {
-      key: 'livingInterface',
-      label: t('livingInterface'),
-      href: withFolderContext(`/workspaces/${workspaceId}/experiences`),
+      key: 'publish',
+      label: t('publish'),
+      href: withFolderContext(`/workspaces/${workspaceId}/publish`),
       icon: PanelsTopLeft,
     },
   ];

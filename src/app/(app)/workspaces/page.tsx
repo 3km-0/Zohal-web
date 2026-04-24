@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/client';
 import type { Folder, Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { FolderModal } from '@/components/workspace/FolderModal';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
 
 type WorkspaceTimeFilter = 'all' | 'today' | 'lastWeek' | 'lastMonth';
@@ -22,7 +21,6 @@ export default function WorkspacesPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
   const [createInFolderId, setCreateInFolderId] = useState<string | null>(null);
   const [draggedItem, setDraggedItem] = useState<{ kind: 'workspace' | 'folder'; id: string } | null>(null);
@@ -81,7 +79,6 @@ export default function WorkspacesPage() {
   }, [fetchWorkspaces]);
 
   const tCard = useTranslations('workspaceCard');
-  const topLevelFolders = folders.filter((folder) => !folder.parent_id);
   const availableTypes = useMemo(
     () => Array.from(new Set(workspaces.map((workspace) => workspace.workspace_type))) as WorkspaceType[],
     [workspaces]
@@ -106,7 +103,7 @@ export default function WorkspacesPage() {
       return updatedAt >= now - 30 * 24 * 60 * 60 * 1000;
     });
   }, [searchQuery, selectedTimeFilter, selectedType, workspaces]);
-  const ungroupedWorkspaces = filteredWorkspaces.filter((workspace) => !workspace.parent_folder_id);
+  const visibleWorkspaces = filteredWorkspaces;
   
   const handleDelete = async (workspace: Workspace) => {
     if (!confirm(tCard('confirmDelete', { name: workspace.name }))) return;
@@ -165,27 +162,15 @@ export default function WorkspacesPage() {
       <AppHeader
         title={t('title')}
         actions={
-          <ScholarActionMenu
-            compact
-            ariaLabel="Create"
-            icon={<Plus className="w-4 h-4" />}
-            label="Create"
-            items={[
-              {
-                label: 'New Workspace',
-                icon: <Plus className="w-4 h-4" />,
-                onClick: () => {
-                  setCreateInFolderId(null);
-                  setShowCreateModal(true);
-                },
-              },
-              {
-                label: 'New Folder',
-                icon: <FolderOpen className="w-4 h-4" />,
-                onClick: () => setShowCreateFolderModal(true),
-              },
-            ]}
-          />
+          <Button
+            onClick={() => {
+              setCreateInFolderId(null);
+              setShowCreateModal(true);
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            {t('create')}
+          </Button>
         }
       />
 
@@ -194,7 +179,7 @@ export default function WorkspacesPage() {
           <div className="flex items-center justify-center h-64">
             <Spinner size="lg" />
           </div>
-        ) : workspaces.length === 0 && topLevelFolders.length === 0 ? (
+        ) : workspaces.length === 0 ? (
           <EmptyState
             icon={<FolderOpen className="w-8 h-8" />}
             title={t('empty')}
@@ -237,39 +222,13 @@ export default function WorkspacesPage() {
               </div>
             </section>
 
-            {topLevelFolders.length > 0 && (
-              <section className="space-y-3">
-                <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted">
-                  Folders
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1">
-                  {topLevelFolders.map((folder) => (
-                    <FolderTile
-                      key={folder.id}
-                      folder={folder}
-                      draggable
-                      isDropTarget={activeDropFolderId === folder.id}
-                      onDragStart={() => setDraggedItem({ kind: 'folder', id: folder.id })}
-                      onDragEnd={() => {
-                        setDraggedItem(null);
-                        setActiveDropFolderId(null);
-                      }}
-                      onDragEnter={() => setActiveDropFolderId(folder.id)}
-                      onDragLeave={() => setActiveDropFolderId((current) => (current === folder.id ? null : current))}
-                      onDrop={() => void handleDropOnFolder(folder.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {ungroupedWorkspaces.length > 0 ? (
+            {visibleWorkspaces.length > 0 ? (
               <section className="space-y-3">
                 <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-muted">
                   Workspaces
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
-                  {ungroupedWorkspaces.map((workspace) => (
+                  {visibleWorkspaces.map((workspace) => (
                     <WorkspaceIcon
                       key={workspace.id}
                       workspace={workspace}
@@ -312,15 +271,6 @@ export default function WorkspacesPage() {
         />
       )}
 
-      {showCreateFolderModal && (
-        <FolderModal
-          onClose={() => setShowCreateFolderModal(false)}
-          onSaved={() => {
-            setShowCreateFolderModal(false);
-            fetchWorkspaces();
-          }}
-        />
-      )}
     </div>
   );
 }

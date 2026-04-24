@@ -6,5 +6,5 @@ export default async function WorkspaceOperatorRedirect({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/workspaces/${id}/overview`);
+  redirect(`/workspaces/${id}`);
 }

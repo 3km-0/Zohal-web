@@ -1,11 +1,10 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { useParams } from 'next/navigation';
-import { ExperiencePublicationPanel } from '@/components/experiences/ExperiencePublicationPanel';
-
-export default function WorkspaceExperiencesPage() {
-  const params = useParams();
-  const workspaceId = params.id as string;
-
-  return <ExperiencePublicationPanel workspaceId={workspaceId} />;
+export default async function WorkspaceExperiencesRedirect({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  redirect(`/workspaces/${id}/publish`);
 }

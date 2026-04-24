@@ -9,13 +9,11 @@ import {
   House,
   FolderOpen,
   Search,
-  Bot,
   Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Crown,
-  Link2,
   Building2,
   X,
 } from 'lucide-react';
@@ -62,9 +60,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
 
   const navItems = [
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
-    { href: '/ask', label: t('ask'), icon: Search },
-    { href: '/automations', label: t('automations'), icon: Bot },
-    { href: '/integrations', label: t('integrations'), icon: Link2 },
+    { href: '/ask', label: t('search'), icon: Search },
     ...(showOrgTab
       ? [{ href: '/organization', label: t('organization'), icon: Building2 }]
       : []),
@@ -79,9 +75,6 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const isActive = (href: string) => {
     if (href === '/workspaces') {
       return pathname === '/workspaces' || pathname.startsWith('/workspaces/');
-    }
-    if (href === '/integrations') {
-      return pathname === '/integrations' || pathname.startsWith('/integrations/');
     }
     if (href === '/organization') {
       return pathname === '/organization' || pathname.startsWith('/organization/');
