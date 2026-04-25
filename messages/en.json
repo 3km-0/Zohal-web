@@ -1174,7 +1174,11 @@
     "channelsIntegrations": "Channels & Integrations",
     "channelsIntegrationsTitle": "Manage channels and connected sources",
     "channelsIntegrationsDesc": "WhatsApp, Google Drive, OneDrive, and advanced API Sources now live in Settings.",
-    "manage": "Manage"
+    "manage": "Manage",
+    "whatsapp": "WhatsApp",
+    "googleDrive": "Google Drive",
+    "oneDrive": "OneDrive",
+    "apiSources": "API Sources"
   },
   "integrationsPage": {
     "title": "Channels & Integrations",

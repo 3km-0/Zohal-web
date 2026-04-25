@@ -8,11 +8,15 @@ import {
   CreditCard,
   Globe,
   Link2,
+  MessageCircle,
+  Cloud,
+  Database,
   Moon,
   Sun,
   Trash2,
   LogOut,
   AlertTriangle,
+  type LucideIcon,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Input, Badge, Spinner } from '@/components/ui';
@@ -221,14 +225,22 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold text-text">{tSettings('channelsIntegrations')}</h2>
             </div>
 
-            <div className="flex items-center justify-between gap-4 rounded-scholar bg-surface-alt p-4">
-              <div>
+            <div className="space-y-4 rounded-scholar bg-surface-alt p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
                 <p className="font-medium text-text">{tSettings('channelsIntegrationsTitle')}</p>
                 <p className="text-sm text-text-soft">{tSettings('channelsIntegrationsDesc')}</p>
+                </div>
+                <Button variant="secondary" onClick={() => router.push('/settings/integrations')}>
+                  {tSettings('manage')}
+                </Button>
               </div>
-              <Button variant="secondary" onClick={() => router.push('/integrations')}>
-                {tSettings('manage')}
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <IntegrationPreview icon={MessageCircle} label={tSettings('whatsapp')} />
+                <IntegrationPreview icon={Cloud} label={tSettings('googleDrive')} />
+                <IntegrationPreview icon={Cloud} label={tSettings('oneDrive')} />
+                <IntegrationPreview icon={Database} label={tSettings('apiSources')} />
+              </div>
             </div>
           </Card>
 
@@ -330,6 +342,15 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function IntegrationPreview({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text-soft">
+      <Icon className="h-4 w-4 text-accent" />
+      <span>{label}</span>
     </div>
   );
 }

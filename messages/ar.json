@@ -1175,7 +1175,11 @@
     "channelsIntegrations": "القنوات والتكاملات",
     "channelsIntegrationsTitle": "إدارة القنوات والمصادر المتصلة",
     "channelsIntegrationsDesc": "واتساب وGoogle Drive وOneDrive ومصادر API المتقدمة موجودة الآن في الإعدادات.",
-    "manage": "إدارة"
+    "manage": "إدارة",
+    "whatsapp": "واتساب",
+    "googleDrive": "Google Drive",
+    "oneDrive": "OneDrive",
+    "apiSources": "مصادر API"
   },
   "integrationsPage": {
     "title": "القنوات والتكاملات",

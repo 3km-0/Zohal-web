@@ -1134,7 +1134,6 @@ function ApiSourceAttachModal({
 
 export default function IntegrationsPage() {
   const t = useTranslations('integrationsPage');
-  const tNav = useTranslations('nav');
   const { user } = useAuth();
   const supabase = useMemo(() => createClient(), []);
 
@@ -1475,7 +1474,7 @@ export default function IntegrationsPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <AppHeader title={tNav('integrations')} />
+      <AppHeader title={t('title')} />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-4xl space-y-6">
