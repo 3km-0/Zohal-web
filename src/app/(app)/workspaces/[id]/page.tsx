@@ -34,14 +34,20 @@ type WorkspaceRow = {
   id: string;
   name: string;
   description?: string | null;
+  analysis_brief?: string | null;
 };
 
 type OpportunityRow = {
   id: string;
   stage?: string | null;
+  title?: string | null;
+  acquisition_focus?: string | null;
+  area_summary?: string | null;
+  budget_band?: string | null;
   metadata_json?: Record<string, unknown> | null;
   summary?: string | null;
   missing_info_json?: unknown;
+  screening_readiness?: string | null;
   updated_at?: string | null;
 };
 
@@ -119,6 +125,30 @@ function scoreFor(item: OpportunityRow | null | undefined): string | null {
   return score === null ? null : Math.round(score).toString();
 }
 
+function titleFor(item: OpportunityRow | null | undefined): string | null {
+  return item?.title?.trim() || metadataString(item, ['title', 'name']) || null;
+}
+
+function arabicTitleFor(item: OpportunityRow | null | undefined): string | null {
+  return metadataString(item, ['ar_label', 'arabic_label', 'arabic_title']);
+}
+
+function compactSAR(value: number | null): string | null {
+  if (value === null) return null;
+  if (value >= 1000000) return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 2)}M SAR`;
+  if (value >= 1000) return `${Math.round(value / 1000)}k SAR`;
+  return formatSAR.format(value);
+}
+
+function dealFacts(item: OpportunityRow | null | undefined): { price: string | null; area: string | null } {
+  const price = compactSAR(metadataNumber(item, ['price', 'asking_price', 'acquisition_price', 'purchase_price']));
+  const area = metadataNumber(item, ['area_sqm', 'sqm', 'area']);
+  return {
+    price,
+    area: area === null ? item?.area_summary ?? null : `${Math.round(area)} m2`,
+  };
+}
+
 function missingInfoList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((item) => humanize(String(item))).filter(Boolean);
   if (value && typeof value === 'object') {
@@ -187,10 +217,10 @@ export default function WorkspaceCockpitPage() {
     setLoading(true);
     try {
       const [workspaceResult, opportunitiesResult, documentsResult] = await Promise.all([
-        supabase.from('workspaces').select('id, name, description').eq('id', workspaceId).maybeSingle(),
+        supabase.from('workspaces').select('id, name, description, analysis_brief').eq('id', workspaceId).maybeSingle(),
         supabase
           .from('acquisition_opportunities')
-          .select('id, stage, metadata_json, summary, missing_info_json, updated_at')
+          .select('id, stage, title, acquisition_focus, area_summary, budget_band, metadata_json, summary, missing_info_json, screening_readiness, updated_at')
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(12),
@@ -354,17 +384,19 @@ function BrandBlock() {
 
 function BuyBoxCard({ workspace }: { workspace: WorkspaceRow | null }) {
   const t = useTranslations('workspaceCockpitPage');
+  const brief = workspace?.analysis_brief || workspace?.description || '';
+  const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
   return (
-    <Panel className="mb-5 p-4">
+    <Panel className="mb-5 p-4 dark:border-white/10 dark:bg-white/[0.035]">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('buyBoxPinned')}</p>
-        <Home className="h-4 w-4 text-accent" />
+        <p className="text-xs uppercase tracking-[0.28em] text-accent/80">{t('buyBoxPinned')}</p>
+        <Home className="h-5 w-5 rounded-xl bg-accent/15 p-1 text-accent" />
       </div>
       <div className="space-y-2">
-        <MandateRow label={t('buyBox')} value={t('notSet')} />
-        <MandateRow label={t('targetLocations')} value={t('notSet')} />
-        <MandateRow label={t('budgetRange')} value={t('notSet')} />
-        <MandateRow label={t('riskAppetite')} value={t('notSet')} />
+        <MandateRow label={t('buyBox')} value={briefParts[0] || t('notSet')} />
+        <MandateRow label={t('targetLocations')} value={briefParts[1] || t('notSet')} />
+        <MandateRow label={t('budgetRange')} value={briefParts[2] || t('notSet')} />
+        <MandateRow label={t('riskAppetite')} value={briefParts[3] || t('notSet')} />
         <MandateRow label={t('customInstruction')} value={workspace?.description || t('notSet')} />
       </div>
     </Panel>
@@ -401,21 +433,27 @@ function OpportunityRail({
               type="button"
               onClick={() => onSelect(item.id)}
               className={cn(
-                'rounded-3xl border p-4 text-left transition',
+                'rounded-[1.4rem] border p-4 text-left transition dark:bg-[#061014]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.04)]',
                 compact ? 'min-w-[260px]' : 'w-full',
                 selectedId === item.id
-                  ? 'border-accent/50 bg-accent/10 shadow-[var(--shadowSm)]'
-                  : 'border-border bg-surface-alt hover:bg-surface'
+                  ? 'border-accent/50 bg-accent/10 shadow-[0_18px_45px_rgba(207,170,69,.12)]'
+                  : 'border-border bg-surface-alt hover:bg-surface dark:hover:border-white/15'
               )}
             >
               <div className="flex justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[11px] text-text-muted">#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
-                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-text">{item.summary || humanize(item.stage) || t('untitledOpportunity')}</h3>
+                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-text">{titleFor(item) || t('untitledOpportunity')}</h3>
+                  {arabicTitleFor(item) ? <p className="mt-1 truncate text-xs text-text-soft" dir="rtl">{arabicTitleFor(item)}</p> : null}
                 </div>
-                <span className="h-fit rounded-2xl border border-border bg-surface-alt px-2 py-1 font-mono text-xs text-accent">{scoreFor(item) ?? t('notSet')}</span>
+                <span className="h-fit rounded-2xl border border-accent/25 bg-accent/10 px-2 py-1 font-mono text-xs text-accent">{scoreFor(item) ?? t('notSet')}</span>
               </div>
-              <div className="mt-4 flex justify-between text-xs text-text-soft">
+              <p className="mt-3 line-clamp-2 text-xs leading-5 text-text-muted">{item.summary}</p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <span className="rounded-2xl bg-black/5 px-3 py-2 text-text dark:bg-black/25">{dealFacts(item).price || t('notSet')}</span>
+                <span className="rounded-2xl bg-black/5 px-3 py-2 text-text dark:bg-black/25">{dealFacts(item).area || t('notSet')}</span>
+              </div>
+              <div className="mt-3 flex justify-between text-xs text-text-soft">
                 <span>{humanize(recommendationFor(item)) || t('notSet')}</span>
                 <span>{missingInfoList(item.missing_info_json).length} {t('openItemsShort')}</span>
               </div>
@@ -445,25 +483,32 @@ function CockpitHero({
   latestUpdate: string | null;
 }) {
   const t = useTranslations('workspaceCockpitPage');
+  const title = titleFor(opportunity);
+  const arTitle = arabicTitleFor(opportunity);
+  const facts = dealFacts(opportunity);
   return (
-    <Panel className="relative overflow-hidden p-5">
+    <Panel className="relative overflow-hidden p-5 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(12,42,37,.92),rgba(8,13,17,.94)_56%,rgba(5,7,11,.98))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(49,211,185,.18),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(207,170,69,.16),transparent_30%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div>
+        <div className="relative">
           <p className="mb-2 text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
           <h2 className="text-3xl font-semibold tracking-tight text-text md:text-4xl">
-            {opportunity?.summary || t('emptyCockpitTitle')}
+            {title || t('emptyCockpitTitle')}
           </h2>
+          {arTitle ? <p className="mt-2 text-xl font-semibold text-accent/90" dir="rtl">{arTitle}</p> : null}
           <p className="mt-2 max-w-3xl text-sm leading-6 text-text-soft">
-            {opportunity ? t('heroBody') : t('emptyPosture')}
+            {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <TrustPill label={humanize(recommendationFor(opportunity)) || t('notSet')} tone="amber" />
             <TrustPill label={humanize(confidenceFor(opportunity)) || t('notSet')} tone="cyan" />
+            {facts.price ? <TrustPill label={facts.price} tone="slate" /> : null}
+            {facts.area ? <TrustPill label={facts.area} tone="slate" /> : null}
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:min-w-[420px]">
+        <div className="relative grid grid-cols-2 gap-2 md:grid-cols-4 lg:min-w-[420px]">
           <HeroChip label={t('mandateFit')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
           <HeroChip label={t('confidence')} value={humanize(confidenceFor(opportunity)) || t('notSet')} />
           <HeroChip label={t('openItems')} value={missingCount.toString()} />
@@ -486,8 +531,15 @@ function HeroChip({ label, value }: { label: string; value: string }) {
 function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (module: CockpitModule) => void }) {
   const t = useTranslations('workspaceCockpitPage.modules');
   const modules: CockpitModule[] = ['evidence', 'model', 'renovation', 'openItems', 'comps'];
+  const arLabels: Record<CockpitModule, string> = {
+    evidence: 'الأدلة',
+    model: 'السيناريوهات',
+    renovation: 'التجديد',
+    openItems: 'العناصر',
+    comps: 'السوق',
+  };
   return (
-    <div className="flex gap-2 overflow-x-auto rounded-3xl border border-border bg-surface-alt p-2">
+    <div className="flex gap-2 overflow-x-auto rounded-[1.6rem] border border-border bg-surface-alt p-2 dark:border-white/10 dark:bg-[#081014]/95">
       {modules.map((module) => {
         const Icon = moduleIcons[module];
         const selected = active === module;
@@ -497,12 +549,15 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
             type="button"
             onClick={() => onChange(module)}
             className={cn(
-              'inline-flex min-h-[48px] min-w-fit items-center gap-2 rounded-2xl px-4 text-sm font-semibold transition',
+              'inline-flex min-h-[54px] min-w-fit items-center gap-2 rounded-[1.15rem] px-4 text-left text-sm font-semibold transition',
               selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
             )}
           >
             <Icon className="h-4 w-4" />
-            {t(module)}
+            <span className="grid leading-tight">
+              <span>{t(module)}</span>
+              <span className={cn('text-[11px] font-medium', selected ? 'text-[color:var(--accent-text)] opacity-70' : 'text-text-muted')} dir="rtl">{arLabels[module]}</span>
+            </span>
           </button>
         );
       })}
@@ -860,7 +915,7 @@ function MandateRow({ label, value }: { label: string; value: string }) {
 
 function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-3xl border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur', className)}>
+    <div className={cn('rounded-3xl border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_22px_70px_rgba(0,0,0,.28)]', className)}>
       {children}
     </div>
   );

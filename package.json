@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
+    "seed:acquisition-demo": "node scripts/seed-acquisition-demo.mjs",
     "gen:types": "supabase gen types typescript --project-id vqsyxrgvyxcbejhhgomf > src/types/supabase.ts"
   },
   "dependencies": {

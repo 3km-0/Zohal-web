@@ -2790,7 +2790,7 @@
     "evidenceBody": "Evidence stays organized in Sources; the cockpit only shows coverage and decision gaps.",
     "modules": {
       "evidence": "Evidence",
-      "model": "Model",
+      "model": "Scenarios",
       "renovation": "Renovation",
       "openItems": "Open Items",
       "comps": "Market Comps"
