@@ -70,7 +70,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         <button
           type="button"
           onClick={openMobileSidebar}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-scholar-sm border border-border text-text-soft transition-colors hover:bg-surface-alt md:hidden"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-zohal-sm border border-border text-text-soft transition-colors hover:bg-surface-alt md:hidden"
           aria-label={tSidebar('openMenu')}
         >
           <Menu className="h-5 w-5" />
@@ -89,7 +89,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         {/* Global Search */}
         <Link
           href="/ask"
-          className="hidden rounded-scholar-sm p-2 transition-colors hover:bg-surface-alt md:inline-flex"
+          className="hidden rounded-zohal-sm p-2 transition-colors hover:bg-surface-alt md:inline-flex"
           aria-label={tNav('ask')}
           data-tour="global-search"
         >
@@ -99,7 +99,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         <button
           type="button"
           onClick={() => applyThemeMode(nextThemeMode)}
-          className="inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-scholar-sm border border-border bg-surface-alt text-text-soft transition-colors hover:border-accent hover:bg-surface hover:text-text"
+          className="inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-zohal-sm border border-border bg-surface-alt text-text-soft transition-colors hover:border-accent hover:bg-surface hover:text-text"
           aria-label={themeToggleLabel}
           title={themeToggleLabel}
           data-testid="app-header-theme-toggle"
@@ -136,7 +136,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-60 bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)] z-[200] overflow-hidden animate-fade-in">
+            <div className="absolute right-0 mt-2 w-60 bg-surface border border-border rounded-zohal shadow-[var(--shadowMd)] z-[200] overflow-hidden animate-fade-in">
               {/* User info header */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
                 <div

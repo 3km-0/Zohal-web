@@ -715,7 +715,7 @@ export default function SubscriptionPage() {
           </div>
 
           {paymentError ? (
-            <div className="mx-auto mt-6 max-w-2xl rounded-scholar border border-error/30 bg-error/10 p-4 text-sm text-error">
+            <div className="mx-auto mt-6 max-w-2xl rounded-zohal border border-error/30 bg-error/10 p-4 text-sm text-error">
               {paymentError}
             </div>
           ) : null}
@@ -819,7 +819,7 @@ export default function SubscriptionPage() {
                       <p className="text-xs text-text-soft">{t('promoCheckoutHint')}</p>
                     </div>
                   ) : null}
-                  <div className="rounded-scholar bg-surface-alt p-4 text-sm text-text-soft">
+                  <div className="rounded-zohal bg-surface-alt p-4 text-sm text-text-soft">
                     {t('hostedCheckoutNote')}
                   </div>
                   <Button className="w-full" onClick={() => startHostedCheckout(selectedPlan)}>
@@ -916,7 +916,7 @@ export default function SubscriptionPage() {
                         {tEnterprise('companySize')}
                       </label>
                       <select
-                        className="min-h-[44px] w-full rounded-scholar border border-border bg-surface px-4 py-3 text-text"
+                        className="min-h-[44px] w-full rounded-zohal border border-border bg-surface px-4 py-3 text-text"
                         value={enterpriseForm.companySize}
                         onChange={(e) =>
                           setEnterpriseForm({ ...enterpriseForm, companySize: e.target.value })
@@ -946,7 +946,7 @@ export default function SubscriptionPage() {
                       {tEnterprise('message')}
                     </label>
                     <textarea
-                      className="min-h-[120px] w-full rounded-scholar border border-border bg-surface px-4 py-3 text-text"
+                      className="min-h-[120px] w-full rounded-zohal border border-border bg-surface px-4 py-3 text-text"
                       placeholder={tEnterprise('messagePlaceholder')}
                       value={enterpriseForm.message}
                       onChange={(e) => setEnterpriseForm({ ...enterpriseForm, message: e.target.value })}

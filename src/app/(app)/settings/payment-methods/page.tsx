@@ -189,7 +189,7 @@ export default function PaymentMethodsPage() {
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Error Message */}
           {error && (
-            <div className="p-4 bg-error/10 border border-error/20 rounded-scholar flex items-center gap-3">
+            <div className="p-4 bg-error/10 border border-error/20 rounded-zohal flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
               <p className="text-error text-sm">{error}</p>
             </div>

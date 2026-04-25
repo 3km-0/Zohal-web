@@ -22,8 +22,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-surface border border-border rounded-scholar p-7 mb-5">
-      <div className="w-11 h-11 bg-surface-alt border border-border rounded-scholar-lg flex items-center justify-center text-xl mb-4">
+    <section className="bg-surface border border-border rounded-zohal p-7 mb-5">
+      <div className="w-11 h-11 bg-surface-alt border border-border rounded-zohal-lg flex items-center justify-center text-xl mb-4">
         {icon}
       </div>
       <h2 className="website-display text-2xl text-text mb-3">{title}</h2>
@@ -34,7 +34,7 @@ function Section({
 
 function HighlightBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-surface-alt border border-border border-l-[3px] border-l-accent rounded-scholar-sm p-4 my-4">
+    <div className="bg-surface-alt border border-border border-l-[3px] border-l-accent rounded-zohal-sm p-4 my-4">
       {children}
     </div>
   );

@@ -65,7 +65,7 @@ export function SupportPageClient() {
         </p>
       </header>
 
-      <section className="mb-12 rounded-scholar border border-border bg-surface p-6">
+      <section className="mb-12 rounded-zohal border border-border bg-surface p-6">
         <div className="mb-4">
           <h2 className="text-2xl font-semibold text-text">Open a Support Ticket</h2>
           <p className="text-text-soft mt-1">
@@ -75,7 +75,7 @@ export function SupportPageClient() {
         <form className="space-y-4" onSubmit={submitSupportTicket}>
           <div className="grid gap-3 md:grid-cols-3">
             <select
-              className="rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+              className="rounded-zohal border border-border bg-surface-alt px-3 py-2 text-sm text-text"
               value={category}
               onChange={(e) => setCategory(e.target.value as typeof category)}
             >
@@ -85,7 +85,7 @@ export function SupportPageClient() {
               <option value="feature_request">Feature Request</option>
             </select>
             <select
-              className="rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+              className="rounded-zohal border border-border bg-surface-alt px-3 py-2 text-sm text-text"
               value={priority}
               onChange={(e) => setPriority(e.target.value as typeof priority)}
             >
@@ -96,7 +96,7 @@ export function SupportPageClient() {
             <input
               type="email"
               placeholder="Email (optional)"
-              className="rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+              className="rounded-zohal border border-border bg-surface-alt px-3 py-2 text-sm text-text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -104,13 +104,13 @@ export function SupportPageClient() {
           <input
             type="text"
             placeholder="Subject"
-            className="w-full rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+            className="w-full rounded-zohal border border-border bg-surface-alt px-3 py-2 text-sm text-text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
           />
           <textarea
             placeholder="Describe your issue or request"
-            className="w-full min-h-[140px] rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+            className="w-full min-h-[140px] rounded-zohal border border-border bg-surface-alt px-3 py-2 text-sm text-text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
@@ -118,7 +118,7 @@ export function SupportPageClient() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-scholar bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-zohal bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Ticket'}
             </button>
@@ -260,9 +260,9 @@ function FAQItem({
   answer: React.ReactNode;
 }) {
   return (
-    <div className={cn('rounded-scholar border border-border bg-surface p-5')}>
+    <div className={cn('rounded-zohal border border-border bg-surface p-5')}>
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 bg-surface-alt border border-border rounded-scholar flex items-center justify-center flex-shrink-0 text-lg">
+        <div className="w-10 h-10 bg-surface-alt border border-border rounded-zohal flex items-center justify-center flex-shrink-0 text-lg">
           {icon}
         </div>
         <div className="flex-1">

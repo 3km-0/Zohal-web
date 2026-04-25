@@ -4,10 +4,10 @@ import { type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * ScholarTabs - iOS-style tab selector with accent colors and optional badges
+ * ZohalTabs - iOS-style tab selector with accent colors and optional badges
  *
  * Usage:
- * <ScholarTabs
+ * <ZohalTabs
  *   tabs={[
  *     { id: 'overview', label: 'Overview', icon: <FileText /> },
  *     { id: 'variables', label: 'Variables', icon: <FileText />, count: 12, attentionCount: 2 },
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
  * />
  */
 
-export interface ScholarTab {
+export interface ZohalTab {
   id: string;
   label: string;
   icon?: ReactNode;
@@ -27,8 +27,8 @@ export interface ScholarTab {
   attentionCount?: number;
 }
 
-export interface ScholarTabsProps {
-  tabs: ScholarTab[];
+export interface ZohalTabsProps {
+  tabs: ZohalTab[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
   className?: string;
@@ -36,7 +36,7 @@ export interface ScholarTabsProps {
   dataTour?: string;
 }
 
-export function ScholarTabs({ tabs, activeTab, onTabChange, className, dataTour }: ScholarTabsProps) {
+export function ZohalTabs({ tabs, activeTab, onTabChange, className, dataTour }: ZohalTabsProps) {
   return (
     <div 
       className={cn('flex flex-wrap gap-2', className)}
@@ -52,7 +52,7 @@ export function ScholarTabs({ tabs, activeTab, onTabChange, className, dataTour 
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             className={cn(
-              'inline-flex items-center gap-2 px-4 py-2.5 rounded-scholar text-sm font-semibold transition-all duration-200',
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-zohal text-sm font-semibold transition-all duration-200',
               isActive
                 ? 'bg-accent/10 text-accent border-2 border-accent shadow-sm'
                 : 'bg-surface text-text border border-border hover:bg-surface-alt hover:border-text-soft/30'
@@ -85,14 +85,14 @@ export function ScholarTabs({ tabs, activeTab, onTabChange, className, dataTour 
 }
 
 /**
- * ScholarTabContent - Container for tab content with consistent styling
+ * ZohalTabContent - Container for tab content with consistent styling
  */
-export interface ScholarTabContentProps {
+export interface ZohalTabContentProps {
   children: ReactNode;
   className?: string;
 }
 
-export function ScholarTabContent({ children, className }: ScholarTabContentProps) {
+export function ZohalTabContent({ children, className }: ZohalTabContentProps) {
   return (
     <div className={cn('mt-4 space-y-4', className)}>
       {children}

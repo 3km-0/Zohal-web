@@ -137,7 +137,7 @@ export function GenericModuleTab({
                   'animate-fadeInUp',
                   getSeverityBorderClass(item.severity) !== 'border-l-border' && 'border-l-[3px]',
                   getSeverityBorderClass(item.severity),
-                  'rounded-r-scholar',
+                  'rounded-r-zohal',
                 )}
                 style={{ animationDelay: `${Math.min(idx, 8) * 30}ms`, animationFillMode: 'both' }}
               >

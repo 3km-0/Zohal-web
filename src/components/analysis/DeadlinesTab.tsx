@@ -170,7 +170,7 @@ export function DeadlinesTab({
 
       {/* Google connect banner — shown when any calendar request needs auth */}
       {needsGoogle && (
-        <div className="flex items-center gap-3 p-4 rounded-scholar border border-accent-alt/30 bg-accent-alt/5 animate-fadeInUp">
+        <div className="flex items-center gap-3 p-4 rounded-zohal border border-accent-alt/30 bg-accent-alt/5 animate-fadeInUp">
           <Link2 className="w-5 h-5 text-accent-alt flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-text">Connect Google to add calendar events</p>
@@ -228,7 +228,7 @@ export function DeadlinesTab({
 
                 {/* Card */}
                 <div className={cn(
-                  'rounded-scholar border bg-surface p-4 shadow-[var(--shadowSm)] transition-all',
+                  'rounded-zohal border bg-surface p-4 shadow-[var(--shadowSm)] transition-all',
                   urgency.urgencyLevel === 'overdue' || urgency.urgencyLevel === 'urgent'
                     ? 'border-error/20'
                     : urgency.urgencyLevel === 'approaching'

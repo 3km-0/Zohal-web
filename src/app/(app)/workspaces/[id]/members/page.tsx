@@ -164,7 +164,7 @@ export default function WorkspaceMembersPage() {
               <div>
                 <label className="block text-sm font-medium text-text mb-1.5">Role</label>
                 <select
-                  className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text"
+                  className="w-full px-4 py-3 bg-surface border border-border rounded-zohal text-text"
                   value={role}
                   onChange={(e) => setRole(e.target.value as WorkspaceRole)}
                 >
@@ -182,7 +182,7 @@ export default function WorkspaceMembersPage() {
             </div>
 
             {needsOrgInvite && (
-              <div className="mt-4 p-3 border border-border rounded-scholar bg-surface-alt">
+              <div className="mt-4 p-3 border border-border rounded-zohal bg-surface-alt">
                 <p className="text-sm text-text">
                   This email doesn’t match an existing account yet. You can send an organization invite first.
                 </p>
@@ -215,7 +215,7 @@ export default function WorkspaceMembersPage() {
                 {members.map((m) => (
                   <div
                     key={m.id}
-                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-3 border border-border rounded-scholar bg-surface"
+                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-3 border border-border rounded-zohal bg-surface"
                   >
                     <div className="min-w-0">
                       <div className="font-medium text-text truncate">
@@ -228,7 +228,7 @@ export default function WorkspaceMembersPage() {
 
                     <div className="flex items-center gap-2">
                       <select
-                        className="px-3 py-2 bg-surface border border-border rounded-scholar text-sm text-text"
+                        className="px-3 py-2 bg-surface border border-border rounded-zohal text-sm text-text"
                         value={(m.role as WorkspaceRole) || 'viewer'}
                         onChange={(e) => handleUpdateRole(m.id, e.target.value as WorkspaceRole)}
                       >

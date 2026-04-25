@@ -49,7 +49,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
     <div className={cn('grid grid-cols-1 sm:grid-cols-3 gap-3', className)}>
       {/* Risk Distribution - Mini Donut */}
       {totalOpenRisks > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-scholar border border-border bg-surface">
+        <div className="flex items-center gap-3 p-3 rounded-zohal border border-border bg-surface">
           <div className="relative w-12 h-12 flex-shrink-0">
             <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
               {(() => {
@@ -110,7 +110,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
 
       {/* Confidence Breakdown - Stacked Bar */}
       {totalConfidence > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-scholar border border-border bg-surface">
+        <div className="flex items-center gap-3 p-3 rounded-zohal border border-border bg-surface">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-text mb-2">
               <BarChart3 className="w-3.5 h-3.5 text-accent" />
@@ -148,7 +148,7 @@ export function AtAGlanceSummary({ risks, confidences, noticeDeadline, className
       {/* Deadline Proximity */}
       {deadlineUrgency.daysRemaining !== null && (
         <div className={cn(
-          'flex items-center gap-3 p-3 rounded-scholar border bg-surface',
+          'flex items-center gap-3 p-3 rounded-zohal border bg-surface',
           deadlineUrgency.urgencyLevel === 'urgent' || deadlineUrgency.urgencyLevel === 'overdue'
             ? 'border-error/30'
             : deadlineUrgency.urgencyLevel === 'approaching'

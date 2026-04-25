@@ -21,7 +21,7 @@ import * as pdfjs from 'pdfjs-dist';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Badge, Button, Card, EmptyState, ScholarActionMenu, Spinner } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ZohalActionMenu, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
@@ -344,7 +344,7 @@ export default function WorkspaceDetailPage() {
               >
                 <Upload className="h-4 w-4" />
               </Button>
-              <ScholarActionMenu
+              <ZohalActionMenu
                 compact
                 ariaLabel={tCommon('moreActions')}
                 icon={<MoreVertical className="h-4 w-4" />}
@@ -403,7 +403,7 @@ export default function WorkspaceDetailPage() {
                       setSearchQuery(e.target.value);
                     }}
                     placeholder="Search workspace documents"
-                    className="w-full rounded-scholar border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text outline-none transition-colors focus:border-accent"
+                    className="w-full rounded-zohal border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text outline-none transition-colors focus:border-accent"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -654,7 +654,7 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
   return (
     <div
       ref={containerRef}
-      className="relative aspect-[4/3] w-full overflow-hidden rounded-scholar-lg border border-border bg-surface-alt"
+      className="relative aspect-[4/3] w-full overflow-hidden rounded-zohal-lg border border-border bg-surface-alt"
     >
       {thumbnail ? (
         <Image
@@ -702,7 +702,7 @@ function DocumentCard({ document: doc, workspaceId, onDelete }: DocumentCardProp
 
   return (
     <Card
-      className="relative group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-scholar"
+      className="relative group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-zohal"
       padding="none"
     >
       <Link href={`/workspaces/${workspaceId}/documents/${doc.id}`} className="block" data-tour="workspace-document-card">
@@ -761,7 +761,7 @@ function DocumentCard({ document: doc, workspaceId, onDelete }: DocumentCardProp
         {showMenu && (
           <>
             <div className="fixed inset-0 z-[99]" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 z-[100] mt-1 w-48 overflow-hidden rounded-scholar border border-border bg-surface shadow-scholar-lg animate-fade-in">
+            <div className="absolute right-0 z-[100] mt-1 w-48 overflow-hidden rounded-zohal border border-border bg-surface shadow-zohal-lg animate-fade-in">
               <Link
                 href={`/workspaces/${workspaceId}/documents/${doc.id}`}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-text transition-colors hover:bg-surface-alt"

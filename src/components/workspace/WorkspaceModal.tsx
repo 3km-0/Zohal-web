@@ -213,7 +213,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
                   type="button"
                   onClick={() => setWorkspaceType(type.value)}
                   className={cn(
-                    'flex flex-col items-center gap-1 p-3 rounded-scholar border transition-all',
+                    'flex flex-col items-center gap-1 p-3 rounded-zohal border transition-all',
                     workspaceType === type.value
                       ? 'border-accent bg-accent/10'
                       : 'border-border hover:border-accent/50'
@@ -237,7 +237,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">Folder</label>
             <select
-              className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background"
+              className="w-full px-4 py-3 bg-surface border border-border rounded-zohal text-text transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background"
               value={parentFolderId}
               onChange={(e) => setParentFolderId(e.target.value)}
             >
@@ -255,7 +255,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
               {tModal('description')}
             </label>
             <textarea
-              className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text placeholder:text-text-soft transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background resize-none"
+              className="w-full px-4 py-3 bg-surface border border-border rounded-zohal text-text placeholder:text-text-soft transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background resize-none"
               rows={3}
               placeholder={tModal('descriptionPlaceholder')}
               value={description}
@@ -280,7 +280,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
                   type="button"
                   onClick={() => setSelectedTemplateId(null)}
                   className={cn(
-                    'flex flex-col items-center gap-1 p-2 rounded-scholar border transition-all flex-shrink-0 w-16',
+                    'flex flex-col items-center gap-1 p-2 rounded-zohal border transition-all flex-shrink-0 w-16',
                     selectedTemplateId === null
                       ? 'border-accent bg-accent/10'
                       : 'border-border hover:border-accent/50'
@@ -301,7 +301,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
                       title={getTemplateDescription(tplAny, 'en')}
                       onClick={() => setSelectedTemplateId(tpl.id)}
                       className={cn(
-                        'flex flex-col items-center gap-1 p-2 rounded-scholar border transition-all flex-shrink-0 w-16',
+                        'flex flex-col items-center gap-1 p-2 rounded-zohal border transition-all flex-shrink-0 w-16',
                         isSelected
                           ? 'border-accent bg-accent/10'
                           : 'border-border hover:border-accent/50'
@@ -327,7 +327,7 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
           </div>
 
           {error && (
-            <div className="p-3 bg-error/10 border border-error/20 rounded-scholar text-sm text-error">
+            <div className="p-3 bg-error/10 border border-error/20 rounded-zohal text-sm text-error">
               {error}
             </div>
           )}

@@ -93,7 +93,7 @@ export function NoteModal({ workspaceId, note, onClose, onSaved }: NoteModalProp
               Content
             </label>
             <textarea
-              className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text placeholder:text-text-soft transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background resize-none min-h-[200px]"
+              className="w-full px-4 py-3 bg-surface border border-border rounded-zohal text-text placeholder:text-text-soft transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background resize-none min-h-[200px]"
               placeholder="Write your note..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -102,7 +102,7 @@ export function NoteModal({ workspaceId, note, onClose, onSaved }: NoteModalProp
           </div>
 
           {error && (
-            <div className="p-3 bg-error/10 border border-error/20 rounded-scholar text-sm text-error">
+            <div className="p-3 bg-error/10 border border-error/20 rounded-zohal text-sm text-error">
               {error}
             </div>
           )}

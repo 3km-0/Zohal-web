@@ -1163,7 +1163,7 @@ export function Homepage() {
 
   return (
     <div
-      data-theme="slate-dark"
+      data-theme="zohal-dark"
       className="website-shell relative isolate min-h-screen overflow-x-hidden bg-[color:var(--bg)] font-[family:var(--font-plus-jakarta)]"
     >
       <Nav content={content} />

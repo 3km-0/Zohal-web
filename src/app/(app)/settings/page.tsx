@@ -178,7 +178,7 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold text-text">{t('subscription')}</h2>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-surface-alt rounded-scholar">
+            <div className="flex items-center justify-between p-4 bg-surface-alt rounded-zohal">
               <div>
                 <p className="font-medium text-text">
                   {effectiveTier === 'free'
@@ -225,7 +225,7 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold text-text">{tSettings('channelsIntegrations')}</h2>
             </div>
 
-            <div className="space-y-4 rounded-scholar bg-surface-alt p-4">
+            <div className="space-y-4 rounded-zohal bg-surface-alt p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                 <p className="font-medium text-text">{tSettings('channelsIntegrationsTitle')}</p>
@@ -259,7 +259,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => handleThemeChange('light')}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 p-4 rounded-scholar border transition-all',
+                  'flex-1 flex items-center justify-center gap-2 p-4 rounded-zohal border transition-all',
                   theme === 'light'
                     ? 'border-accent bg-accent/10'
                     : 'border-border hover:border-accent/50'
@@ -271,7 +271,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => handleThemeChange('dark')}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 p-4 rounded-scholar border transition-all',
+                  'flex-1 flex items-center justify-center gap-2 p-4 rounded-zohal border transition-all',
                   theme === 'dark'
                     ? 'border-accent bg-accent/10'
                     : 'border-border hover:border-accent/50'
@@ -317,7 +317,7 @@ export default function SettingsPage() {
                   {t('deleteAccount')}
                 </Button>
               ) : (
-                <div className="p-4 bg-error/10 border border-error/30 rounded-scholar">
+                <div className="p-4 bg-error/10 border border-error/30 rounded-zohal">
                   <p className="text-sm text-error mb-4">
                     {tSettings('deleteAccountConfirm')}
                   </p>
@@ -348,7 +348,7 @@ export default function SettingsPage() {
 
 function IntegrationPreview({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text-soft">
+    <div className="flex items-center gap-2 rounded-zohal border border-border bg-surface px-3 py-2 text-sm text-text-soft">
       <Icon className="h-4 w-4 text-accent" />
       <span>{label}</span>
     </div>

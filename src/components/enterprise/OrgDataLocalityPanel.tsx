@@ -187,13 +187,13 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
         </div>
       ) : (
         <>
-          <div className="rounded-scholar border border-border bg-surface-alt p-3 text-sm text-text-soft">
+          <div className="rounded-zohal border border-border bg-surface-alt p-3 text-sm text-text-soft">
             {currentPlane?.mode === 'enterprise_firebase'
               ? t('currentRegion', { region: currentPlane.region || '-' })
               : t('sharedMode')}
           </div>
 
-          <div className="rounded-scholar border border-border bg-surface-alt p-3 text-xs text-text-soft">
+          <div className="rounded-zohal border border-border bg-surface-alt p-3 text-xs text-text-soft">
             {regionLocked ? t('regionLockedBody') : t('noMigrationBody')}
           </div>
 
@@ -206,7 +206,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
               onSelectRegion={setSelectedRegion}
             />
           ) : (
-            <div className="rounded-scholar border border-warning/40 bg-warning/10 p-4 text-sm text-text">
+            <div className="rounded-zohal border border-warning/40 bg-warning/10 p-4 text-sm text-text">
               <p className="mb-2 font-medium">{t('ineligibleTitle')}</p>
               <p className="text-text-soft">{ineligibleMessage}</p>
               {eligibilityReason && (
@@ -231,7 +231,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
               {t('confirmBody', { city: selectedRegion.city, country: selectedRegion.country_code })}
             </p>
 
-            <div className="mb-4 rounded-scholar border border-border bg-surface-alt p-3">
+            <div className="mb-4 rounded-zohal border border-border bg-surface-alt p-3">
               <div className="mb-2 text-xs font-semibold uppercase text-text-soft">{t('compliance')}</div>
               <div className="flex flex-wrap gap-2">
                 {(selectedRegion.compliance || []).map((item) => (

@@ -157,7 +157,7 @@ function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
 
   return (
     <Card
-      className="relative group hover:-translate-y-0.5 hover:shadow-scholar transition-all duration-200 cursor-pointer"
+      className="relative group hover:-translate-y-0.5 hover:shadow-zohal transition-all duration-200 cursor-pointer"
       padding="none"
       onClick={onEdit}
     >
@@ -207,7 +207,7 @@ function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
                 setShowMenu(false);
               }}
             />
-            <div className="absolute right-0 mt-1 w-32 bg-surface border border-border rounded-scholar shadow-scholar-lg z-50 overflow-hidden animate-fade-in">
+            <div className="absolute right-0 mt-1 w-32 bg-surface border border-border rounded-zohal shadow-zohal-lg z-50 overflow-hidden animate-fade-in">
               <button
                 onClick={(e) => {
                   e.stopPropagation();

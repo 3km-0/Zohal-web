@@ -104,7 +104,7 @@ export function ProvisioningProgressModal({ open, run, onClose }: ProvisioningPr
             const failed = run.status === 'failed' && (step === run.step || (run.step === 'error' && idx === stepIndex));
 
             return (
-              <div key={step} className={cn('flex items-center gap-2 rounded-scholar border px-3 py-2', active ? 'border-accent bg-accent/10' : 'border-border')}>
+              <div key={step} className={cn('flex items-center gap-2 rounded-zohal border px-3 py-2', active ? 'border-accent bg-accent/10' : 'border-border')}>
                 {complete ? (
                   <CheckCircle2 className="h-4 w-4 text-success" />
                 ) : failed ? (
@@ -121,7 +121,7 @@ export function ProvisioningProgressModal({ open, run, onClose }: ProvisioningPr
         </div>
 
         {run.status === 'failed' && (
-          <div className="mt-4 rounded-scholar border border-error/40 bg-error/10 p-3 text-sm text-error">
+          <div className="mt-4 rounded-zohal border border-error/40 bg-error/10 p-3 text-sm text-error">
             <div className="mb-1 flex items-center gap-2 font-medium">
               <AlertTriangle className="h-4 w-4" /> Provisioning failed
             </div>

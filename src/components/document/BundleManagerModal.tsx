@@ -235,7 +235,7 @@ export function BundleManagerModal({
             ) : (
               <>
                 {error && (
-                  <div className="p-3 rounded-scholar border border-error/30 bg-error/5 text-error text-sm">
+                  <div className="p-3 rounded-zohal border border-error/30 bg-error/5 text-error text-sm">
                     {error}
                   </div>
                 )}
@@ -265,7 +265,7 @@ export function BundleManagerModal({
                 <button
                   onClick={() => onSelectBundle('')}
                   className={cn(
-                    "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                    "w-full flex items-center justify-between p-3 rounded-zohal border transition-colors text-left",
                     !selectedBundleId
                       ? "border-accent bg-accent/5"
                       : "border-border bg-surface-alt hover:border-accent/50"
@@ -286,7 +286,7 @@ export function BundleManagerModal({
                     onClick={() => selectBundle(b.id)}
                     disabled={saving}
                     className={cn(
-                      "w-full flex items-center justify-between p-3 rounded-scholar border transition-colors text-left",
+                      "w-full flex items-center justify-between p-3 rounded-zohal border transition-colors text-left",
                       selectedBundleId === b.id
                         ? "border-accent bg-accent/5"
                         : "border-border bg-surface-alt hover:border-accent/50"
@@ -321,7 +321,7 @@ export function BundleManagerModal({
                       <div
                         key={m.id}
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-scholar text-sm",
+                          "flex items-center justify-between p-2 rounded-zohal text-sm",
                           m.document_id === documentId ? "bg-accent/5" : "bg-surface-alt"
                         )}
                       >

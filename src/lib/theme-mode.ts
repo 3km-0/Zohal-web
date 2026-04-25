@@ -1,7 +1,7 @@
 'use client';
 
 export type ThemeMode = 'light' | 'dark';
-export type DataTheme = 'slate-light' | 'slate-dark';
+export type DataTheme = 'zohal-light' | 'zohal-dark';
 
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_CHANGE_EVENT = 'zohal-theme-change';
@@ -13,7 +13,7 @@ export function normalizeThemeMode(value: string | null | undefined): ThemeMode 
 }
 
 export function themeModeToDataTheme(theme: ThemeMode): DataTheme {
-  return theme === 'light' ? 'slate-light' : 'slate-dark';
+  return theme === 'light' ? 'zohal-light' : 'zohal-dark';
 }
 
 export function readThemeModeFromStorage(): ThemeMode | null {

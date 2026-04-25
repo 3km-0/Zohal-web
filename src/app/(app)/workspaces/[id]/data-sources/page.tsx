@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ScholarToggle } from '@/components/ui';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ZohalToggle } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import type { WorkspaceApiConnection, ApiConnectionAuthMode } from '@/types/database';
 import { CheckCircle2, Database, ExternalLink, Globe, Link2, Loader2, PlugZap, Unplug } from 'lucide-react';
@@ -143,7 +143,7 @@ export default function DataSourcesPage() {
               </div>
               <Link
                 href="/integrations"
-                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
               >
                 {t('manageLibrary')}
                 <ExternalLink className="h-4 w-4" />
@@ -151,10 +151,10 @@ export default function DataSourcesPage() {
             </div>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm text-text-soft">
-            <div className="rounded-scholar border border-border bg-surface-alt p-3">
+            <div className="rounded-zohal border border-border bg-surface-alt p-3">
               {t('guidance.createOnce')}
             </div>
-            <div className="rounded-scholar border border-border bg-surface-alt p-3">
+            <div className="rounded-zohal border border-border bg-surface-alt p-3">
               {t('guidance.runSelection')}
             </div>
           </CardContent>
@@ -171,13 +171,13 @@ export default function DataSourcesPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
               </div>
             ) : attachedSources.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-scholar border border-dashed border-border bg-surface-alt px-4 py-12 text-center">
+              <div className="flex flex-col items-center justify-center rounded-zohal border border-dashed border-border bg-surface-alt px-4 py-12 text-center">
                 <Database className="mb-3 h-10 w-10 text-text-muted" />
                 <p className="text-sm font-medium text-text">{t('attached.emptyTitle')}</p>
                 <p className="mt-1 text-sm text-text-soft">{t('attached.emptyDescription')}</p>
                 <Link
                   href="/integrations"
-                  className="mt-4 inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-semibold text-[color:var(--button-primary-text)] transition-all duration-200 hover:bg-[color:var(--button-primary-bg-hover)]"
+                  className="mt-4 inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-semibold text-[color:var(--button-primary-text)] transition-all duration-200 hover:bg-[color:var(--button-primary-bg-hover)]"
                 >
                   {t('openIntegrations')}
                 </Link>
@@ -185,10 +185,10 @@ export default function DataSourcesPage() {
             ) : (
               <div className="space-y-3">
                 {attachedSources.map((source) => (
-                  <div key={source.id} className="rounded-scholar border border-border bg-surface-alt p-4">
+                  <div key={source.id} className="rounded-zohal border border-border bg-surface-alt p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-scholar bg-accent/10 text-accent">
+                        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-zohal bg-accent/10 text-accent">
                           <Globe className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
@@ -236,7 +236,7 @@ export default function DataSourcesPage() {
                     </div>
 
                     <div className="mt-4 border-t border-border pt-4">
-                      <ScholarToggle
+                      <ZohalToggle
                         label={t('attached.defaultLabel')}
                         caption={t('attached.defaultCaption')}
                         checked={source.enabled_by_default !== false}
@@ -245,7 +245,7 @@ export default function DataSourcesPage() {
                       />
                       <Link
                         href="/integrations"
-                        className="mt-4 inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface hover:text-text"
+                        className="mt-4 inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface hover:text-text"
                       >
                         {t('attached.editInIntegrations')}
                       </Link>
@@ -268,17 +268,17 @@ export default function DataSourcesPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
               </div>
             ) : availableLibrarySources.length === 0 ? (
-              <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-4 py-10 text-center">
+              <div className="rounded-zohal border border-dashed border-border bg-surface-alt px-4 py-10 text-center">
                 <p className="text-sm font-medium text-text">{t('library.emptyTitle')}</p>
                 <p className="mt-1 text-sm text-text-soft">{t('library.emptyDescription')}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {availableLibrarySources.map((source) => (
-                  <div key={source.id} className="rounded-scholar border border-border bg-surface-alt p-4">
+                  <div key={source.id} className="rounded-zohal border border-border bg-surface-alt p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-scholar bg-accent/10 text-accent">
+                        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-zohal bg-accent/10 text-accent">
                           <Link2 className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">

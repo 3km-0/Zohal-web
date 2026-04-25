@@ -37,7 +37,7 @@ export function DataLocalityMap({
   onSelectRegion,
 }: DataLocalityMapProps) {
   return (
-    <div className="relative overflow-hidden rounded-scholar border border-border bg-[radial-gradient(circle_at_top,#1d2a3f_0%,#0f1726_45%,#0b1220_100%)] p-4">
+    <div className="relative overflow-hidden rounded-zohal border border-border bg-[radial-gradient(circle_at_top,#1d2a3f_0%,#0f1726_45%,#0b1220_100%)] p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-white/90">Global Provisioning Map</h3>
         <span className="text-xs text-white/60">
@@ -46,7 +46,7 @@ export function DataLocalityMap({
       </div>
 
       {/* Dot-grid map — pure SVG, no external library */}
-      <div className="relative h-[260px] w-full overflow-hidden rounded-scholar bg-[#0a1020]/70">
+      <div className="relative h-[260px] w-full overflow-hidden rounded-zohal bg-[#0a1020]/70">
         <svg
           viewBox="0 0 980 420"
           preserveAspectRatio="xMidYMid meet"
@@ -126,7 +126,7 @@ export function DataLocalityMap({
               }}
               disabled={!interactive}
               className={cn(
-                'rounded-scholar border px-3 py-2 text-left text-xs transition',
+                'rounded-zohal border px-3 py-2 text-left text-xs transition',
                 isSelected
                   ? 'border-accent bg-accent/15 text-text'
                   : 'border-border bg-surface/50 text-text-soft hover:border-accent/50 hover:text-text',

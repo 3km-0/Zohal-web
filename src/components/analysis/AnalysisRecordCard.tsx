@@ -90,7 +90,7 @@ export function AnalysisRecordCard({
 
   return (
     <div className={cn(
-      'rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden',
+      'rounded-zohal border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden',
       severityBorderColor && `border-l-[3px] ${severityBorderColor}`,
     )}>
       {/* Verification Attention banner (for low confidence / needs_review items) */}
@@ -203,7 +203,7 @@ export function AnalysisSectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-surface-alt border border-border rounded-scholar transition-colors hover:bg-surface"
+      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-surface-alt border border-border rounded-zohal transition-colors hover:bg-surface"
     >
       <div className={cn('w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center', iconColor)}>
         {icon}
@@ -246,7 +246,7 @@ export function ExpandableJSON({ json, maxCollapsedLines = 4 }: ExpandableJSONPr
       <summary className="cursor-pointer text-xs text-accent hover:underline">
         {needsExpand ? 'Show result JSON' : 'Result'}
       </summary>
-      <pre className="mt-2 p-3 rounded-scholar-sm border border-border bg-surface-alt text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-64 overflow-y-auto">
+      <pre className="mt-2 p-3 rounded-zohal-sm border border-border bg-surface-alt text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-64 overflow-y-auto">
         {json}
       </pre>
     </details>

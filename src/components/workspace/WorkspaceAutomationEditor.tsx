@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bot, Clock3, Play, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Badge, Button, EmptyState, Input, ScholarToggle, Spinner } from '@/components/ui';
+import { Badge, Button, EmptyState, Input, ZohalToggle, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { automationStatusVariant, normalizeAutomationActivity, summarizeAutomationRun } from '@/lib/automations';
 import { createClient } from '@/lib/supabase/client';
@@ -188,7 +188,7 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-      <section className="rounded-scholar border border-border bg-surface p-5 shadow-[var(--shadowSm)]">
+      <section className="rounded-zohal border border-border bg-surface p-5 shadow-[var(--shadowSm)]">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-text">{t('presetTitle')}</h2>
@@ -206,19 +206,19 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
         </div>
 
         <div className="grid gap-4">
-          <ScholarToggle
+          <ZohalToggle
             label={t('enabled')}
             caption={t('enabledCaption')}
             checked={enabled}
             onCheckedChange={setEnabled}
           />
-          <ScholarToggle
+          <ZohalToggle
             label={t('triggerOnIngestion')}
             caption={t('triggerOnIngestionCaption')}
             checked={triggerOnIngestion}
             onCheckedChange={setTriggerOnIngestion}
           />
-          <ScholarToggle
+          <ZohalToggle
             label={t('dailyRefresh')}
             caption={t('dailyRefreshCaption')}
             checked={dailyRefresh}
@@ -245,20 +245,20 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
               />
             </div>
           </div>
-          <ScholarToggle
+          <ZohalToggle
             label={t('privateLive')}
             caption={t('privateLiveCaption')}
             checked={privateLiveEnabled}
             onCheckedChange={setPrivateLiveEnabled}
           />
-          <ScholarToggle
+          <ZohalToggle
             label={t('autoRefreshPrivateLive')}
             caption={t('autoRefreshPrivateLiveCaption')}
             checked={autoRefreshPrivateLive}
             onCheckedChange={setAutoRefreshPrivateLive}
             disabled={!privateLiveEnabled}
           />
-          <ScholarToggle
+          <ZohalToggle
             label={t('manualRunEnabled')}
             caption={t('manualRunEnabledCaption')}
             checked={manualRunEnabled}
@@ -268,7 +268,7 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
       </section>
 
       <section className="space-y-6">
-        <div className="rounded-scholar border border-border bg-surface p-5 shadow-[var(--shadowSm)]">
+        <div className="rounded-zohal border border-border bg-surface p-5 shadow-[var(--shadowSm)]">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-text">{t('currentStatus')}</h3>
             <Badge variant={automationStatusVariant(activeRun?.status || 'skipped')} dot>
@@ -280,7 +280,7 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
               <p className="text-sm text-text-soft">
                 {activeRun.status_reason || activeRun.error_message || '—'}
               </p>
-              <div className="space-y-2 rounded-scholar bg-surface-alt p-3">
+              <div className="space-y-2 rounded-zohal bg-surface-alt p-3">
                 {normalizeAutomationActivity(activeRun).length === 0 ? (
                   <p className="text-sm text-text-soft">—</p>
                 ) : (
@@ -303,14 +303,14 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
           )}
         </div>
 
-        <div className="rounded-scholar border border-border bg-surface p-5 shadow-[var(--shadowSm)]">
+        <div className="rounded-zohal border border-border bg-surface p-5 shadow-[var(--shadowSm)]">
           <h3 className="mb-3 text-base font-semibold text-text">{t('recentRuns')}</h3>
           {runs.length === 0 ? (
             <EmptyState icon={<Bot className="h-6 w-6" />} title={t('noRuns')} variant="inline" />
           ) : (
             <div className="space-y-3">
               {runs.map((run) => (
-                <div key={run.id} className="rounded-scholar border border-border bg-surface-alt p-3">
+                <div key={run.id} className="rounded-zohal border border-border bg-surface-alt p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <Badge variant={automationStatusVariant(run.status)} dot>

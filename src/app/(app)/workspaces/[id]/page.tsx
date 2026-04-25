@@ -59,7 +59,6 @@ type AcquisitionEventRow = {
 };
 
 type CockpitModule = 'evidence' | 'model' | 'renovation' | 'openItems' | 'comps';
-type WorkspaceSurface = 'cockpit' | 'sources' | 'automations' | 'livingInterface';
 
 type ScenarioState = {
   price: number;
@@ -190,7 +189,6 @@ export default function WorkspaceCockpitPage() {
   const [loading, setLoading] = useState(true);
   const [agentOpen, setAgentOpen] = useState(false);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
-  const [activeSurface, setActiveSurface] = useState<WorkspaceSurface>('cockpit');
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
 
@@ -248,10 +246,9 @@ export default function WorkspaceCockpitPage() {
   }, [selectedOpportunity?.id]);
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden bg-[#05070B] text-[#F8FAFC]">
+    <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-text">
       <div className={cn('relative flex min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_-12%,rgba(20,184,166,0.12),transparent_35%),radial-gradient(circle_at_92%_4%,rgba(15,118,110,0.20),transparent_38%),radial-gradient(circle_at_36%_118%,rgba(94,234,212,0.09),transparent_36%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:52px_52px] opacity-20" />
 
         <aside className="relative hidden w-[328px] shrink-0 border-r border-[rgba(94,234,212,0.10)] bg-[#061014]/95 p-5 shadow-[inset_-42px_0_90px_rgba(15,118,110,0.16)] xl:block">
           <BrandBlock />
@@ -271,13 +268,6 @@ export default function WorkspaceCockpitPage() {
               backHref={backHref}
               backLabel={tCommon('back')}
               mandateLabel={t('activeMandateStrip')}
-              activeSurface={activeSurface}
-              onSurfaceChange={(surface) => {
-                setActiveSurface(surface);
-                if (surface === 'sources') setActiveModule('evidence');
-                if (surface === 'automations') setActiveModule('openItems');
-                if (surface === 'livingInterface') setActiveModule('comps');
-              }}
               labels={{
                 cockpit: tTabs('workspace'),
                 sources: tTabs('sources'),
@@ -393,8 +383,6 @@ function TopCommandBar({
   backHref,
   backLabel,
   mandateLabel,
-  activeSurface,
-  onSurfaceChange,
   labels,
   onAsk,
   askLabel,
@@ -403,17 +391,15 @@ function TopCommandBar({
   backHref: string;
   backLabel: string;
   mandateLabel: string;
-  activeSurface: WorkspaceSurface;
-  onSurfaceChange: (surface: WorkspaceSurface) => void;
   labels: { cockpit: string; sources: string; automations: string; livingInterface: string };
   onAsk: () => void;
   askLabel: string;
 }) {
   const nav = [
-    { key: 'cockpit' as const, label: labels.cockpit, icon: Home },
-    { key: 'sources' as const, label: labels.sources, icon: FolderOpen },
-    { key: 'automations' as const, label: labels.automations, icon: Bolt },
-    { key: 'livingInterface' as const, label: labels.livingInterface, icon: PanelsTopLeft },
+    { key: 'cockpit' as const, label: labels.cockpit, icon: Home, href: `/workspaces/${workspaceId}` },
+    { key: 'sources' as const, label: labels.sources, icon: FolderOpen, href: `/workspaces/${workspaceId}/sources` },
+    { key: 'automations' as const, label: labels.automations, icon: Bolt, href: `/workspaces/${workspaceId}/automations` },
+    { key: 'livingInterface' as const, label: labels.livingInterface, icon: PanelsTopLeft, href: `/workspaces/${workspaceId}/publish` },
   ];
 
   return (
@@ -431,20 +417,19 @@ function TopCommandBar({
       <div className="flex items-center gap-2 overflow-x-auto rounded-full border border-white/10 bg-white/[0.035] p-1">
         {nav.map((item) => {
           const Icon = item.icon;
-          const active = activeSurface === item.key;
           return (
-            <button
+            <Link
               key={item.key}
-              type="button"
-              onClick={() => onSurfaceChange(item.key)}
+              href={item.href}
+              aria-current={item.key === 'cockpit' ? 'page' : undefined}
               className={cn(
                 'inline-flex min-h-9 min-w-fit items-center gap-2 rounded-full px-3 text-sm font-semibold transition',
-                active ? 'bg-[#F5C84C] text-[#05070B] shadow-[0_0_26px_rgba(245,200,76,0.16)]' : 'text-slate-400 hover:bg-white/[0.07] hover:text-white'
+                item.key === 'cockpit' ? 'bg-[#F5C84C] text-[#05070B] shadow-[0_0_26px_rgba(245,200,76,0.16)]' : 'text-slate-400 hover:bg-white/[0.07] hover:text-white'
               )}
             >
               <Icon className="h-4 w-4" />
               {item.label}
-            </button>
+            </Link>
           );
         })}
         <button

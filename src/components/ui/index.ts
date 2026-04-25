@@ -15,34 +15,34 @@ export { IconBox, type IconBoxProps } from './IconBox';
 export { Spinner, type SpinnerProps } from './Spinner';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 
-// Scholar-themed components (iOS parity)
+// Zohal-themed components (iOS parity)
 export {
-  ScholarNotebookCard,
-  ScholarOverline,
-  ScholarSectionHeader,
-  type ScholarNotebookCardProps,
-  type ScholarOverlineProps,
-  type ScholarSectionHeaderProps,
-} from './ScholarNotebookCard';
+  ZohalNotebookCard,
+  ZohalOverline,
+  ZohalSectionHeader,
+  type ZohalNotebookCardProps,
+  type ZohalOverlineProps,
+  type ZohalSectionHeaderProps,
+} from './ZohalNotebookCard';
 export {
-  ScholarTabs,
-  ScholarTabContent,
-  type ScholarTab,
-  type ScholarTabsProps,
-  type ScholarTabContentProps,
-} from './ScholarTabs';
+  ZohalTabs,
+  ZohalTabContent,
+  type ZohalTab,
+  type ZohalTabsProps,
+  type ZohalTabContentProps,
+} from './ZohalTabs';
 export {
-  ScholarActionMenu,
-  type ScholarActionMenuItem,
-  type ScholarActionMenuProps,
-} from './ScholarActionMenu';
-export { ScholarSelect, type ScholarSelectProps } from './ScholarSelect';
-export { ScholarToggle, type ScholarToggleProps } from './ScholarToggle';
+  ZohalActionMenu,
+  type ZohalActionMenuItem,
+  type ZohalActionMenuProps,
+} from './ZohalActionMenu';
+export { ZohalSelect, type ZohalSelectProps } from './ZohalSelect';
+export { ZohalToggle, type ZohalToggleProps } from './ZohalToggle';
 export {
-  ScholarProgress,
-  ScholarProgressCard,
-  type ScholarProgressStep,
-  type ScholarProgressProps,
-  type ScholarProgressCardProps,
-} from './ScholarProgress';
+  ZohalProgress,
+  ZohalProgressCard,
+  type ZohalProgressStep,
+  type ZohalProgressProps,
+  type ZohalProgressCardProps,
+} from './ZohalProgress';
 

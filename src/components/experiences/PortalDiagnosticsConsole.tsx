@@ -68,14 +68,14 @@ export function PortalDiagnosticsConsole({
             </div>
           ) : (
             <>
-              <div className="rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="text-text-soft">{t('portalConsole.summaryTitle')}</div>
                 <div className="mt-1 text-base font-semibold text-text">{diagnostics.summary.title || t('status.none')}</div>
                 <div className="mt-2 text-sm text-text-soft">
                   {diagnostics.summary.source_kind || t('status.none')}
                 </div>
               </div>
-              <div className="rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="text-text-soft">{t('portalConsole.failureClass')}</div>
                 <div
                   data-testid="portal-failure-class"
@@ -87,7 +87,7 @@ export function PortalDiagnosticsConsole({
                   <p className="mt-3 text-sm text-text-soft">{diagnostics.stale_serving_reason}</p>
                 ) : null}
               </div>
-              <div className="rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="text-text-soft">{t('portalConsole.activeRevision')}</div>
                 <div className="mt-1 text-base font-semibold text-text">
                   {diagnostics.summary.active_revision_id || t('status.none')}
@@ -99,7 +99,7 @@ export function PortalDiagnosticsConsole({
                   </div>
                 ) : null}
               </div>
-              <div className="rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="text-text-soft">{t('portalConsole.qualityScore')}</div>
                 <div className="mt-1 text-base font-semibold text-text">{diagnostics.portal_quality.score}</div>
                 <div className="mt-2 text-sm text-text-soft">
@@ -126,7 +126,7 @@ export function PortalDiagnosticsConsole({
                 <div
                   key={stage.id}
                   data-testid={`portal-stage-${stage.id}`}
-                  className="rounded-scholar border border-border bg-surface-alt p-4"
+                  className="rounded-zohal border border-border bg-surface-alt p-4"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-semibold text-text">{t(`portalConsole.stageNames.${stage.id}`)}</div>
@@ -173,7 +173,7 @@ export function PortalDiagnosticsConsole({
                   })}
                 </div>
                 {diagnostics.live_probe?.preview?.excerpt ? (
-                  <div className="rounded-scholar border border-border bg-surface-alt p-3 text-text-soft">
+                  <div className="rounded-zohal border border-border bg-surface-alt p-3 text-text-soft">
                     {diagnostics.live_probe.preview.excerpt}
                   </div>
                 ) : null}
@@ -197,7 +197,7 @@ export function PortalDiagnosticsConsole({
                 <CardDescription>{t('portalConsole.candidateDescription')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="rounded-scholar border border-border bg-surface-alt p-4">
+                <div className="rounded-zohal border border-border bg-surface-alt p-4">
                   <div className="font-semibold text-text">{diagnostics.candidate?.candidate_id || t('status.none')}</div>
                   <div className="mt-1 text-text-soft">
                     {diagnostics.candidate?.authoring_strategy || t('status.none')}
@@ -251,7 +251,7 @@ export function PortalDiagnosticsConsole({
                     <div className="mt-2 text-text-soft">{t('portalConsole.preservedLive')}</div>
                   ) : null}
                   {diagnostics.recomposition_scorecard ? (
-                    <div className="mt-3 rounded-scholar border border-border bg-background p-3 text-text-soft">
+                    <div className="mt-3 rounded-zohal border border-border bg-background p-3 text-text-soft">
                       <div className="font-semibold text-text">{t('portalConsole.recompositionScorecard')}</div>
                       <div className="mt-1">
                         {t('portalConsole.recompositionSignals', {
@@ -277,7 +277,7 @@ export function PortalDiagnosticsConsole({
                   ) : null}
                 </div>
                 {diagnostics.candidate?.generation_failures?.length ? (
-                  <div className="rounded-scholar border border-error/30 bg-error/10 p-4 text-error">
+                  <div className="rounded-zohal border border-error/30 bg-error/10 p-4 text-error">
                     <div className="font-semibold">{t('portalConsole.generationFailures')}</div>
                     <ul className="mt-2 list-disc pl-5">
                       {diagnostics.candidate.generation_failures.map((failure) => (
@@ -296,7 +296,7 @@ export function PortalDiagnosticsConsole({
                   <CardDescription>Template projection routing diagnostics</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
-                  <div className="rounded-scholar border border-border bg-surface-alt p-4">
+                  <div className="rounded-zohal border border-border bg-surface-alt p-4">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-text-soft">Routing Mode</span>
                       <span

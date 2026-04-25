@@ -37,7 +37,7 @@ export function SharePasswordGate({ token, hint }: { token: string; hint: string
 
   return (
     <div className="min-h-screen bg-surface px-6 py-16">
-      <div className="mx-auto w-full max-w-md rounded-scholar border border-border bg-surface-alt p-6">
+      <div className="mx-auto w-full max-w-md rounded-zohal border border-border bg-surface-alt p-6">
         <h1 className="text-2xl font-semibold text-text">Protected Decision Pack</h1>
         <p className="mt-2 text-sm text-text-soft">
           This shared report requires an access code.
@@ -52,12 +52,12 @@ export function SharePasswordGate({ token, hint }: { token: string; hint: string
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter access code"
-            className="w-full rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+            className="w-full rounded-zohal border border-border bg-surface px-3 py-2 text-sm text-text"
           />
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-scholar bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="w-full rounded-zohal bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
           >
             {submitting ? 'Verifying…' : 'Unlock Report'}
           </button>

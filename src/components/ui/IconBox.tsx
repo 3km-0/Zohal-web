@@ -12,7 +12,7 @@ export interface IconBoxProps extends HTMLAttributes<HTMLDivElement> {
 const IconBox = forwardRef<HTMLDivElement, IconBoxProps>(
   ({ className, size = 'md', variant = 'default', icon, children, ...props }, ref) => {
     const baseStyles =
-      'flex items-center justify-center rounded-scholar-lg border';
+      'flex items-center justify-center rounded-zohal-lg border';
 
     const variants = {
       default: 'bg-surface-alt border-border text-text',

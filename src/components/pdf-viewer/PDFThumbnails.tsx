@@ -56,7 +56,7 @@ export function PDFThumbnails({ pdf, currentPage, onPageSelect }: PDFThumbnailsP
             key={pageNum}
             onClick={() => onPageSelect(pageNum)}
             className={cn(
-              'w-full p-2 rounded-scholar border transition-all hover:-translate-y-0.5',
+              'w-full p-2 rounded-zohal border transition-all hover:-translate-y-0.5',
               currentPage === pageNum
                 ? 'border-accent bg-accent/5 shadow-sm'
                 : 'border-border hover:border-accent/50'

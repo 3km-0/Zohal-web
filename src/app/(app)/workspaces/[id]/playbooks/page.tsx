@@ -13,8 +13,8 @@ import {
   Card,
   Input,
   Spinner,
-  ScholarNotebookCard,
-  ScholarToggle,
+  ZohalNotebookCard,
+  ZohalToggle,
   EmptyState,
 } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -636,7 +636,7 @@ export default function WorkspacePlaybooksPage() {
           ? 'bg-amber-500/10 text-amber-500'
           : 'bg-gray-500/10 text-gray-500';
     return (
-      <span className={cn('px-2 py-1 rounded-scholar text-xs font-semibold', cls)}>{status}</span>
+      <span className={cn('px-2 py-1 rounded-zohal text-xs font-semibold', cls)}>{status}</span>
     );
   };
 
@@ -661,7 +661,7 @@ export default function WorkspacePlaybooksPage() {
           <div className="flex items-center gap-3">
             <Link
               href={backHref}
-              className="p-2 rounded-scholar hover:bg-surface-alt transition-colors"
+              className="p-2 rounded-zohal hover:bg-surface-alt transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-text-soft" />
             </Link>
@@ -683,7 +683,7 @@ export default function WorkspacePlaybooksPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left: unified templates panel */}
           <div className="lg:col-span-1">
-            <ScholarNotebookCard header={t('list.title')}>
+            <ZohalNotebookCard header={t('list.title')}>
               {/* Create new - inline at top */}
               <div className="p-3 border-b border-border bg-surface-alt/50">
                 <div className="flex gap-2">
@@ -728,7 +728,7 @@ export default function WorkspacePlaybooksPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {pb.is_system_preset ? (
-                            <span className="px-2 py-0.5 rounded-scholar text-xs font-medium bg-surface-alt text-text-soft">
+                            <span className="px-2 py-0.5 rounded-zohal text-xs font-medium bg-surface-alt text-text-soft">
                               System
                             </span>
                           ) : (
@@ -746,13 +746,13 @@ export default function WorkspacePlaybooksPage() {
                   ))}
                 </div>
               )}
-            </ScholarNotebookCard>
+            </ZohalNotebookCard>
           </div>
 
           {/* Right: editor */}
           <div className="lg:col-span-2">
             {!selected ? (
-              <div className="rounded-scholar border border-border bg-surface p-8">
+              <div className="rounded-zohal border border-border bg-surface p-8">
                 <EmptyState
                   title={t('builder.selectToEdit')}
                   description="Choose a template from the list or create a new one."
@@ -760,7 +760,7 @@ export default function WorkspacePlaybooksPage() {
                 />
               </div>
             ) : (
-              <div className="rounded-scholar border border-border bg-surface overflow-hidden">
+              <div className="rounded-zohal border border-border bg-surface overflow-hidden">
                 {/* Sticky header with template name */}
                 <div className="bg-surface border-b border-border">
                   {/* System preset banner */}
@@ -845,7 +845,7 @@ export default function WorkspacePlaybooksPage() {
                   </div>
 
                   <div className="p-4 space-y-4 border-t border-border">
-                    <div className="rounded-scholar border border-border bg-surface-alt/40 p-4 space-y-3">
+                    <div className="rounded-zohal border border-border bg-surface-alt/40 p-4 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium text-text">
                         <ShieldCheck className="w-4 h-4" />
                         <span>Template source</span>
@@ -854,7 +854,7 @@ export default function WorkspacePlaybooksPage() {
                         Describe what the template should do in natural language. Zohal compiles this source into the internal analysis template that runs behind the scenes.
                       </p>
                       <textarea
-                        className="w-full min-h-[260px] rounded-scholar border border-border bg-surface px-3 py-3 text-sm text-text"
+                        className="w-full min-h-[260px] rounded-zohal border border-border bg-surface px-3 py-3 text-sm text-text"
                         value={templateSourceText}
                         disabled={isReadOnly}
                         onChange={(e) => setTemplateSourceText(e.target.value)}
@@ -867,15 +867,15 @@ export default function WorkspacePlaybooksPage() {
                         const summary = summarizeCompiledSpec(spec);
                         return (
                           <>
-                            <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
+                            <div className="rounded-zohal border border-border bg-surface-alt/30 p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Variables</div>
                               <div className="mt-2 text-2xl font-semibold text-text">{summary.variableCount}</div>
                             </div>
-                            <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
+                            <div className="rounded-zohal border border-border bg-surface-alt/30 p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Modules</div>
                               <div className="mt-2 text-2xl font-semibold text-text">{summary.moduleCount}</div>
                             </div>
-                            <div className="rounded-scholar border border-border bg-surface-alt/30 p-4">
+                            <div className="rounded-zohal border border-border bg-surface-alt/30 p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">Scope</div>
                               <div className="mt-2 text-2xl font-semibold text-text capitalize">{summary.scope}</div>
                             </div>
@@ -884,7 +884,7 @@ export default function WorkspacePlaybooksPage() {
                       })()}
                     </div>
 
-                    <div className="rounded-scholar border border-border bg-surface-alt/30 p-4 space-y-3">
+                    <div className="rounded-zohal border border-border bg-surface-alt/30 p-4 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium text-text">
                         <Layers className="w-4 h-4" />
                         <span>Latest compiled output</span>
@@ -945,7 +945,7 @@ export default function WorkspacePlaybooksPage() {
                 {/* Section content */}
                 <div className="hidden p-4 space-y-4">
                   {isConfigurationSection && (
-                    <div className="rounded-scholar border border-border bg-surface-alt/40 p-3 space-y-3">
+                    <div className="rounded-zohal border border-border bg-surface-alt/40 p-3 space-y-3">
                       <p className="text-xs text-text-soft">
                         Context controls where this template can run and which document roles it expects. Legacy rules/checks are preserved in the saved spec but are no longer a primary authoring surface.
                       </p>
@@ -957,7 +957,7 @@ export default function WorkspacePlaybooksPage() {
                             key={section.id}
                             onClick={() => setActiveSection(section.id)}
                             className={cn(
-                              'rounded-scholar border px-3 py-2 text-left transition-colors',
+                              'rounded-zohal border px-3 py-2 text-left transition-colors',
                               activeSection === section.id
                                 ? 'border-accent bg-accent/10'
                                 : 'border-border hover:border-accent/40 hover:bg-surface'
@@ -1008,13 +1008,13 @@ export default function WorkspacePlaybooksPage() {
                       </div>
 
                       {(spec.modules_v2 || []).length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
+                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-zohal">
                           No modules yet. Click &ldquo;Add Module&rdquo; to create one.
                         </div>
                       ) : (
                         <div className="space-y-3">
                           {(spec.modules_v2 || []).map((m, idx) => (
-                            <div key={`${m.id}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
+                            <div key={`${m.id}-${idx}`} className="rounded-zohal border border-border bg-surface-alt p-4 space-y-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 space-y-1">
                                   <Input
@@ -1033,7 +1033,7 @@ export default function WorkspacePlaybooksPage() {
                                   <div className="text-xs text-text-soft">{m.id}</div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <ScholarToggle
+                                  <ZohalToggle
                                     label="Enabled"
                                     checked={m.enabled !== false}
                                     disabled={isReadOnly}
@@ -1066,7 +1066,7 @@ export default function WorkspacePlaybooksPage() {
                               <div className="space-y-1">
                                 <label className="text-sm font-semibold text-text-soft">Prompt</label>
                                 <textarea
-                                  className="w-full min-h-[80px] px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
+                                  className="w-full min-h-[80px] px-3 py-2 rounded-zohal border border-border bg-surface text-text text-sm"
                                   value={m.prompt}
                                   disabled={isReadOnly}
                                   onChange={(e) =>
@@ -1104,7 +1104,7 @@ export default function WorkspacePlaybooksPage() {
                                 {expandedSchemaIds.has(m.id) && (
                                   <div className="pl-6 space-y-2">
                                     <textarea
-                                      className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                      className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-zohal border border-border bg-surface text-text"
                                       value={customSchemaTextById[m.id] ?? JSON.stringify(m.json_schema || {}, null, 2)}
                                       disabled={isReadOnly}
                                       onChange={(e) => {
@@ -1173,13 +1173,13 @@ export default function WorkspacePlaybooksPage() {
                       </div>
 
                       {specVariables.length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
+                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-zohal">
                           No variables yet. Click &ldquo;Add Variable&rdquo; to create one.
                         </div>
                       ) : (
                         <div className="space-y-3">
                           {specVariables.map((v, idx) => (
-                            <div key={`${v.key}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
+                            <div key={`${v.key}-${idx}`} className="rounded-zohal border border-border bg-surface-alt p-4 space-y-3">
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div className="space-y-1">
                                   <label className="text-xs font-semibold text-text-soft">Key</label>
@@ -1212,7 +1212,7 @@ export default function WorkspacePlaybooksPage() {
                                   />
                                 </div>
                                 <div className="flex items-end justify-between gap-2">
-                                  <ScholarToggle
+                                  <ZohalToggle
                                     label="Required"
                                     caption="Flag if missing"
                                     checked={v.required === true}
@@ -1330,7 +1330,7 @@ export default function WorkspacePlaybooksPage() {
                       </div>
 
                       {(spec.rules || []).length === 0 ? (
-                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-scholar">
+                        <div className="text-sm text-text-soft py-8 text-center border border-dashed border-border rounded-zohal">
                           {t('builder.rules.empty')}
                         </div>
                       ) : (
@@ -1339,7 +1339,7 @@ export default function WorkspacePlaybooksPage() {
                             const r = (rule || {}) as Record<string, unknown>;
                             const ruleId = String(r.id || `rule_${idx + 1}`);
                             return (
-                              <div key={`${ruleId}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-4 space-y-3">
+                              <div key={`${ruleId}-${idx}`} className="rounded-zohal border border-border bg-surface-alt p-4 space-y-3">
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                   <Input
                                     placeholder="rule id"
@@ -1385,7 +1385,7 @@ export default function WorkspacePlaybooksPage() {
                                 <div className="space-y-1">
                                   <label className="text-xs font-semibold text-text-soft">{t('builder.rules.jsonLabel')}</label>
                                   <textarea
-                                    className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-scholar border border-border bg-surface text-text"
+                                    className="w-full min-h-[120px] font-mono text-xs px-3 py-2 rounded-zohal border border-border bg-surface text-text"
                                     value={ruleTextById[ruleId] ?? JSON.stringify(r, null, 2)}
                                     disabled={isReadOnly}
                                     onChange={(e) => {
@@ -1443,7 +1443,7 @@ export default function WorkspacePlaybooksPage() {
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-text-soft">{t('builder.scope.scopeLabel')}</label>
                         <select
-                          className="w-full px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm"
+                          className="w-full px-3 py-2 rounded-zohal border border-border bg-surface text-text text-sm"
                           disabled={isReadOnly}
                           value={spec.scope || 'either'}
                           onChange={(e) => setSpec((p) => ({ ...p, scope: e.target.value as PlaybookSpecV1['scope'] }))}
@@ -1475,13 +1475,13 @@ export default function WorkspacePlaybooksPage() {
                         </div>
 
                         {(spec.bundle_schema?.roles || []).length === 0 ? (
-                          <div className="text-sm text-text-soft py-6 text-center border border-dashed border-border rounded-scholar">
+                          <div className="text-sm text-text-soft py-6 text-center border border-dashed border-border rounded-zohal">
                             {t('builder.scope.emptyRoles')}
                           </div>
                         ) : (
                           <div className="space-y-2">
                             {(spec.bundle_schema?.roles || []).map((role, idx) => (
-                              <div key={`${role.role}-${idx}`} className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                              <div key={`${role.role}-${idx}`} className="rounded-zohal border border-border bg-surface-alt p-3 space-y-3">
                                 <Input
                                   value={role.role}
                                   disabled={isReadOnly}
@@ -1496,7 +1496,7 @@ export default function WorkspacePlaybooksPage() {
                                   }}
                                 />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <ScholarToggle
+                                  <ZohalToggle
                                     label={t('builder.scope.required')}
                                     checked={role.required === true}
                                     disabled={isReadOnly}
@@ -1508,7 +1508,7 @@ export default function WorkspacePlaybooksPage() {
                                       })
                                     }
                                   />
-                                  <ScholarToggle
+                                  <ZohalToggle
                                     label={t('builder.scope.multiple')}
                                     checked={role.multiple === true}
                                     disabled={isReadOnly}

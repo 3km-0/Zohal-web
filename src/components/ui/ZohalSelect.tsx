@@ -5,10 +5,10 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * ScholarSelect - iOS-style dropdown select matching scholar theme
+ * ZohalSelect - iOS-style dropdown select matching zohal theme
  */
 
-export interface ScholarSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
+export interface ZohalSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
   label?: string;
   helperText?: string;
   error?: string;
@@ -17,7 +17,7 @@ export interface ScholarSelectProps extends Omit<SelectHTMLAttributes<HTMLSelect
   icon?: ReactNode;
 }
 
-export const ScholarSelect = forwardRef<HTMLSelectElement, ScholarSelectProps>(
+export const ZohalSelect = forwardRef<HTMLSelectElement, ZohalSelectProps>(
   ({ label, helperText, error, options, placeholder, icon, className, ...props }, ref) => {
     return (
       <div className="space-y-1.5">
@@ -33,7 +33,7 @@ export const ScholarSelect = forwardRef<HTMLSelectElement, ScholarSelectProps>(
           <select
             ref={ref}
             className={cn(
-              'w-full appearance-none rounded-scholar border border-border bg-surface text-text',
+              'w-full appearance-none rounded-zohal border border-border bg-surface text-text',
               'px-4 py-2.5 pr-10 text-sm font-medium',
               'transition-colors duration-200',
               'hover:border-text-soft/50',
@@ -67,4 +67,4 @@ export const ScholarSelect = forwardRef<HTMLSelectElement, ScholarSelectProps>(
   }
 );
 
-ScholarSelect.displayName = 'ScholarSelect';
+ZohalSelect.displayName = 'ZohalSelect';

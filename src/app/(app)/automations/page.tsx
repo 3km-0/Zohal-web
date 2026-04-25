@@ -62,7 +62,7 @@ export default function AutomationsPage() {
           <EmptyState icon={<Bot className="h-8 w-8" />} title={t('noWorkspaces')} variant="card" />
         ) : (
           <>
-            <section className="rounded-scholar border border-border bg-surface p-4 shadow-[var(--shadowSm)]">
+            <section className="rounded-zohal border border-border bg-surface p-4 shadow-[var(--shadowSm)]">
               <div className="mb-3 flex items-center gap-2 text-sm font-medium text-text">
                 <Sparkles className="h-4 w-4 text-accent" />
                 {t('workspaceLabel')}
@@ -70,7 +70,7 @@ export default function AutomationsPage() {
               <select
                 value={selectedWorkspaceId}
                 onChange={(event) => setSelectedWorkspaceId(event.target.value)}
-                className="w-full rounded-scholar border border-border bg-surface-alt px-3 py-2.5 text-sm text-text"
+                className="w-full rounded-zohal border border-border bg-surface-alt px-3 py-2.5 text-sm text-text"
               >
                 {workspaces.map((workspace) => (
                   <option key={workspace.id} value={workspace.id}>

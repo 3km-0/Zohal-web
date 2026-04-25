@@ -17,10 +17,10 @@ function AnimatedDots({ className }: { className?: string }) {
 }
 
 /**
- * ScholarProgress - iOS-style step-by-step progress indicator
+ * ZohalProgress - iOS-style step-by-step progress indicator
  *
  * Usage:
- * <ScholarProgress
+ * <ZohalProgress
  *   currentStep={2}
  *   steps={[
  *     { label: 'Preparing', description: 'Setting up analysis' },
@@ -30,15 +30,15 @@ function AnimatedDots({ className }: { className?: string }) {
  * />
  */
 
-export interface ScholarProgressStep {
+export interface ZohalProgressStep {
   label: string;
   description?: string;
   icon?: ReactNode;
 }
 
-export interface ScholarProgressProps {
+export interface ZohalProgressProps {
   currentStep: number;
-  steps: ScholarProgressStep[];
+  steps: ZohalProgressStep[];
   className?: string;
   /** Show as compact horizontal bar (default) or expanded grid */
   variant?: 'bar' | 'grid';
@@ -51,14 +51,14 @@ export interface ScholarProgressProps {
   progressPercent?: number;
 }
 
-export function ScholarProgress({
+export function ZohalProgress({
   currentStep,
   steps,
   className,
   variant = 'bar',
   statusMessage,
   progressPercent,
-}: ScholarProgressProps) {
+}: ZohalProgressProps) {
   const totalSteps = steps.length;
   const computedPercent =
     totalSteps > 0 ? Math.min(100, ((currentStep + 1) / totalSteps) * 100) : 0;
@@ -132,7 +132,7 @@ export function ScholarProgress({
             <div
               key={idx}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-scholar border transition-colors duration-200',
+                'flex items-center gap-3 px-4 py-3 rounded-zohal border transition-colors duration-200',
                 isComplete && 'border-success/30 bg-success/5',
                 isActive && 'border-accent/30 bg-accent/5',
                 isPending && 'border-border bg-surface-alt/50'
@@ -174,26 +174,26 @@ export function ScholarProgress({
 }
 
 /**
- * ScholarProgressCard - Full card wrapper for progress display (iOS analyzing view style)
+ * ZohalProgressCard - Full card wrapper for progress display (iOS analyzing view style)
  */
-export interface ScholarProgressCardProps extends ScholarProgressProps {
+export interface ZohalProgressCardProps extends ZohalProgressProps {
   title: string;
   titleIcon?: ReactNode;
   footer?: ReactNode;
 }
 
-export function ScholarProgressCard({
+export function ZohalProgressCard({
   title,
   titleIcon,
   footer,
   ...progressProps
-}: ScholarProgressCardProps) {
+}: ZohalProgressCardProps) {
   const percent = progressProps.progressPercent ?? 0;
   const isActive = percent > 0 && percent < 100;
 
   return (
     <div className={cn(
-      'rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden transition-shadow duration-500',
+      'rounded-zohal border border-border bg-surface shadow-[var(--shadowSm)] overflow-hidden transition-shadow duration-500',
       isActive && 'border-accent/30 shadow-[0_0_16px_rgba(var(--accent-rgb,99,102,241),0.12)]'
     )}>
       {/* Header */}
@@ -207,7 +207,7 @@ export function ScholarProgressCard({
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        <ScholarProgress {...progressProps} />
+        <ZohalProgress {...progressProps} />
       </div>
 
       {/* Footer */}

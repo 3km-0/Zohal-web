@@ -4,23 +4,23 @@ import { forwardRef, type ReactNode, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * ScholarNotebookCard - Matches iOS ScholarNotebookCard
+ * ZohalNotebookCard - Matches iOS ZohalNotebookCard
  *
  * A card component with an optional header section styled with surfaceAlt background
  * and overline text styling. Content section has surface background.
  *
  * Usage:
- * <ScholarNotebookCard header="SECTION TITLE">
+ * <ZohalNotebookCard header="SECTION TITLE">
  *   <div className="p-4">Content here</div>
- * </ScholarNotebookCard>
+ * </ZohalNotebookCard>
  *
  * Or with custom header:
- * <ScholarNotebookCard headerContent={<div>Custom header</div>}>
+ * <ZohalNotebookCard headerContent={<div>Custom header</div>}>
  *   <div className="p-4">Content here</div>
- * </ScholarNotebookCard>
+ * </ZohalNotebookCard>
  */
 
-export interface ScholarNotebookCardProps extends HTMLAttributes<HTMLDivElement> {
+export interface ZohalNotebookCardProps extends HTMLAttributes<HTMLDivElement> {
   /** Simple string header - renders as overline text */
   header?: string;
   /** Custom header content - use for complex headers */
@@ -31,7 +31,7 @@ export interface ScholarNotebookCardProps extends HTMLAttributes<HTMLDivElement>
   className?: string;
 }
 
-export const ScholarNotebookCard = forwardRef<HTMLDivElement, ScholarNotebookCardProps>(
+export const ZohalNotebookCard = forwardRef<HTMLDivElement, ZohalNotebookCardProps>(
   ({ header, headerContent, children, className, ...props }, ref) => {
     const hasHeader = !!header || !!headerContent;
 
@@ -39,7 +39,7 @@ export const ScholarNotebookCard = forwardRef<HTMLDivElement, ScholarNotebookCar
       <div
         ref={ref}
         className={cn(
-          'bg-surface rounded-scholar border border-border overflow-hidden shadow-[var(--shadowSm)]',
+          'bg-surface rounded-zohal border border-border overflow-hidden shadow-[var(--shadowSm)]',
           className
         )}
         {...props}
@@ -61,16 +61,16 @@ export const ScholarNotebookCard = forwardRef<HTMLDivElement, ScholarNotebookCar
   }
 );
 
-ScholarNotebookCard.displayName = 'ScholarNotebookCard';
+ZohalNotebookCard.displayName = 'ZohalNotebookCard';
 
 /**
- * ScholarOverline - Text styled as section overline (matching iOS scholarOverline())
+ * ZohalOverline - Text styled as section overline (matching iOS zohalOverline())
  */
-export interface ScholarOverlineProps extends HTMLAttributes<HTMLSpanElement> {
+export interface ZohalOverlineProps extends HTMLAttributes<HTMLSpanElement> {
   children: ReactNode;
 }
 
-export function ScholarOverline({ children, className, ...props }: ScholarOverlineProps) {
+export function ZohalOverline({ children, className, ...props }: ZohalOverlineProps) {
   return (
     <span
       className={cn(
@@ -85,17 +85,17 @@ export function ScholarOverline({ children, className, ...props }: ScholarOverli
 }
 
 /**
- * ScholarSectionHeader - Used inside cards for grouped content with overline
+ * ZohalSectionHeader - Used inside cards for grouped content with overline
  */
-export interface ScholarSectionHeaderProps extends HTMLAttributes<HTMLDivElement> {
+export interface ZohalSectionHeaderProps extends HTMLAttributes<HTMLDivElement> {
   title: string;
   action?: ReactNode;
 }
 
-export function ScholarSectionHeader({ title, action, className, ...props }: ScholarSectionHeaderProps) {
+export function ZohalSectionHeader({ title, action, className, ...props }: ZohalSectionHeaderProps) {
   return (
     <div className={cn('flex items-center justify-between gap-3 mb-3', className)} {...props}>
-      <ScholarOverline>{title}</ScholarOverline>
+      <ZohalOverline>{title}</ZohalOverline>
       {action}
     </div>
   );

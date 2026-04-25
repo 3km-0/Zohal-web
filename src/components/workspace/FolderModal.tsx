@@ -88,7 +88,7 @@ export function FolderModal({
           />
 
           {error && (
-            <div className="rounded-scholar border border-error/20 bg-error/10 p-3 text-sm text-error">{error}</div>
+            <div className="rounded-zohal border border-error/20 bg-error/10 p-3 text-sm text-error">{error}</div>
           )}
 
           <div className="flex gap-3 pt-2">

@@ -75,7 +75,7 @@ export default function LoginPage() {
           />
 
           {(formError || error) && (
-            <div className="p-3 bg-error/10 border border-error/20 rounded-scholar text-sm text-error">
+            <div className="p-3 bg-error/10 border border-error/20 rounded-zohal text-sm text-error">
               {formError || error?.message}
             </div>
           )}

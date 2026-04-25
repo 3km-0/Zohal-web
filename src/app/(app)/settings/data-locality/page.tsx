@@ -75,7 +75,7 @@ export default function DataLocalitySettingsPage() {
 
               <div className="w-full sm:w-80">
                 <select
-                  className="w-full rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+                  className="w-full rounded-zohal border border-border bg-surface px-3 py-2 text-sm text-text"
                   value={orgId}
                   onChange={(e) => setOrgId(e.target.value)}
                 >
@@ -89,7 +89,7 @@ export default function DataLocalitySettingsPage() {
             {selectedOrg ? (
               <OrgDataLocalityPanel orgId={selectedOrg.id} orgName={selectedOrg.name} />
             ) : (
-              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm text-text-soft">
                 {t('noOrganizations')}
               </div>
             )}

@@ -11,14 +11,14 @@ import {
 describe('theme mode helpers', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    document.documentElement.setAttribute('data-theme', 'slate-light');
+    document.documentElement.setAttribute('data-theme', 'zohal-light');
   });
 
   it('defaults to light mode when no preference is stored', () => {
     expect(DEFAULT_THEME_MODE).toBe('light');
     expect(readThemeModeFromStorage()).toBeNull();
     expect(initializeThemeMode()).toBe('light');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('slate-light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-light');
     expect(window.localStorage.getItem('theme')).toBe('light');
   });
 
@@ -28,7 +28,7 @@ describe('theme mode helpers', () => {
 
     applyThemeMode('dark');
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('slate-dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-dark');
     expect(window.localStorage.getItem('theme')).toBe('dark');
     expect(handler).toHaveBeenCalledTimes(1);
   });
@@ -37,7 +37,7 @@ describe('theme mode helpers', () => {
     expect(normalizeThemeMode('light')).toBe('light');
     expect(normalizeThemeMode('dark')).toBe('dark');
     expect(normalizeThemeMode('sepia')).toBeNull();
-    expect(themeModeToDataTheme('light')).toBe('slate-light');
-    expect(themeModeToDataTheme('dark')).toBe('slate-dark');
+    expect(themeModeToDataTheme('light')).toBe('zohal-light');
+    expect(themeModeToDataTheme('dark')).toBe('zohal-dark');
   });
 });

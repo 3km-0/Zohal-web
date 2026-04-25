@@ -669,7 +669,7 @@ export function DocumentUploadModal({
 
         <div className="p-5 space-y-5">
           {/* Privacy Choice */}
-          <div className="rounded-scholar border border-border bg-surface-alt/60 p-3 text-sm text-text">
+          <div className="rounded-zohal border border-border bg-surface-alt/60 p-3 text-sm text-text">
             <div className="flex items-start gap-2">
               <span className="mt-0.5">🔒</span>
               <div className="flex-1">
@@ -728,7 +728,7 @@ export function DocumentUploadModal({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             className={cn(
-              'border-2 border-dashed rounded-scholar-lg p-8 text-center transition-colors',
+              'border-2 border-dashed rounded-zohal-lg p-8 text-center transition-colors',
               isDragging ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
             )}
           >
@@ -743,7 +743,7 @@ export function DocumentUploadModal({
                 onChange={(e) => e.target.files && addFiles(e.target.files)}
                 className="hidden"
               />
-              <span className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-accent text-white font-semibold rounded-scholar cursor-pointer hover:opacity-90 transition-opacity">
+              <span className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-accent text-white font-semibold rounded-zohal cursor-pointer hover:opacity-90 transition-opacity">
                 {t('browseFiles')}
               </span>
             </label>
@@ -756,7 +756,7 @@ export function DocumentUploadModal({
               {hasGoogleDrive && (
                 <button
                   onClick={() => setShowGoogleDrive(true)}
-                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-zohal hover:bg-surface-alt transition-colors"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
                     <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
@@ -772,7 +772,7 @@ export function DocumentUploadModal({
               {hasOneDrive && (
                 <button
                   onClick={() => setShowOneDrive(true)}
-                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-zohal hover:bg-surface-alt transition-colors"
                 >
                   <Cloud className="w-5 h-5 text-blue-500" />
                   <span className="text-sm font-medium text-text">{t('oneDrive')}</span>
@@ -780,14 +780,14 @@ export function DocumentUploadModal({
               )}
               <button
                 onClick={() => setShowWhatsApp(true)}
-                className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-zohal hover:bg-surface-alt transition-colors"
               >
                 <MessageCircle className="w-5 h-5 text-[#25D366]" />
                 <span className="text-sm font-medium text-text">{t('whatsapp')}</span>
               </button>
               <button
                 onClick={() => setShowZohalLibrary(true)}
-                className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-scholar hover:bg-surface-alt transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-zohal hover:bg-surface-alt transition-colors"
               >
                 <Cloud className="w-5 h-5 text-accent" />
                 <span className="text-sm font-medium text-text">{t('zohalLibrary')}</span>
@@ -802,7 +802,7 @@ export function DocumentUploadModal({
                 <div
                   key={fileItem.id}
                   className={cn(
-                    'flex items-center gap-3 p-3 rounded-scholar border',
+                    'flex items-center gap-3 p-3 rounded-zohal border',
                     fileItem.status === 'error'
                       ? 'border-error/30 bg-error/5'
                       : fileItem.status === 'success'

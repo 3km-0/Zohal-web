@@ -14,14 +14,14 @@ import {
   CardTitle,
   CardContent,
   EmptyState,
-  ScholarNotebookCard,
-  ScholarTabs,
-  ScholarTabContent,
-  ScholarActionMenu,
-  ScholarProgressCard,
-  ScholarSelect,
-  ScholarToggle,
-  type ScholarTab,
+  ZohalNotebookCard,
+  ZohalTabs,
+  ZohalTabContent,
+  ZohalActionMenu,
+  ZohalProgressCard,
+  ZohalSelect,
+  ZohalToggle,
+  type ZohalTab,
 } from '@/components/ui';
 import {
   AnalysisRecordCard,
@@ -2692,7 +2692,7 @@ export function ContractAnalysisPane({
             <CircleHelp className="w-4 h-4" />
             Tour
           </Button>
-          <ScholarActionMenu
+          <ZohalActionMenu
             icon={<Zap className="w-4 h-4" />}
             label="Actions"
             isLoading={isGeneratingReport || isFinalizing || isExportingAuditPack}
@@ -2755,7 +2755,7 @@ export function ContractAnalysisPane({
         )}
       >
         {!compactRunConfig && (
-          <div className="mb-3 p-3 border border-border rounded-scholar bg-surface-alt">
+          <div className="mb-3 p-3 border border-border rounded-zohal bg-surface-alt">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-text-soft">{t('runs.title')}</p>
@@ -2792,7 +2792,7 @@ export function ContractAnalysisPane({
                       void selectRun(run);
                     }}
                     className={cn(
-                      'w-full text-left p-2 rounded-scholar border transition-colors',
+                      'w-full text-left p-2 rounded-zohal border transition-colors',
                       selectedRunId === run.runId
                         ? 'border-accent bg-accent/5'
                         : 'border-border hover:border-accent/40 bg-surface'
@@ -2835,13 +2835,13 @@ export function ContractAnalysisPane({
         )}
 
         {isHistoricalRunSelected && (
-          <div className="mb-3 p-3 rounded-scholar border border-warning/40 bg-warning/10 text-warning text-sm">
+          <div className="mb-3 p-3 rounded-zohal border border-warning/40 bg-warning/10 text-warning text-sm">
             {t('runs.historicalReadOnly')}
           </div>
         )}
 
         {selectedRunStatus && selectedRunStatus !== 'succeeded' && (
-          <div className="mb-3 p-3 rounded-scholar border border-border bg-surface-alt text-sm text-text-soft">
+          <div className="mb-3 p-3 rounded-zohal border border-border bg-surface-alt text-sm text-text-soft">
             {t('runs.selectedStatus', { status: selectedRunStatus })}
           </div>
         )}
@@ -2915,7 +2915,7 @@ export function ContractAnalysisPane({
         )}
 
         {reportSavedMessage && (
-          <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-scholar text-success text-sm font-medium">
+          <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-zohal text-success text-sm font-medium">
             {reportSavedMessage}
           </div>
         )}
@@ -2927,7 +2927,7 @@ export function ContractAnalysisPane({
           <div className="space-y-4 max-w-xl mx-auto">
             {/* Show a back-to-results button when re-configuring an existing analysis */}
             {contract && showSettings && !compactRunConfig && (
-              <div className="flex items-center justify-between p-3 bg-surface-alt border border-border rounded-scholar">
+              <div className="flex items-center justify-between p-3 bg-surface-alt border border-border rounded-zohal">
                 <p className="text-sm text-text-soft">
                   An analysis already exists. Configure and run again to replace it.
                 </p>
@@ -2949,7 +2949,7 @@ export function ContractAnalysisPane({
             )}
 
             {/* Analysis Configuration */}
-            <ScholarNotebookCard>
+            <ZohalNotebookCard>
               <div className="p-4 space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -2964,17 +2964,17 @@ export function ContractAnalysisPane({
                     </Link>
                   </div>
                   {playbooks.length === 0 ? (
-                    <div className="p-4 rounded-scholar border border-border bg-surface-alt text-center">
+                    <div className="p-4 rounded-zohal border border-border bg-surface-alt text-center">
                       <p className="text-sm text-text-soft mb-2">{t('playbook.loadingTemplates')}</p>
                       <p className="text-xs text-text-soft">{t('playbook.templatesAutoCreated')}</p>
                     </div>
                   ) : (
-                    <div className="rounded-scholar border border-border bg-surface p-3 space-y-3">
+                    <div className="rounded-zohal border border-border bg-surface p-3 space-y-3">
                       <input
                         value={templateSearch}
                         onChange={(e) => setTemplateSearch(e.target.value)}
                         placeholder={localizedTemplateText('search')}
-                        className="w-full rounded-scholar border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none placeholder:text-text-soft"
+                        className="w-full rounded-zohal border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none placeholder:text-text-soft"
                       />
                       <div className="flex gap-2 overflow-x-auto pb-1">
                         {(['all', 'zohal_templates', 'custom'] as TemplateFilter[]).map(
@@ -3003,7 +3003,7 @@ export function ContractAnalysisPane({
                             setSelectedPlaybookVersionId('');
                           }}
                           className={cn(
-                            'w-full rounded-scholar border p-3 text-left transition-colors',
+                            'w-full rounded-zohal border p-3 text-left transition-colors',
                             selectedPlaybookId === ''
                               ? 'border-accent bg-accent/5'
                               : 'border-border bg-surface-alt hover:border-accent/50'
@@ -3046,7 +3046,7 @@ export function ContractAnalysisPane({
                                 );
                               }}
                               className={cn(
-                                'w-full rounded-scholar border p-3 text-left transition-colors',
+                                'w-full rounded-zohal border p-3 text-left transition-colors',
                                 selectedPlaybookId === recommendedSystemPlaybook.id
                                   ? 'border-accent bg-accent/5'
                                   : 'border-accent bg-accent/5 hover:border-accent/50'
@@ -3091,7 +3091,7 @@ export function ContractAnalysisPane({
                                       setSelectedPlaybookVersionId(pb.current_version?.id || pb.current_version_id || '');
                                     }}
                                     className={cn(
-                                      'w-full rounded-scholar border p-3 text-left transition-colors',
+                                      'w-full rounded-zohal border p-3 text-left transition-colors',
                                       selectedPlaybookId === pb.id
                                         ? 'border-accent bg-accent/5'
                                         : 'border-border bg-surface-alt hover:border-accent/50'
@@ -3132,7 +3132,7 @@ export function ContractAnalysisPane({
                                   setSelectedPlaybookVersionId(pb.current_version?.id || pb.current_version_id || '');
                                 }}
                                 className={cn(
-                                  'w-full rounded-scholar border p-3 text-left transition-colors',
+                                  'w-full rounded-zohal border p-3 text-left transition-colors',
                                   selectedPlaybookId === pb.id
                                     ? 'border-accent bg-accent/5'
                                     : 'border-border bg-surface-alt hover:border-accent/50'
@@ -3158,7 +3158,7 @@ export function ContractAnalysisPane({
                         displayGroupedSystemPlaybooks.length === 0 &&
                         filteredCustomPlaybooks.length === 0 &&
                         normalizedTemplateSearch ? (
-                          <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-3 py-5 text-sm text-text-soft">
+                          <div className="rounded-zohal border border-dashed border-border bg-surface-alt px-3 py-5 text-sm text-text-soft">
                             {noTemplateMatchText(templateSearch)}
                           </div>
                         ) : null}
@@ -3217,14 +3217,14 @@ export function ContractAnalysisPane({
                       </div>
                       <p className="text-xs text-text-soft">{t('docset.help')}</p>
                       {rememberedSourceRunId && (
-                        <div className="rounded-scholar border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-text">
+                        <div className="rounded-zohal border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-text">
                           {t('docset.prefill')}
                         </div>
                       )}
                     </div>
 
                     <div className="space-y-3">
-                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2.5">
+                      <div className="p-3 border border-border rounded-zohal bg-surface-alt space-y-2.5">
                         <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">{t('docset.add')}</div>
                         <div className="relative">
                           <FileSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-soft pointer-events-none" />
@@ -3281,7 +3281,7 @@ export function ContractAnalysisPane({
                         </div>
                       </div>
 
-                      <div className="p-3 border border-border rounded-scholar bg-surface-alt space-y-2.5">
+                      <div className="p-3 border border-border rounded-zohal bg-surface-alt space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">
                             {t('docset.selectedTitle', { count: docsetMembers.length })}
@@ -3375,7 +3375,7 @@ export function ContractAnalysisPane({
                       </div>
                       <div>
                         <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('docset.precedencePolicy')}</div>
-                        <ScholarSelect
+                        <ZohalSelect
                           value={docsetPrecedencePolicy}
                           onChange={(e) => {
                             clearRememberedRelatedDocuments();
@@ -3391,7 +3391,7 @@ export function ContractAnalysisPane({
                     </div>
 
                     {docsetIssues.length > 0 && (
-                      <div className="flex items-start gap-2.5 p-3 border border-accent/30 bg-accent/5 rounded-scholar">
+                      <div className="flex items-start gap-2.5 p-3 border border-accent/30 bg-accent/5 rounded-zohal">
                         <AlertTriangle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
                         <div className="space-y-1 text-xs">
                           {docsetIssues.map((issue, idx) => (
@@ -3438,7 +3438,7 @@ export function ContractAnalysisPane({
                     </div>
                     <div>
                       <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.anchorKind')}</div>
-                      <ScholarSelect
+                      <ZohalSelect
                         value={scopeAnchorKind}
                         onChange={(e) => setScopeAnchorKind(e.target.value as ScopeAnchorKind)}
                         options={[
@@ -3461,7 +3461,7 @@ export function ContractAnalysisPane({
                     </div>
                     <div>
                       <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.comparisonTitle')}</div>
-                      <ScholarSelect
+                      <ZohalSelect
                         value={comparisonPolicy}
                         onChange={(e) => setComparisonPolicy(e.target.value as AnalysisScopeComparisonPolicy)}
                         options={[
@@ -3487,7 +3487,7 @@ export function ContractAnalysisPane({
                       </div>
                       <div>
                         <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.windowUnit')}</div>
-                        <ScholarSelect
+                        <ZohalSelect
                           value={windowLookbackUnit}
                           onChange={(e) => setWindowLookbackUnit(e.target.value as typeof windowLookbackUnit)}
                           options={[
@@ -3507,7 +3507,7 @@ export function ContractAnalysisPane({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('scopePolicy.partitionGrain')}</div>
-                        <ScholarSelect
+                        <ZohalSelect
                           value={partitionGrain}
                           onChange={(e) => setPartitionGrain(e.target.value as ScopePartitionGrain)}
                           options={[
@@ -3532,7 +3532,7 @@ export function ContractAnalysisPane({
                     </div>
                   )}
 
-                  <div className="rounded-scholar border border-border bg-surface-alt px-3 py-3">
+                  <div className="rounded-zohal border border-border bg-surface-alt px-3 py-3">
                     <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">{t('scopePolicy.previewTitle')}</div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {runPreviewItems.map((item) => (
@@ -3547,8 +3547,8 @@ export function ContractAnalysisPane({
                     <div className="text-[11px] font-semibold text-text-soft uppercase tracking-wider">
                       {t('apiSources.title')}
                     </div>
-                    <div className="rounded-scholar border border-border bg-surface-alt px-3 py-3">
-                      <ScholarToggle
+                    <div className="rounded-zohal border border-border bg-surface-alt px-3 py-3">
+                      <ZohalToggle
                         label={t('apiSources.includeDocument')}
                         caption={t('apiSources.includeDocumentCaption')}
                         checked={includeDocumentSource}
@@ -3556,23 +3556,23 @@ export function ContractAnalysisPane({
                       />
                     </div>
                     {!includeDocumentSource ? (
-                      <div className="rounded-scholar border border-accent/20 bg-accent/5 px-3 py-3 text-sm text-text-soft">
+                      <div className="rounded-zohal border border-accent/20 bg-accent/5 px-3 py-3 text-sm text-text-soft">
                         {t('apiSources.apiOnlyHint')}
                       </div>
                     ) : null}
                     {apiConnections.length === 0 ? (
-                      <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-3 py-4 text-sm text-text-soft">
+                      <div className="rounded-zohal border border-dashed border-border bg-surface-alt px-3 py-4 text-sm text-text-soft">
                         <p>{t('apiSources.empty')}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Link
                             href={`/workspaces/${workspaceId}/data-sources`}
-                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
                           >
                             {t('apiSources.manageWorkspace')}
                           </Link>
                           <Link
                             href="/integrations"
-                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface-alt hover:text-text"
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface-alt hover:text-text"
                           >
                             {t('apiSources.openLibrary')}
                           </Link>
@@ -3594,7 +3594,7 @@ export function ContractAnalysisPane({
                                 )
                               }
                               className={cn(
-                                'flex w-full items-start gap-3 rounded-scholar border px-3 py-3 text-left transition-colors',
+                                'flex w-full items-start gap-3 rounded-zohal border px-3 py-3 text-left transition-colors',
                                 selected
                                   ? 'border-accent/40 bg-accent/5'
                                   : 'border-border bg-surface-alt hover:border-accent/20'
@@ -3635,13 +3635,13 @@ export function ContractAnalysisPane({
                         <div className="flex flex-wrap items-center gap-2 pt-1">
                           <Link
                             href={`/workspaces/${workspaceId}/data-sources`}
-                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-all duration-200 hover:border-[color:var(--button-primary-bg)] hover:bg-surface-alt"
                           >
                             {t('apiSources.manageWorkspace')}
                           </Link>
                           <Link
                             href="/integrations"
-                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-scholar px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface-alt hover:text-text"
+                            className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-zohal px-3 py-2 text-sm font-semibold text-text-soft transition-all duration-200 hover:bg-surface-alt hover:text-text"
                           >
                             {t('apiSources.openLibrary')}
                           </Link>
@@ -3649,7 +3649,7 @@ export function ContractAnalysisPane({
                       </div>
                     )}
                     {runConfigError ? (
-                      <div className="rounded-scholar border border-accent/20 bg-accent/5 px-3 py-3 text-sm text-text">
+                      <div className="rounded-zohal border border-accent/20 bg-accent/5 px-3 py-3 text-sm text-text">
                         {runConfigError}
                       </div>
                     ) : null}
@@ -3691,7 +3691,7 @@ export function ContractAnalysisPane({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('runSettings.language')}</div>
-                      <ScholarSelect
+                      <ZohalSelect
                         value={runLanguage}
                         onChange={(e) => setRunLanguage(e.target.value as 'en' | 'ar')}
                         options={[
@@ -3702,7 +3702,7 @@ export function ContractAnalysisPane({
                     </div>
                     <div>
                       <div className="text-[11px] font-medium text-text-soft mb-1.5">{t('runSettings.strictness')}</div>
-                      <ScholarSelect
+                      <ZohalSelect
                         value={runStrictness}
                         onChange={(e) => setRunStrictness(e.target.value as 'default' | 'strict')}
                         options={[
@@ -3717,12 +3717,12 @@ export function ContractAnalysisPane({
                   </div>
                 </div>
               </div>
-            </ScholarNotebookCard>
+            </ZohalNotebookCard>
           </div>
         ) : (
           <div className="space-y-4">
             {error && (
-              <div className="p-3 rounded-scholar border border-error/30 bg-error/5 text-error text-sm">
+              <div className="p-3 rounded-zohal border border-error/30 bg-error/5 text-error text-sm">
                 {error}
               </div>
             )}
@@ -3731,7 +3731,7 @@ export function ContractAnalysisPane({
             {snapshot?.pack?.exceptions_summary &&
               (snapshot.pack.exceptions_summary.blocker > 0 || snapshot.pack.exceptions_summary.warning > 0) && (
                 <div className={cn(
-                  'flex items-start gap-3 p-4 rounded-scholar border',
+                  'flex items-start gap-3 p-4 rounded-zohal border',
                   snapshot.pack.exceptions_summary.blocker > 0
                     ? 'bg-error/5 border-error/20'
                     : 'bg-accent/5 border-accent/20',
@@ -3810,7 +3810,7 @@ export function ContractAnalysisPane({
 
                 {liveExperience ? (
                   <>
-                    <div className="rounded-scholar border border-border bg-surface-alt p-3 text-sm">
+                    <div className="rounded-zohal border border-border bg-surface-alt p-3 text-sm">
                       <div className="text-text-soft">{t('liveExperience.canonicalPath')}</div>
                       <div className="mt-1 break-all font-medium text-text">
                         {liveExperience.public_url || t('liveExperience.preparing')}
@@ -3840,7 +3840,7 @@ export function ContractAnalysisPane({
                     {t('liveExperience.loading')}
                   </div>
                 ) : (
-                  <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-3 py-4 text-sm text-text-soft">
+                  <div className="rounded-zohal border border-dashed border-border bg-surface-alt px-3 py-4 text-sm text-text-soft">
                     {t('liveExperience.empty')}
                   </div>
                 )}
@@ -3890,7 +3890,7 @@ export function ContractAnalysisPane({
             )}
 
             {/* Tabs */}
-            <ScholarTabs
+            <ZohalTabs
               tabs={tabs.map((t) => ({
                 id: t.id,
                 label: t.label,
@@ -4540,7 +4540,7 @@ export function ContractAnalysisPane({
         {/* Analyzing state (visible even before contract exists) */}
         {isAnalyzing && (
           <div ref={progressRef} className="mt-4 max-w-xl mx-auto">
-            <ScholarProgressCard
+            <ZohalProgressCard
               title={t('progress.title')}
               titleIcon={<Scale className="w-5 h-5 text-purple-500" />}
               currentStep={0}

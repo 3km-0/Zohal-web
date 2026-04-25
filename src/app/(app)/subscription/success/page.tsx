@@ -145,7 +145,7 @@ export default function SubscriptionSuccessPage() {
               : t('subscriptionActive', { tier: tier === 'premium' ? 'Max' : tier })}
           </p>
 
-          <div className="p-4 bg-surface-alt rounded-scholar mb-6 text-left">
+          <div className="p-4 bg-surface-alt rounded-zohal mb-6 text-left">
             <p className="text-sm font-medium text-text mb-3">{t('youNowHave')}</p>
             <ul className="space-y-2">
               <BenefitItem>{t('unlimitedAi')}</BenefitItem>

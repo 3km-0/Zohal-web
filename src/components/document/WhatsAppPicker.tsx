@@ -236,12 +236,12 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
             </div>
           ) : (
             <>
-              <div className="rounded-scholar border border-border bg-surface-alt p-3">
+              <div className="rounded-zohal border border-border bg-surface-alt p-3">
                 <div className="text-sm text-text-soft">{t('whatsappChannelStatus')}</div>
                 <div className={`text-sm font-semibold mt-1 ${statusClassName}`}>{statusLabel}</div>
               </div>
 
-              <div className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+              <div className="rounded-zohal border border-border bg-surface-alt p-3 space-y-3">
                 <div>
                   <div className="text-sm text-text-soft">{t('whatsappLinkedPhone')}</div>
                   <div className="text-sm font-semibold mt-1 text-text">{linkedPhoneLabel}</div>
@@ -258,22 +258,22 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
               </div>
 
               {error ? (
-                <div className="rounded-scholar border border-error/30 bg-error/5 p-3 text-sm text-error">
+                <div className="rounded-zohal border border-error/30 bg-error/5 p-3 text-sm text-error">
                   {error}
                 </div>
               ) : infoMessage ? (
-                <div className="rounded-scholar border border-success/30 bg-success/5 p-3 text-sm text-success">
+                <div className="rounded-zohal border border-success/30 bg-success/5 p-3 text-sm text-success">
                   {infoMessage}
                 </div>
               ) : (
                 <>
                   {missingPhone && (
-                    <div className="rounded-scholar border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-600">
+                    <div className="rounded-zohal border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-600">
                       {t('whatsappPhoneMissing')}
                     </div>
                   )}
 
-                  <div className="rounded-scholar border border-border bg-surface-alt p-3">
+                  <div className="rounded-zohal border border-border bg-surface-alt p-3">
                     <div className="text-sm font-medium text-text">{t('whatsappStep1')}</div>
                     <div className="text-xs text-text-soft mt-1">{t('whatsappStep1Desc')}</div>
                     <Button
@@ -288,7 +288,7 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
                     </Button>
                   </div>
 
-                  <div className="rounded-scholar border border-border bg-surface-alt p-3 space-y-3">
+                  <div className="rounded-zohal border border-border bg-surface-alt p-3 space-y-3">
                     <div>
                       <div className="text-sm font-medium text-text">{t('whatsappStep2')}</div>
                       <div className="text-xs text-text-soft mt-1">{t('whatsappStep2Desc')}</div>
@@ -297,7 +297,7 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
                     <button
                       type="button"
                       onClick={() => setSelectedAction('acquisition')}
-                      className={`w-full rounded-scholar border p-3 text-left transition ${
+                      className={`w-full rounded-zohal border p-3 text-left transition ${
                         selectedAction === 'acquisition' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
                       }`}
                     >
@@ -308,7 +308,7 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
                     <button
                       type="button"
                       onClick={() => setSelectedAction('ingestion')}
-                      className={`w-full rounded-scholar border p-3 text-left transition ${
+                      className={`w-full rounded-zohal border p-3 text-left transition ${
                         selectedAction === 'ingestion' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
                       }`}
                     >

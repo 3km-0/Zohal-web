@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, FolderOpen, Plus } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, EmptyState, ScholarActionMenu, Spinner } from '@/components/ui';
+import { Button, EmptyState, ZohalActionMenu, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Folder, Workspace } from '@/types/database';
 import { WorkspaceModal } from '@/components/workspace/WorkspaceModal';
@@ -125,7 +125,7 @@ export default function FolderDetailPage() {
           </Link>
         }
         actions={
-          <ScholarActionMenu
+          <ZohalActionMenu
             compact
             ariaLabel="Create"
             icon={<Plus className="h-4 w-4" />}

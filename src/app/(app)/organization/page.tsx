@@ -140,7 +140,7 @@ export default function OrganizationPage() {
                     {t('defaultOrg')}
                   </label>
                   <select
-                    className="w-full px-4 py-3 bg-surface border border-border rounded-scholar text-text"
+                    className="w-full px-4 py-3 bg-surface border border-border rounded-zohal text-text"
                     value={defaultOrgId ?? ''}
                     onChange={(e) => setDefaultOrgId(e.target.value || null)}
                   >
@@ -172,7 +172,7 @@ export default function OrganizationPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 bg-surface-alt rounded-scholar border border-border">
+                <div className="p-4 bg-surface-alt rounded-zohal border border-border">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <div className="font-medium text-text">{t('multiUser')}</div>
@@ -205,7 +205,7 @@ export default function OrganizationPage() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-surface-alt rounded-scholar border border-border">
+                <div className="p-4 bg-surface-alt rounded-zohal border border-border">
                   <OrgDataLocalityPanel
                     key={`${selectedOrg.id}:${selectedOrg.multi_user_enabled ? '1' : '0'}:${selectedOrg.data_locality_enabled ? '1' : '0'}`}
                     orgId={selectedOrg.id}
@@ -229,7 +229,7 @@ export default function OrganizationPage() {
                   <Link
                     key={ws.id}
                     href={`/workspaces/${ws.id}/members`}
-                    className="flex items-center justify-between p-3 bg-surface-alt rounded-scholar border border-border hover:border-accent/40 transition-colors"
+                    className="flex items-center justify-between p-3 bg-surface-alt rounded-zohal border border-border hover:border-accent/40 transition-colors"
                   >
                     <span className="font-medium text-text">{ws.name}</span>
                     <span className="text-xs text-text-soft">{t('manageMembers')}</span>

@@ -23,7 +23,7 @@ export interface EmptyStateProps {
 }
 
 /**
- * ScholarEmptyState - iOS-style empty state matching ScholarEmptyState
+ * ZohalEmptyState - iOS-style empty state matching ZohalEmptyState
  *
  * Variants:
  * - default: Centered with icon, title, description
@@ -44,7 +44,7 @@ export function EmptyState({
       className={cn(
         'flex flex-col items-center justify-center text-center',
         variant === 'inline' ? 'py-6 px-4' : 'py-12 px-6',
-        variant === 'card' && 'rounded-scholar border border-border bg-surface shadow-[var(--shadowSm)]',
+        variant === 'card' && 'rounded-zohal border border-border bg-surface shadow-[var(--shadowSm)]',
         className
       )}
     >

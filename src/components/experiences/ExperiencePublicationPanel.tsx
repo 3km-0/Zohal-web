@@ -305,7 +305,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
               <CardDescription>{t('configure.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="font-semibold text-text">{t('workflow.title')}</div>
                 <p className="mt-1 text-sm text-text-soft">{t('workflow.description')}</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-5">
@@ -322,7 +322,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   ))}
                 </div>
               </div>
-              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('readiness.title')}</div>
                 <p className="mt-1 text-text-soft">
                   {marketReadiness ? t('readiness.ready') : t('readiness.notLoaded')}
@@ -359,7 +359,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 ) : null}
               </div>
               {rememberedRelatedDocuments ? (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm">
                   <div className="font-semibold text-text">{t('configure.relatedDocumentsTitle')}</div>
                   <p className="mt-1 text-text-soft">{t('configure.relatedDocumentsDescription')}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -375,7 +375,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   </div>
                 </div>
               ) : null}
-              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('surfaceFamilies.livingInterface')}</div>
                 <p className="mt-1 text-text-soft">{t('configure.description')}</p>
               </div>
@@ -385,12 +385,12 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 <Input label={t('fields.host')} value={host} onChange={(e) => setHost(e.target.value)} />
                 <Input label={t('fields.corpusId')} value={corpusId} onChange={(e) => setCorpusId(e.target.value)} />
               </div>
-              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm">
                 <div className="font-semibold text-text">{t('fields.includedSources')}</div>
                 <p className="mt-1 text-text-soft">{includedSourcesLabel}</p>
               </div>
               {analysisTemplateId === ACQUISITION_WORKSPACE_TEMPLATE_ID ? (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm">
+                <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm">
                   <div className="font-semibold text-text">{t('surfaceBoundary.livingInterface.title')}</div>
                   <p className="mt-1 text-text-soft">{t('surfaceBoundary.livingInterface.description')}</p>
                   <p className="mt-2 text-text-soft">{t('operationsWorkspace.boundary')}</p>
@@ -444,7 +444,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   {t('actions.promote')}
                 </Button>
               </div>
-              <details className="rounded-scholar border border-dashed border-border bg-surface-alt p-4">
+              <details className="rounded-zohal border border-dashed border-border bg-surface-alt p-4">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-text marker:content-none [&::-webkit-details-marker]:hidden">
                   {t('actions.advanced')}
                 </summary>
@@ -461,7 +461,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                       <select
                         value={visibility}
                         onChange={(e) => setVisibility(e.target.value)}
-                        className="w-full min-h-[44px] rounded-scholar border border-border bg-surface px-4 py-3 text-text"
+                        className="w-full min-h-[44px] rounded-zohal border border-border bg-surface px-4 py-3 text-text"
                       >
                         <option value="public_indexed">{t('visibility.publicIndexed')}</option>
                         <option value="public_unlisted">{t('visibility.publicUnlisted')}</option>
@@ -546,7 +546,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                 </Button>
               </div>
               {linkUrl ? (
-                <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
+                <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm text-text-soft">
                   <div className="font-semibold text-text">{t('sharing.latestLink')}</div>
                   <a className="mt-2 block break-all text-accent" href={linkUrl} target="_blank" rel="noreferrer">
                     {linkUrl}
@@ -587,13 +587,13 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
           <CardContent className="space-y-3">
             {diagnostics?.recent_events?.length ? (
               diagnostics.recent_events.map((event) => (
-                <div key={`${event.event_kind}-${event.created_at}`} className="rounded-scholar border border-border bg-surface-alt p-4">
+                <div key={`${event.event_kind}-${event.created_at}`} className="rounded-zohal border border-border bg-surface-alt p-4">
                   <div className="font-semibold text-text">{event.event_kind}</div>
                   <div className="mt-1 text-sm text-text-soft">{new Date(event.created_at).toLocaleString()}</div>
                 </div>
               ))
             ) : (
-              <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
+              <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm text-text-soft">
                 {t('events.empty')}
               </div>
             )}
@@ -601,7 +601,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
         </Card>
 
         {error ? (
-          <div className="rounded-scholar border border-error/30 bg-error/10 p-4 text-sm text-error">
+          <div className="rounded-zohal border border-error/30 bg-error/10 p-4 text-sm text-error">
             {error}
           </div>
         ) : null}

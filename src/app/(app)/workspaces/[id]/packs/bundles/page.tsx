@@ -19,8 +19,8 @@ import {
   Button,
   EmptyState,
   Input,
-  ScholarNotebookCard,
-  ScholarSelect,
+  ZohalNotebookCard,
+  ZohalSelect,
   Spinner,
 } from '@/components/ui';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
@@ -273,14 +273,14 @@ export default function WorkspaceBundlesPage() {
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-5xl mx-auto space-y-4">
           {/* About Card */}
-          <ScholarNotebookCard header="ABOUT">
+          <ZohalNotebookCard header="ABOUT">
             <div className="p-4 text-sm text-text-soft">
               {t('bundlesManager.aboutBody')}
             </div>
-          </ScholarNotebookCard>
+          </ZohalNotebookCard>
 
           {/* Create Card */}
-          <ScholarNotebookCard header="CREATE">
+          <ZohalNotebookCard header="CREATE">
             <div className="p-4">
               <div className="flex items-center gap-3">
                 <Input
@@ -295,7 +295,7 @@ export default function WorkspaceBundlesPage() {
                 </Button>
               </div>
             </div>
-          </ScholarNotebookCard>
+          </ZohalNotebookCard>
 
           {/* Bundles List */}
           {loading ? (
@@ -312,7 +312,7 @@ export default function WorkspaceBundlesPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Bundle List */}
-              <ScholarNotebookCard header="BUNDLES">
+              <ZohalNotebookCard header="BUNDLES">
                 <div className="divide-y divide-border">
                   {bundles.map((b) => (
                     <button
@@ -349,11 +349,11 @@ export default function WorkspaceBundlesPage() {
                     </button>
                   ))}
                 </div>
-              </ScholarNotebookCard>
+              </ZohalNotebookCard>
 
               {/* Bundle Detail */}
               {selectedBundle ? (
-                <ScholarNotebookCard
+                <ZohalNotebookCard
                   headerContent={
                     <div className="flex items-center justify-between gap-3 w-full">
                       <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
@@ -429,7 +429,7 @@ export default function WorkspaceBundlesPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <ScholarSelect
+                              <ZohalSelect
                                 options={ROLE_OPTIONS}
                                 value={member.role}
                                 onChange={(e) =>
@@ -460,9 +460,9 @@ export default function WorkspaceBundlesPage() {
                       })}
                     </div>
                   )}
-                </ScholarNotebookCard>
+                </ZohalNotebookCard>
               ) : (
-                <ScholarNotebookCard header="DETAILS">
+                <ZohalNotebookCard header="DETAILS">
                   <div className="p-6">
                     <EmptyState
                       icon={<Package className="w-6 h-6" />}
@@ -471,7 +471,7 @@ export default function WorkspaceBundlesPage() {
                       variant="inline"
                     />
                   </div>
-                </ScholarNotebookCard>
+                </ZohalNotebookCard>
               )}
             </div>
           )}
@@ -481,7 +481,7 @@ export default function WorkspaceBundlesPage() {
       {/* Add Documents Modal */}
       {showAddDocs && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg mx-4 bg-surface rounded-scholar border border-border shadow-[var(--shadowMd)] overflow-hidden">
+          <div className="w-full max-w-lg mx-4 bg-surface rounded-zohal border border-border shadow-[var(--shadowMd)] overflow-hidden">
             <div className="px-4 py-3 bg-surface-alt border-b border-border flex items-center justify-between">
               <span className="text-[11px] font-semibold text-text-soft uppercase tracking-[1.2px]">
                 ADD DOCUMENTS

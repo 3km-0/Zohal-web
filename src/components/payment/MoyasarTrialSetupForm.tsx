@@ -106,12 +106,12 @@ export function MoyasarTrialSetupForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
+      <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm text-text-soft">
         {t('intro')}
       </div>
 
       {error ? (
-        <div className="rounded-scholar border border-error/30 bg-error/10 p-3 text-sm text-error">
+        <div className="rounded-zohal border border-error/30 bg-error/10 p-3 text-sm text-error">
           {error}
         </div>
       ) : null}
@@ -170,7 +170,7 @@ export function MoyasarTrialSetupForm({
         />
       </div>
 
-      <div className="rounded-scholar border border-border bg-surface-alt p-4 text-sm text-text-soft">
+      <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm text-text-soft">
         {t('note')}
       </div>
 

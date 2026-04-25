@@ -10,7 +10,7 @@ export default function NotFound() {
         <div className="text-center max-w-md">
           {/* 404 Illustration */}
           <div className="mb-8">
-            <div className="w-32 h-32 mx-auto bg-surface border border-border rounded-scholar-xl flex items-center justify-center shadow-scholar">
+            <div className="w-32 h-32 mx-auto bg-surface border border-border rounded-zohal-xl flex items-center justify-center shadow-zohal">
               <span className="text-6xl">📄</span>
             </div>
             <div className="mt-4 text-8xl font-bold text-accent/20">404</div>
@@ -27,13 +27,13 @@ export default function NotFound() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-white font-semibold rounded-scholar transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-white font-semibold rounded-zohal transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
             >
               Go Home
             </Link>
             <Link
               href="/support"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-surface border border-border text-text font-semibold rounded-scholar transition-all duration-200 hover:border-accent hover:text-accent"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-surface border border-border text-text font-semibold rounded-zohal transition-all duration-200 hover:border-accent hover:text-accent"
             >
               Get Help
             </Link>
@@ -45,25 +45,25 @@ export default function NotFound() {
             <div className="flex flex-wrap gap-3 justify-center">
               <Link
                 href="/auth/login"
-                className="px-4 py-2 bg-surface-alt border border-border rounded-scholar text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
+                className="px-4 py-2 bg-surface-alt border border-border rounded-zohal text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
               >
                 Log In
               </Link>
               <Link
                 href="/auth/signup"
-                className="px-4 py-2 bg-surface-alt border border-border rounded-scholar text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
+                className="px-4 py-2 bg-surface-alt border border-border rounded-zohal text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
               >
                 Sign Up
               </Link>
               <Link
                 href="/privacy"
-                className="px-4 py-2 bg-surface-alt border border-border rounded-scholar text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
+                className="px-4 py-2 bg-surface-alt border border-border rounded-zohal text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
               >
                 Privacy
               </Link>
               <Link
                 href="/terms"
-                className="px-4 py-2 bg-surface-alt border border-border rounded-scholar text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
+                className="px-4 py-2 bg-surface-alt border border-border rounded-zohal text-sm text-text-soft hover:text-accent hover:border-accent transition-colors"
               >
                 Terms
               </Link>

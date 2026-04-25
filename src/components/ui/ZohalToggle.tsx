@@ -4,10 +4,10 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * ScholarToggle - iOS-style toggle switch with label, caption, and optional icon
+ * ZohalToggle - iOS-style toggle switch with label, caption, and optional icon
  */
 
-export interface ScholarToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+export interface ZohalToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string;
   caption?: string;
   icon?: ReactNode;
@@ -15,7 +15,7 @@ export interface ScholarToggleProps extends Omit<InputHTMLAttributes<HTMLInputEl
   onCheckedChange?: (checked: boolean) => void;
 }
 
-export const ScholarToggle = forwardRef<HTMLInputElement, ScholarToggleProps>(
+export const ZohalToggle = forwardRef<HTMLInputElement, ZohalToggleProps>(
   ({ label, caption, icon, checked, onCheckedChange, className, onChange, ...props }, ref) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       onCheckedChange?.(e.target.checked);
@@ -64,4 +64,4 @@ export const ScholarToggle = forwardRef<HTMLInputElement, ScholarToggleProps>(
   }
 );
 
-ScholarToggle.displayName = 'ScholarToggle';
+ZohalToggle.displayName = 'ZohalToggle';

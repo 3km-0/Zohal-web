@@ -21,7 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, ScholarToggle, Spinner } from '@/components/ui';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, ZohalToggle, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type {
@@ -510,7 +510,7 @@ function WizardStepButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex-1 rounded-scholar border px-3 py-3 text-left transition-colors',
+        'flex-1 rounded-zohal border px-3 py-3 text-left transition-colors',
         active ? 'border-accent/30 bg-accent/5' : 'border-border bg-surface-alt hover:border-accent/20'
       )}
     >
@@ -585,7 +585,7 @@ function ApiSourceWizardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-scholar border border-border bg-surface shadow-[var(--shadowLg)]"
+        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-zohal border border-border bg-surface shadow-[var(--shadowLg)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-border px-6 py-4">
@@ -637,7 +637,7 @@ function ApiSourceWizardModal({
                               })
                             }
                             className={cn(
-                              'rounded-scholar border p-4 text-left transition-colors',
+                              'rounded-zohal border p-4 text-left transition-colors',
                               selected ? 'border-accent/30 bg-accent/5' : 'border-border bg-surface hover:border-accent/20'
                             )}
                           >
@@ -661,7 +661,7 @@ function ApiSourceWizardModal({
                         type="button"
                         onClick={() => onDraftChange(applyPreset(draft, preset.id))}
                         className={cn(
-                          'rounded-scholar border p-4 text-left transition-colors',
+                          'rounded-zohal border p-4 text-left transition-colors',
                           selected ? 'border-accent/30 bg-accent/5' : 'border-border bg-surface hover:border-accent/20'
                         )}
                       >
@@ -697,7 +697,7 @@ function ApiSourceWizardModal({
                         <textarea
                           value={draft.mcp_input_template_raw}
                           onChange={(event) => setField('mcp_input_template_raw', event.target.value)}
-                          className="min-h-[120px] rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+                          className="min-h-[120px] rounded-zohal border border-border bg-surface px-3 py-2 text-sm text-text"
                         />
                       </label>
                     </>
@@ -716,7 +716,7 @@ function ApiSourceWizardModal({
                             mapping_proposal: null,
                           });
                         }}
-                        className="min-h-[42px] rounded-scholar border border-border bg-surface px-3 text-sm text-text"
+                        className="min-h-[42px] rounded-zohal border border-border bg-surface px-3 text-sm text-text"
                       >
                         {FINANCE_CONNECTOR_OPTIONS.map((connector) => (
                           <option key={connector.id} value={connector.id}>{connector.title}</option>
@@ -732,7 +732,7 @@ function ApiSourceWizardModal({
                     <select
                       value={draft.http_method}
                       onChange={(event) => setField('http_method', event.target.value as 'GET' | 'POST')}
-                      className="min-h-[42px] rounded-scholar border border-border bg-surface px-3 text-sm text-text"
+                      className="min-h-[42px] rounded-zohal border border-border bg-surface px-3 text-sm text-text"
                     >
                       <option value="GET">GET</option>
                       <option value="POST">POST</option>
@@ -752,7 +752,7 @@ function ApiSourceWizardModal({
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {draft.source_kind === 'finance_builtin' ? (
-                    <div className="rounded-scholar border border-border bg-surface px-4 py-3 text-sm text-text-soft">
+                    <div className="rounded-zohal border border-border bg-surface px-4 py-3 text-sm text-text-soft">
                       This connector uses curated provider defaults. You can add auth later if you switch it to a private endpoint.
                     </div>
                   ) : (
@@ -763,7 +763,7 @@ function ApiSourceWizardModal({
                           type="button"
                           onClick={() => setField('auth_mode', mode)}
                           className={cn(
-                            'rounded-scholar border p-4 text-left transition-colors',
+                            'rounded-zohal border p-4 text-left transition-colors',
                             draft.auth_mode === mode ? 'border-accent/30 bg-accent/5' : 'border-border bg-surface hover:border-accent/20'
                           )}
                         >
@@ -774,7 +774,7 @@ function ApiSourceWizardModal({
                     </div>
                   )}
 
-                  <div className="rounded-scholar border border-border bg-surface px-4 py-3 text-sm text-text-soft">
+                  <div className="rounded-zohal border border-border bg-surface px-4 py-3 text-sm text-text-soft">
                     {authHelp}
                   </div>
 
@@ -801,7 +801,7 @@ function ApiSourceWizardModal({
                   )}
 
                   {draft.source_kind !== 'finance_builtin' && (draft.auth_mode === 'api_key' || draft.auth_mode === 'oauth2_client_credentials' || draft.auth_mode === 'oauth2_refresh_token') ? (
-                    <div className="rounded-scholar border border-border bg-surface px-4 py-3">
+                    <div className="rounded-zohal border border-border bg-surface px-4 py-3">
                       <button
                         type="button"
                         onClick={() => setShowAdvancedAuth((current) => !current)}
@@ -840,7 +840,7 @@ function ApiSourceWizardModal({
                   <CardDescription>Zohal will test the source, propose the mapping, and save it when you continue.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="rounded-scholar border border-border bg-surface px-4 py-3 text-sm text-text-soft">
+                  <div className="rounded-zohal border border-border bg-surface px-4 py-3 text-sm text-text-soft">
                     Zohal will propose and save the data mapping after the sample fetch. You can refine it later without recreating the source.
                   </div>
 
@@ -865,7 +865,7 @@ function ApiSourceWizardModal({
                     </div>
                   ) : null}
 
-                  <div className="rounded-scholar border border-border bg-surface px-4 py-3">
+                  <div className="rounded-zohal border border-border bg-surface px-4 py-3">
                     <button
                       type="button"
                       onClick={() => setShowAdvancedMapping((current) => !current)}
@@ -882,7 +882,7 @@ function ApiSourceWizardModal({
                           <textarea
                             value={draft.include_paths_raw}
                             onChange={(event) => setField('include_paths_raw', event.target.value)}
-                            className="min-h-[100px] rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+                            className="min-h-[100px] rounded-zohal border border-border bg-surface px-3 py-2 text-sm text-text"
                           />
                         </label>
                         <label className="grid gap-1.5 text-sm text-text md:col-span-2">
@@ -890,7 +890,7 @@ function ApiSourceWizardModal({
                           <textarea
                             value={draft.exclude_paths_raw}
                             onChange={(event) => setField('exclude_paths_raw', event.target.value)}
-                            className="min-h-[100px] rounded-scholar border border-border bg-surface px-3 py-2 text-sm text-text"
+                            className="min-h-[100px] rounded-zohal border border-border bg-surface px-3 py-2 text-sm text-text"
                           />
                         </label>
                       </div>
@@ -908,7 +908,7 @@ function ApiSourceWizardModal({
                   {testResult ? (
                     <>
                       <div className={cn(
-                        'rounded-scholar border px-4 py-3 text-sm',
+                        'rounded-zohal border px-4 py-3 text-sm',
                         testResult.ok
                           ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
                           : 'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-400'
@@ -918,10 +918,10 @@ function ApiSourceWizardModal({
                       {testResult.request_url ? (
                         <div className="text-xs text-text-soft">{testResult.request_url}</div>
                       ) : null}
-                      <pre className="max-h-72 overflow-auto rounded-scholar border border-border bg-surface px-4 py-3 text-xs text-text-soft whitespace-pre-wrap">
+                      <pre className="max-h-72 overflow-auto rounded-zohal border border-border bg-surface px-4 py-3 text-xs text-text-soft whitespace-pre-wrap">
                         {previewText || labels.previewEmpty}
                       </pre>
-                      <div className="rounded-scholar border border-border bg-surface px-4 py-3">
+                      <div className="rounded-zohal border border-border bg-surface px-4 py-3">
                         <div className="text-sm font-semibold text-text">{labels.mappingSummaryTitle}</div>
                         {draft.mapping_proposal?.mapping_summary_json ? (
                           <div className="mt-3 space-y-2 text-sm text-text-soft">
@@ -961,7 +961,7 @@ function ApiSourceWizardModal({
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-scholar border border-dashed border-border bg-surface px-4 py-6 text-sm text-text-soft">
+                    <div className="rounded-zohal border border-dashed border-border bg-surface px-4 py-6 text-sm text-text-soft">
                       {labels.previewPrompt}
                     </div>
                   )}
@@ -1042,7 +1042,7 @@ function ApiSourceAttachModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-scholar border border-border bg-surface shadow-[var(--shadowLg)]"
+        className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-zohal border border-border bg-surface shadow-[var(--shadowLg)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-border px-6 py-4">
@@ -1051,7 +1051,7 @@ function ApiSourceAttachModal({
         </div>
 
         <div className="space-y-4 px-6 py-5">
-          <div className="rounded-scholar border border-border bg-surface-alt px-4 py-3">
+          <div className="rounded-zohal border border-border bg-surface-alt px-4 py-3">
             <div className="text-sm font-semibold text-text">{source.name}</div>
             <div className="mt-1 text-xs text-text-soft">{source.endpoint_url}</div>
           </div>
@@ -1062,7 +1062,7 @@ function ApiSourceAttachModal({
               {labels.loading}
             </div>
           ) : workspaces.length === 0 ? (
-            <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-4 py-8 text-sm text-text-soft">
+            <div className="rounded-zohal border border-dashed border-border bg-surface-alt px-4 py-8 text-sm text-text-soft">
               {labels.empty}
             </div>
           ) : (
@@ -1070,7 +1070,7 @@ function ApiSourceAttachModal({
               {workspaces.map((workspace) => {
                 const selected = selectedWorkspaceIds.includes(workspace.id);
                 return (
-                  <div key={workspace.id} className="rounded-scholar border border-border bg-surface-alt p-4">
+                  <div key={workspace.id} className="rounded-zohal border border-border bg-surface-alt p-4">
                     <button
                       type="button"
                       onClick={() => toggleWorkspace(workspace.id)}
@@ -1087,7 +1087,7 @@ function ApiSourceAttachModal({
 
                     {selected ? (
                       <div className="mt-4 border-t border-border pt-4">
-                        <ScholarToggle
+                        <ZohalToggle
                           label={labels.defaultLabel}
                           caption={labels.defaultCaption}
                           checked={enabledByDefault[workspace.id] ?? true}
@@ -1489,9 +1489,9 @@ export default function IntegrationsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-4 rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="space-y-4 rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-scholar border border-[#25D366]/20 bg-[#25D366]/10">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-zohal border border-[#25D366]/20 bg-[#25D366]/10">
                     <MessageCircle className="h-5 w-5 text-[#25D366]" />
                   </div>
                   <div>
@@ -1524,9 +1524,9 @@ export default function IntegrationsPage() {
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="flex items-center justify-between rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-scholar bg-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-zohal bg-white">
                     <svg viewBox="0 0 48 48" className="h-5 w-5">
                       <path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.24 3.6l6.87-6.87C35.8 2.4 30.3 0 24 0 14.64 0 6.55 5.38 2.56 13.22l7.98 6.2C12.36 13.14 17.66 9.5 24 9.5z"/>
                       <path fill="#4285F4" d="M46.5 24.55c0-1.74-.16-3.41-.45-5.05H24v9.56h12.68c-.55 2.96-2.22 5.47-4.72 7.16l7.64 5.93C44.16 37.98 46.5 31.73 46.5 24.55z"/>
@@ -1556,9 +1556,9 @@ export default function IntegrationsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-scholar border border-border bg-surface-alt p-4">
+              <div className="flex items-center justify-between rounded-zohal border border-border bg-surface-alt p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-scholar bg-[#2563eb]/10">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-zohal bg-[#2563eb]/10">
                     <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#2563eb]">
                       <path d="M2 4.75 9.5 3v8.25H2V4.75Zm8.5-1.95L22 1v10.25H10.5V2.8ZM2 12.75h7.5V21L2 19.25v-6.5Zm8.5 0H22V23l-11.5-1.8v-8.45Z"/>
                     </svg>
@@ -1604,7 +1604,7 @@ export default function IntegrationsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="rounded-scholar border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">
+              <div className="rounded-zohal border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">
                 {t('apiSources.reuseHint')}
               </div>
 
@@ -1614,7 +1614,7 @@ export default function IntegrationsPage() {
                   {t('apiSources.loading')}
                 </div>
               ) : apiSources.length === 0 ? (
-                <div className="rounded-scholar border border-dashed border-border bg-surface-alt px-4 py-10 text-center">
+                <div className="rounded-zohal border border-dashed border-border bg-surface-alt px-4 py-10 text-center">
                   <p className="text-sm font-medium text-text">{t('apiSources.emptyTitle')}</p>
                   <p className="mt-1 text-sm text-text-soft">{t('apiSources.emptyBody')}</p>
                   <Button className="mt-4" size="sm" onClick={openCreateApiSource}>
@@ -1624,10 +1624,10 @@ export default function IntegrationsPage() {
               ) : (
                 <div className="space-y-3">
                   {apiSources.map((connection) => (
-                    <div key={connection.id} className="rounded-scholar border border-border bg-surface-alt p-4">
+                    <div key={connection.id} className="rounded-zohal border border-border bg-surface-alt p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 items-start gap-3">
-                          <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-scholar bg-accent/10 text-accent">
+                          <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-zohal bg-accent/10 text-accent">
                             <Globe className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">

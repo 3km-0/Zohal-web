@@ -142,7 +142,7 @@ export function PDFToolbar({
               onBlur={handlePageInputBlur}
               onKeyDown={handlePageInputKeyDown}
               inputMode="numeric"
-              className="w-12 rounded-scholar-sm border border-border bg-surface-alt px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-12 rounded-zohal-sm border border-border bg-surface-alt px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             />
             <span className="text-sm text-text-soft">of {totalPages}</span>
           </div>

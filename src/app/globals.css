@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Slate Design Language - CSS Variables */
+/* Zohal Design Language - CSS Variables */
 :root {
   /* Light Theme (Default) */
   --bg: #ffffff;
@@ -82,71 +82,7 @@
   --nav-border: rgba(255, 255, 255, 0.06);
 }
 
-/* Legacy aliases retained while older theme preference values are phased out. */
-[data-theme='scholar-dark'] {
-  --bg: #09090b;
-  --surface: #18181b;
-  --surface-alt: #1e1e22;
-  --text: #f5f0e6;
-  --text-soft: rgba(245, 240, 230, 0.55);
-  --text-muted: rgba(245, 240, 230, 0.35);
-  --border: rgba(255, 255, 255, 0.06);
-  --accent: #c4a45a;
-  --highlight: #f5f0e6;
-  --accent-alt: #e2c87e;
-  --success: #4ade80;
-  --error: #f87171;
-  --warning: #f59e0b;
-  --warning-soft: rgba(196, 164, 90, 0.12);
-  --accent-soft: rgba(196, 164, 90, 0.15);
-  --accent-dim: rgba(196, 164, 90, 0.08);
-  --accent-text: #1a1a1a;
-  --button-primary-bg: #c4a45a;
-  --button-primary-bg-hover: #e2c87e;
-  --button-primary-text: #1a1a1a;
-  --grid-color: transparent;
-  --grid-opacity: 0;
-  --grid-size: 20px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36);
-  --nav-bg-top: rgba(9, 9, 11, 0.72);
-  --nav-bg-scrolled: rgba(9, 9, 11, 0.88);
-  --nav-border: rgba(255, 255, 255, 0.06);
-}
-
-/* Legacy Scholar neutral alias. */
-[data-theme='scholar-neutral'] {
-  --bg: #09090b;
-  --surface: #18181b;
-  --surface-alt: #1e1e22;
-  --text: #f5f0e6;
-  --text-soft: rgba(245, 240, 230, 0.55);
-  --text-muted: rgba(245, 240, 230, 0.35);
-  --border: rgba(255, 255, 255, 0.06);
-  --accent: #c4a45a;
-  --highlight: #f5f0e6;
-  --accent-alt: #e2c87e;
-  --success: #4ade80;
-  --error: #f87171;
-  --warning: #f59e0b;
-  --warning-soft: rgba(196, 164, 90, 0.12);
-  --accent-soft: rgba(196, 164, 90, 0.15);
-  --accent-dim: rgba(196, 164, 90, 0.08);
-  --accent-text: #1a1a1a;
-  --button-primary-bg: #c4a45a;
-  --button-primary-bg-hover: #e2c87e;
-  --button-primary-text: #1a1a1a;
-  --grid-color: transparent;
-  --grid-opacity: 0;
-  --grid-size: 20px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36);
-  --nav-bg-top: rgba(9, 9, 11, 0.72);
-  --nav-bg-scrolled: rgba(9, 9, 11, 0.88);
-  --nav-border: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme='slate-light'] {
+[data-theme='zohal-light'] {
   --bg: #ffffff;
   --surface: #ffffff;
   --surface-alt: #fafaf9;
@@ -179,7 +115,7 @@
   --nav-border: rgba(28, 25, 23, 0.08);
 }
 
-[data-theme='slate-dark'] {
+[data-theme='zohal-dark'] {
   --bg: #09090b;
   --surface: #18181b;
   --surface-alt: #1e1e22;
@@ -216,7 +152,7 @@
    Dark: obsidian + teal atmosphere + gold command.
    Light: porcelain + quiet teal atmosphere + amethyst command. */
 :root,
-[data-theme='slate-light'] {
+[data-theme='zohal-light'] {
   --bg: #fbfefd;
   --surface: rgba(255, 255, 255, 0.92);
   --surface-alt: rgba(255, 255, 255, 0.86);
@@ -238,7 +174,7 @@
   --button-primary-bg-hover: #8b7be8;
   --button-primary-text: #ffffff;
   --grid-color: rgba(215, 231, 227, 0.65);
-  --grid-opacity: 0.14;
+  --grid-opacity: 0;
   --grid-size: 52px;
   --shadowSm: 0 1px 3px rgba(20, 78, 73, 0.035);
   --shadowMd: 0 18px 50px rgba(20, 78, 73, 0.065);
@@ -248,9 +184,7 @@
 }
 
 [data-theme='dark'],
-[data-theme='scholar-dark'],
-[data-theme='scholar-neutral'],
-[data-theme='slate-dark'] {
+[data-theme='zohal-dark'] {
   --bg: #05070b;
   --surface: rgba(255, 255, 255, 0.045);
   --surface-alt: rgba(94, 234, 212, 0.035);
@@ -272,7 +206,7 @@
   --button-primary-bg-hover: #ffe8a3;
   --button-primary-text: #05070b;
   --grid-color: rgba(255, 255, 255, 0.035);
-  --grid-opacity: 0.2;
+  --grid-opacity: 0;
   --grid-size: 52px;
   --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.05);
   --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.42);
@@ -345,17 +279,17 @@ body {
   }
 }
 
-/* Scholar Component Base Styles */
+/* Zohal Component Base Styles */
 @layer components {
   /* Card */
-  .scholar-card {
-    @apply bg-surface border border-border rounded-scholar p-6;
+  .zohal-card {
+    @apply bg-surface border border-border rounded-zohal p-6;
   }
 
   /* Button Primary */
-  .scholar-btn-primary {
+  .zohal-btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 
-           font-semibold rounded-scholar
+           font-semibold rounded-zohal
            transition-all duration-200
            hover:-translate-y-0.5
            active:translate-y-0;
@@ -363,51 +297,51 @@ body {
     color: var(--button-primary-text);
   }
 
-  .scholar-btn-primary:hover {
+  .zohal-btn-primary:hover {
     background: var(--button-primary-bg-hover);
   }
 
   /* Button Secondary */
-  .scholar-btn-secondary {
+  .zohal-btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 
-           bg-surface border border-border text-text font-semibold rounded-scholar
+           bg-surface border border-border text-text font-semibold rounded-zohal
            transition-all duration-200
            hover:bg-surface-alt;
     border-color: var(--border);
   }
 
-  .scholar-btn-secondary:hover {
+  .zohal-btn-secondary:hover {
     border-color: var(--button-primary-bg);
   }
 
   /* Input */
-  .scholar-input {
-    @apply w-full px-4 py-3 bg-surface border border-border rounded-scholar
+  .zohal-input {
+    @apply w-full px-4 py-3 bg-surface border border-border rounded-zohal
            text-text placeholder:text-text-soft
            transition-colors duration-200
            focus:ring-0;
   }
 
-  .scholar-input:focus {
+  .zohal-input:focus {
     border-color: var(--button-primary-bg);
   }
 
   /* Badge */
-  .scholar-badge {
+  .zohal-badge {
     @apply inline-flex items-center gap-2 px-3 py-1.5
            bg-surface border border-border rounded-full
            text-sm text-text-soft;
   }
 
   /* Section */
-  .scholar-section {
-    @apply bg-surface border border-border rounded-scholar p-7;
+  .zohal-section {
+    @apply bg-surface border border-border rounded-zohal p-7;
   }
 
   /* Highlight Box */
-  .scholar-highlight {
+  .zohal-highlight {
     @apply bg-surface-alt border border-border border-l-[3px] border-l-accent
-           rounded-scholar-sm p-4;
+           rounded-zohal-sm p-4;
   }
 }
 

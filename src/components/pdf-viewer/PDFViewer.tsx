@@ -333,7 +333,7 @@ export function PDFViewer({
           }}
         >
           {proofMessage && (
-            <div className="sticky top-2 z-20 mx-auto w-fit px-3 py-2 rounded-scholar border border-border bg-surface text-text text-sm shadow-scholar">
+            <div className="sticky top-2 z-20 mx-auto w-fit px-3 py-2 rounded-zohal border border-border bg-surface text-text text-sm shadow-zohal">
               {proofMessage}
             </div>
           )}
@@ -481,7 +481,7 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
       ref={pageRef}
       id={`pdf-page-${pageNumber}`}
       dir={PDF_RENDER_SURFACE_DIR}
-      className="relative w-full overflow-hidden rounded-scholar bg-white shadow-scholar"
+      className="relative w-full overflow-hidden rounded-zohal bg-white shadow-zohal"
       style={{
         maxWidth: dimensions.width || undefined,
         minHeight: dimensions.height || 280,
@@ -489,7 +489,7 @@ function PDFPage({ pdf, pageNumber, scale, highlightRect }: PDFPageProps) {
     >
       {highlightRect && status === 'rendered' && (
         <div
-          className="absolute z-10 border-2 border-yellow-400 bg-yellow-300/50 rounded-scholar-sm pointer-events-none"
+          className="absolute z-10 border-2 border-yellow-400 bg-yellow-300/50 rounded-zohal-sm pointer-events-none"
           style={{
             left: highlightRect.left * displayScale,
             top: highlightRect.top * displayScale,

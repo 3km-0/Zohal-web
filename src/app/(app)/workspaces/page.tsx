@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, FolderOpen, MoreVertical, Trash2, Edit2, Search, ArrowRight } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { Button, EmptyState, ScholarActionMenu, Spinner } from '@/components/ui';
+import { Button, EmptyState, ZohalActionMenu, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Folder, Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';

@@ -141,7 +141,7 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
                 <div
                   key={it.id}
                   className={cn(
-                    'flex items-start justify-between gap-3 p-3 rounded-scholar border border-border bg-surface-alt',
+                    'flex items-start justify-between gap-3 p-3 rounded-zohal border border-border bg-surface-alt',
                     downloadingId === it.id && 'opacity-70'
                   )}
                 >

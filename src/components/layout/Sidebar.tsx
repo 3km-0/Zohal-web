@@ -101,7 +101,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
             alt="Zohal"
             width={32}
             height={32}
-            className="h-8 w-8 rounded-scholar-sm"
+            className="h-8 w-8 rounded-zohal-sm"
           />
           <span className={cn('truncate text-xl font-bold text-accent', collapsed && 'md:hidden')}>
             {tCommon('appName')}
@@ -110,7 +110,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
         <div className="flex items-center gap-1">
           <button
             onClick={onClose}
-            className="rounded-scholar-sm p-1.5 hover:bg-surface-alt transition-colors md:hidden"
+            className="rounded-zohal-sm p-1.5 hover:bg-surface-alt transition-colors md:hidden"
             aria-label={tSidebar('closeMenu')}
           >
             <X className="h-5 w-5 text-text-soft" />
@@ -118,7 +118,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={cn(
-              'hidden rounded-scholar-sm p-1.5 hover:bg-surface-alt transition-colors md:inline-flex',
+              'hidden rounded-zohal-sm p-1.5 hover:bg-surface-alt transition-colors md:inline-flex',
               collapsed && 'md:mx-auto'
             )}
             aria-label={collapsed ? tSidebar('expandSidebar') : tSidebar('collapseSidebar')}
@@ -172,7 +172,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
             signOut();
           }}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2.5 rounded-scholar transition-colors',
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-zohal transition-colors',
             'text-text-soft hover:text-error hover:bg-error/10',
             collapsed && 'justify-center'
           )}
@@ -200,7 +200,7 @@ function NavItem({ href, label, icon: Icon, active, collapsed, onNavigate }: Nav
       href={href}
       onClick={onNavigate}
       className={cn(
-        'relative flex items-center gap-3 px-3 py-2.5 rounded-scholar transition-colors duration-150',
+        'relative flex items-center gap-3 px-3 py-2.5 rounded-zohal transition-colors duration-150',
         active
           ? 'text-accent'
           : 'text-text-soft hover:text-text hover:bg-surface-alt',

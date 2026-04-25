@@ -165,7 +165,7 @@ export function OverviewTab({
                   const kind = String(d?.kind || '');
                   if (kind === 'variable_conflict') {
                     return (
-                      <div key={String(d.id || `${d.variable_name}`)} className="rounded-scholar border border-border bg-surface-alt p-3">
+                      <div key={String(d.id || `${d.variable_name}`)} className="rounded-zohal border border-border bg-surface-alt p-3">
                         <div className="text-sm font-semibold text-text">{String(d.variable_name || 'Variable')}</div>
                         <div className="mt-2 space-y-1">
                           {Array.isArray(d.values)
@@ -193,7 +193,7 @@ export function OverviewTab({
                     const contractHref = proofHref(d?.contract?.evidence);
                     const ruleHref = proofHref(d?.rule?.evidence);
                     return (
-                      <div key={String(d.id || `${kind}-${d?.rule?.rule_id}`)} className="rounded-scholar border border-border bg-surface-alt p-3">
+                      <div key={String(d.id || `${kind}-${d?.rule?.rule_id}`)} className="rounded-zohal border border-border bg-surface-alt p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="text-sm font-semibold text-text">{String(d?.rule?.title || 'Compliance finding')}</div>
                           <Badge size="sm">{String(d?.severity || '').toLowerCase() || 'medium'}</Badge>
@@ -292,7 +292,7 @@ export function OverviewTab({
 function DateDetail({ label, value, highlight }: { label: string; value: string | null | undefined; highlight?: boolean }) {
   return (
     <div className={cn(
-      'p-3 rounded-scholar-sm border',
+      'p-3 rounded-zohal-sm border',
       highlight ? 'border-accent/20 bg-accent/5' : 'border-border bg-surface-alt',
     )}>
       <div className="text-[10px] uppercase tracking-wider text-text-soft mb-1">{label}</div>

@@ -5,12 +5,12 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * ScholarActionMenu - iOS-style capsule action menu with dropdown
+ * ZohalActionMenu - iOS-style capsule action menu with dropdown
  *
  * Replaces HTML <details> with a proper styled popover menu.
  *
  * Usage:
- * <ScholarActionMenu
+ * <ZohalActionMenu
  *   icon={<Bolt className="w-4 h-4" />}
  *   label="Actions"
  *   items={[
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
  * />
  */
 
-export type ScholarActionMenuItem =
+export type ZohalActionMenuItem =
   | { type: 'divider' }
   | { type: 'section'; label: string }
   | {
@@ -32,10 +32,10 @@ export type ScholarActionMenuItem =
       destructive?: boolean;
     };
 
-export interface ScholarActionMenuProps {
+export interface ZohalActionMenuProps {
   icon?: ReactNode;
   label: string;
-  items: ScholarActionMenuItem[];
+  items: ZohalActionMenuItem[];
   className?: string;
   isLoading?: boolean;
   compact?: boolean;
@@ -44,7 +44,7 @@ export interface ScholarActionMenuProps {
   dataTour?: string;
 }
 
-export function ScholarActionMenu({
+export function ZohalActionMenu({
   icon,
   label,
   items,
@@ -53,7 +53,7 @@ export function ScholarActionMenu({
   compact = false,
   ariaLabel,
   dataTour,
-}: ScholarActionMenuProps) {
+}: ZohalActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +122,7 @@ export function ScholarActionMenu({
         <div
           className={cn(
             'absolute right-0 top-full mt-2 min-w-[200px] max-w-[280px]',
-            'bg-surface border border-border rounded-scholar shadow-[var(--shadowMd)]',
+            'bg-surface border border-border rounded-zohal shadow-[var(--shadowMd)]',
             'overflow-hidden z-50',
             'animate-fade-in'
           )}

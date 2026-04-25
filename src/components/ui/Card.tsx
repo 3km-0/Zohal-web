@@ -21,7 +21,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const baseStyles = 'rounded-scholar shadow-[var(--shadowSm)]';
+    const baseStyles = 'rounded-zohal shadow-[var(--shadowSm)]';
 
     const variants = {
       default: 'bg-surface border border-border',

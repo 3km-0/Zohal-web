@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CircleHelp, Menu, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { Button, Spinner, Badge, Card, CardContent, ScholarActionMenu } from '@/components/ui';
+import { Button, Spinner, Badge, Card, CardContent, ZohalActionMenu } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { PDFViewer } from '@/components/pdf-viewer';
 import { SpreadsheetViewer } from '@/components/document/SpreadsheetViewer';
@@ -456,7 +456,7 @@ export default function DocumentViewerShell({
                     <Sparkles className="w-4 h-4" />
                     {tAI('title')}
                   </Button>
-                  <ScholarActionMenu
+                  <ZohalActionMenu
                     compact
                     ariaLabel={tSidebar('openMenu')}
                     icon={<MoreVertical className="w-4 h-4" />}

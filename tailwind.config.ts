@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Scholar Design System Colors
+        // Zohal Design System Colors
         background: 'var(--bg)',
         surface: {
           DEFAULT: 'var(--surface)',
@@ -38,22 +38,22 @@ const config: Config = {
         mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {
-        scholar: '10px',
-        'scholar-sm': '6px',
-        'scholar-lg': '16px',
-        'scholar-xl': '24px',
+        zohal: '10px',
+        'zohal-sm': '6px',
+        'zohal-lg': '16px',
+        'zohal-xl': '24px',
       },
       boxShadow: {
-        scholar: '0 4px 24px rgba(0, 0, 0, 0.06)',
-        'scholar-lg': '0 8px 32px rgba(0, 0, 0, 0.08)',
+        zohal: '0 4px 24px rgba(0, 0, 0, 0.06)',
+        'zohal-lg': '0 8px 32px rgba(0, 0, 0, 0.08)',
       },
       spacing: {
-        'scholar-xs': '4px',
-        'scholar-sm': '8px',
-        'scholar-md': '16px',
-        'scholar-lg': '24px',
-        'scholar-xl': '32px',
-        'scholar-2xl': '48px',
+        'zohal-xs': '4px',
+        'zohal-sm': '8px',
+        'zohal-md': '16px',
+        'zohal-lg': '24px',
+        'zohal-xl': '32px',
+        'zohal-2xl': '48px',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

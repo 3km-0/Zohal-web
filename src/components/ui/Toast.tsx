@@ -85,7 +85,7 @@ export function Toast({ onAction }: ToastProps) {
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4"
         >
           <div
-            className="rounded-scholar shadow-[var(--shadowMd)] border border-border bg-surface p-4 flex items-start gap-3"
+            className="rounded-zohal shadow-[var(--shadowMd)] border border-border bg-surface p-4 flex items-start gap-3"
             role="status"
             aria-live="polite"
           >
@@ -122,7 +122,7 @@ export function Toast({ onAction }: ToastProps) {
               )}
               <button
                 onClick={dismiss}
-                className="p-1 rounded-scholar-sm text-text-soft hover:text-text hover:bg-surface-alt transition-colors"
+                className="p-1 rounded-zohal-sm text-text-soft hover:text-text hover:bg-surface-alt transition-colors"
                 aria-label={tCommon('close')}
               >
                 <X className="w-4 h-4" />

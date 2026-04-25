@@ -133,7 +133,7 @@ export function MoyasarPaymentForm({
 
   if (!publishableKey) {
     return (
-      <div className={cn('p-4 bg-error/10 border border-error/20 rounded-scholar text-error', className)}>
+      <div className={cn('p-4 bg-error/10 border border-error/20 rounded-zohal text-error', className)}>
         Payment configuration error. Please contact support.
       </div>
     );
@@ -160,7 +160,7 @@ export function MoyasarPaymentForm({
         href="https://cdn.moyasar.com/mpf/1.14.0/moyasar.css"
       />
 
-      {/* Custom styling for Moyasar form to match Scholar theme */}
+      {/* Custom styling for Moyasar form to match Zohal theme */}
       <style jsx global>{`
         .moyasar-form {
           font-family: inherit;
@@ -248,7 +248,7 @@ export function MoyasarPaymentForm({
 
       {/* Error state */}
       {error && (
-        <div className="p-4 bg-error/10 border border-error/20 rounded-scholar text-error text-sm">
+        <div className="p-4 bg-error/10 border border-error/20 rounded-zohal text-error text-sm">
           {error}
         </div>
       )}
@@ -263,7 +263,7 @@ export function MoyasarPaymentForm({
       />
 
       {/* Payment summary */}
-      <div className="mt-4 p-4 bg-surface-alt rounded-scholar">
+      <div className="mt-4 p-4 bg-surface-alt rounded-zohal">
         <div className="flex justify-between text-sm">
           <span className="text-text-soft">Plan</span>
           <span className="font-medium text-text capitalize">{tier} ({period})</span>

@@ -38,32 +38,28 @@ vi.mock('./AppShellContext', () => ({
 }));
 
 vi.mock('./LanguageSwitcher', () => ({
-  LanguageSwitcher: () => <button type="button">Lang</button>,
+  LanguageSwitcher: () => React.createElement('button', { type: 'button' }, 'Lang'),
 }));
 
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  default: ({ children, href, ...props }: any) => React.createElement('a', { href, ...props }, children),
 }));
 
 describe('AppHeader', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    document.documentElement.setAttribute('data-theme', 'slate-light');
+    document.documentElement.setAttribute('data-theme', 'zohal-light');
   });
 
   it('toggles from light to dark mode from the header control', () => {
-    render(<AppHeader title="Workspace" />);
+    render(React.createElement(AppHeader, { title: 'Workspace' }));
 
     const toggle = screen.getByTestId('app-header-theme-toggle');
     expect(toggle).toHaveAttribute('aria-label', 'Switch to dark mode');
 
     fireEvent.click(toggle);
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('slate-dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-dark');
     expect(window.localStorage.getItem('theme')).toBe('dark');
     expect(toggle).toHaveAttribute('aria-label', 'Switch to light mode');
   });

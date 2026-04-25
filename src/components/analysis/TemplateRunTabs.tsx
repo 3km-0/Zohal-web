@@ -77,7 +77,7 @@ export function GenericSummaryTab({
           {metrics.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {metrics.map((metric) => (
-                <div key={metric.label} className="rounded-scholar border border-border bg-surface-alt p-3">
+                <div key={metric.label} className="rounded-zohal border border-border bg-surface-alt p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">{metric.label}</div>
                   <div
                     className={cn(
@@ -111,7 +111,7 @@ export function GenericSummaryTab({
             ) : (
               <div className="space-y-3">
                 {section.items.map((item) => (
-                  <div key={item.id} className="rounded-scholar border border-border bg-surface-alt p-3">
+                  <div key={item.id} className="rounded-zohal border border-border bg-surface-alt p-3">
                     <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">{item.label}</div>
                     {item.href ? (
                       <Link href={item.href} className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline">
@@ -425,7 +425,7 @@ export function LeaseConflictsTab(props: NativeModuleTabProps) {
                 {item.metadata && Object.keys(item.metadata).length > 0 ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {Object.entries(item.metadata).map(([key, value]) => (
-                      <div key={key} className="rounded-scholar border border-border bg-surface-alt p-3">
+                      <div key={key} className="rounded-zohal border border-border bg-surface-alt p-3">
                         <div className="text-xs font-semibold uppercase tracking-wide text-text-soft">{key}</div>
                         <div className="mt-1 text-sm text-text whitespace-pre-wrap">{String(value ?? '—')}</div>
                       </div>

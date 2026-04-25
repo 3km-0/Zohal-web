@@ -106,7 +106,7 @@ export default function VerifyPage() {
 
       <CardContent>
         {success ? (
-          <div className="p-4 bg-success/10 border border-success/20 rounded-scholar text-sm text-success text-center">
+          <div className="p-4 bg-success/10 border border-success/20 rounded-zohal text-sm text-success text-center">
             {t('verificationSuccess')}
           </div>
         ) : (
@@ -140,13 +140,13 @@ export default function VerifyPage() {
             />
 
             {error && (
-              <div className="p-3 bg-error/10 border border-error/20 rounded-scholar text-sm text-error">
+              <div className="p-3 bg-error/10 border border-error/20 rounded-zohal text-sm text-error">
                 {error}
               </div>
             )}
 
             {resendSuccess && (
-              <div className="p-3 bg-success/10 border border-success/20 rounded-scholar text-sm text-success">
+              <div className="p-3 bg-success/10 border border-success/20 rounded-zohal text-sm text-success">
                 {t('resendCodeSuccess')}
               </div>
             )}
