@@ -212,6 +212,75 @@
   --nav-border: rgba(255, 255, 255, 0.06);
 }
 
+/* Zohal locked acquisition design language.
+   Dark: obsidian + teal atmosphere + gold command.
+   Light: porcelain + quiet teal atmosphere + amethyst command. */
+:root,
+[data-theme='slate-light'] {
+  --bg: #fbfefd;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-alt: rgba(255, 255, 255, 0.86);
+  --text: #10231f;
+  --text-soft: #647873;
+  --text-muted: #748781;
+  --border: rgba(215, 231, 227, 0.7);
+  --accent: #6d5bd0;
+  --accent-alt: #8b7be8;
+  --highlight: #44337a;
+  --success: #158a70;
+  --error: #c65365;
+  --warning: #6d5bd0;
+  --warning-soft: rgba(109, 91, 208, 0.09);
+  --accent-soft: rgba(109, 91, 208, 0.12);
+  --accent-dim: rgba(109, 91, 208, 0.06);
+  --accent-text: #ffffff;
+  --button-primary-bg: #6d5bd0;
+  --button-primary-bg-hover: #8b7be8;
+  --button-primary-text: #ffffff;
+  --grid-color: rgba(215, 231, 227, 0.65);
+  --grid-opacity: 0.14;
+  --grid-size: 52px;
+  --shadowSm: 0 1px 3px rgba(20, 78, 73, 0.035);
+  --shadowMd: 0 18px 50px rgba(20, 78, 73, 0.065);
+  --nav-bg-top: rgba(251, 254, 253, 0.78);
+  --nav-bg-scrolled: rgba(251, 254, 253, 0.92);
+  --nav-border: rgba(215, 231, 227, 0.7);
+}
+
+[data-theme='dark'],
+[data-theme='scholar-dark'],
+[data-theme='scholar-neutral'],
+[data-theme='slate-dark'] {
+  --bg: #05070b;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-alt: rgba(94, 234, 212, 0.035);
+  --text: #f8fafc;
+  --text-soft: #94a3b8;
+  --text-muted: #64748b;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #f5c84c;
+  --accent-alt: #ffe8a3;
+  --highlight: #cffff6;
+  --success: #6ee7b7;
+  --error: #fb7185;
+  --warning: #f5c84c;
+  --warning-soft: rgba(245, 200, 76, 0.06);
+  --accent-soft: rgba(245, 200, 76, 0.105);
+  --accent-dim: rgba(245, 200, 76, 0.06);
+  --accent-text: #05070b;
+  --button-primary-bg: #f5c84c;
+  --button-primary-bg-hover: #ffe8a3;
+  --button-primary-text: #05070b;
+  --grid-color: rgba(255, 255, 255, 0.035);
+  --grid-opacity: 0.2;
+  --grid-size: 52px;
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.42);
+  --nav-bg-top: rgba(5, 7, 11, 0.74);
+  --nav-bg-scrolled: rgba(5, 7, 11, 0.9);
+  --nav-border: rgba(255, 255, 255, 0.1);
+}
+
 /* Base Styles */
 html {
   scroll-behavior: smooth;

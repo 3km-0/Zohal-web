@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { TourManager } from '@/components/tour';
 import { AppShellProvider } from './AppShellContext';
 
@@ -15,6 +15,7 @@ interface AppShellProps {
 
 export function AppShell({ children, className }: AppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const openMobileSidebar = useCallback(() => setMobileSidebarOpen(true), []);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
@@ -40,6 +41,8 @@ export function AppShell({ children, className }: AppShellProps) {
     }
   };
 
+  const isWorkspaceDetailShell = /^\/workspaces\/[^/]+/.test(pathname) && !pathname.startsWith('/workspaces/folders');
+
   return (
     <div className="relative h-[100dvh] min-h-[100dvh] bg-background overflow-hidden">
       <div className="grid-bg" aria-hidden="true" />
@@ -53,7 +56,7 @@ export function AppShell({ children, className }: AppShellProps) {
             onClick={closeMobileSidebar}
             aria-hidden="true"
           />
-          <Sidebar mobileOpen={mobileSidebarOpen} onClose={closeMobileSidebar} />
+          {isWorkspaceDetailShell ? null : <Sidebar mobileOpen={mobileSidebarOpen} onClose={closeMobileSidebar} />}
           <main className={cn('flex min-w-0 flex-1 flex-col overflow-hidden', className)}>
             {children}
           </main>
