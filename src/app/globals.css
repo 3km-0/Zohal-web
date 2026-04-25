@@ -33,9 +33,9 @@
 
   /* Font Variables */
   --font-source-serif: 'Instrument Serif', Georgia, serif;
-  --font-inter: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
   --font-instrument-serif: 'Instrument Serif', Georgia, serif;
-  --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-plus-jakarta: 'Inter', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
 
   /* Shared semantic radii + shadows */
@@ -185,34 +185,40 @@
 
 [data-theme='dark'],
 [data-theme='zohal-dark'] {
-  --bg: #05070b;
-  --surface: rgba(255, 255, 255, 0.045);
-  --surface-alt: rgba(94, 234, 212, 0.035);
-  --text: #f8fafc;
-  --text-soft: #94a3b8;
-  --text-muted: #64748b;
-  --border: rgba(255, 255, 255, 0.1);
-  --accent: #f5c84c;
-  --accent-alt: #ffe8a3;
-  --highlight: #cffff6;
-  --success: #6ee7b7;
-  --error: #fb7185;
-  --warning: #f5c84c;
-  --warning-soft: rgba(245, 200, 76, 0.06);
-  --accent-soft: rgba(245, 200, 76, 0.105);
-  --accent-dim: rgba(245, 200, 76, 0.06);
-  --accent-text: #05070b;
-  --button-primary-bg: #f5c84c;
-  --button-primary-bg-hover: #ffe8a3;
-  --button-primary-text: #05070b;
-  --grid-color: rgba(255, 255, 255, 0.035);
-  --grid-opacity: 0;
-  --grid-size: 52px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.42);
-  --nav-bg-top: rgba(5, 7, 11, 0.74);
-  --nav-bg-scrolled: rgba(5, 7, 11, 0.9);
-  --nav-border: rgba(255, 255, 255, 0.1);
+  --bg: #030509;
+  --surface: rgba(255, 255, 255, 0.035);
+  --surface-alt: rgba(255, 255, 255, 0.058);
+  --text: #f5f8fc;
+  --text-soft: #b8c1d0;
+  --text-muted: #758194;
+  --text-faint: #465163;
+  --border: rgba(255, 255, 255, 0.09);
+  --accent: #b9ff26;
+  --accent-rgb: 185, 255, 38;
+  --accent-alt: #dfff7a;
+  --highlight: #23d7ff;
+  --highlight-rgb: 35, 215, 255;
+  --success: #72e3b7;
+  --error: #ff5b70;
+  --warning: #ffb020;
+  --warning-soft: rgba(255, 176, 32, 0.1);
+  --accent-soft: rgba(185, 255, 38, 0.1);
+  --accent-dim: rgba(185, 255, 38, 0.055);
+  --accent-text: #030509;
+  --button-primary-bg: #b9ff26;
+  --button-primary-bg-hover: #dfff7a;
+  --button-primary-text: #030509;
+  --grid-color: rgba(255, 255, 255, 0.025);
+  --grid-opacity: 0.22;
+  --grid-size: 62px;
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.055), 0 14px 42px rgba(0, 0, 0, 0.28);
+  --shadowMd: 0 24px 80px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  --nav-bg-top: rgba(3, 5, 9, 0.78);
+  --nav-bg-scrolled: rgba(3, 5, 9, 0.92);
+  --nav-border: rgba(255, 255, 255, 0.09);
+  --console-bg: linear-gradient(180deg, #030509 0%, #07101a 55%, #020306 100%);
+  --panel-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.058), rgba(255, 255, 255, 0.021)),
+    radial-gradient(circle at 100% 0%, rgba(185, 255, 38, 0.045), transparent 34%);
 }
 
 /* Base Styles */
@@ -222,7 +228,7 @@ html {
 
 body {
   font-family: var(--font-plus-jakarta);
-  background-color: var(--bg);
+  background: var(--console-bg, var(--bg));
   color: var(--text);
   line-height: 1.55;
   min-height: 100vh;

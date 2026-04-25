@@ -2847,6 +2847,21 @@
       "openItems": "قناة القيادة",
       "comps": "سياق السوق"
     },
+    "visualCompanion": "المرافق البصري",
+    "visualCompanionTitle": "خريطة / صور / مستندات",
+    "visualModes": {
+      "map": "خريطة",
+      "photos": "صور",
+      "docs": "مستندات",
+      "parcel": "قطعة"
+    },
+    "activeTarget": "الهدف النشط",
+    "photoEvidence": "صورة دليل",
+    "photosEmpty": "لم تُرفق صور أدلة بعد. تبقى هذه اللوحة سطح مراجعة حتى تتوفر صور مدعومة بالمصادر.",
+    "facade": "الواجهة",
+    "interior": "الداخل",
+    "roof": "السطح",
+    "parcelSignal": "إشارة القطعة",
     "dealCommandChannel": "قناة قيادة الصفقة"
   },
   "updatesPage": {

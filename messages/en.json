@@ -2846,6 +2846,21 @@
       "openItems": "Command Channel",
       "comps": "Market Context"
     },
+    "visualCompanion": "Visual companion",
+    "visualCompanionTitle": "Map / photos / docs",
+    "visualModes": {
+      "map": "Map",
+      "photos": "Photos",
+      "docs": "Docs",
+      "parcel": "Parcel"
+    },
+    "activeTarget": "Active target",
+    "photoEvidence": "Evidence photo",
+    "photosEmpty": "Photo evidence has not been attached yet. Keep this companion pane as a review surface until source-backed images exist.",
+    "facade": "Facade",
+    "interior": "Interior",
+    "roof": "Roof",
+    "parcelSignal": "Parcel signal",
     "dealCommandChannel": "Deal command channel"
   },
   "updatesPage": {

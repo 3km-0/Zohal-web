@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import {
+  Inter,
   Instrument_Serif,
   JetBrains_Mono,
-  Plus_Jakarta_Sans,
 } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -18,7 +18,7 @@ const sourceSerif = Instrument_Serif({
   display: 'swap',
 });
 
-const inter = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
@@ -31,7 +31,7 @@ const instrumentSerif = Instrument_Serif({
   display: 'swap',
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const vectorSans = Inter({
   subsets: ['latin'],
   variable: '--font-plus-jakarta',
   display: 'swap',
@@ -118,7 +118,7 @@ export default async function RootLayout({
       lang={locale}
       dir={dir}
       data-theme="zohal-light"
-      className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${plusJakartaSans.variable}`}
+      className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${vectorSans.variable}`}
       suppressHydrationWarning
     >
       <body>

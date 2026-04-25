@@ -34,7 +34,7 @@ const config: Config = {
       },
       fontFamily: {
         serif: ['var(--font-instrument-serif)', 'Georgia', 'serif'],
-        sans: ['var(--font-plus-jakarta)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'var(--font-plus-jakarta)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {

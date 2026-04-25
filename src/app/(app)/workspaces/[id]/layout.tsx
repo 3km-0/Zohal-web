@@ -25,18 +25,18 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
   const backHref = fromFolderId ? `/workspaces/folders/${encodeURIComponent(fromFolderId)}` : '/workspaces';
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-text">
-      <div className="border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
+      <div className="border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#030509]/90">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <Link
               href={backHref}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
+              className="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Link>
-            <div className="hidden rounded-full border border-border bg-surface-alt px-3 py-2 text-xs font-medium text-text-soft lg:block">
+            <div className="hidden rounded-[10px] border border-border bg-surface-alt px-3 py-2 font-mono text-xs font-medium uppercase tracking-[0.16em] text-text-soft lg:block">
               Active workspace surface
             </div>
           </div>

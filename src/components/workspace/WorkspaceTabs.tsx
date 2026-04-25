@@ -103,7 +103,7 @@ export function WorkspaceTabs({
   return (
     <div className={cn('relative border-b border-border bg-background/80 px-4 py-3 md:px-6', className)} data-tour="workspace-tabs">
       <div className="relative overflow-x-auto">
-        <div className="flex min-w-max items-center gap-1 rounded-[22px] border border-border bg-surface/90 p-1 shadow-[var(--shadowSm)] backdrop-blur">
+        <div className="flex min-w-max items-center gap-1 rounded-[14px] border border-border bg-surface/90 p-1 shadow-[var(--shadowSm)] backdrop-blur dark:bg-[image:var(--panel-bg)]">
           {tabs.map((tab) => {
             const isActive = resolved === tab.key;
             const Icon = tab.icon;
@@ -113,7 +113,7 @@ export function WorkspaceTabs({
                 href={tab.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center whitespace-nowrap rounded-[18px] transition-all duration-150',
+                  'inline-flex items-center whitespace-nowrap rounded-[10px] transition-all duration-150',
                   isActive ? 'bg-accent text-[color:var(--accent-text)] shadow-[0_0_26px_var(--accent-soft)]' : 'text-text-soft hover:bg-surface-alt hover:text-text'
                 )}
               >
@@ -145,7 +145,7 @@ export function WorkspaceTabs({
                 setMoreOpen((o) => !o);
               }}
               className={cn(
-                'inline-flex min-h-[36px] items-center gap-1 rounded-[18px] px-3 py-2 text-sm font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text'
+                'inline-flex min-h-[36px] items-center gap-1 rounded-[10px] px-3 py-2 text-sm font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text'
               )}
             >
               <MoreHorizontal className="h-4 w-4" />

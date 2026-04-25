@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Gauge,
   Home,
+  Map,
   MessageSquare,
   Search,
   ShieldCheck,
@@ -265,11 +266,12 @@ export default function WorkspaceCockpitPage() {
   }, [selectedOpportunity?.id]);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text">
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
       <div className={cn('relative flex min-h-0 min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
-        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_12%_-12%,var(--accent-dim),transparent_35%),radial-gradient(circle_at_92%_4%,var(--accent-soft),transparent_38%),radial-gradient(circle_at_36%_118%,var(--surface-alt),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb,35,215,255),.12),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb,185,255,38),.10),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(255,91,112,.06),transparent_24rem)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt p-5 shadow-[var(--shadowSm)] xl:block">
+        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt/85 p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard workspace={workspace} />
           <OpportunityRail
@@ -315,22 +317,29 @@ export default function WorkspaceCockpitPage() {
 
                   <ModuleTabs active={activeModule} onChange={setActiveModule} />
 
-                  <div className="min-h-[380px]">
-                    {activeModule === 'evidence' ? (
-                      <EvidenceModule documentCount={documentCount} opportunity={selectedOpportunity} />
-                    ) : null}
-                    {activeModule === 'model' ? (
-                      <ModelModule scenario={scenario} onScenarioChange={setScenario} />
-                    ) : null}
-                    {activeModule === 'renovation' ? (
-                      <RenovationModule opportunity={selectedOpportunity} />
-                    ) : null}
-                    {activeModule === 'openItems' ? (
-                      <OpenItemsModule items={selectedMissing} />
-                    ) : null}
-                    {activeModule === 'comps' ? (
-                      <CompsModule opportunity={selectedOpportunity} />
-                    ) : null}
+                  <div className="grid min-h-[380px] gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+                    <div className="min-w-0">
+                      {activeModule === 'evidence' ? (
+                        <EvidenceModule documentCount={documentCount} opportunity={selectedOpportunity} />
+                      ) : null}
+                      {activeModule === 'model' ? (
+                        <ModelModule scenario={scenario} onScenarioChange={setScenario} />
+                      ) : null}
+                      {activeModule === 'renovation' ? (
+                        <RenovationModule opportunity={selectedOpportunity} />
+                      ) : null}
+                      {activeModule === 'openItems' ? (
+                        <OpenItemsModule items={selectedMissing} />
+                      ) : null}
+                      {activeModule === 'comps' ? (
+                        <CompsModule opportunity={selectedOpportunity} />
+                      ) : null}
+                    </div>
+                    <VisualCompanion
+                      opportunity={selectedOpportunity}
+                      documentCount={documentCount}
+                      missingItems={selectedMissing}
+                    />
                   </div>
                 </section>
 
@@ -373,7 +382,7 @@ function BrandBlock() {
   const t = useTranslations('workspaceCockpitPage');
   return (
     <div className="mb-6 flex items-center gap-3">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-accent/30 bg-accent/10 text-xl font-semibold text-accent shadow-[var(--shadowSm)]">ز</div>
+      <div className="grid h-12 w-12 place-items-center rounded-[14px] border border-accent/30 bg-accent/10 text-xl font-semibold text-accent shadow-[0_0_28px_var(--accent-soft)]">ز</div>
       <div>
         <h1 className="text-lg font-semibold text-text">Zohal</h1>
         <p className="text-xs text-text-muted">{t('brandSubtitle')}</p>
@@ -387,9 +396,9 @@ function BuyBoxCard({ workspace }: { workspace: WorkspaceRow | null }) {
   const brief = workspace?.analysis_brief || workspace?.description || '';
   const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
   return (
-    <Panel className="mb-5 p-4 dark:border-white/10 dark:bg-white/[0.035]">
+    <Panel className="mb-5 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.28em] text-accent/80">{t('buyBoxPinned')}</p>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
         <Home className="h-5 w-5 rounded-xl bg-accent/15 p-1 text-accent" />
       </div>
       <div className="space-y-2">
@@ -420,7 +429,7 @@ function OpportunityRail({
   return (
     <Panel className={cn('p-4', compact && 'overflow-hidden')}>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedPipeline')}</p>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedPipeline')}</p>
         <Building2 className="h-4 w-4 text-accent" />
       </div>
       <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-3')}>
@@ -433,10 +442,10 @@ function OpportunityRail({
               type="button"
               onClick={() => onSelect(item.id)}
               className={cn(
-                'rounded-[1.4rem] border p-4 text-left transition dark:bg-[#061014]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.04)]',
+                'rounded-[16px] border p-4 text-left transition dark:bg-[#07101A]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.055)]',
                 compact ? 'min-w-[260px]' : 'w-full',
                 selectedId === item.id
-                  ? 'border-accent/50 bg-accent/10 shadow-[0_18px_45px_rgba(207,170,69,.12)]'
+                  ? 'border-accent/50 bg-accent/10 shadow-[0_18px_45px_rgba(var(--accent-rgb,185,255,38),.12)]'
                   : 'border-border bg-surface-alt hover:bg-surface dark:hover:border-white/15'
               )}
             >
@@ -492,8 +501,8 @@ function CockpitHero({
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
         <div className="relative">
-          <p className="mb-2 text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
-          <h2 className="text-3xl font-semibold tracking-tight text-text md:text-4xl">
+          <p className="mb-2 font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
+          <h2 className="text-3xl font-black tracking-normal text-text md:text-4xl">
             {title || t('emptyCockpitTitle')}
           </h2>
           {arTitle ? <p className="mt-2 text-xl font-semibold text-accent/90" dir="rtl">{arTitle}</p> : null}
@@ -539,7 +548,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
     comps: 'السوق',
   };
   return (
-    <div className="flex gap-2 overflow-x-auto rounded-[1.6rem] border border-border bg-surface-alt p-2 dark:border-white/10 dark:bg-[#081014]/95">
+    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#07101A]/95">
       {modules.map((module) => {
         const Icon = moduleIcons[module];
         const selected = active === module;
@@ -549,7 +558,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
             type="button"
             onClick={() => onChange(module)}
             className={cn(
-              'inline-flex min-h-[54px] min-w-fit items-center gap-2 rounded-[1.15rem] px-4 text-left text-sm font-semibold transition',
+              'inline-flex min-h-[54px] min-w-fit items-center gap-2 rounded-[10px] px-4 text-left text-sm font-semibold transition',
               selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
             )}
           >
@@ -701,6 +710,111 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
   );
 }
 
+function VisualCompanion({
+  opportunity,
+  documentCount,
+  missingItems,
+}: {
+  opportunity: OpportunityRow | null;
+  documentCount: number;
+  missingItems: string[];
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const [mode, setMode] = useState<'map' | 'photos' | 'docs' | 'parcel'>('map');
+  const title = titleFor(opportunity) || t('emptyCockpitTitle');
+  const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source']);
+  const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
+  const facts = dealFacts(opportunity);
+  const modes: { key: typeof mode; label: string }[] = [
+    { key: 'map', label: t('visualModes.map') },
+    { key: 'photos', label: t('visualModes.photos') },
+    { key: 'docs', label: t('visualModes.docs') },
+    { key: 'parcel', label: t('visualModes.parcel') },
+  ];
+
+  return (
+    <Panel className="min-h-[380px] overflow-hidden p-4">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('visualCompanion')}</p>
+          <h3 className="mt-1 text-lg font-semibold text-text">{t('visualCompanionTitle')}</h3>
+        </div>
+        <Map className="h-5 w-5 text-highlight" />
+      </div>
+
+      <div className="mb-4 grid grid-cols-4 gap-1 rounded-[12px] border border-border bg-background/60 p-1">
+        {modes.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setMode(item.key)}
+            className={cn(
+              'min-h-9 rounded-[8px] px-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition',
+              mode === item.key ? 'bg-highlight text-background shadow-[0_0_20px_rgba(var(--highlight-rgb,35,215,255),.18)]' : 'text-text-muted hover:bg-surface-alt hover:text-text'
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'map' ? (
+        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+          <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
+          <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
+          <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
+          <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
+            {scoreFor(opportunity) ?? '--'}
+          </div>
+          <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-border bg-background/80 p-3 backdrop-blur">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
+            <p className="mt-1 text-sm font-semibold text-text">{title}</p>
+            <p className="mt-1 text-xs leading-5 text-text-soft">{sourceLabel || t('marketSignalEmpty')}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {mode === 'photos' ? (
+        <div className="grid min-h-[250px] gap-3">
+          <div className="rounded-[18px] border border-border bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb,35,215,255),.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))] p-4">
+            <TrustPill label={t('photoEvidence')} tone="cyan" />
+            <p className="mt-4 text-sm leading-6 text-text-soft">{condition || t('photosEmpty')}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[t('facade'), t('interior'), t('roof')].map((label) => (
+              <div key={label} className="grid min-h-20 place-items-center rounded-[14px] border border-border bg-surface-alt px-2 text-center text-xs font-medium text-text-muted">
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {mode === 'docs' ? (
+        <div className="space-y-3">
+          {[t('sourceDocuments', { count: documentCount }), missingItems[0] || t('uncertainEmpty'), sourceLabel || t('marketSignalEmpty')].map((body, index) => (
+            <div key={`${body}-${index}`} className="rounded-[16px] border border-border bg-surface-alt p-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">DOC {String(index + 1).padStart(2, '0')}</p>
+              <p className="mt-2 text-sm leading-6 text-text">{body}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {mode === 'parcel' ? (
+        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-border bg-background p-5">
+          <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:28px_28px]" />
+          <div className="relative mx-auto mt-6 h-36 w-48 rotate-[-8deg] border-2 border-highlight bg-highlight/10 shadow-[0_0_26px_rgba(var(--highlight-rgb,35,215,255),.20)]" />
+          <div className="relative mt-7 rounded-[14px] border border-border bg-surface-alt p-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('parcelSignal')}</p>
+            <p className="mt-1 text-sm text-text">{[facts.area, facts.price].filter(Boolean).join(' · ') || t('notSet')}</p>
+          </div>
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
+
 function RightPane({
   activeModule,
   events,
@@ -732,7 +846,7 @@ function RightPane({
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t(titleKey)}</p>
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t(titleKey)}</p>
             <h3 className="mt-1 text-lg font-semibold text-text">{t('rightPane')}</h3>
           </div>
           <span className="h-3 w-3 rounded-full bg-success shadow-[0_0_20px_color-mix(in_srgb,var(--success)_40%,transparent)]" />
@@ -784,7 +898,7 @@ function RightPane({
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('coordinationLog')}</p>
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('coordinationLog')}</p>
             <h3 className="mt-1 text-lg font-semibold text-text">{t('dealCommandChannel')}</h3>
           </div>
           <MessageSquare className="h-4 w-4 text-accent" />
@@ -808,12 +922,12 @@ function RightPane({
       </Panel>
 
       <Panel className="sticky bottom-5 p-3">
-        <button className="w-full rounded-3xl bg-success px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] hover:bg-success" disabled={!opportunity}>
+        <button className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt" disabled={!opportunity}>
           {t('proceedNegotiate')}
         </button>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button className="rounded-3xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text" disabled={!opportunity}>{t('scheduleVisit')}</button>
-          <button className="rounded-3xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error" disabled={!opportunity}>{t('pass')}</button>
+          <button className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text" disabled={!opportunity}>{t('scheduleVisit')}</button>
+          <button className="rounded-[12px] border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error" disabled={!opportunity}>{t('pass')}</button>
         </div>
       </Panel>
     </aside>
@@ -822,7 +936,7 @@ function RightPane({
 
 function RightPaneRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface-alt p-3">
+    <div className="rounded-[12px] border border-border bg-surface-alt p-3">
       <p className="text-xs text-text-muted">{label}</p>
       <p className="mt-1 text-sm leading-5 text-text">{value}</p>
     </div>
@@ -837,8 +951,8 @@ function TrustRow({ label, body, tone }: { label: string; body: string; tone: 'e
     rose: 'border-error/30 bg-error/10 text-error',
   }[tone];
   return (
-    <div className="w-full rounded-3xl border border-border bg-surface-alt p-4 text-left">
-      <span className={cn('rounded-full border px-3 py-1 text-[11px]', styles)}>{label}</span>
+    <div className="w-full rounded-[16px] border border-border bg-surface-alt p-4 text-left">
+      <span className={cn('rounded-[6px] border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em]', styles)}>{label}</span>
       <p className="mt-3 text-sm leading-6 text-text">{body}</p>
     </div>
   );
@@ -862,10 +976,10 @@ function ScenarioSlider({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-3xl border border-border bg-surface-alt p-4">
+    <div className="rounded-[16px] border border-border bg-surface-alt p-4">
       <div className="mb-3 flex justify-between gap-4">
         <p className="text-sm font-medium text-text">{label}</p>
-        <span className="rounded-2xl border border-accent/20 bg-accent/10 px-3 py-1.5 font-mono text-sm text-accent">{format(value)}</span>
+        <span className="rounded-[8px] border border-accent/20 bg-accent/10 px-3 py-1.5 font-mono text-sm text-accent">{format(value)}</span>
       </div>
       <input className="w-full accent-accent" type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     </div>
@@ -874,8 +988,8 @@ function ScenarioSlider({
 
 function OutputMetric({ label, value, hot = false }: { label: string; value: string; hot?: boolean }) {
   return (
-    <div className={cn('rounded-3xl border p-4', hot ? 'border-accent/40 bg-accent/10' : 'border-border bg-surface-alt')}>
-      <p className="text-xs uppercase tracking-[0.22em] text-text-soft">{label}</p>
+    <div className={cn('rounded-[16px] border p-4', hot ? 'border-accent/40 bg-accent/10' : 'border-border bg-surface-alt')}>
+      <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{label}</p>
       <p className="mt-2 font-mono text-3xl font-semibold text-text">{value}</p>
     </div>
   );
@@ -893,7 +1007,7 @@ function MetricCard({ icon: Icon, label, value, hot = false }: { icon: LucideIco
 
 function DecisionBlock({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
   return (
-    <div className="rounded-3xl border border-border bg-surface-alt p-4">
+    <div className="rounded-[16px] border border-border bg-surface-alt p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="font-medium text-text"><Icon className="mr-2 inline h-4 w-4 text-accent" />{title}</p>
@@ -906,7 +1020,7 @@ function DecisionBlock({ icon: Icon, title, body }: { icon: LucideIcon; title: s
 
 function MandateRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 rounded-2xl bg-surface-alt px-3 py-2 text-xs">
+    <div className="flex justify-between gap-3 rounded-[10px] bg-surface-alt px-3 py-2 text-xs">
       <span className="text-text-muted">{label}</span>
       <span className="text-right text-text">{value}</span>
     </div>
@@ -915,21 +1029,21 @@ function MandateRow({ label, value }: { label: string; value: string }) {
 
 function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-3xl border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_22px_70px_rgba(0,0,0,.28)]', className)}>
+    <div className={cn('rounded-[20px] border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur dark:bg-[image:var(--panel-bg)] dark:shadow-[var(--shadowMd)]', className)}>
       {children}
     </div>
   );
 }
 
 function SignalDot({ hot, warn = false }: { hot?: boolean; warn?: boolean }) {
-  return <span className={cn('h-2.5 w-2.5 rounded-full', hot ? 'bg-success shadow-[0_0_14px_currentColor]' : warn ? 'bg-accent shadow-[0_0_14px_currentColor]' : 'bg-text-muted')} />;
+  return <span className={cn('h-2.5 w-2.5 rounded-full', hot ? 'bg-success shadow-[0_0_14px_currentColor]' : warn ? 'bg-warning shadow-[0_0_14px_currentColor]' : 'bg-text-muted')} />;
 }
 
 function TrustPill({ label, tone }: { label: string; tone: 'amber' | 'cyan' | 'slate' }) {
   const styles = {
-    amber: 'border-accent/25 bg-accent/10 text-accent',
+    amber: 'border-warning/30 bg-warning/10 text-warning',
     cyan: 'border-highlight/30 bg-highlight/10 text-highlight',
     slate: 'border-border bg-surface-alt text-text',
   }[tone];
-  return <span className={cn('rounded-full border px-3 py-1 text-xs', styles)}>{label}</span>;
+  return <span className={cn('rounded-[8px] border px-3 py-1 font-mono text-xs uppercase tracking-[0.08em]', styles)}>{label}</span>;
 }
