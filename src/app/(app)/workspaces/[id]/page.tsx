@@ -265,11 +265,11 @@ export default function WorkspaceCockpitPage() {
   }, [selectedOpportunity?.id]);
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-text">
-      <div className={cn('relative flex min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text">
+      <div className={cn('relative flex min-h-0 min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_12%_-12%,var(--accent-dim),transparent_35%),radial-gradient(circle_at_92%_4%,var(--accent-soft),transparent_38%),radial-gradient(circle_at_36%_118%,var(--surface-alt),transparent_36%)]" />
 
-        <aside className="relative hidden w-[328px] shrink-0 border-r border-border bg-surface-alt p-5 shadow-[var(--shadowSm)] xl:block">
+        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt p-5 shadow-[var(--shadowSm)] xl:block">
           <BrandBlock />
           <BuyBoxCard workspace={workspace} />
           <OpportunityRail
@@ -280,8 +280,8 @@ export default function WorkspaceCockpitPage() {
           />
         </aside>
 
-        <main className="relative min-w-0 flex-1 overflow-auto">
-          <div className="mx-auto flex min-h-full w-full max-w-[1500px] flex-col gap-5 p-4 lg:p-6">
+        <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mx-auto flex min-h-full w-full max-w-[1500px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
                 <Spinner size="lg" />
