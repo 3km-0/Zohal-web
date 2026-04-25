@@ -271,7 +271,7 @@ export default function WorkspaceCockpitPage() {
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb,35,215,255),.12),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb,185,255,38),.10),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(255,91,112,.06),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt/85 p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt/85 p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard workspace={workspace} />
           <OpportunityRail
@@ -283,13 +283,13 @@ export default function WorkspaceCockpitPage() {
         </aside>
 
         <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="mx-auto flex min-h-full w-full max-w-[1500px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
+          <div className="mx-auto flex min-h-full w-full max-w-[1760px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
                 <Spinner size="lg" />
               </div>
             ) : (
-              <div className="grid flex-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="grid flex-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_430px]">
                 <section className="min-w-0 space-y-5">
                   <div className="xl:hidden">
                     <OpportunityRail
@@ -317,24 +317,22 @@ export default function WorkspaceCockpitPage() {
 
                   <ModuleTabs active={activeModule} onChange={setActiveModule} />
 
-                  <div className="grid min-h-[380px] gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
-                    <div className="min-w-0">
-                      {activeModule === 'evidence' ? (
-                        <EvidenceModule documentCount={documentCount} opportunity={selectedOpportunity} />
-                      ) : null}
-                      {activeModule === 'model' ? (
-                        <ModelModule scenario={scenario} onScenarioChange={setScenario} />
-                      ) : null}
-                      {activeModule === 'renovation' ? (
-                        <RenovationModule opportunity={selectedOpportunity} />
-                      ) : null}
-                      {activeModule === 'openItems' ? (
-                        <OpenItemsModule items={selectedMissing} />
-                      ) : null}
-                      {activeModule === 'comps' ? (
-                        <CompsModule opportunity={selectedOpportunity} />
-                      ) : null}
-                    </div>
+                  <div className="min-h-[380px] space-y-5">
+                    {activeModule === 'evidence' ? (
+                      <EvidenceModule documentCount={documentCount} opportunity={selectedOpportunity} />
+                    ) : null}
+                    {activeModule === 'model' ? (
+                      <ModelModule scenario={scenario} onScenarioChange={setScenario} />
+                    ) : null}
+                    {activeModule === 'renovation' ? (
+                      <RenovationModule opportunity={selectedOpportunity} />
+                    ) : null}
+                    {activeModule === 'openItems' ? (
+                      <OpenItemsModule items={selectedMissing} />
+                    ) : null}
+                    {activeModule === 'comps' ? (
+                      <CompsModule opportunity={selectedOpportunity} />
+                    ) : null}
                     <VisualCompanion
                       opportunity={selectedOpportunity}
                       documentCount={documentCount}
@@ -496,19 +494,22 @@ function CockpitHero({
   const arTitle = arabicTitleFor(opportunity);
   const facts = dealFacts(opportunity);
   return (
-    <Panel className="relative overflow-hidden p-5 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(12,42,37,.92),rgba(8,13,17,.94)_56%,rgba(5,7,11,.98))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(49,211,185,.18),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(207,170,69,.16),transparent_30%)]" />
+    <Panel className="relative overflow-hidden p-6 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(9,31,32,.92),rgba(8,13,17,.95)_52%,rgba(18,28,17,.92))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,rgba(var(--highlight-rgb,35,215,255),.14),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(var(--accent-rgb,185,255,38),.14),transparent_30%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
-      <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div className="relative">
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,1.35fr)_430px] xl:items-center">
+        <div className="relative min-w-0">
           <p className="mb-2 font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
-          <h2 className="text-3xl font-black tracking-normal text-text md:text-4xl">
+          <h2 className="max-w-3xl text-4xl font-black leading-[.95] tracking-normal text-text md:text-6xl">
             {title || t('emptyCockpitTitle')}
           </h2>
-          {arTitle ? <p className="mt-2 text-xl font-semibold text-accent/90" dir="rtl">{arTitle}</p> : null}
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-text-soft">
+          {arTitle ? <p className="mt-4 text-xl font-semibold text-text-soft" dir="rtl">{arTitle}</p> : null}
+          <div className="mt-7 max-w-3xl border-l-2 border-accent/60 bg-surface/40 p-5">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
+            <p className="mt-3 text-base leading-7 text-text-soft">
             {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
-          </p>
+            </p>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <TrustPill label={humanize(recommendationFor(opportunity)) || t('notSet')} tone="amber" />
             <TrustPill label={humanize(confidenceFor(opportunity)) || t('notSet')} tone="cyan" />
@@ -517,11 +518,16 @@ function CockpitHero({
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
         </div>
-        <div className="relative grid grid-cols-2 gap-2 md:grid-cols-4 lg:min-w-[420px]">
+        <div className="relative grid min-w-0 grid-cols-2 gap-3">
           <HeroChip label={t('mandateFit')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
           <HeroChip label={t('confidence')} value={humanize(confidenceFor(opportunity)) || t('notSet')} />
           <HeroChip label={t('openItems')} value={missingCount.toString()} />
           <HeroChip label={t('sources')} value={documentCount.toString()} />
+          <div className="col-span-2 rounded-[20px] border border-highlight/25 bg-highlight/10 p-5">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('acquisitionVector')}</p>
+            <div className="mt-5 h-8 rounded-full bg-[linear-gradient(90deg,var(--accent),rgba(var(--highlight-rgb,35,215,255),.55),rgba(255,255,255,.12))] shadow-[0_0_24px_rgba(var(--highlight-rgb,35,215,255),.14)]" />
+            <p className="mt-4 text-sm text-text-soft">{t('acquisitionVectorPath')}</p>
+          </div>
         </div>
       </div>
     </Panel>
@@ -619,7 +625,7 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
   const returns = modelReturns(scenario);
   const set = (key: keyof ScenarioState) => (value: number) => onScenarioChange({ ...scenario, [key]: value });
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+    <div className="grid gap-5 [@media(min-width:1780px)]:grid-cols-[0.95fr_1.05fr]">
       <Panel className="p-5">
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('scenarioModeler')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('modelKnobsTitle')}</h3>
@@ -633,7 +639,7 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
         </div>
       </Panel>
       <div className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
           <OutputMetric label={t('equityRequired')} value={formatSAR.format(returns.equity)} hot />
           <OutputMetric label={t('annualCashFlow')} value={formatSAR.format(returns.cashFlow)} />
           <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
@@ -846,62 +852,39 @@ function RightPane({
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t(titleKey)}</p>
-            <h3 className="mt-1 text-lg font-semibold text-text">{t('rightPane')}</h3>
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('signalStream')}</p>
+            <h3 className="mt-1 text-xl font-semibold text-text">{t('liveFeed')}</h3>
           </div>
-          <span className="h-3 w-3 rounded-full bg-success shadow-[0_0_20px_color-mix(in_srgb,var(--success)_40%,transparent)]" />
+          <span className="rounded-[8px] border border-accent/30 bg-accent/10 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-accent">
+            {documentCount} {t('sources')}
+          </span>
         </div>
 
-        {activeModule === 'evidence' ? (
-          <div className="space-y-3">
-            <RightPaneRow label={t('sources')} value={String(documentCount)} />
-            <RightPaneRow label={t('trust.verified')} value={t('sourceDocuments', { count: documentCount })} />
-            <RightPaneRow label={t('trust.uncertain')} value={missingItems[0] || t('uncertainEmpty')} />
-          </div>
-        ) : null}
+        <div className="mb-5 flex h-20 items-end gap-1 rounded-[14px] border border-border bg-background/50 p-3">
+          {Array.from({ length: 28 }).map((_, index) => (
+            <span
+              key={index}
+              className="w-full rounded-t-sm bg-accent/70 shadow-[0_0_10px_rgba(var(--accent-rgb,185,255,38),.18)]"
+              style={{ height: `${22 + Math.abs(Math.sin(index * 0.72)) * 58}%` }}
+            />
+          ))}
+        </div>
 
-        {activeModule === 'model' ? (
-          <div className="space-y-3">
-            {scenario ? (
-              <>
-                <RightPaneRow label={t('acquisitionPrice')} value={formatSAR.format(scenario.price)} />
-                <RightPaneRow label={t('renovationBudget')} value={formatSAR.format(scenario.renovation)} />
-                <RightPaneRow label={t('monthlyRent')} value={formatSAR.format(scenario.rent)} />
-              </>
-            ) : (
-              <p className="text-sm leading-6 text-text-soft">{t('modelEmptyBody')}</p>
-            )}
-          </div>
-        ) : null}
-
-        {activeModule === 'renovation' ? (
-          <div className="space-y-3">
-            <RightPaneRow label={t('decisionBlockers')} value={missingItems[0] || t('renovationEmpty')} />
-            <RightPaneRow label={t('capexTitle')} value={metadataString(opportunity, ['capex_note', 'renovation_scope']) || t('notSet')} />
-          </div>
-        ) : null}
-
-        {activeModule === 'openItems' ? (
-          <div className="space-y-3">
-            {missingItems.slice(0, 4).map((item, index) => (
-              <RightPaneRow key={`${item}-${index}`} label={`#${index + 1}`} value={item} />
-            ))}
-            {missingItems.length === 0 ? <p className="text-sm text-text-soft">{t('openItemsEmpty')}</p> : null}
-          </div>
-        ) : null}
-
-        {activeModule === 'comps' ? (
-          <p className="text-sm leading-6 text-text-soft">{metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']) || t('compsEmpty')}</p>
-        ) : null}
+        <div className="space-y-3">
+          <RightPaneRow label={t('trust.marketSignal')} value={metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']) || t('marketSignalEmpty')} tone="cyan" />
+          <RightPaneRow label={t(titleKey)} value={activeModule === 'model' && scenario ? `${t('baseIrr')}: ${pct(modelReturns(scenario).irr)}` : missingItems[0] || t('uncertainEmpty')} tone={missingItems.length > 0 ? 'warn' : 'lime'} />
+          <RightPaneRow label={t('trust.verified')} value={t('sourceDocuments', { count: documentCount })} tone="lime" />
+          <RightPaneRow label={t('trust.uncertain')} value={missingItems[0] || t('uncertainEmpty')} tone={missingItems.length > 0 ? 'warn' : 'neutral'} />
+        </div>
       </Panel>
 
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('coordinationLog')}</p>
-            <h3 className="mt-1 text-lg font-semibold text-text">{t('dealCommandChannel')}</h3>
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('coordinationLog')}</p>
+            <h3 className="mt-1 text-xl font-semibold text-text">{t('dealCommandChannel')}</h3>
           </div>
-          <MessageSquare className="h-4 w-4 text-accent" />
+          <MessageSquare className="h-5 w-5 text-accent" />
         </div>
         <p className="mb-3 text-xs text-text-muted">{latestUpdate ? t('latestUpdate', { time: formatRelativeTime(latestUpdate) }) : t('noActivity')}</p>
         <div className="space-y-3">
@@ -934,9 +917,15 @@ function RightPane({
   );
 }
 
-function RightPaneRow({ label, value }: { label: string; value: string }) {
+function RightPaneRow({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'lime' | 'cyan' | 'warn' }) {
+  const toneClass = {
+    neutral: 'border-border bg-surface-alt',
+    lime: 'border-accent/20 bg-accent/10',
+    cyan: 'border-highlight/20 bg-highlight/10',
+    warn: 'border-warning/25 bg-warning/10',
+  }[tone];
   return (
-    <div className="rounded-[12px] border border-border bg-surface-alt p-3">
+    <div className={cn('rounded-[12px] border p-3', toneClass)}>
       <p className="text-xs text-text-muted">{label}</p>
       <p className="mt-1 text-sm leading-5 text-text">{value}</p>
     </div>
@@ -988,9 +977,9 @@ function ScenarioSlider({
 
 function OutputMetric({ label, value, hot = false }: { label: string; value: string; hot?: boolean }) {
   return (
-    <div className={cn('rounded-[16px] border p-4', hot ? 'border-accent/40 bg-accent/10' : 'border-border bg-surface-alt')}>
+    <div className={cn('min-w-0 overflow-hidden rounded-[16px] border p-4', hot ? 'border-accent/40 bg-accent/10' : 'border-border bg-surface-alt')}>
       <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{label}</p>
-      <p className="mt-2 font-mono text-3xl font-semibold text-text">{value}</p>
+      <p className="mt-2 min-w-0 overflow-hidden break-words font-mono text-2xl font-semibold leading-tight text-text 2xl:text-3xl">{value}</p>
     </div>
   );
 }
