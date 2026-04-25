@@ -1,11 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
-  ArrowLeft,
-  CircleHelp,
   Eye,
   FileText,
   MoreVertical,
@@ -20,12 +18,10 @@ import {
 import * as pdfjs from 'pdfjs-dist';
 import Image from 'next/image';
 import Link from 'next/link';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { Badge, Button, Card, EmptyState, ZohalActionMenu, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
-import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
 import type { Document, ProcessingStatus, Workspace, WorkspaceSavedView } from '@/types/database';
@@ -53,12 +49,8 @@ type SavedViewFilters = {
 export default function WorkspaceDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
-  const fromFolderId = searchParams.get('fromFolder');
-  const backHref = fromFolderId ? `/workspaces/folders/${encodeURIComponent(fromFolderId)}` : '/workspaces';
   const t = useTranslations('documents');
-  const tCommon = useTranslations('common');
   const supabase = useMemo(() => createClient(), []);
   const { showError, showSuccess } = useToast();
 
@@ -66,7 +58,6 @@ export default function WorkspaceDetailPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [savedViews, setSavedViews] = useState<WorkspaceSavedView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [orgMultiUserEnabled, setOrgMultiUserEnabled] = useState(false);
 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,16 +74,6 @@ export default function WorkspaceDetailPage() {
 
     if (!error && data) {
       setWorkspace(data);
-      if (data.org_id) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('multi_user_enabled')
-          .eq('id', data.org_id)
-          .maybeSingle();
-        setOrgMultiUserEnabled(org?.multi_user_enabled === true);
-      } else {
-        setOrgMultiUserEnabled(false);
-      }
       return;
     }
 
@@ -111,16 +92,6 @@ export default function WorkspaceDetailPage() {
     }
 
     setWorkspace(found);
-    if (found.org_id) {
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('multi_user_enabled')
-        .eq('id', found.org_id)
-        .maybeSingle();
-      setOrgMultiUserEnabled(org?.multi_user_enabled === true);
-    } else {
-      setOrgMultiUserEnabled(false);
-    }
   }, [showError, supabase, workspaceId]);
 
   const fetchDocuments = useCallback(async () => {
@@ -292,89 +263,6 @@ export default function WorkspaceDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <AppHeader
-        title={workspace?.name || 'Loading...'}
-        subtitle={workspace?.description || 'Workspace-first documents, views, and analysis'}
-        leading={
-          <Link href={backHref}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4" />
-              {tCommon('back')}
-            </Button>
-          </Link>
-        }
-        actions={
-          <>
-            <div className="hidden items-center gap-2 md:flex">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  window.dispatchEvent(
-                    new CustomEvent('zohal:start-tour', {
-                      detail: { tourId: 'workspace', force: true },
-                    })
-                  );
-                }}
-                aria-label="Take a tour"
-                title="Take a tour"
-              >
-                <CircleHelp className="h-4 w-4" />
-                Tour
-              </Button>
-              <div className="flex items-center gap-2 rounded-[18px] border border-border bg-surface-alt/80 p-1">
-                <Button variant="ghost" size="sm" onClick={saveCurrentView}>
-                  <Save className="h-4 w-4" />
-                  Save view
-                </Button>
-                <Button size="sm" onClick={() => setShowUploadModal(true)} data-tour="workspace-upload">
-                  <Upload className="h-4 w-4" />
-                  {t('upload')}
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 md:hidden">
-              <Button
-                size="sm"
-                onClick={() => setShowUploadModal(true)}
-                data-tour="workspace-upload"
-                aria-label={t('upload')}
-                title={t('upload')}
-                className="min-w-[44px] px-3"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-              <ZohalActionMenu
-                compact
-                ariaLabel={tCommon('moreActions')}
-                icon={<MoreVertical className="h-4 w-4" />}
-                label={tCommon('moreActions')}
-                items={[
-                  {
-                    label: 'Tour',
-                    icon: <CircleHelp className="h-4 w-4" />,
-                    onClick: () => {
-                      window.dispatchEvent(
-                        new CustomEvent('zohal:start-tour', {
-                          detail: { tourId: 'workspace', force: true },
-                        })
-                      );
-                    },
-                  },
-                  {
-                    label: 'Save view',
-                    icon: <Save className="h-4 w-4" />,
-                    onClick: saveCurrentView,
-                  },
-                ]}
-              />
-            </div>
-          </>
-        }
-      />
-
-      <WorkspaceTabs workspaceId={workspaceId} active="sources" showMembersLink={orgMultiUserEnabled} />
-
       <div className="flex-1 overflow-auto p-4 md:p-6">
         {loading ? (
           <div className="flex h-64 items-center justify-center">

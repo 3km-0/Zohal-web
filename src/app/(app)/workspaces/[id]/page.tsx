@@ -2,25 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
-  ArrowLeft,
   BarChart3,
-  Bolt,
   Building2,
   CheckCircle2,
   ClipboardList,
-  FolderOpen,
   Gauge,
   Home,
   MessageSquare,
-  PanelsTopLeft,
   Search,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   Wrench,
   X,
@@ -173,13 +167,8 @@ function countMissingInfo(opportunities: OpportunityRow[]): number {
 
 export default function WorkspaceCockpitPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
-  const fromFolderId = searchParams.get('fromFolder');
-  const backHref = fromFolderId ? `/workspaces/folders/${encodeURIComponent(fromFolderId)}` : '/workspaces';
-  const tCommon = useTranslations('common');
   const t = useTranslations('workspaceCockpitPage');
-  const tTabs = useTranslations('workspaceTabs');
   const supabase = useMemo(() => createClient(), []);
 
   const [workspace, setWorkspace] = useState<WorkspaceRow | null>(null);
@@ -263,21 +252,6 @@ export default function WorkspaceCockpitPage() {
 
         <main className="relative min-w-0 flex-1 overflow-auto">
           <div className="mx-auto flex min-h-full w-full max-w-[1500px] flex-col gap-5 p-4 lg:p-6">
-            <TopCommandBar
-              workspaceId={workspaceId}
-              backHref={backHref}
-              backLabel={tCommon('back')}
-              mandateLabel={t('activeMandateStrip')}
-              labels={{
-                cockpit: tTabs('workspace'),
-                sources: tTabs('sources'),
-                automations: tTabs('automations'),
-                livingInterface: tTabs('publish'),
-              }}
-              onAsk={() => setAgentOpen(true)}
-              askLabel={t('askZohal')}
-            />
-
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
                 <Spinner size="lg" />
@@ -373,73 +347,6 @@ function BrandBlock() {
       <div>
         <h1 className="text-lg font-semibold text-white">Zohal</h1>
         <p className="text-xs text-slate-500">{t('brandSubtitle')}</p>
-      </div>
-    </div>
-  );
-}
-
-function TopCommandBar({
-  workspaceId,
-  backHref,
-  backLabel,
-  mandateLabel,
-  labels,
-  onAsk,
-  askLabel,
-}: {
-  workspaceId: string;
-  backHref: string;
-  backLabel: string;
-  mandateLabel: string;
-  labels: { cockpit: string; sources: string; automations: string; livingInterface: string };
-  onAsk: () => void;
-  askLabel: string;
-}) {
-  const nav = [
-    { key: 'cockpit' as const, label: labels.cockpit, icon: Home, href: `/workspaces/${workspaceId}` },
-    { key: 'sources' as const, label: labels.sources, icon: FolderOpen, href: `/workspaces/${workspaceId}/sources` },
-    { key: 'automations' as const, label: labels.automations, icon: Bolt, href: `/workspaces/${workspaceId}/automations` },
-    { key: 'livingInterface' as const, label: labels.livingInterface, icon: PanelsTopLeft, href: `/workspaces/${workspaceId}/publish` },
-  ];
-
-  return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex min-w-0 items-center gap-2">
-        <Link href={backHref} className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white">
-          <ArrowLeft className="h-4 w-4" />
-          {backLabel}
-        </Link>
-        <div className="hidden rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-400 lg:block">
-          {mandateLabel}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 overflow-x-auto rounded-full border border-white/10 bg-white/[0.035] p-1">
-        {nav.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.key}
-              href={item.href}
-              aria-current={item.key === 'cockpit' ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-h-9 min-w-fit items-center gap-2 rounded-full px-3 text-sm font-semibold transition',
-                item.key === 'cockpit' ? 'bg-[#F5C84C] text-[#05070B] shadow-[0_0_26px_rgba(245,200,76,0.16)]' : 'text-slate-400 hover:bg-white/[0.07] hover:text-white'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          );
-        })}
-        <button
-          type="button"
-          onClick={onAsk}
-          className="inline-flex min-h-9 min-w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/15"
-        >
-          <Sparkles className="h-4 w-4" />
-          {askLabel}
-        </button>
       </div>
     </div>
   );

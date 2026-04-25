@@ -13,7 +13,7 @@ export type WorkspaceTabKey = 'workspace' | 'sources' | 'automations' | 'publish
 
 interface WorkspaceTabsProps {
   workspaceId: string;
-  active: WorkspaceTabKey;
+  active?: WorkspaceTabKey;
   className?: string;
   showMembersLink?: boolean;
 }
