@@ -237,9 +237,9 @@ export default function WorkspaceCockpitPage() {
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-text">
       <div className={cn('relative flex min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_-12%,rgba(20,184,166,0.12),transparent_35%),radial-gradient(circle_at_92%_4%,rgba(15,118,110,0.20),transparent_38%),radial-gradient(circle_at_36%_118%,rgba(94,234,212,0.09),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_12%_-12%,var(--accent-dim),transparent_35%),radial-gradient(circle_at_92%_4%,var(--accent-soft),transparent_38%),radial-gradient(circle_at_36%_118%,var(--surface-alt),transparent_36%)]" />
 
-        <aside className="relative hidden w-[328px] shrink-0 border-r border-[rgba(94,234,212,0.10)] bg-[#061014]/95 p-5 shadow-[inset_-42px_0_90px_rgba(15,118,110,0.16)] xl:block">
+        <aside className="relative hidden w-[328px] shrink-0 border-r border-border bg-surface-alt p-5 shadow-[var(--shadowSm)] xl:block">
           <BrandBlock />
           <BuyBoxCard workspace={workspace} />
           <OpportunityRail
@@ -320,12 +320,12 @@ export default function WorkspaceCockpitPage() {
       </div>
 
       {agentOpen ? (
-        <aside className="fixed inset-0 z-50 flex bg-black/35 backdrop-blur-sm lg:static lg:z-auto lg:w-[430px] lg:border-l lg:border-white/10 lg:bg-[#070a0f]">
-          <div className="ml-auto flex h-full w-full max-w-xl flex-col bg-[#070a0f] shadow-2xl shadow-black/40 lg:max-w-none lg:shadow-none">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <aside className="fixed inset-0 z-50 flex bg-background/60 backdrop-blur-sm lg:static lg:z-auto lg:w-[430px] lg:border-l lg:border-border lg:bg-surface">
+          <div className="ml-auto flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl shadow-[color:var(--border)] lg:max-w-none lg:shadow-none">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-white">{t('askZohal')}</p>
-                <p className="text-xs text-slate-500">{t('workspaceScope', { id: agentScope.workspaceId })}</p>
+                <p className="text-sm font-semibold text-text">{t('askZohal')}</p>
+                <p className="text-xs text-text-muted">{t('workspaceScope', { id: agentScope.workspaceId })}</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setAgentOpen(false)} aria-label={t('close')}>
                 <X className="h-4 w-4" />
@@ -343,10 +343,10 @@ function BrandBlock() {
   const t = useTranslations('workspaceCockpitPage');
   return (
     <div className="mb-6 flex items-center gap-3">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-amber-300/30 bg-amber-300/10 text-xl font-semibold text-amber-100 shadow-[0_0_30px_rgba(251,191,36,0.13)]">ز</div>
+      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-accent/30 bg-accent/10 text-xl font-semibold text-accent shadow-[var(--shadowSm)]">ز</div>
       <div>
-        <h1 className="text-lg font-semibold text-white">Zohal</h1>
-        <p className="text-xs text-slate-500">{t('brandSubtitle')}</p>
+        <h1 className="text-lg font-semibold text-text">Zohal</h1>
+        <p className="text-xs text-text-muted">{t('brandSubtitle')}</p>
       </div>
     </div>
   );
@@ -357,8 +357,8 @@ function BuyBoxCard({ workspace }: { workspace: WorkspaceRow | null }) {
   return (
     <Panel className="mb-5 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('buyBoxPinned')}</p>
-        <Home className="h-4 w-4 text-amber-200" />
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('buyBoxPinned')}</p>
+        <Home className="h-4 w-4 text-accent" />
       </div>
       <div className="space-y-2">
         <MandateRow label={t('buyBox')} value={t('notSet')} />
@@ -388,12 +388,12 @@ function OpportunityRail({
   return (
     <Panel className={cn('p-4', compact && 'overflow-hidden')}>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('rankedPipeline')}</p>
-        <Building2 className="h-4 w-4 text-amber-200" />
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedPipeline')}</p>
+        <Building2 className="h-4 w-4 text-accent" />
       </div>
       <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-3')}>
         {opportunities.length === 0 ? (
-          <p className="text-sm leading-6 text-slate-500">{emptyText}</p>
+          <p className="text-sm leading-6 text-text-muted">{emptyText}</p>
         ) : (
           opportunities.map((item, index) => (
             <button
@@ -404,18 +404,18 @@ function OpportunityRail({
                 'rounded-3xl border p-4 text-left transition',
                 compact ? 'min-w-[260px]' : 'w-full',
                 selectedId === item.id
-                  ? 'border-amber-300/45 bg-amber-300/[0.09] shadow-[0_0_34px_rgba(251,191,36,0.08)]'
-                  : 'border-white/10 bg-white/[0.035] hover:bg-white/[0.06]'
+                  ? 'border-accent/50 bg-accent/10 shadow-[var(--shadowSm)]'
+                  : 'border-border bg-surface-alt hover:bg-surface'
               )}
             >
               <div className="flex justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] text-slate-500">#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
-                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-white">{item.summary || humanize(item.stage) || t('untitledOpportunity')}</h3>
+                  <p className="text-[11px] text-text-muted">#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
+                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-text">{item.summary || humanize(item.stage) || t('untitledOpportunity')}</h3>
                 </div>
-                <span className="h-fit rounded-2xl border border-white/10 bg-black/25 px-2 py-1 font-mono text-xs text-amber-100">{scoreFor(item) ?? t('notSet')}</span>
+                <span className="h-fit rounded-2xl border border-border bg-surface-alt px-2 py-1 font-mono text-xs text-accent">{scoreFor(item) ?? t('notSet')}</span>
               </div>
-              <div className="mt-4 flex justify-between text-xs text-slate-400">
+              <div className="mt-4 flex justify-between text-xs text-text-soft">
                 <span>{humanize(recommendationFor(item)) || t('notSet')}</span>
                 <span>{missingInfoList(item.missing_info_json).length} {t('openItemsShort')}</span>
               </div>
@@ -447,14 +447,14 @@ function CockpitHero({
   const t = useTranslations('workspaceCockpitPage');
   return (
     <Panel className="relative overflow-hidden p-5">
-      <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-amber-200/80 to-transparent" />
+      <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
-          <p className="mb-2 text-xs uppercase tracking-[0.24em] text-amber-100/70">{t('selectedWorkspace')}</p>
-          <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
+          <p className="mb-2 text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-text md:text-4xl">
             {opportunity?.summary || t('emptyCockpitTitle')}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-text-soft">
             {opportunity ? t('heroBody') : t('emptyPosture')}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -476,9 +476,9 @@ function CockpitHero({
 
 function HeroChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-      <p className="text-xs font-medium text-white">{label}</p>
-      <p className="mt-1 truncate text-[11px] text-slate-500">{value}</p>
+    <div className="rounded-2xl border border-border bg-surface-alt px-3 py-2">
+      <p className="text-xs font-medium text-text">{label}</p>
+      <p className="mt-1 truncate text-[11px] text-text-muted">{value}</p>
     </div>
   );
 }
@@ -487,7 +487,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
   const t = useTranslations('workspaceCockpitPage.modules');
   const modules: CockpitModule[] = ['evidence', 'model', 'renovation', 'openItems', 'comps'];
   return (
-    <div className="flex gap-2 overflow-x-auto rounded-3xl border border-white/10 bg-white/[0.035] p-2">
+    <div className="flex gap-2 overflow-x-auto rounded-3xl border border-border bg-surface-alt p-2">
       {modules.map((module) => {
         const Icon = moduleIcons[module];
         const selected = active === module;
@@ -498,7 +498,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
             onClick={() => onChange(module)}
             className={cn(
               'inline-flex min-h-[48px] min-w-fit items-center gap-2 rounded-2xl px-4 text-sm font-semibold transition',
-              selected ? 'bg-amber-300 text-slate-950' : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+              selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
             )}
           >
             <Icon className="h-4 w-4" />
@@ -516,8 +516,8 @@ function EvidenceModule({ documentCount, opportunity }: { documentCount: number;
   return (
     <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
       <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('evidenceLayer')}</p>
-        <h3 className="mt-1 text-xl font-semibold text-white">{t('evidenceTruthTitle')}</h3>
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('evidenceLayer')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('evidenceTruthTitle')}</h3>
         <div className="mt-5 space-y-3">
           <TrustRow label={t('trust.verified')} body={t('sourceDocuments', { count: documentCount })} tone="emerald" />
           <TrustRow label={t('trust.marketSignal')} body={sourceLabel || t('marketSignalEmpty')} tone="cyan" />
@@ -526,12 +526,12 @@ function EvidenceModule({ documentCount, opportunity }: { documentCount: number;
         </div>
       </Panel>
       <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('sourceDrawer')}</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">{t('trust.verified')}</h3>
-        <p className="mt-3 text-sm leading-6 text-slate-300">{t('evidenceBody')}</p>
-        <div className="mt-5 rounded-3xl border border-white/10 bg-black/25 p-4">
-          <p className="text-xs text-slate-500">{t('sources')}</p>
-          <p className="mt-1 text-sm text-white">{documentCount}</p>
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('sourceDrawer')}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-text">{t('trust.verified')}</h3>
+        <p className="mt-3 text-sm leading-6 text-text">{t('evidenceBody')}</p>
+        <div className="mt-5 rounded-3xl border border-border bg-surface-alt p-4">
+          <p className="text-xs text-text-muted">{t('sources')}</p>
+          <p className="mt-1 text-sm text-text">{documentCount}</p>
         </div>
       </Panel>
     </div>
@@ -544,9 +544,9 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
     return (
       <Panel className="grid min-h-[380px] place-items-center p-8 text-center">
         <div>
-          <Gauge className="mx-auto h-12 w-12 text-amber-200" />
-          <h3 className="mt-4 text-2xl font-semibold text-white">{t('modelEmptyTitle')}</h3>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400">{t('modelEmptyBody')}</p>
+          <Gauge className="mx-auto h-12 w-12 text-accent" />
+          <h3 className="mt-4 text-2xl font-semibold text-text">{t('modelEmptyTitle')}</h3>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-text-soft">{t('modelEmptyBody')}</p>
         </div>
       </Panel>
     );
@@ -557,8 +557,8 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
   return (
     <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
       <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('scenarioModeler')}</p>
-        <h3 className="mt-1 text-xl font-semibold text-white">{t('modelKnobsTitle')}</h3>
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('scenarioModeler')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('modelKnobsTitle')}</h3>
         <div className="mt-5 grid gap-3">
           <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={scenario.price * 0.85} max={scenario.price * 1.12} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
           <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={Math.max(100000, scenario.renovation * 2.2)} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
@@ -575,8 +575,8 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
           <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
           <OutputMetric label={t('baseIrr')} value={pct(returns.irr)} hot />
         </div>
-        <Panel className="border-amber-300/20 bg-amber-300/[0.07] p-5">
-          <p className="text-sm leading-6 text-amber-50/85">
+        <Panel className="border-accent/20 bg-accent/10 p-5">
+          <p className="text-sm leading-6 text-text">
             {t('modelSensitivityNote')}
           </p>
         </Panel>
@@ -593,16 +593,16 @@ function RenovationModule({ opportunity }: { opportunity: OpportunityRow | null 
     <Panel className="p-5">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('renovationExposure')}</p>
-          <h3 className="mt-1 text-xl font-semibold text-white">{t('renovationScopeTitle')}</h3>
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('renovationExposure')}</p>
+          <h3 className="mt-1 text-xl font-semibold text-text">{t('renovationScopeTitle')}</h3>
         </div>
-        <span className="rounded-2xl border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-xs text-rose-100">{t('decisionBlockers')}</span>
+        <span className="rounded-2xl border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{t('decisionBlockers')}</span>
       </div>
       <div className="grid gap-3">
         <DecisionBlock icon={Wrench} title={t('capexTitle')} body={capex === null ? t('capexBody') : formatSAR.format(capex)} />
         <DecisionBlock icon={AlertTriangle} title={t('decisionBlockers')} body={condition || t('renovationEmpty')} />
       </div>
-      <button className="mt-5 w-full rounded-3xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-300/15">
+      <button className="mt-5 w-full rounded-3xl border border-accent/25 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent hover:bg-accent/15">
         {t('requestQuotePack')}
       </button>
     </Panel>
@@ -613,17 +613,17 @@ function OpenItemsModule({ items }: { items: string[] }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
     <Panel className="p-5">
-      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('openItems')}</p>
-      <h3 className="mt-1 text-xl font-semibold text-white">{t('openItemsModuleTitle')}</h3>
-      <div className="mt-5 overflow-hidden rounded-3xl border border-white/10">
+      <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('openItems')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{t('openItemsModuleTitle')}</h3>
+      <div className="mt-5 overflow-hidden rounded-3xl border border-border">
         {items.length === 0 ? (
-          <p className="bg-black/20 p-4 text-sm text-slate-400">{t('openItemsEmpty')}</p>
+          <p className="bg-surface-alt p-4 text-sm text-text-soft">{t('openItemsEmpty')}</p>
         ) : (
           items.map((item, index) => (
-            <div key={`${item}-${index}`} className="grid gap-3 border-b border-white/10 bg-black/20 px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr_120px]">
-              <p className="font-mono text-xs text-slate-500">#{index + 1}</p>
-              <p className="font-medium text-white">{item}</p>
-              <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-center text-xs text-amber-100">{t('openStatus')}</span>
+            <div key={`${item}-${index}`} className="grid gap-3 border-b border-border bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr_120px]">
+              <p className="font-mono text-xs text-text-muted">#{index + 1}</p>
+              <p className="font-medium text-text">{item}</p>
+              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-center text-xs text-accent">{t('openStatus')}</span>
             </div>
           ))
         )}
@@ -637,10 +637,10 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
   const compsNote = metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']);
   return (
     <Panel className="p-5">
-      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('marketComps')}</p>
-      <h3 className="mt-1 text-xl font-semibold text-white">{t('compsPressureTitle')}</h3>
-      <div className="mt-5 rounded-3xl border border-white/10 bg-black/20 p-4">
-        <p className="text-sm leading-6 text-slate-300">{compsNote || t('compsEmpty')}</p>
+      <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('marketComps')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{t('compsPressureTitle')}</h3>
+      <div className="mt-5 rounded-3xl border border-border bg-surface-alt p-4">
+        <p className="text-sm leading-6 text-text">{compsNote || t('compsEmpty')}</p>
       </div>
     </Panel>
   );
@@ -677,10 +677,10 @@ function RightPane({
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t(titleKey)}</p>
-            <h3 className="mt-1 text-lg font-semibold text-white">{t('rightPane')}</h3>
+            <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t(titleKey)}</p>
+            <h3 className="mt-1 text-lg font-semibold text-text">{t('rightPane')}</h3>
           </div>
-          <span className="h-3 w-3 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(110,231,183,0.8)]" />
+          <span className="h-3 w-3 rounded-full bg-success shadow-[0_0_20px_color-mix(in_srgb,var(--success)_40%,transparent)]" />
         </div>
 
         {activeModule === 'evidence' ? (
@@ -700,7 +700,7 @@ function RightPane({
                 <RightPaneRow label={t('monthlyRent')} value={formatSAR.format(scenario.rent)} />
               </>
             ) : (
-              <p className="text-sm leading-6 text-slate-400">{t('modelEmptyBody')}</p>
+              <p className="text-sm leading-6 text-text-soft">{t('modelEmptyBody')}</p>
             )}
           </div>
         ) : null}
@@ -717,35 +717,35 @@ function RightPane({
             {missingItems.slice(0, 4).map((item, index) => (
               <RightPaneRow key={`${item}-${index}`} label={`#${index + 1}`} value={item} />
             ))}
-            {missingItems.length === 0 ? <p className="text-sm text-slate-400">{t('openItemsEmpty')}</p> : null}
+            {missingItems.length === 0 ? <p className="text-sm text-text-soft">{t('openItemsEmpty')}</p> : null}
           </div>
         ) : null}
 
         {activeModule === 'comps' ? (
-          <p className="text-sm leading-6 text-slate-400">{metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']) || t('compsEmpty')}</p>
+          <p className="text-sm leading-6 text-text-soft">{metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']) || t('compsEmpty')}</p>
         ) : null}
       </Panel>
 
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t('coordinationLog')}</p>
-            <h3 className="mt-1 text-lg font-semibold text-white">{t('dealCommandChannel')}</h3>
+            <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('coordinationLog')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-text">{t('dealCommandChannel')}</h3>
           </div>
-          <MessageSquare className="h-4 w-4 text-amber-200" />
+          <MessageSquare className="h-4 w-4 text-accent" />
         </div>
-        <p className="mb-3 text-xs text-slate-500">{latestUpdate ? t('latestUpdate', { time: formatRelativeTime(latestUpdate) }) : t('noActivity')}</p>
+        <p className="mb-3 text-xs text-text-muted">{latestUpdate ? t('latestUpdate', { time: formatRelativeTime(latestUpdate) }) : t('noActivity')}</p>
         <div className="space-y-3">
           {events.length === 0 ? (
-            <p className="text-sm leading-6 text-slate-400">{t('emptyLog')}</p>
+            <p className="text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
           ) : (
             events.map((event) => (
-              <div key={event.id} className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+              <div key={event.id} className="rounded-3xl border border-border bg-surface-alt p-4">
                 <div className="mb-2 flex justify-between gap-3">
-                  <p className="text-sm font-medium text-white">{humanize(event.event_type)}</p>
-                  {event.created_at ? <span className="text-xs text-slate-500">{formatRelativeTime(event.created_at)}</span> : null}
+                  <p className="text-sm font-medium text-text">{humanize(event.event_type)}</p>
+                  {event.created_at ? <span className="text-xs text-text-muted">{formatRelativeTime(event.created_at)}</span> : null}
                 </div>
-                {event.body_text ? <p className="text-sm leading-6 text-slate-300">{event.body_text}</p> : null}
+                {event.body_text ? <p className="text-sm leading-6 text-text">{event.body_text}</p> : null}
               </div>
             ))
           )}
@@ -753,12 +753,12 @@ function RightPane({
       </Panel>
 
       <Panel className="sticky bottom-5 p-3">
-        <button className="w-full rounded-3xl bg-emerald-300 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-200" disabled={!opportunity}>
+        <button className="w-full rounded-3xl bg-success px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] hover:bg-success" disabled={!opportunity}>
           {t('proceedNegotiate')}
         </button>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button className="rounded-3xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-white" disabled={!opportunity}>{t('scheduleVisit')}</button>
-          <button className="rounded-3xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm font-semibold text-rose-100" disabled={!opportunity}>{t('pass')}</button>
+          <button className="rounded-3xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text" disabled={!opportunity}>{t('scheduleVisit')}</button>
+          <button className="rounded-3xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error" disabled={!opportunity}>{t('pass')}</button>
         </div>
       </Panel>
     </aside>
@@ -767,24 +767,24 @@ function RightPane({
 
 function RightPaneRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-sm leading-5 text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-border bg-surface-alt p-3">
+      <p className="text-xs text-text-muted">{label}</p>
+      <p className="mt-1 text-sm leading-5 text-text">{value}</p>
     </div>
   );
 }
 
 function TrustRow({ label, body, tone }: { label: string; body: string; tone: 'emerald' | 'cyan' | 'amber' | 'rose' }) {
   const styles = {
-    emerald: 'border-emerald-300/30 bg-emerald-300/10 text-emerald-100',
-    cyan: 'border-cyan-300/30 bg-cyan-300/10 text-cyan-100',
-    amber: 'border-amber-300/30 bg-amber-300/10 text-amber-100',
-    rose: 'border-rose-300/30 bg-rose-300/10 text-rose-100',
+    emerald: 'border-success/30 bg-success/10 text-success',
+    cyan: 'border-highlight/30 bg-highlight/10 text-highlight',
+    amber: 'border-accent/30 bg-accent/10 text-accent',
+    rose: 'border-error/30 bg-error/10 text-error',
   }[tone];
   return (
-    <div className="w-full rounded-3xl border border-white/10 bg-black/20 p-4 text-left">
+    <div className="w-full rounded-3xl border border-border bg-surface-alt p-4 text-left">
       <span className={cn('rounded-full border px-3 py-1 text-[11px]', styles)}>{label}</span>
-      <p className="mt-3 text-sm leading-6 text-slate-100">{body}</p>
+      <p className="mt-3 text-sm leading-6 text-text">{body}</p>
     </div>
   );
 }
@@ -807,42 +807,42 @@ function ScenarioSlider({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+    <div className="rounded-3xl border border-border bg-surface-alt p-4">
       <div className="mb-3 flex justify-between gap-4">
-        <p className="text-sm font-medium text-white">{label}</p>
-        <span className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 font-mono text-sm text-amber-100">{format(value)}</span>
+        <p className="text-sm font-medium text-text">{label}</p>
+        <span className="rounded-2xl border border-accent/20 bg-accent/10 px-3 py-1.5 font-mono text-sm text-accent">{format(value)}</span>
       </div>
-      <input className="w-full accent-amber-300" type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <input className="w-full accent-accent" type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     </div>
   );
 }
 
 function OutputMetric({ label, value, hot = false }: { label: string; value: string; hot?: boolean }) {
   return (
-    <div className={cn('rounded-3xl border p-4', hot ? 'border-amber-300/40 bg-amber-300/10' : 'border-white/10 bg-black/20')}>
-      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{label}</p>
-      <p className="mt-2 font-mono text-3xl font-semibold text-white">{value}</p>
+    <div className={cn('rounded-3xl border p-4', hot ? 'border-accent/40 bg-accent/10' : 'border-border bg-surface-alt')}>
+      <p className="text-xs uppercase tracking-[0.22em] text-text-soft">{label}</p>
+      <p className="mt-2 font-mono text-3xl font-semibold text-text">{value}</p>
     </div>
   );
 }
 
 function MetricCard({ icon: Icon, label, value, hot = false }: { icon: LucideIcon; label: string; value: string; hot?: boolean }) {
   return (
-    <Panel className={cn('p-4', hot && 'border-amber-300/25 bg-amber-300/[0.07]')}>
-      <Icon className="h-4 w-4 text-amber-200" />
-      <p className="mt-3 truncate text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-2xl font-semibold text-white">{value}</p>
+    <Panel className={cn('p-4', hot && 'border-accent/25 bg-accent/10')}>
+      <Icon className="h-4 w-4 text-accent" />
+      <p className="mt-3 truncate text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
+      <p className="mt-1 truncate text-2xl font-semibold text-text">{value}</p>
     </Panel>
   );
 }
 
 function DecisionBlock({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+    <div className="rounded-3xl border border-border bg-surface-alt p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="font-medium text-white"><Icon className="mr-2 inline h-4 w-4 text-amber-200" />{title}</p>
-          <p className="mt-1 text-sm leading-6 text-slate-400">{body}</p>
+          <p className="font-medium text-text"><Icon className="mr-2 inline h-4 w-4 text-accent" />{title}</p>
+          <p className="mt-1 text-sm leading-6 text-text-soft">{body}</p>
         </div>
       </div>
     </div>
@@ -851,30 +851,30 @@ function DecisionBlock({ icon: Icon, title, body }: { icon: LucideIcon; title: s
 
 function MandateRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 rounded-2xl bg-black/20 px-3 py-2 text-xs">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-right text-slate-100">{value}</span>
+    <div className="flex justify-between gap-3 rounded-2xl bg-surface-alt px-3 py-2 text-xs">
+      <span className="text-text-muted">{label}</span>
+      <span className="text-right text-text">{value}</span>
     </div>
   );
 }
 
 function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-3xl border border-white/10 bg-white/[0.045] shadow-2xl shadow-black/20 backdrop-blur', className)}>
+    <div className={cn('rounded-3xl border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur', className)}>
       {children}
     </div>
   );
 }
 
 function SignalDot({ hot, warn = false }: { hot?: boolean; warn?: boolean }) {
-  return <span className={cn('h-2.5 w-2.5 rounded-full', hot ? 'bg-emerald-300 shadow-[0_0_14px_currentColor]' : warn ? 'bg-amber-300 shadow-[0_0_14px_currentColor]' : 'bg-slate-600')} />;
+  return <span className={cn('h-2.5 w-2.5 rounded-full', hot ? 'bg-success shadow-[0_0_14px_currentColor]' : warn ? 'bg-accent shadow-[0_0_14px_currentColor]' : 'bg-text-muted')} />;
 }
 
 function TrustPill({ label, tone }: { label: string; tone: 'amber' | 'cyan' | 'slate' }) {
   const styles = {
-    amber: 'border-amber-300/25 bg-amber-300/10 text-amber-100',
-    cyan: 'border-cyan-300/25 bg-cyan-300/10 text-cyan-100',
-    slate: 'border-white/10 bg-white/[0.04] text-slate-300',
+    amber: 'border-accent/25 bg-accent/10 text-accent',
+    cyan: 'border-highlight/30 bg-highlight/10 text-highlight',
+    slate: 'border-border bg-surface-alt text-text',
   }[tone];
   return <span className={cn('rounded-full border px-3 py-1 text-xs', styles)}>{label}</span>;
 }
