@@ -101,9 +101,9 @@ export function WorkspaceTabs({
   ];
 
   return (
-    <div className={cn('relative border-b border-border bg-surface', className)} data-tour="workspace-tabs">
+    <div className={cn('relative border-b border-border bg-background/80 px-4 py-3 md:px-6', className)} data-tour="workspace-tabs">
       <div className="relative overflow-x-auto">
-        <div className="flex items-end px-4 md:px-6 min-w-max">
+        <div className="flex min-w-max items-center gap-1 rounded-[22px] border border-border bg-surface/90 p-1 shadow-[var(--shadowSm)] backdrop-blur">
           {tabs.map((tab) => {
             const isActive = resolved === tab.key;
             const Icon = tab.icon;
@@ -113,23 +113,20 @@ export function WorkspaceTabs({
                 href={tab.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center whitespace-nowrap py-2 px-1 transition-all duration-150 border-b-2 -mb-px',
-                  isActive ? 'border-accent' : 'border-transparent hover:border-border'
+                  'inline-flex items-center whitespace-nowrap rounded-[18px] transition-all duration-150',
+                  isActive ? 'bg-accent text-[color:var(--accent-text)] shadow-[0_0_26px_var(--accent-soft)]' : 'text-text-soft hover:bg-surface-alt hover:text-text'
                 )}
               >
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-150',
-                    isActive
-                      ? 'font-semibold text-text'
-                      : 'font-medium text-text-soft hover:text-text'
+                    'inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 text-sm transition-colors duration-150',
+                    isActive ? 'font-semibold' : 'font-medium'
                   )}
-                  style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)' } : undefined}
                 >
                   <Icon
                     className={cn(
                       'flex-shrink-0 transition-colors duration-150',
-                      isActive ? 'h-4 w-4 text-accent' : 'h-3.5 w-3.5 text-text-muted'
+                      isActive ? 'h-4 w-4' : 'h-3.5 w-3.5 text-text-muted'
                     )}
                   />
                   {tab.label}
@@ -138,7 +135,7 @@ export function WorkspaceTabs({
             );
           })}
 
-          <div className="relative py-2 ps-1" ref={moreRef}>
+          <div className="relative ps-1" ref={moreRef}>
             <button
               type="button"
               aria-expanded={moreOpen}
@@ -148,7 +145,7 @@ export function WorkspaceTabs({
                 setMoreOpen((o) => !o);
               }}
               className={cn(
-                'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text'
+                'inline-flex min-h-[36px] items-center gap-1 rounded-[18px] px-3 py-2 text-sm font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text'
               )}
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -157,7 +154,7 @@ export function WorkspaceTabs({
             {moreOpen ? (
               <div
                 role="menu"
-                className="absolute end-0 top-full z-40 mt-1 min-w-[12rem] rounded-xl border border-border bg-surface py-1 shadow-[var(--shadowMd)]"
+                className="absolute end-0 top-full z-40 mt-2 min-w-[12rem] rounded-xl border border-border bg-surface py-1 shadow-[var(--shadowMd)]"
               >
                 {secondaryLinks.map((item) => (
                   <Link
@@ -174,7 +171,7 @@ export function WorkspaceTabs({
             ) : null}
           </div>
         </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
       </div>
     </div>
   );
