@@ -2315,22 +2315,17 @@ export function ContractAnalysisPane({
       const html = String(reportData?.html || '').trim();
       if (!html) throw new Error('Report generation returned empty content');
 
-      // 2) Persist it as a workspace report.
-      const { error: createErr } = await supabase.functions.invoke('create-report', {
-        body: {
-          workspace_id: workspaceId,
-          document_id: documentId,
-          title: `Decision Pack${contract?.counterparty_name ? ` • ${contract.counterparty_name}` : ''}`,
-          subtitle: null,
-          template: 'decision_pack',
-          output_type: 'download',
-          format: 'html',
-          html,
-        },
-      });
-      if (createErr) throw createErr;
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `decision-pack-${documentId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
 
-      setReportSavedMessage(t('reports.savedToWorkspace'));
+      setReportSavedMessage(t('reports.downloaded'));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.generateReportFailed'));
     } finally {

@@ -461,7 +461,8 @@
     "notes": "Notes",
     "reports": "Reports",
     "pipelines": "Pipelines",
-    "packs": "Packs",
+    "packs": "Corpus",
+    "corpus": "Corpus",
     "dataSources": "Data Sources",
     "experiences": "Surface",
     "members": "Members",
@@ -1683,7 +1684,8 @@
     "documentLabel": "Document: {id}",
     "shareableLinkNotice": "This report was generated as a shareable link.",
     "openShareLink": "Open share link",
-    "savedToWorkspace": "Report saved to Workspace -> Reports."
+    "savedToWorkspace": "Report saved to Workspace -> Reports.",
+    "downloaded": "Report downloaded."
   },
   "runAnalysis": {
     "title": "Run Analysis",
@@ -1784,6 +1786,7 @@
     },
     "reports": {
       "savedToWorkspace": "Report saved to Workspace → Reports.",
+      "downloaded": "Report downloaded.",
       "verificationFinalized": "Verification finalized."
     },
     "actions": {

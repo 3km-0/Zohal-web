@@ -64,26 +64,10 @@ NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### Internal Pipeline Builder flags (foundation)
+### Internal automation runtime
 
-```
-NEXT_PUBLIC_PIPELINE_BUILDER_ENABLED=true
-NEXT_PUBLIC_PIPELINE_BUILDER_WORKSPACE_ALLOWLIST=workspace_uuid_1,workspace_uuid_2
-```
-
-When enabled for a workspace, the internal scaffold is available at:
-
-`/workspaces/<workspace_id>/pipelines`
-
-### Presets UX (planned)
-Pipeline presets (node “recipes” and starter certified pipelines) are intended to remain a **pure UX layer**:
-- Preset nodes are prefilled configs for existing node kinds (no new runtime semantics).
-- Certified starter pipelines are shipped as global system preset pipelines that users can duplicate/edit.
-
-Delta-to-GA backend capabilities (consumed by scaffold and follow-up UX work):
-- `pipelines-node-catalog`, `pipelines-validate-spec`, `pipelines-node-action`
-- `pipeline-connections-test`
-- `pipelines-get-artifact` (artifact pointer retrieval / signed access)
+Pipeline concepts are now internal automation infrastructure. The web app does
+not expose an end-user graph builder during the acquisition reset.
 
 ## Building for Production
 

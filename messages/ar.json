@@ -462,7 +462,8 @@
     "notes": "الملاحظات",
     "reports": "التقارير",
     "pipelines": "خطوط المعالجة",
-    "packs": "الحزم",
+    "packs": "المتن",
+    "corpus": "المتن",
     "dataSources": "مصادر البيانات",
     "experiences": "السطح",
     "members": "الأعضاء",
@@ -1684,7 +1685,8 @@
     "documentLabel": "المستند: {id}",
     "shareableLinkNotice": "تم إنشاء هذا التقرير كرابط قابل للمشاركة.",
     "openShareLink": "فتح رابط المشاركة",
-    "savedToWorkspace": "تم حفظ التقرير في مساحة العمل ← التقارير."
+    "savedToWorkspace": "تم حفظ التقرير في مساحة العمل ← التقارير.",
+    "downloaded": "تم تنزيل التقرير."
   },
   "runAnalysis": {
     "title": "تشغيل التحليل",
@@ -1785,6 +1787,7 @@
     },
     "reports": {
       "savedToWorkspace": "تم حفظ التقرير في مساحة العمل ← التقارير.",
+      "downloaded": "تم تنزيل التقرير.",
       "verificationFinalized": "تم اعتماد التحقق."
     },
     "actions": {

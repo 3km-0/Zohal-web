@@ -93,7 +93,7 @@ export function WorkspaceTabs({
   const secondaryLinks: { href: string; label: string }[] = [
     { href: withFolderContext(`/workspaces/${workspaceId}/notes`), label: t('notes') },
     { href: withFolderContext(`/workspaces/${workspaceId}/data-sources`), label: t('dataSources') },
-    { href: withFolderContext(`/workspaces/${workspaceId}/packs`), label: t('packs') },
+    { href: withFolderContext(`/workspaces/${workspaceId}/sources`), label: t('corpus') },
     { href: withFolderContext(`/workspaces/${workspaceId}/playbooks`), label: t('templates') },
     ...(showMembersLink
       ? [{ href: withFolderContext(`/workspaces/${workspaceId}/members`), label: t('members') }]
