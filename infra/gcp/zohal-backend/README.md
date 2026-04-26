@@ -1,5 +1,8 @@
 # zohal-backend GCP deploy
 
+Status: Active
+Last reviewed: 2026-04-26
+
 This folder is the deployment home for the Cloud Run execution service and its
 paired GCP resources.
 

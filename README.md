@@ -1,10 +1,16 @@
 # Zohal Web
 
-Web companion for the Zohal document platform. Built with Next.js 14, React, and TypeScript.
+Status: Active
+Last reviewed: 2026-04-26
 
-## Repo layout (important)
+Web companion for the Zohal document and acquisition workspace platform. Built
+with Next.js 15, React 19, TypeScript, Tailwind, next-intl, and Supabase SSR
+auth.
 
-This is a **separate git repository** from `zohal-core/` (which contains iOS + Supabase backend + core docs). Commit and push changes **inside each repo**.
+## Repo Layout
+
+This is a separate git repository from `zohal-core/` and `zohal-platform/`.
+Commit and push changes inside each repo.
 
 ## Quick Start
 
@@ -13,71 +19,64 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Project Structure
+## Product Model
 
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── (app)/             # Authenticated routes
-│   │   ├── workspaces/    # Workspace pages
-│   │   ├── search/        # Search page
-│   │   └── settings/      # Settings & billing
-│   ├── (auth)/            # Authentication routes
-│   └── (public)/          # Public pages (home, terms, privacy)
-├── components/
-│   ├── ui/                # Base components (Button, Card, Toast)
-│   ├── layout/            # AppShell, Header, Sidebar
-│   ├── pdf-viewer/        # PDF viewing components
-│   └── ai/                # AI panel components
-├── lib/
-│   ├── errors.ts          # Error handling utilities
-│   └── supabase/          # Supabase client (browser/server)
-└── types/                 # TypeScript types
-```
+The shared product model is:
 
-## Key Conventions
+`Document -> Template -> Run -> Snapshot -> Living Interface -> Automation`
 
-### Error Handling
-```typescript
-import { mapErrorToUserFacing, showErrorToast } from '@/lib/errors'
+Web uses the same product language as iOS and core docs:
+- `Living Interface` for public/product language
+- `Surface` for internal runtime/delivery language
+- `Template` publicly
+- `playbook` only for persistence/API details
+- `Corpus` for curated source sets
 
-try {
-    await supabase.functions.invoke('endpoint', { body })
-} catch (error) {
-    const userError = mapErrorToUserFacing(error)
-    showErrorToast(userError)
-}
+The web app does not expose an end-user Pipeline Builder during the acquisition
+reset.
+
+## Main Areas
+
+- authenticated workspace and property/acquisition flows
+- Sources / document management
+- operator and Ask flows
+- settings, billing, and subscription UI
+- Living Interface publication controls for the active `market` family
+- web-side GCP backend service code under `services/zohal-backend/`
+
+## Commands
+
+```bash
+npm run typecheck
+npm run build
+npm run test:run
 ```
 
-### Styling
-- Use Tailwind CSS with Slate design language tokens
-- No inline hex colors - use theme tokens
-- Global toast for transient errors via `Toast` component
+Run the narrowest useful check after small changes. Run typecheck/build after
+substantive web UI or API-contract changes.
 
 ## Environment Variables
 
-Create `.env.local`:
-```
+Local development usually needs:
+
+```bash
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### Internal automation runtime
+Before adding new variables, check existing Vercel/Firebase/GCP/Supabase names
+and prefer documented aliases over duplicate secrets.
 
-Pipeline concepts are now internal automation infrastructure. The web app does
-not expose an end-user graph builder during the acquisition reset.
+## Documentation
 
-## Building for Production
+Start with:
 
-```bash
-npm run build
-```
+- `../zohal-core/Documentation/README.md`
+- `../zohal-core/Documentation/Architecture/architecture.md`
+- `../zohal-core/Documentation/Templates/Document-Templates.md`
+- `../zohal-core/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
+- `../zohal-platform/Documentation/Experiences/README.md`
 
-## Related Documentation
-
-See the main project documentation in `../zohal-core/Documentation/`:
-- [Engineering_Quality_Master_Plan.md](../zohal-core/Documentation/Engineering_Quality_Master_Plan.md)
-- [architecture.md](../zohal-core/Documentation/architecture.md)
-- [Zohal Design Language.md](../zohal-core/Documentation/Zohal%20Design%20Language.md)
+For repo-local workflow rules, read `AGENTS.md`.
