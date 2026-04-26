@@ -5,12 +5,12 @@ import { useTranslations } from 'next-intl';
 import { ExternalLink, Link as LinkIcon, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
-import { PortalDiagnosticsConsole } from '@/components/experiences/PortalDiagnosticsConsole';
+import { SurfaceDiagnosticsConsole } from '@/components/experiences/SurfaceDiagnosticsConsole';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
 import type { RememberedRelatedDocuments } from '@/types/analysis-runs';
-import type { PortalDiagnosticsEnvelope } from '@/lib/portal-diagnostics';
+import type { SurfaceDiagnosticsEnvelope } from '@/lib/surface-diagnostics';
 
 interface ExperiencePublicationPanelProps {
   workspaceId: string;
@@ -61,7 +61,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   const [host, setHost] = useState('live.zohal.ai');
   const [visibility, setVisibility] = useState('public_unlisted');
   const [password, setPassword] = useState('');
-  const [diagnosticsEnvelope, setDiagnosticsEnvelope] = useState<PortalDiagnosticsEnvelope | null>(null);
+  const [diagnosticsEnvelope, setDiagnosticsEnvelope] = useState<SurfaceDiagnosticsEnvelope | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
       if (options?.candidateId) url.searchParams.set('candidate_id', options.candidateId);
 
       const response = await fetch(url.pathname + url.search);
-      const data = (await response.json()) as PortalDiagnosticsEnvelope & { message?: string };
+      const data = (await response.json()) as SurfaceDiagnosticsEnvelope & { message?: string };
       if (!response.ok) {
         throw new Error(data?.message || t('errors.statusFailed'));
       }
@@ -561,14 +561,14 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
                   className="inline-flex items-center gap-2 text-sm font-semibold text-accent"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  {t('actions.openPortal')}
+                  {t('actions.openSurface')}
                 </a>
               ) : null}
             </CardContent>
           </Card>
         </div>
 
-        <PortalDiagnosticsConsole
+        <SurfaceDiagnosticsConsole
           diagnostics={diagnostics}
           isLoading={busy === 'refresh'}
           onRefresh={() => {

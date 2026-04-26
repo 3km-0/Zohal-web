@@ -461,7 +461,6 @@
     "ask": "اسأل",
     "notes": "الملاحظات",
     "reports": "التقارير",
-    "pipelines": "خطوط المعالجة",
     "packs": "المتن",
     "corpus": "المتن",
     "dataSources": "مصادر البيانات",
@@ -735,8 +734,7 @@
     },
     "surfaceFamilies": {
       "market": "سطح السوق",
-      "livingInterface": "الواجهة الحية",
-      "diligence": "سطح الفحص النافي للجهالة"
+      "livingInterface": "الواجهة الحية"
     },
     "visibility": {
       "publicIndexed": "عام ومفهرس",
@@ -754,16 +752,14 @@
       "issueLink": "إنشاء رابط مؤقت",
       "openRestrictedPreview": "فتح معاينة مقيّدة",
       "openLive": "فتح السطح الحي",
-      "openPortal": "فتح السطح الحي",
-      "refreshPortal": "تحديث المراقبة"
+      "openSurface": "فتح السطح الحي",
+      "refreshSurface": "تحديث المراقبة"
     },
     "defaults": {
       "subtitle": "سطح مساحة العمل التشغيلية الحتمي",
       "summary": "حوّل حقيقة تشغيل مساحة العمل المتحققة في مساحة العمل إلى واجهة مساحة العمل التشغيلية الحية الافتراضية.",
       "operationsWorkspaceMarketSubtitle": "سطح مساحة عمل موثّق موجّه للمشتري مبني من الحقائق المعتمدة وحالة الثقة وإرشاد المشتري التالي",
-      "operationsWorkspaceMarketSummary": "حوّل حقائق الإدراج المعتمدة وتغطية الثقة وأسئلة المشتري والإرشاد التمويلي والمخططات والسياق الجاهز للتواصل إلى واجهة سوق حية واحدة.",
-      "operationsWorkspaceDiligenceSubtitle": "إتاحة مضبوطة للملاك وأطراف الفحص النافي للجهالة حول حالة مساحة العمل والتزاماته ومخاطره",
-      "operationsWorkspaceDiligenceSummary": "حوّل الفحص والإفصاحات والسجل التشغيلي والمخاطر وقوائم المراجعة المبنية على الأدلة إلى واجهة فحص حيّة."
+      "operationsWorkspaceMarketSummary": "حوّل حقائق الإدراج المعتمدة وتغطية الثقة وأسئلة المشتري والإرشاد التمويلي والمخططات والسياق الجاهز للتواصل إلى واجهة سوق حية واحدة."
     },
     "whatsappInbox": {
       "title": "استقبال استحواذ واتساب",
@@ -810,7 +806,7 @@
       "statusFailed": "تعذّر تحميل حالة النشر.",
       "actionFailed": "فشل إجراء النشر."
     },
-    "portalConsole": {
+    "surfaceConsole": {
       "title": "لوحة تشغيل الواجهة",
       "description": "راجع المرشح الحالي ومسار النشر وحالة النشر الفعلية وفحص الواجهة الحية من مكان واحد.",
       "loading": "جارٍ تحميل تشخيص الواجهة…",
@@ -1515,78 +1511,6 @@
         "promptPlaceholder": "صف ما تريد استخراجه وكيف يجب تنظيمه.",
         "jsonSchema": "مخطط JSON"
       }
-    }
-  },
-  "pipelines": {
-    "disabled": {
-      "title": "منشئ خطوط المعالجة غير مفعّل",
-      "description": "هذه ميزة تأسيسية داخلية ومفعّلة حالياً لمساحات عمل محددة فقط."
-    },
-    "list": {
-      "title": "خطوط المعالجة",
-      "newPlaceholder": "اسم خط معالجة جديد",
-      "create": "إنشاء",
-      "loading": "جارٍ تحميل خطوط المعالجة...",
-      "emptyTitle": "لا توجد خطوط معالجة بعد",
-      "emptyDescription": "أنشئ أول خط معالجة لبدء تركيب تدفقات الوكلاء."
-    },
-    "palette": {
-      "title": "لوحة العقد",
-      "blockedSuffix": "(محظور)",
-      "presets": {
-        "title": "عُقد جاهزة",
-        "badge": "جاهزة",
-        "hint": "تضيف هذه عقدة مهمة LLM بإعدادات مبدئية يمكنك تعديلها.",
-        "openaiJson": "مهمة JSON (OpenAI)",
-        "geminiJson": "مهمة JSON (Gemini عبر Vertex)"
-      }
-    },
-    "builder": {
-      "namePlaceholder": "اسم خط المعالجة",
-      "saving": "جارٍ حفظ المسودة...",
-      "reload": "إعادة تحميل",
-      "checkpoint": "نقطة حفظ",
-      "checkpointing": "جارٍ إنشاء نقطة الحفظ...",
-      "checkpointSaved": "تم حفظ نقطة الحفظ",
-      "publish": "نشر",
-      "publishing": "جارٍ النشر...",
-      "published": "تم نشر خط المعالجة",
-      "selectTitle": "اختر خط معالجة",
-      "selectDescription": "اختر خط معالجة من اللوحة اليسرى أو أنشئ خطاً جديداً.",
-      "nodeInspector": "مفتش العقدة",
-      "noNodeSelected": "لا توجد عقدة محددة",
-      "nodeInspectorHint": "انقر على عقدة في اللوحة لعرض إعداداتها وتعديلها.",
-      "nodeKind": "النوع",
-      "nodeContracts": "العقود",
-      "guardrailsTitle": "الضوابط",
-      "selectPlaceholder": "اختر...",
-      "rawConfig": "الإعدادات الخام (JSON)",
-      "applyConfig": "تطبيق",
-      "nodeConfigSaved": "تم حفظ إعدادات العقدة",
-      "testInput": "مدخلات تشغيل الاختبار (JSON)",
-      "invalidTestJson": "تنسيق JSON لمدخلات الاختبار غير صالح.",
-      "testRun": "تشغيل اختبار",
-      "running": "جارٍ التشغيل...",
-      "runStatus": "حالة التشغيل",
-      "statusReason": "السبب",
-      "liveEvents": "الأحداث المباشرة",
-      "noEvents": "لا توجد أحداث حتى الآن.",
-      "approvalsTitle": "موافقات بشرية",
-      "approve": "موافقة",
-      "reject": "رفض",
-      "retryTitle": "عقد قابلة لإعادة المحاولة",
-      "retry": "إعادة المحاولة",
-      "policyDeniedTitle": "رفض بسبب السياسة",
-      "nodeActionFailed": "تعذر تنفيذ إجراء العقدة.",
-      "nodeActionSuccess": "تم تنفيذ إجراء العقدة."
-    },
-    "badges": {
-      "canonical": "قانوني",
-      "external": "خارجي"
-    },
-    "guardrails": {
-      "canonicalWrites": "يكتب اللقطة القانونية + الجداول الإسقاطية (محكوم بالسياسات).",
-      "externalSideEffect": "عقدة تأثير خارجي (تعتمد على outbox وقد تُحظر حسب السياسة)."
     }
   },
   "packs": {
@@ -2741,7 +2665,7 @@
     "heroBody": "راجع الأدلة، ونمذج الصفقة، واكشف مخاطر التجديد، وحدد الخطوة التالية.",
     "emptyCockpitTitle": "لا توجد فرصة محددة بعد",
     "buyBoxPinned": "معايير الشراء المثبتة",
-    "rankedPipeline": "خط الفرص المرتب",
+    "rankedOpportunities": "الفرص المرتبة",
     "untitledOpportunity": "فرصة بلا عنوان",
     "openItems": "العناصر المفتوحة",
     "openItemsShort": "مفتوحة",

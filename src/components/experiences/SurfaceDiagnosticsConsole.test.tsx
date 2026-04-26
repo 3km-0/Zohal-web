@@ -1,12 +1,12 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { PortalDiagnosticsConsole } from './PortalDiagnosticsConsole';
-import type { PortalDiagnostics } from '@/lib/portal-diagnostics';
+import { SurfaceDiagnosticsConsole } from './SurfaceDiagnosticsConsole';
+import type { SurfaceDiagnostics } from '@/lib/surface-diagnostics';
 
 const messages = {
   experiencesPage: {
-    portalConsole: {
+    surfaceConsole: {
       title: 'Living Interface operator console',
       description: 'Description',
       loading: 'Loading Living Interface diagnostics…',
@@ -45,8 +45,8 @@ const messages = {
       },
     },
     actions: {
-      refreshPortal: 'Refresh diagnostics',
-      openPortal: 'Open Living Interface',
+      refreshSurface: 'Refresh diagnostics',
+      openSurface: 'Open Living Interface',
     },
     status: {
       none: 'None yet',
@@ -87,10 +87,10 @@ vi.mock('@/components/ui', () => ({
   Spinner: () => <div data-testid="spinner" />,
 }));
 
-function diagnostics(overrides: Partial<PortalDiagnostics> = {}): PortalDiagnostics {
+function diagnostics(overrides: Partial<SurfaceDiagnostics> = {}): SurfaceDiagnostics {
   return {
     summary: {
-      title: 'Board Portal',
+      title: 'Board Surface',
       source_kind: 'contract_document',
       publication_lane: 'trusted_runtime',
       active_runtime: 'generated_dispatch',
@@ -146,7 +146,7 @@ function diagnostics(overrides: Partial<PortalDiagnostics> = {}): PortalDiagnost
       fallback_shell_present: false,
       unresolved_dynamic_link_count: 0,
       preview: {
-        title: 'Board Portal',
+        title: 'Board Surface',
         excerpt: 'Compact preview excerpt',
       },
       probed_at: '2026-03-26T10:05:00.000Z',
@@ -179,10 +179,10 @@ function diagnostics(overrides: Partial<PortalDiagnostics> = {}): PortalDiagnost
   };
 }
 
-describe('PortalDiagnosticsConsole', () => {
-  it('renders the Portal summary, trace, and live probe details', () => {
+describe('SurfaceDiagnosticsConsole', () => {
+  it('renders the Surface summary, trace, and live probe details', () => {
     render(
-      <PortalDiagnosticsConsole
+      <SurfaceDiagnosticsConsole
         diagnostics={diagnostics()}
         isLoading={false}
         onRefresh={() => {}}
@@ -190,8 +190,8 @@ describe('PortalDiagnosticsConsole', () => {
     );
 
     expect(screen.getByText('Living Interface operator console')).toBeInTheDocument();
-    expect(screen.getByText('Board Portal')).toBeInTheDocument();
-    expect(screen.getByTestId('portal-stage-compile')).toHaveTextContent('Passed');
+    expect(screen.getByText('Board Surface')).toBeInTheDocument();
+    expect(screen.getByTestId('surface-stage-compile')).toHaveTextContent('Passed');
     expect(screen.getByText('HTTP status: 200')).toBeInTheDocument();
     expect(screen.getByText('Evidence markers: 4')).toBeInTheDocument();
     expect(screen.getByText('Open Living Interface')).toBeInTheDocument();
@@ -199,7 +199,7 @@ describe('PortalDiagnosticsConsole', () => {
 
   it('renders failure class and failing stage state', () => {
     render(
-      <PortalDiagnosticsConsole
+      <SurfaceDiagnosticsConsole
         diagnostics={diagnostics({
           failure_class: 'deploy_failed',
           trace: [
@@ -220,15 +220,15 @@ describe('PortalDiagnosticsConsole', () => {
       />
     );
 
-    expect(screen.getByTestId('portal-failure-class')).toHaveTextContent('Deploy Failed');
-    expect(screen.getByTestId('portal-stage-deploy')).toHaveTextContent('Failed');
+    expect(screen.getByTestId('surface-failure-class')).toHaveTextContent('Deploy Failed');
+    expect(screen.getByTestId('surface-stage-deploy')).toHaveTextContent('Failed');
     expect(screen.getByText('Generation failures')).toBeInTheDocument();
     expect(screen.getByText('Cloudflare deploy rejected the worker module.')).toBeInTheDocument();
   });
 
   it('renders customization strategy details when recomposition is tracked', () => {
     render(
-      <PortalDiagnosticsConsole
+      <SurfaceDiagnosticsConsole
         diagnostics={diagnostics({
           customization_strategy: 'recompose',
           customization_result: 'preserved_live',

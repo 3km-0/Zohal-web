@@ -797,7 +797,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
 
               {pipelineStatus ? (
                 <div className="mt-4 rounded-xl border border-border bg-surface p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Pipeline status</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-soft">Run status</p>
                   <p className="mt-2 text-sm text-text">{pipelineStatus.summary}</p>
                   <div className="mt-3 space-y-2">
                     {pipelineStatus.stages.map((stage) => (

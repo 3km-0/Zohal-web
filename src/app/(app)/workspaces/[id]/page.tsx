@@ -427,7 +427,7 @@ function OpportunityRail({
   return (
     <Panel className={cn('p-4', compact && 'overflow-hidden')}>
       <div className="mb-4 flex items-center justify-between">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedPipeline')}</p>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedOpportunities')}</p>
         <Building2 className="h-4 w-4 text-accent" />
       </div>
       <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-3')}>

@@ -460,7 +460,6 @@
     "ask": "Ask",
     "notes": "Notes",
     "reports": "Reports",
-    "pipelines": "Pipelines",
     "packs": "Corpus",
     "corpus": "Corpus",
     "dataSources": "Data Sources",
@@ -734,8 +733,7 @@
     },
     "surfaceFamilies": {
       "market": "Market surface",
-      "livingInterface": "Living Interface surface",
-      "diligence": "Diligence surface"
+      "livingInterface": "Living Interface surface"
     },
     "visibility": {
       "publicIndexed": "Public indexed",
@@ -753,16 +751,14 @@
       "issueLink": "Issue expiring link",
       "openRestrictedPreview": "Open restricted preview",
       "openLive": "Open live surface",
-      "openPortal": "Open live surface",
-      "refreshPortal": "Refresh monitor"
+      "openSurface": "Open live surface",
+      "refreshSurface": "Refresh monitor"
     },
     "defaults": {
       "subtitle": "Deterministic Operations Workspace Surface",
       "summary": "Compile verified workspace-operations truth into the default Operations Workspace Living Interface.",
       "operationsWorkspaceMarketSubtitle": "Verified buyer-facing workspace surface built from approved facts, trust state, and next-step buyer guidance",
-      "operationsWorkspaceMarketSummary": "Compile approved listing facts, trust coverage, buyer Q&A, finance guidance, plans, and contact-ready context into one market Living Interface.",
-      "operationsWorkspaceDiligenceSubtitle": "Controlled owner and diligence visibility into workspace condition, obligations, and risk",
-      "operationsWorkspaceDiligenceSummary": "Compile evidence-backed diligence, disclosures, operating history, risk, and review queues into a diligence Living Interface."
+      "operationsWorkspaceMarketSummary": "Compile approved listing facts, trust coverage, buyer Q&A, finance guidance, plans, and contact-ready context into one market Living Interface."
     },
     "whatsappInbox": {
       "title": "WhatsApp acquisition intake",
@@ -809,7 +805,7 @@
       "statusFailed": "Failed to load publication status.",
       "actionFailed": "The publication action failed."
     },
-    "portalConsole": {
+    "surfaceConsole": {
       "title": "Interface operator console",
       "description": "Review the current candidate, publish trace, deploy state, and live probe from one place.",
       "loading": "Loading Interface diagnostics…",
@@ -1514,78 +1510,6 @@
         "promptPlaceholder": "Describe what you want extracted and how to structure it.",
         "jsonSchema": "JSON schema"
       }
-    }
-  },
-  "pipelines": {
-    "disabled": {
-      "title": "Pipeline Builder is not enabled",
-      "description": "This internal foundation feature is currently gated for selected workspaces."
-    },
-    "list": {
-      "title": "Pipelines",
-      "newPlaceholder": "New pipeline name",
-      "create": "Create",
-      "loading": "Loading pipelines...",
-      "emptyTitle": "No pipelines yet",
-      "emptyDescription": "Create your first pipeline to start composing agent flows."
-    },
-    "palette": {
-      "title": "Node Palette",
-      "blockedSuffix": "(Blocked)",
-      "presets": {
-        "title": "Preset Nodes",
-        "badge": "Preset",
-        "hint": "These add an LLM Task node with prefilled settings you can edit.",
-        "openaiJson": "OpenAI JSON Task",
-        "geminiJson": "Gemini (Vertex) JSON Task"
-      }
-    },
-    "builder": {
-      "namePlaceholder": "Pipeline name",
-      "saving": "Saving draft...",
-      "reload": "Reload",
-      "checkpoint": "Checkpoint",
-      "checkpointing": "Checkpointing...",
-      "checkpointSaved": "Checkpoint saved",
-      "publish": "Publish",
-      "publishing": "Publishing...",
-      "published": "Pipeline published",
-      "selectTitle": "Select a pipeline",
-      "selectDescription": "Choose a pipeline from the left panel or create a new one.",
-      "nodeInspector": "Node Inspector",
-      "noNodeSelected": "No node selected",
-      "nodeInspectorHint": "Click a node on the canvas to view and edit its configuration.",
-      "nodeKind": "Kind",
-      "nodeContracts": "Contracts",
-      "guardrailsTitle": "Guardrails",
-      "selectPlaceholder": "Select...",
-      "rawConfig": "Raw config (JSON)",
-      "applyConfig": "Apply",
-      "nodeConfigSaved": "Node config saved",
-      "testInput": "Test Run Input (JSON)",
-      "invalidTestJson": "Invalid test input JSON.",
-      "testRun": "Test Run",
-      "running": "Running...",
-      "runStatus": "Run Status",
-      "statusReason": "Reason",
-      "liveEvents": "Live Events",
-      "noEvents": "No events yet.",
-      "approvalsTitle": "Human Approvals",
-      "approve": "Approve",
-      "reject": "Reject",
-      "retryTitle": "Retry Nodes",
-      "retry": "Retry",
-      "policyDeniedTitle": "Policy Denials",
-      "nodeActionFailed": "Failed to apply node action.",
-      "nodeActionSuccess": "Node action applied."
-    },
-    "badges": {
-      "canonical": "Canonical",
-      "external": "External"
-    },
-    "guardrails": {
-      "canonicalWrites": "Writes canonical snapshot + projections (gated).",
-      "externalSideEffect": "External side effect node (outbox-based; may be blocked by policy)."
     }
   },
   "packs": {
@@ -2740,7 +2664,7 @@
     "heroBody": "Review the evidence, model the deal, expose renovation risk, and decide the next move.",
     "emptyCockpitTitle": "No selected opportunity yet",
     "buyBoxPinned": "Pinned Buy Box",
-    "rankedPipeline": "Ranked Pipeline",
+    "rankedOpportunities": "Ranked Opportunities",
     "untitledOpportunity": "Untitled opportunity",
     "openItems": "Open Items",
     "openItemsShort": "open",

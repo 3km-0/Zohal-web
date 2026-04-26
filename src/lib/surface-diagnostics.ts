@@ -1,4 +1,4 @@
-export type PortalTraceStage = {
+export type SurfaceTraceStage = {
   id: string;
   status: string;
   timestamp: string | null;
@@ -6,7 +6,7 @@ export type PortalTraceStage = {
   message: string | null;
 };
 
-export type PortalDiagnostics = {
+export type SurfaceDiagnostics = {
   summary: {
     title: string | null;
     source_kind: string | null;
@@ -58,7 +58,7 @@ export type PortalDiagnostics = {
     recorded_at?: string | null;
     worker_name?: string | null;
   } | null;
-  trace: PortalTraceStage[];
+  trace: SurfaceTraceStage[];
   failure_class: string;
   live_probe: {
     ok?: boolean;
@@ -138,11 +138,11 @@ export type PortalDiagnostics = {
   stale_serving_reason: string | null;
 };
 
-export type PortalDiagnosticsEnvelope = {
+export type SurfaceDiagnosticsEnvelope = {
   ok: boolean;
   experience_id: string;
   candidate_id: string | null;
-  diagnostics: PortalDiagnostics;
+  diagnostics: SurfaceDiagnostics;
 };
 
 export function humanizeFailureClass(value: string | null | undefined): string {
@@ -163,6 +163,6 @@ export function humanizeStageStatus(value: string | null | undefined): string {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-export function isStageFailed(stage: PortalTraceStage): boolean {
+export function isStageFailed(stage: SurfaceTraceStage): boolean {
   return String(stage.status || "").trim().toLowerCase() === "fail";
 }
