@@ -13,6 +13,10 @@ import {
 } from "./handlers/acquisition.js";
 import { handleConvertToPdf } from "./handlers/convert-to-pdf.js";
 import {
+  handleLibraryDownload,
+  handleLibraryList,
+} from "./handlers/library.js";
+import {
   handleIngestionChunk,
   handleIngestionClassify,
   handleIngestionCleanupVectors,
@@ -27,6 +31,13 @@ import {
   handleIngestionStartOcr,
   handleIngestionTask,
 } from "./handlers/ingestion.js";
+import {
+  handleDocumentDownloadUrl,
+  handleDocumentSourceUploadUrl,
+  handleDocumentUploadUrl,
+  handleEnterpriseDataLocalityRegions,
+  handleSupportTicketCreate,
+} from "./handlers/utility.js";
 import { handleWhatsappOrchestrate } from "./handlers/whatsapp.js";
 import { sendJson, sendOptions, getRequestId, readJsonBody } from "./runtime/http.js";
 import { createLogger } from "./runtime/logging.js";
@@ -63,6 +74,34 @@ const server = createServer(async (req, res) => {
         log,
         readJsonBody,
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/documents/download-url") {
+      return await handleDocumentDownloadUrl(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/documents/upload-url") {
+      return await handleDocumentUploadUrl(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/documents/source-upload-url") {
+      return await handleDocumentSourceUploadUrl(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/support/tickets") {
+      return await handleSupportTicketCreate(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/enterprise/data-locality/regions") {
+      return await handleEnterpriseDataLocalityRegions(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/library/list") {
+      return await handleLibraryList(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/library/download") {
+      return await handleLibraryDownload(req, res, { requestId, log, readJsonBody });
     }
 
     if (isAcquisitionApiRoute(req.method, url.pathname)) {
