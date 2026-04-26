@@ -114,6 +114,109 @@ function mapDecisionToCandidateStatus(decision) {
   return CANDIDATE_STATUSES.has(decision) ? decision : "screening";
 }
 
+function opportunitySourceChannelForCandidate(candidate = {}) {
+  // Current DB constraint still only accepts whatsapp for acquisition opportunities.
+  // Preserve the true portal source in metadata/source records until the schema is widened.
+  if (["aqar", "bayut", "haraj", "developer_page", "broker_page"].includes(candidate.source)) {
+    return "whatsapp";
+  }
+  return candidate.source || "whatsapp";
+}
+
+function candidateNeedsContactAccess(candidate = {}) {
+  const snapshot = candidate.limited_evidence_snapshot_json && typeof candidate.limited_evidence_snapshot_json === "object"
+    ? candidate.limited_evidence_snapshot_json
+    : {};
+  const contact = snapshot.contact_access && typeof snapshot.contact_access === "object" ? snapshot.contact_access : {};
+  return contact.status === "requires_sign_in" || contact.reason === "broker_contact_gated";
+}
+
+function normalizeComparable(value) {
+  return normalizeText(value)
+    .toLowerCase()
+    .replace(/[إأآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه");
+}
+
+function aliasesFor(value) {
+  const normalized = normalizeComparable(value);
+  const aliases = new Set([normalized]);
+  if (normalized.includes("riyadh")) aliases.add("الرياض");
+  if (normalized.includes("jeddah")) aliases.add("جده");
+  if (normalized.includes("al arid") || normalized.includes("alarid") || normalized.includes("العرض") || normalized.includes("العارض")) aliases.add("العارض");
+  if (normalized.includes("al narjis")) aliases.add("النرجس");
+  if (normalized.includes("al malqa")) aliases.add("الملقا");
+  if (normalized.includes("villa")) {
+    aliases.add("فيلا");
+    aliases.add("فلل");
+  }
+  if (normalized.includes("apartment")) {
+    aliases.add("شقه");
+    aliases.add("شقق");
+  }
+  return [...aliases].filter(Boolean);
+}
+
+function textMatchesAny(text, values) {
+  const normalizedText = normalizeComparable(text);
+  return values.some((value) => aliasesFor(value).some((alias) => alias && normalizedText.includes(alias)));
+}
+
+export function buildMandateFit(candidate = {}, mandate = null) {
+  const buyBox = mandate?.buy_box_json && typeof mandate.buy_box_json === "object" ? mandate.buy_box_json : {};
+  const targetLocations = Array.isArray(mandate?.target_locations_json) ? mandate.target_locations_json : [];
+  const budget = mandate?.budget_range_json && typeof mandate.budget_range_json === "object" ? mandate.budget_range_json : {};
+  const candidateText = [
+    candidate.title,
+    candidate.short_description,
+    candidate.city,
+    candidate.district,
+    candidate.property_type,
+  ].filter(Boolean).join(" ");
+  const targetCity = buyBox.city || targetLocations.find((item) => /riyadh|jeddah|الرياض|جدة/i.test(String(item)));
+  const targetDistricts = buyBox.district
+    ? [buyBox.district]
+    : targetLocations.filter((item) => !textMatchesAny(item, [targetCity].filter(Boolean)));
+  const targetType = buyBox.property_type || buyBox.asset_type;
+  const price = Number(candidate.asking_price || candidate.askingPrice || 0);
+  const budgetMin = Number(budget.min || budget.minimum || 0);
+  const budgetMax = Number(budget.max || budget.maximum || 0);
+
+  const cityMatch = targetCity ? textMatchesAny([candidate.city, candidateText].filter(Boolean).join(" "), [targetCity]) : true;
+  const districtText = [
+    candidate.district,
+    candidate.title,
+    candidate.source_url,
+  ].filter(Boolean).join(" ");
+  const districtMatch = targetDistricts.length ? textMatchesAny(districtText, targetDistricts) : true;
+  const typeMatch = targetType ? textMatchesAny([candidate.property_type, candidateText].filter(Boolean).join(" "), [targetType]) : true;
+  const budgetMatch = price > 0 && (!budgetMax || price <= budgetMax) && (!budgetMin || price >= budgetMin);
+  const overBudget = price > 0 && budgetMax > 0 && price > budgetMax;
+
+  let score = 0;
+  if (cityMatch) score += 30;
+  if (districtMatch) score += 30;
+  if (typeMatch) score += 25;
+  if (budgetMatch) score += 15;
+  if (overBudget) score -= 10;
+
+  const hardMismatches = [
+    targetCity && !cityMatch ? "city" : null,
+    targetType && !typeMatch ? "property_type" : null,
+  ].filter(Boolean);
+
+  return {
+    score: Math.max(0, Math.min(100, score)),
+    city_match: Boolean(cityMatch),
+    district_match: Boolean(districtMatch),
+    property_type_match: Boolean(typeMatch),
+    budget_match: Boolean(budgetMatch),
+    over_budget: Boolean(overBudget),
+    hard_mismatches: hardMismatches,
+  };
+}
+
 export function buildScreeningOutput(candidate = {}, mandate = null) {
   const missing = [];
   if (!candidate.city && !candidate.district) missing.push("location");
@@ -123,19 +226,23 @@ export function buildScreeningOutput(candidate = {}, mandate = null) {
   const hasPhotos = Array.isArray(candidate.photo_refs_json || candidate.photoRefs) &&
     (candidate.photo_refs_json || candidate.photoRefs).length > 0;
   if (!hasPhotos) missing.push("photos");
+  if (candidateNeedsContactAccess(candidate)) missing.push("broker_contact_access");
 
+  const fit = buildMandateFit(candidate, mandate);
   const mandateBudget = mandate?.budget_range_json && typeof mandate.budget_range_json === "object"
     ? mandate.budget_range_json
     : {};
   const price = Number(candidate.asking_price || candidate.askingPrice || 0);
   const budgetMax = Number(mandateBudget.max || mandateBudget.maximum || 0);
   const overBudget = budgetMax > 0 && price > budgetMax;
-  const decision = missing.length >= 3
+  const decision = fit.hard_mismatches.length
+    ? "pass"
+    : missing.length >= 3
     ? "insufficient_info"
-    : overBudget
+    : overBudget || fit.score < 70
       ? "watch"
       : "pursue";
-  const confidence = missing.length >= 3 ? "low" : missing.length ? "medium" : "high";
+  const confidence = fit.score >= 80 && missing.length === 0 ? "high" : fit.score >= 45 ? "medium" : "low";
 
   const evidenceBackedFacts = [
     candidate.title ? { field: "title", value: candidate.title, basis: "source_visible" } : null,
@@ -152,9 +259,15 @@ export function buildScreeningOutput(candidate = {}, mandate = null) {
     decision,
     confidence,
     reasons: [
-      overBudget ? "Asking price appears above the saved mandate budget." : "Candidate can be compared against the saved mandate.",
+      fit.hard_mismatches.length
+        ? `Candidate conflicts with the saved mandate on: ${fit.hard_mismatches.join(", ")}.`
+        : overBudget
+          ? "Asking price appears above the saved mandate budget."
+          : "Candidate can be compared against the saved mandate.",
+      `Mandate fit score: ${fit.score}/100.`,
       missing.length ? "Some diligence inputs are still missing." : "Core visible facts are available for a first screen.",
     ],
+    fit,
     evidenceBackedFacts,
     assumptions: missing.length ? [{
       field: "screening_assumption",
@@ -162,8 +275,8 @@ export function buildScreeningOutput(candidate = {}, mandate = null) {
       basis: "user_assumption",
     }] : [],
     missingInformation: missing.map((item) => ({
-      type: item === "photos" ? "missing_document" : "missing_fact",
-      title: item.replace(/_/g, " "),
+      type: item === "photos" ? "missing_document" : item === "broker_contact_access" ? "needs_contact_access" : "missing_fact",
+      title: item === "broker_contact_access" ? "Broker contact requires marketplace access" : item.replace(/_/g, " "),
       priority: item === "asking_price" ? "high" : "medium",
       status: "open",
     })),
@@ -173,6 +286,25 @@ export function buildScreeningOutput(candidate = {}, mandate = null) {
       payload: {},
     },
   };
+}
+
+function enforceMandateFit(screeningOutput, candidate, mandate) {
+  const fit = buildMandateFit(candidate, mandate);
+  const output = {
+    ...screeningOutput,
+    fit: screeningOutput.fit || fit,
+    reasons: Array.isArray(screeningOutput.reasons) ? [...screeningOutput.reasons] : [],
+  };
+  if (!output.reasons.some((reason) => /mandate fit score/i.test(String(reason)))) {
+    output.reasons.push(`Mandate fit score: ${fit.score}/100.`);
+  }
+  if (fit.hard_mismatches.length) {
+    output.decision = "pass";
+    output.confidence = "high";
+    output.reasons.unshift(`Candidate conflicts with the saved mandate on: ${fit.hard_mismatches.join(", ")}.`);
+    output.nextAction = { type: "pass", label: "Pass", payload: {} };
+  }
+  return output;
 }
 
 function parseModelScreening(text) {
@@ -310,6 +442,13 @@ async function insertEvent(supabase, payload) {
 
 async function createCandidateClaimRows(supabase, candidate, screeningOutput) {
   const confidence = numericConfidence(screeningOutput.confidence);
+  const { data: existingClaims } = await supabase
+    .from("acquisition_claims")
+    .select("*")
+    .eq("candidate_id", candidate.id);
+  const existingKeys = new Set((existingClaims || []).map((claim) =>
+    [claim.fact_key, JSON.stringify(claim.value_json || {}), claim.basis_label, claim.source_channel].join("|")
+  ));
   const rows = [
     ...(screeningOutput.evidenceBackedFacts || []).map((fact) => ({
       candidate_id: candidate.id,
@@ -331,7 +470,12 @@ async function createCandidateClaimRows(supabase, candidate, screeningOutput) {
       source_channel: "screening",
       evidence_refs_json: [],
     })),
-  ];
+  ].filter((row) => !existingKeys.has([
+    row.fact_key,
+    JSON.stringify(row.value_json || {}),
+    row.basis_label,
+    row.source_channel,
+  ].join("|")));
   if (!rows.length) return [];
   const { data, error } = await supabase
     .from("acquisition_claims")
@@ -342,6 +486,13 @@ async function createCandidateClaimRows(supabase, candidate, screeningOutput) {
 }
 
 async function createCandidateDiligenceRows(supabase, candidate, screeningOutput) {
+  const { data: existingItems } = await supabase
+    .from("acquisition_diligence_items")
+    .select("*")
+    .eq("candidate_id", candidate.id);
+  const existingKeys = new Set((existingItems || []).map((item) =>
+    [item.title, item.item_type, item.status].join("|")
+  ));
   const rows = (screeningOutput.missingInformation || []).map((item) => ({
     candidate_id: candidate.id,
     workspace_id: candidate.workspace_id,
@@ -351,7 +502,7 @@ async function createCandidateDiligenceRows(supabase, candidate, screeningOutput
     status: item.status || "open",
     owner_kind: "broker",
     evidence_refs_json: [{ source_url: candidate.source_url, captured_at: candidate.captured_at }],
-  }));
+  })).filter((row) => !existingKeys.has([row.title, row.item_type, row.status].join("|")));
   if (!rows.length) return [];
   const { data, error } = await supabase
     .from("acquisition_diligence_items")
@@ -370,7 +521,11 @@ async function upsertCandidateSource(supabase, candidate, sourceDraft, searchRun
     source_url: candidate.source_url,
     source_fingerprint: candidate.source_fingerprint,
     limited_evidence_snapshot_json: sourceDraft.limited_evidence_snapshot_json || sourceDraft.sourceSnapshot || {},
-    metadata_json: { title: candidate.title, source: candidate.source },
+    metadata_json: {
+      title: candidate.title,
+      source: candidate.source,
+      contact_access: (sourceDraft.limited_evidence_snapshot_json || sourceDraft.sourceSnapshot || {}).contact_access || null,
+    },
   }, { onConflict: "candidate_id,source,source_fingerprint" });
 }
 
@@ -423,6 +578,7 @@ async function screenCandidate(supabase, candidateId, options = {}) {
     output = null;
   }
   output ||= buildScreeningOutput(candidate, mandate);
+  output = enforceMandateFit(output, candidate, mandate);
   const status = mapDecisionToCandidateStatus(output.decision);
   const { data, error } = await supabase
     .from("acquisition_candidate_opportunities")
@@ -451,7 +607,7 @@ async function promoteCandidate(supabase, candidateId) {
     .insert({
       workspace_id: candidate.workspace_id,
       phone_number: "api",
-      source_channel: candidate.source || "api",
+      source_channel: opportunitySourceChannelForCandidate(candidate),
       stage: "workspace_created",
       title,
       summary: screening.reasons?.join(" ") || null,
@@ -463,6 +619,17 @@ async function promoteCandidate(supabase, candidateId) {
         candidate_id: candidate.id,
         screening,
         source_url: candidate.source_url,
+        source: candidate.source,
+        original_source_channel: candidate.source,
+        asking_price: candidate.asking_price,
+        price: candidate.asking_price,
+        area_sqm: candidate.area_sqm,
+        property_type: candidate.property_type,
+        city: candidate.city,
+        district: candidate.district,
+        confidence: screening.confidence,
+        decision: screening.decision,
+        contact_access: candidate.limited_evidence_snapshot_json?.contact_access || null,
       },
     })
     .select("*")
@@ -474,7 +641,15 @@ async function promoteCandidate(supabase, candidateId) {
     .select("*")
     .eq("candidate_id", candidate.id);
   if (candidateClaims?.length) {
-    await supabase.from("acquisition_claims").insert(candidateClaims.map((claim) => ({
+    const uniqueClaims = [];
+    const seenClaims = new Set();
+    for (const claim of candidateClaims) {
+      const key = [claim.fact_key, JSON.stringify(claim.value_json || {}), claim.basis_label, claim.source_channel].join("|");
+      if (seenClaims.has(key)) continue;
+      seenClaims.add(key);
+      uniqueClaims.push(claim);
+    }
+    await supabase.from("acquisition_claims").insert(uniqueClaims.map((claim) => ({
       opportunity_id: opportunity.id,
       workspace_id: opportunity.workspace_id,
       fact_key: claim.fact_key,
@@ -492,7 +667,15 @@ async function promoteCandidate(supabase, candidateId) {
     .select("*")
     .eq("candidate_id", candidate.id);
   if (candidateDiligence?.length) {
-    await supabase.from("acquisition_diligence_items").insert(candidateDiligence.map((item) => ({
+    const uniqueItems = [];
+    const seenItems = new Set();
+    for (const item of candidateDiligence) {
+      const key = [item.title, item.item_type, item.status].join("|");
+      if (seenItems.has(key)) continue;
+      seenItems.add(key);
+      uniqueItems.push(item);
+    }
+    await supabase.from("acquisition_diligence_items").insert(uniqueItems.map((item) => ({
       opportunity_id: opportunity.id,
       workspace_id: opportunity.workspace_id,
       title: item.title,
@@ -560,7 +743,7 @@ async function callBrowserWorker({ requestId, searchRun, mandate }) {
     method: "POST",
     headers: getInternalTaskHeaders(requestId),
     body: JSON.stringify({
-      search_run,
+      search_run: searchRun,
       mandate,
       request_id: requestId,
     }),
@@ -592,6 +775,7 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
     const mandate = await fetchMandate(supabase, searchRun.mandate_id);
     const browserResult = await callBrowserWorker({ requestId, searchRun, mandate });
     const candidates = [];
+    const adapterRuns = [];
     for (const draft of browserResult.candidates || []) {
       const candidate = await upsertCandidateDraft(supabase, draft, {
         workspaceId: searchRun.workspace_id,
@@ -603,29 +787,40 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
       candidates.push(screened.candidate);
     }
     for (const adapterRun of browserResult.adapter_runs || []) {
-      await supabase.from("acquisition_adapter_runs").insert({
+      const adapterStatus = ["running", "completed", "failed", "cancelled"].includes(adapterRun.status)
+        ? adapterRun.status
+        : "completed";
+      const { data: savedAdapterRun, error: adapterRunError } = await supabase.from("acquisition_adapter_runs").insert({
         search_run_id: searchRun.id,
         workspace_id: searchRun.workspace_id,
         source: adapterRun.source,
-        status: adapterRun.status || "completed",
+        status: adapterStatus,
         cards_seen: adapterRun.cards_seen || 0,
         detail_pages_fetched: adapterRun.detail_pages_fetched || 0,
         candidates_created: adapterRun.candidates_created || 0,
         failure_count: adapterRun.failure_count || 0,
         screenshot_refs_json: adapterRun.screenshot_refs_json || [],
         limited_snapshot_refs_json: adapterRun.limited_snapshot_refs_json || [],
-        error_json: adapterRun.error_json || {},
+        error_json: {
+          ...(adapterRun.error_json || {}),
+          worker_status: adapterRun.status || null,
+        },
         completed_at: new Date().toISOString(),
-      });
+      }).select("*").single();
+      if (adapterRunError) throw new Error(`Failed to insert acquisition adapter run: ${adapterRunError.message}`);
+      adapterRuns.push(savedAdapterRun || adapterRun);
     }
     const completedAt = new Date().toISOString();
+    candidates.sort((left, right) =>
+      Number(right.screening_output_json?.fit?.score || 0) - Number(left.screening_output_json?.fit?.score || 0)
+    );
     const { data: updated } = await supabase.from("acquisition_search_runs").update({
       status: "completed",
       completed_at: completedAt,
       candidate_count: candidates.length,
       error_summary: browserResult.skipped ? browserResult.reason : null,
     }).eq("id", searchRun.id).select("*").single();
-    return { search_run: updated, candidates };
+    return { search_run: updated, candidates, adapter_runs: adapterRuns };
   } catch (runError) {
     await supabase.from("acquisition_search_runs").update({
       status: "failed",
@@ -839,7 +1034,10 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
     if (route.name === "listSearchCandidates") {
       const { data, error } = await supabase.from("acquisition_candidate_opportunities").select("*").eq("search_run_id", route.searchRunId).order("updated_at", { ascending: false });
       if (error) throw error;
-      return sendJson(res, 200, buildEnvelope(requestId, { candidates: data || [] }));
+      const candidates = [...(data || [])].sort((left, right) =>
+        Number(right.screening_output_json?.fit?.score || 0) - Number(left.screening_output_json?.fit?.score || 0)
+      );
+      return sendJson(res, 200, buildEnvelope(requestId, { candidates }));
     }
     if (route.name === "intakeListing") {
       const result = await createListingCandidate(supabase, body);
@@ -900,6 +1098,7 @@ export async function handleAcquisitionInternal(req, res, { requestId, log, read
 export const __test = {
   buildScreeningOutput,
   buildSourceFingerprint,
+  buildMandateFit,
   createListingCandidate,
   createMandate,
   createSearchRun,

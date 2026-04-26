@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
+    "smoke:acquisition:e2e": "node scripts/acquisition-e2e-smoke.mjs",
     "test": "node --test"
   },
   "dependencies": {

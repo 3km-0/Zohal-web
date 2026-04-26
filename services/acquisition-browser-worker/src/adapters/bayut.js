@@ -1,6 +1,7 @@
 import {
   absoluteUrl,
   candidateFromText,
+  detectContactGate,
   extractLinks,
   normalizeText,
   stripTags,
@@ -23,11 +24,16 @@ export const BayutBrowsingAdapter = {
   source: "bayut",
   buildSearchUrl(mandate, limits = {}) {
     const query = encodeURIComponent(mandateQuery(mandate) || "riyadh villa");
-    return `${BASE_URL}/en/saudi-arabia/properties-for-sale/?query=${query}&page=${limits.page || 1}`;
+    return `${BASE_URL}/en/for-sale/properties/ksa/?query=${query}&page=${limits.page || 1}`;
   },
   parseSearchResults(html, baseUrl = BASE_URL) {
+    const text = stripTags(html);
+    if (/Sorry, we couldn't find the page|Similar Properties|Discover More Properties|Currently there are no properties/i.test(text)) {
+      return [];
+    }
     return extractLinks(html, baseUrl, /bayut\.sa/i)
-      .filter((link) => /property|عقار|للبيع|for-sale/i.test(`${link.url} ${link.text}`))
+      .filter((link) => /\/property\/details-\d+\.html/i.test(link.url))
+      .filter((link, index, all) => all.findIndex((item) => item.url === link.url) === index)
       .slice(0, 30)
       .map((link) => ({
         source: "bayut",
@@ -48,6 +54,16 @@ export const BayutBrowsingAdapter = {
     candidate.photo_refs_json = [...String(html || "").matchAll(/<img\b[^>]*src=["']([^"']+)["']/gi)]
       .map((match) => absoluteUrl(match[1], BASE_URL))
       .slice(0, 8);
+    if (detectContactGate(html)) {
+      candidate.limited_evidence_snapshot_json = {
+        ...candidate.limited_evidence_snapshot_json,
+        contact_access: {
+          status: "requires_sign_in",
+          reason: "broker_contact_gated",
+        },
+      };
+      candidate.contact_access_json = candidate.limited_evidence_snapshot_json.contact_access;
+    }
     return candidate;
   },
 };

@@ -10,6 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:acquisition": "playwright test e2e/acquisition-flow.spec.ts",
+    "test:e2e:headed": "playwright test --headed",
     "seed:acquisition-demo": "node scripts/seed-acquisition-demo.mjs",
     "gen:types": "supabase gen types typescript --project-id vqsyxrgvyxcbejhhgomf > src/types/supabase.ts"
   },
@@ -33,6 +36,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/katex": "^0.16.7",

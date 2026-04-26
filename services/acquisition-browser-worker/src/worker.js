@@ -1,5 +1,8 @@
 import { AqarBrowsingAdapter } from "./adapters/aqar.js";
 import { BayutBrowsingAdapter } from "./adapters/bayut.js";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { boundedTextSnapshot } from "./adapters/shared.js";
 
 const ADAPTERS = {
   aqar: AqarBrowsingAdapter,
@@ -32,6 +35,38 @@ async function fetchPageHtml(page, url, timeout) {
   return await page.content();
 }
 
+function artifactBaseDir() {
+  return String(process.env.ACQUISITION_BROWSER_ARTIFACT_DIR || "artifacts/browser-worker").trim();
+}
+
+function safeId(value) {
+  return String(value || "run").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "run";
+}
+
+async function captureRunArtifact({ page, adapterRun, searchRun, kind, url, html }) {
+  const runId = safeId(searchRun.id || searchRun.mandate_id || crypto.randomUUID());
+  const source = safeId(adapterRun.source);
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const dir = join(artifactBaseDir(), runId);
+  await mkdir(dir, { recursive: true });
+  const screenshotPath = join(dir, `${source}-${kind}-${stamp}.png`);
+  await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => null);
+  const snapshot = {
+    source: adapterRun.source,
+    kind,
+    source_url: url,
+    captured_at: new Date().toISOString(),
+    text: boundedTextSnapshot(html),
+  };
+  adapterRun.screenshot_refs_json.push({
+    source: adapterRun.source,
+    kind,
+    path: screenshotPath,
+    captured_at: snapshot.captured_at,
+  });
+  adapterRun.limited_snapshot_refs_json.push(snapshot);
+}
+
 export async function runAdapter({ adapter, mandate, searchRun, limits, browser }) {
   const startedAt = new Date().toISOString();
   const candidates = [];
@@ -51,12 +86,24 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser 
   try {
     const searchUrl = adapter.buildSearchUrl(mandate, limits);
     const searchHtml = await fetchPageHtml(page, searchUrl, limits.per_source_timeout_ms);
+    await captureRunArtifact({ page, adapterRun, searchRun, kind: "search", url: searchUrl, html: searchHtml });
     const cards = adapter.parseSearchResults(searchHtml, searchUrl)
       .slice(0, limits.max_detail_pages_per_source);
     adapterRun.cards_seen = cards.length;
+    if (cards.length === 0) {
+      adapterRun.status = "completed_with_warnings";
+      adapterRun.error_json = {
+        ...adapterRun.error_json,
+        drift_signal: "no_search_cards_extracted",
+        search_url: searchUrl,
+      };
+    }
     for (const card of cards) {
       try {
         const detailHtml = await fetchPageHtml(page, card.source_url, limits.per_source_timeout_ms);
+        if (adapterRun.detail_pages_fetched === 0) {
+          await captureRunArtifact({ page, adapterRun, searchRun, kind: "detail", url: card.source_url, html: detailHtml });
+        }
         const candidate = adapter.parseListingDetail(detailHtml, card.source_url);
         candidates.push({
           ...candidate,
@@ -75,7 +122,15 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser 
       }
     }
     adapterRun.candidates_created = candidates.length;
-    adapterRun.status = "completed";
+    if (cards.length > 0 && candidates.length === 0) {
+      adapterRun.status = "completed_with_warnings";
+      adapterRun.error_json = {
+        ...adapterRun.error_json,
+        drift_signal: "cards_seen_but_no_candidates_created",
+      };
+    } else if (adapterRun.status === "running") {
+      adapterRun.status = "completed";
+    }
   } catch (error) {
     adapterRun.status = "failed";
     adapterRun.failure_count += 1;

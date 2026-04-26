@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -10,6 +10,7 @@ import {
   Building2,
   CheckCircle2,
   ClipboardList,
+  ExternalLink,
   Gauge,
   Home,
   Map,
@@ -126,6 +127,26 @@ function scoreFor(item: OpportunityRow | null | undefined): string | null {
   return score === null ? null : Math.round(score).toString();
 }
 
+function sourceUrlFor(item: OpportunityRow | null | undefined): string | null {
+  const raw = metadataString(item, ['source_url', 'listing_url', 'url']);
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function displayUrl(value: string): string {
+  try {
+    const parsed = new URL(value);
+    return `${parsed.hostname}${parsed.pathname}`.replace(/\/$/, '');
+  } catch {
+    return value;
+  }
+}
+
 function titleFor(item: OpportunityRow | null | undefined): string | null {
   return item?.title?.trim() || metadataString(item, ['title', 'name']) || null;
 }
@@ -223,6 +244,7 @@ export default function WorkspaceCockpitPage() {
           .from('acquisition_opportunities')
           .select('id, stage, title, acquisition_focus, area_summary, budget_band, metadata_json, summary, missing_info_json, screening_readiness, updated_at')
           .eq('workspace_id', workspaceId)
+          .neq('stage', 'archived')
           .order('updated_at', { ascending: false })
           .limit(12),
         supabase.from('documents').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
@@ -394,7 +416,7 @@ function BuyBoxCard({ workspace }: { workspace: WorkspaceRow | null }) {
   const brief = workspace?.analysis_brief || workspace?.description || '';
   const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
   return (
-    <Panel className="mb-5 p-4">
+    <Panel className="mb-5 p-4" data-testid="acquisition-buy-box">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
         <Home className="h-5 w-5 rounded-xl bg-accent/15 p-1 text-accent" />
@@ -425,7 +447,7 @@ function OpportunityRail({
 }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
-    <Panel className={cn('p-4', compact && 'overflow-hidden')}>
+    <Panel className={cn('p-4', compact && 'overflow-hidden')} data-testid={compact ? 'acquisition-opportunity-rail-compact' : 'acquisition-opportunity-rail'}>
       <div className="mb-4 flex items-center justify-between">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedOpportunities')}</p>
         <Building2 className="h-4 w-4 text-accent" />
@@ -438,6 +460,7 @@ function OpportunityRail({
             <button
               key={item.id}
               type="button"
+              data-testid="acquisition-opportunity-card"
               onClick={() => onSelect(item.id)}
               className={cn(
                 'rounded-[16px] border p-4 text-left transition dark:bg-[#07101A]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.055)]',
@@ -493,8 +516,9 @@ function CockpitHero({
   const title = titleFor(opportunity);
   const arTitle = arabicTitleFor(opportunity);
   const facts = dealFacts(opportunity);
+  const sourceUrl = sourceUrlFor(opportunity);
   return (
-    <Panel className="relative overflow-hidden p-6 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(9,31,32,.92),rgba(8,13,17,.95)_52%,rgba(18,28,17,.92))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]">
+    <Panel className="relative overflow-hidden p-6 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(9,31,32,.92),rgba(8,13,17,.95)_52%,rgba(18,28,17,.92))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]" data-testid="acquisition-cockpit-hero">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,rgba(var(--highlight-rgb,35,215,255),.14),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(var(--accent-rgb,185,255,38),.14),transparent_30%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1.35fr)_430px] xl:items-center">
@@ -517,6 +541,18 @@ function CockpitHero({
             {facts.area ? <TrustPill label={facts.area} tone="slate" /> : null}
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
+          {sourceUrl ? (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="acquisition-source-link"
+              className="mt-5 inline-flex max-w-full items-center gap-3 rounded-[12px] border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent transition hover:border-accent/50 hover:bg-accent/15"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate">{t('fetchedListing')}: {displayUrl(sourceUrl)}</span>
+            </a>
+          ) : null}
         </div>
         <div className="relative grid min-w-0 grid-cols-2 gap-3">
           <HeroChip label={t('mandateFit')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
@@ -583,6 +619,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
 function EvidenceModule({ documentCount, opportunity }: { documentCount: number; opportunity: OpportunityRow | null }) {
   const t = useTranslations('workspaceCockpitPage');
   const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source']);
+  const sourceUrl = sourceUrlFor(opportunity);
   return (
     <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
       <Panel className="p-5">
@@ -599,6 +636,21 @@ function EvidenceModule({ documentCount, opportunity }: { documentCount: number;
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('sourceDrawer')}</p>
         <h3 className="mt-2 text-2xl font-semibold text-text">{t('trust.verified')}</h3>
         <p className="mt-3 text-sm leading-6 text-text">{t('evidenceBody')}</p>
+        {sourceUrl ? (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            data-testid="acquisition-source-link"
+            className="mt-5 flex min-w-0 items-center gap-3 rounded-[14px] border border-accent/30 bg-accent/10 p-4 text-left transition hover:border-accent/50 hover:bg-accent/15"
+          >
+            <ExternalLink className="h-4 w-4 shrink-0 text-accent" />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t('fetchedListing')}</span>
+              <span className="mt-1 block truncate text-sm text-text">{displayUrl(sourceUrl)}</span>
+            </span>
+          </a>
+        ) : null}
         <div className="mt-5 rounded-3xl border border-border bg-surface-alt p-4">
           <p className="text-xs text-text-muted">{t('sources')}</p>
           <p className="mt-1 text-sm text-text">{documentCount}</p>
@@ -1016,9 +1068,19 @@ function MandateRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
+function Panel({
+  children,
+  className = '',
+  ...props
+}: {
+  children: ReactNode;
+  className?: string;
+} & HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('rounded-[20px] border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur dark:bg-[image:var(--panel-bg)] dark:shadow-[var(--shadowMd)]', className)}>
+    <div
+      className={cn('rounded-[20px] border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur dark:bg-[image:var(--panel-bg)] dark:shadow-[var(--shadowMd)]', className)}
+      {...props}
+    >
       {children}
     </div>
   );

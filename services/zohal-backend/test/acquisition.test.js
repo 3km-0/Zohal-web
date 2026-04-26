@@ -164,6 +164,79 @@ test("candidate screening returns the standard output shape", () => {
   assert(Array.isArray(output.missingInformation));
 });
 
+test("mandate fit ranks matching candidates and passes hard mismatches", () => {
+  const mandate = {
+    buy_box_json: { property_type: "villa", city: "Riyadh", district: "Al Arid" },
+    target_locations_json: ["Al Arid", "North Riyadh"],
+    budget_range_json: { max: 4000000 },
+  };
+  const fit = __test.buildMandateFit({
+    title: "فيلا للبيع في حي العارض الرياض",
+    asking_price: 3400000,
+    city: "Riyadh",
+    district: "Al Arid",
+    property_type: "villa",
+  }, mandate);
+  assert.equal(fit.score, 100);
+
+  const mismatch = buildScreeningOutput({
+    title: "Apartment in Jeddah",
+    asking_price: 900000,
+    city: "Jeddah",
+    district: "Al Rawdah",
+    property_type: "apartment",
+    area_sqm: 120,
+    photo_refs_json: ["photo-1"],
+  }, mandate);
+
+  assert.equal(mismatch.decision, "pass");
+  assert.deepEqual(mismatch.fit.hard_mismatches, ["city", "property_type"]);
+});
+
+test("candidate screening watches weak district/budget fits instead of treating them as ranked matches", () => {
+  const output = buildScreeningOutput({
+    title: "Villa district Hittin Riyadh",
+    asking_price: 5200000,
+    city: "Riyadh",
+    district: "Hittin",
+    property_type: "villa",
+    area_sqm: 420,
+    photo_refs_json: ["photo-1"],
+  }, {
+    buy_box_json: { property_type: "villa", city: "Riyadh", district: "Al Arid" },
+    target_locations_json: ["Al Arid"],
+    budget_range_json: { max: 4000000 },
+  });
+
+  assert.equal(output.decision, "watch");
+  assert.equal(output.fit.over_budget, true);
+  assert(output.fit.score < 70);
+});
+
+test("candidate screening creates a gated broker contact diligence item", () => {
+  const output = buildScreeningOutput({
+    title: "Villa in Riyadh",
+    asking_price: 3200000,
+    city: "Riyadh",
+    district: "Al Arid",
+    property_type: "villa",
+    area_sqm: 350,
+    photo_refs_json: ["photo-1"],
+    limited_evidence_snapshot_json: {
+      contact_access: { status: "requires_sign_in", reason: "broker_contact_gated" },
+    },
+  }, {
+    budget_range_json: { max: 4000000 },
+  });
+
+  assert(
+    output.missingInformation.some((item) =>
+      item.type === "needs_contact_access" &&
+      item.title === "Broker contact requires marketplace access"
+    ),
+  );
+});
+
 test("mandate creation writes acquisition_mandates", async () => {
   const supabase = createMockSupabase();
   const mandate = await __test.createMandate(supabase, {

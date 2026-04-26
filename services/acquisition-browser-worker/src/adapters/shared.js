@@ -4,6 +4,10 @@ export function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+export function boundedTextSnapshot(html, limit = 1200) {
+  return stripTags(html).slice(0, Math.max(120, Math.min(3000, Number(limit) || 1200)));
+}
+
 export function stripTags(html) {
   return normalizeText(String(html || "").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " "));
 }
@@ -24,11 +28,27 @@ export function parseNumber(value) {
 }
 
 export function parsePrice(text) {
-  const normalized = normalizeText(text).replace(/,/g, "");
+  const rawMultiline = String(text || "");
+  const raw = normalizeText(rawMultiline);
+  const normalized = raw.replace(/,/g, "");
   const million = normalized.match(/(\d+(?:\.\d+)?)\s*(m|mn|million|مليون)/i);
   if (million) return Math.round(Number(million[1]) * 1_000_000);
-  const sar = normalized.match(/(?:sar|ريال|ر\.س)?\s*(\d{5,})/i);
-  return sar ? Number(sar[1]) : null;
+  const currencyPatterns = [
+    /(?:sar|ريال|ر\.س|§|⃁)\s*([\d,]{5,})/i,
+    /([\d,]{5,})\s*(?:sar|ريال|ر\.س|§|⃁)/i,
+  ];
+  for (const line of rawMultiline.split(/\s*\n+\s*/)) {
+    for (const pattern of currencyPatterns) {
+      const match = line.match(pattern);
+      if (match) return Number(match[1].replace(/,/g, ""));
+    }
+  }
+  for (const pattern of currencyPatterns) {
+    const match = raw.match(pattern);
+    if (match) return Number(match[1].replace(/,/g, ""));
+  }
+  const fallback = normalized.match(/\b(\d{5,})\b/i);
+  return fallback ? Number(fallback[1]) : null;
 }
 
 export function sourceFingerprint({ source, sourceUrl, title, district, askingPrice }) {
@@ -45,12 +65,43 @@ export function sourceFingerprint({ source, sourceUrl, title, district, askingPr
 
 export function detectPropertyType(text) {
   const value = normalizeText(text).toLowerCase();
-  if (/(villa|فيلا)/i.test(value)) return "villa";
+  if (/(villa|فيلا|فلل|فلة)/i.test(value)) return "villa";
   if (/(apartment|flat|شقة)/i.test(value)) return "apartment";
   if (/(land|plot|أرض|ارض)/i.test(value)) return "land";
   if (/(building|عمارة|مبنى)/i.test(value)) return "building";
   if (/(office|retail|commercial|مكتب|تجاري)/i.test(value)) return "commercial";
   return null;
+}
+
+export function detectCity(text) {
+  const value = normalizeText(text);
+  if (/(riyadh|الرياض)/i.test(value)) return "Riyadh";
+  if (/(jeddah|جدة)/i.test(value)) return "Jeddah";
+  if (/(dammam|الدمام)/i.test(value)) return "Dammam";
+  if (/(khobar|الخبر)/i.test(value)) return "Khobar";
+  return null;
+}
+
+export function detectDistrict(text) {
+  const value = normalizeText(text);
+  const arabic = value.match(/حي\s+([^,،\n]{2,36})/u);
+  if (arabic) return normalizeText(arabic[1]);
+  const english = value.match(/\b(?:district|neighborhood|neighbourhood)\s*[:\-]?\s*([\p{L}\p{N}\s-]{2,36})/iu);
+  if (english) return normalizeText(english[1]);
+  const bayutLocation = value.match(/\b([A-Z][A-Za-z\s-]{2,30}),\s*(?:North|South|East|West|Central)?\s*Riyadh\b/);
+  return bayutLocation ? normalizeText(bayutLocation[1]) : null;
+}
+
+export function detectContactGate(html) {
+  const text = stripTags(html).toLowerCase();
+  const patterns = [
+    /sign\s*in[^.]{0,80}(phone|contact|whatsapp|agent|broker)/i,
+    /log\s*in[^.]{0,80}(phone|contact|whatsapp|agent|broker)/i,
+    /(phone|contact|whatsapp|agent|broker)[^.]{0,80}(sign\s*in|log\s*in)/i,
+    /(رقم|الهاتف|واتساب|تواصل|اتصل)[^.]{0,80}(تسجيل|الدخول)/i,
+    /(تسجيل|الدخول)[^.]{0,80}(رقم|الهاتف|واتساب|تواصل|اتصل)/i,
+  ];
+  return patterns.some((pattern) => pattern.test(text));
 }
 
 export function extractLinks(html, baseUrl, sourceHostPattern) {
@@ -71,19 +122,19 @@ export function extractLinks(html, baseUrl, sourceHostPattern) {
 export function candidateFromText({ source, sourceUrl, title, text, capturedAt = new Date().toISOString() }) {
   const content = normalizeText(`${title || ""} ${text || ""}`);
   const askingPrice = parsePrice(content);
-  const area = content.match(/(\d+(?:\.\d+)?)\s*(sqm|m2|م2|متر)/i);
+  const area = content.match(/(\d+(?:\.\d+)?)\s*(sqm|sq\.?\s*m\.?|m2|m²|م2|م²|متر)/i);
   const beds = content.match(/(\d+)\s*(bed|beds|bedroom|غرف|غرفة)/i);
   const baths = content.match(/(\d+)\s*(bath|bathroom|دورات|حمام)/i);
   const propertyType = detectPropertyType(content);
-  const districtMatch = content.match(/(?:district|حي)\s*[:\-]?\s*([\p{L}\p{N}\s-]{2,32})/iu);
-  const city = /(riyadh|الرياض)/i.test(content) ? "Riyadh" : /(jeddah|جدة)/i.test(content) ? "Jeddah" : null;
+  const district = detectDistrict(content);
+  const city = detectCity(content);
   const candidate = {
     source,
     source_url: sourceUrl,
     title: normalizeText(title) || normalizeText(content).slice(0, 80),
     asking_price: askingPrice,
     city,
-    district: districtMatch ? normalizeText(districtMatch[1]) : null,
+    district,
     property_type: propertyType,
     area_sqm: area ? Number(area[1]) : null,
     bedroom_count: beds ? Number(beds[1]) : null,

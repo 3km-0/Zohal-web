@@ -6,6 +6,9 @@
 
 # Testing
 /coverage
+/artifacts/playwright/
+/services/zohal-backend/artifacts/acquisition-smoke/
+/services/acquisition-browser-worker/artifacts/browser-worker/
 
 # Next.js
 /.next/
@@ -39,4 +42,3 @@ next-env.d.ts
 .vscode/
 *.swp
 *.swo
-
