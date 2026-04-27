@@ -152,7 +152,7 @@ test("candidate screening returns the standard output shape", () => {
     district: "Al Arid",
     property_type: "villa",
     area_sqm: 350,
-    photo_refs_json: ["photo-1"],
+    photo_refs_json: ["https://example.com/photo-1.jpg"],
   }, {
     budget_range_json: { max: 4000000 },
   });
@@ -186,7 +186,7 @@ test("mandate fit ranks matching candidates and passes hard mismatches", () => {
     district: "Al Rawdah",
     property_type: "apartment",
     area_sqm: 120,
-    photo_refs_json: ["photo-1"],
+    photo_refs_json: ["https://example.com/photo-1.jpg"],
   }, mandate);
 
   assert.equal(mismatch.decision, "pass");
@@ -201,7 +201,7 @@ test("candidate screening watches weak district/budget fits instead of treating 
     district: "Hittin",
     property_type: "villa",
     area_sqm: 420,
-    photo_refs_json: ["photo-1"],
+    photo_refs_json: ["https://example.com/photo-1.jpg"],
   }, {
     buy_box_json: { property_type: "villa", city: "Riyadh", district: "Al Arid" },
     target_locations_json: ["Al Arid"],
@@ -284,13 +284,14 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
     district: "Hittin",
     property_type: "villa",
     area_sqm: 420,
-    photo_refs_json: ["photo-1"],
+    photo_refs_json: ["https://example.com/photo-1.jpg"],
   });
 
   const promoted = await __test.promoteCandidate(supabase, result.candidate.id);
 
   assert.equal(promoted.candidate.status, "promoted");
   assert.equal(promoted.opportunity.stage, "workspace_created");
+  assert.deepEqual(promoted.opportunity.metadata_json.photo_refs, ["https://example.com/photo-1.jpg"]);
   assert.equal(supabase.db.acquisition_opportunities.length, 1);
   assert.equal(supabase.db.acquisition_scenarios.length, 1);
   assert.equal(supabase.db.acquisition_events.length, 2);

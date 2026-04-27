@@ -1,5 +1,6 @@
 import { AqarBrowsingAdapter } from "./adapters/aqar.js";
 import { BayutBrowsingAdapter } from "./adapters/bayut.js";
+import { access } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { boundedTextSnapshot } from "./adapters/shared.js";
@@ -29,10 +30,73 @@ async function withBrowser(fn) {
   }
 }
 
+function authEnvKey(source) {
+  return `ACQUISITION_BROWSER_AUTH_STATE_${String(source || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
+}
+
+async function resolveAuthStatePath(source) {
+  const direct = String(process.env[authEnvKey(source)] || "").trim();
+  const directory = String(process.env.ACQUISITION_BROWSER_AUTH_STATE_DIR || "").trim();
+  const fallback = directory ? join(directory, `${source}.json`) : "";
+  const candidate = direct || fallback;
+  if (!candidate) return null;
+  try {
+    await access(candidate);
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+
+async function newAdapterContext(browser, adapterRun) {
+  const storageState = await resolveAuthStatePath(adapterRun.source);
+  const context = storageState
+    ? await browser.newContext({ storageState })
+    : await browser.newContext();
+  adapterRun.auth_json = storageState
+    ? { mode: "storage_state", status: "loaded", source: adapterRun.source }
+    : { mode: "public", status: "not_configured", source: adapterRun.source };
+  adapterRun.error_json = {
+    ...adapterRun.error_json,
+    auth_mode: adapterRun.auth_json.mode,
+    auth_status: adapterRun.auth_json.status,
+  };
+  return context;
+}
+
 async function fetchPageHtml(page, url, timeout) {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await page.waitForTimeout(600);
   return await page.content();
+}
+
+async function loadSearchPage({ page, adapter, mandate, limits }) {
+  const searchUrl = adapter.buildSearchUrl(mandate, limits);
+  if (typeof adapter.applySearchFilters !== "function") {
+    return {
+      url: searchUrl,
+      html: await fetchPageHtml(page, searchUrl, limits.per_source_timeout_ms),
+      mode: "url",
+      warnings: [],
+    };
+  }
+  try {
+    const result = await adapter.applySearchFilters(page, mandate, limits);
+    if (!result?.html) throw new Error("UI filter returned no HTML");
+    return {
+      url: result.url || page.url() || searchUrl,
+      html: result.html,
+      mode: result.mode || "ui_filter",
+      warnings: Array.isArray(result.warnings) ? result.warnings : [],
+    };
+  } catch (error) {
+    return {
+      url: searchUrl,
+      html: await fetchPageHtml(page, searchUrl, limits.per_source_timeout_ms),
+      mode: "url_fallback",
+      warnings: [error instanceof Error ? error.message : String(error)],
+    };
+  }
 }
 
 function artifactBaseDir() {
@@ -49,8 +113,12 @@ async function captureRunArtifact({ page, adapterRun, searchRun, kind, url, html
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const dir = join(artifactBaseDir(), runId);
   await mkdir(dir, { recursive: true });
-  const screenshotPath = join(dir, `${source}-${kind}-${stamp}.png`);
-  await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => null);
+  let screenshotPath = null;
+  const canCaptureScreenshot = adapterRun.auth_json?.mode !== "storage_state";
+  if (canCaptureScreenshot) {
+    screenshotPath = join(dir, `${source}-${kind}-${stamp}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => null);
+  }
   const snapshot = {
     source: adapterRun.source,
     kind,
@@ -58,12 +126,21 @@ async function captureRunArtifact({ page, adapterRun, searchRun, kind, url, html
     captured_at: new Date().toISOString(),
     text: boundedTextSnapshot(html),
   };
-  adapterRun.screenshot_refs_json.push({
-    source: adapterRun.source,
-    kind,
-    path: screenshotPath,
-    captured_at: snapshot.captured_at,
-  });
+  if (screenshotPath) {
+    adapterRun.screenshot_refs_json.push({
+      source: adapterRun.source,
+      kind,
+      path: screenshotPath,
+      captured_at: snapshot.captured_at,
+    });
+  } else {
+    adapterRun.limited_snapshot_refs_json.push({
+      source: adapterRun.source,
+      kind: `${kind}_screenshot`,
+      captured_at: snapshot.captured_at,
+      status: "skipped_authenticated_context",
+    });
+  }
   adapterRun.limited_snapshot_refs_json.push(snapshot);
 }
 
@@ -82,10 +159,19 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser 
     error_json: {},
     started_at: startedAt,
   };
-  const page = await browser.newPage();
+  let context = null;
+  let page = null;
   try {
-    const searchUrl = adapter.buildSearchUrl(mandate, limits);
-    const searchHtml = await fetchPageHtml(page, searchUrl, limits.per_source_timeout_ms);
+    context = await newAdapterContext(browser, adapterRun);
+    page = await context.newPage();
+    const searchPage = await loadSearchPage({ page, adapter, mandate, limits });
+    const searchUrl = searchPage.url;
+    const searchHtml = searchPage.html;
+    adapterRun.error_json = {
+      ...adapterRun.error_json,
+      search_mode: searchPage.mode,
+      ...(searchPage.warnings.length ? { search_warnings: searchPage.warnings } : {}),
+    };
     await captureRunArtifact({ page, adapterRun, searchRun, kind: "search", url: searchUrl, html: searchHtml });
     const cards = adapter.parseSearchResults(searchHtml, searchUrl)
       .slice(0, limits.max_detail_pages_per_source);
@@ -138,7 +224,8 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser 
       message: error instanceof Error ? error.message : String(error),
     };
   } finally {
-    await page.close().catch(() => {});
+    await page?.close().catch(() => {});
+    await context?.close().catch(() => {});
     adapterRun.completed_at = new Date().toISOString();
   }
   return { candidates, adapter_run: adapterRun };
@@ -167,4 +254,5 @@ export async function runSearch({ searchRun, mandate }) {
 
 export const __test = {
   normalizeLimits,
+  resolveAuthStatePath,
 };

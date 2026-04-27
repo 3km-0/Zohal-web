@@ -138,6 +138,16 @@ function sourceUrlFor(item: OpportunityRow | null | undefined): string | null {
   }
 }
 
+function photoRefsFor(item: OpportunityRow | null | undefined): string[] {
+  const value = metadataValue(item, ['photo_refs', 'photoRefs', 'photos', 'image_urls']);
+  const refs = Array.isArray(value) ? value : [];
+  return [...new Set(refs
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => /^https?:\/\//i.test(item))
+    .filter((item) => !/\.(svg|gif)(?:$|[?#])/i.test(item))
+  )].slice(0, 8);
+}
+
 function displayUrl(value: string): string {
   try {
     const parsed = new URL(value);
@@ -641,7 +651,7 @@ function EvidenceModule({ documentCount, opportunity }: { documentCount: number;
             href={sourceUrl}
             target="_blank"
             rel="noreferrer"
-            data-testid="acquisition-source-link"
+            data-testid="acquisition-evidence-source-link"
             className="mt-5 flex min-w-0 items-center gap-3 rounded-[14px] border border-accent/30 bg-accent/10 p-4 text-left transition hover:border-accent/50 hover:bg-accent/15"
           >
             <ExternalLink className="h-4 w-4 shrink-0 text-accent" />
@@ -783,6 +793,7 @@ function VisualCompanion({
   const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source']);
   const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
   const facts = dealFacts(opportunity);
+  const photoRefs = photoRefsFor(opportunity);
   const modes: { key: typeof mode; label: string }[] = [
     { key: 'map', label: t('visualModes.map') },
     { key: 'photos', label: t('visualModes.photos') },
@@ -834,17 +845,44 @@ function VisualCompanion({
 
       {mode === 'photos' ? (
         <div className="grid min-h-[250px] gap-3">
-          <div className="rounded-[18px] border border-border bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb,35,215,255),.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))] p-4">
-            <TrustPill label={t('photoEvidence')} tone="cyan" />
-            <p className="mt-4 text-sm leading-6 text-text-soft">{condition || t('photosEmpty')}</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[t('facade'), t('interior'), t('roof')].map((label) => (
-              <div key={label} className="grid min-h-20 place-items-center rounded-[14px] border border-border bg-surface-alt px-2 text-center text-xs font-medium text-text-muted">
-                {label}
+          {photoRefs.length > 0 ? (
+            <>
+              <div className="overflow-hidden rounded-[18px] border border-border bg-background">
+                <img
+                  src={photoRefs[0]}
+                  alt={title}
+                  data-testid="acquisition-photo"
+                  className="h-64 w-full object-cover"
+                  loading="lazy"
+                />
               </div>
-            ))}
-          </div>
+              <div className="grid grid-cols-4 gap-2">
+                {photoRefs.slice(1, 5).map((photo, index) => (
+                  <img
+                    key={photo}
+                    src={photo}
+                    alt={`${title} ${index + 2}`}
+                    className="h-20 w-full rounded-[14px] border border-border object-cover"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="rounded-[18px] border border-border bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb,35,215,255),.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))] p-4">
+                <TrustPill label={t('photoEvidence')} tone="cyan" />
+                <p className="mt-4 text-sm leading-6 text-text-soft">{condition || t('photosEmpty')}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[t('facade'), t('interior'), t('roof')].map((label) => (
+                  <div key={label} className="grid min-h-20 place-items-center rounded-[14px] border border-border bg-surface-alt px-2 text-center text-xs font-medium text-text-muted">
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ) : null}
 

@@ -2,7 +2,9 @@ import {
   absoluteUrl,
   candidateFromText,
   detectContactGate,
+  detectVisibleContact,
   extractLinks,
+  extractPhotoRefs,
   normalizeText,
   stripTags,
 } from "./shared.js";
@@ -20,11 +22,92 @@ function mandateQuery(mandate = {}) {
   ].filter(Boolean).join(" "));
 }
 
+function buyBox(mandate = {}) {
+  return mandate.buy_box_json && typeof mandate.buy_box_json === "object" ? mandate.buy_box_json : {};
+}
+
+function normalizeComparable(value) {
+  return normalizeText(value)
+    .toLowerCase()
+    .replace(/[إأآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه");
+}
+
+function citySegment(mandate = {}) {
+  const value = normalizeComparable(buyBox(mandate).city || mandate.target_city || "");
+  if (/jeddah|جده/.test(value)) return "جدة";
+  if (/dammam|الدمام/.test(value)) return "الدمام";
+  if (/khobar|الخبر/.test(value)) return "الخبر";
+  return "الرياض";
+}
+
+function propertySegment(mandate = {}) {
+  const value = normalizeComparable(buyBox(mandate).property_type || "");
+  if (/apartment|شقه|شقق/.test(value)) return "شقق";
+  if (/land|plot|ارض/.test(value)) return "اراضي-سكنية";
+  if (/building|عماره|مبنى/.test(value)) return "عمائر-سكنية";
+  return "فلل";
+}
+
+function knownRiyadhDistrictSegment(mandate = {}) {
+  const value = normalizeComparable(buyBox(mandate).district || mandateQuery(mandate));
+  if (/al arid|alarid|العارض/.test(value)) return "شمال-الرياض/العارض";
+  if (/narjis|النرجس/.test(value)) return "شمال-الرياض/النرجس";
+  if (/malqa|الملقا/.test(value)) return "شمال-الرياض/الملقا";
+  if (/hittin|حطين/.test(value)) return "شمال-الرياض/حطين";
+  if (/yasmin|الياسمين/.test(value)) return "شمال-الرياض/الياسمين";
+  return "";
+}
+
+function bayutSearchPath(mandate = {}) {
+  const city = citySegment(mandate);
+  const property = propertySegment(mandate);
+  const district = city === "الرياض" ? knownRiyadhDistrictSegment(mandate) : "";
+  return ["/للبيع", property, city, district].filter(Boolean).join("/") + "/";
+}
+
 export const BayutBrowsingAdapter = {
   source: "bayut",
   buildSearchUrl(mandate, limits = {}) {
-    const query = encodeURIComponent(mandateQuery(mandate) || "riyadh villa");
-    return `${BASE_URL}/en/for-sale/properties/ksa/?query=${query}&page=${limits.page || 1}`;
+    const url = new URL(bayutSearchPath(mandate), BASE_URL);
+    if (limits.page && Number(limits.page) > 1) url.searchParams.set("page", String(limits.page));
+    return url.toString();
+  },
+  async applySearchFilters(page, mandate, limits = {}) {
+    const warnings = [];
+    let mode = "ui_filter";
+    const query = mandateQuery(mandate) || "العارض الرياض";
+    await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: limits.per_source_timeout_ms });
+    await page.waitForTimeout(900);
+    await page.getByRole("button", { name: /^للبيع$/ }).click({ timeout: 4_000 }).catch((error) => {
+      warnings.push(`bayut_sale_filter_not_clicked:${error.message}`);
+    });
+    const input = page.getByPlaceholder("أدخل الموقع").first();
+    await input.fill(query, { timeout: 8_000 }).catch((error) => {
+      throw new Error(`bayut_location_filter_failed:${error.message}`);
+    });
+    await page.waitForTimeout(1_000);
+    await page.getByRole("button", { name: /العارض|الرياض|جدة|الدمام|الخبر/ }).first().click({ timeout: 4_000 }).catch((error) => {
+      warnings.push(`bayut_location_suggestion_not_clicked:${error.message}`);
+    });
+    await page.waitForTimeout(400);
+    await page.getByRole("link", { name: /^بحث$/ }).first().click({ timeout: 5_000 }).catch(async (error) => {
+      warnings.push(`bayut_search_button_not_clicked:${error.message}`);
+      mode = "ui_filter_public_path_fallback";
+      await page.goto(new URL(bayutSearchPath(mandate), BASE_URL).toString(), {
+        waitUntil: "domcontentloaded",
+        timeout: limits.per_source_timeout_ms,
+      });
+    });
+    await page.waitForLoadState("domcontentloaded", { timeout: limits.per_source_timeout_ms }).catch(() => {});
+    await page.waitForTimeout(1_500);
+    return {
+      url: page.url(),
+      html: await page.content(),
+      mode,
+      warnings,
+    };
   },
   parseSearchResults(html, baseUrl = BASE_URL) {
     const text = stripTags(html);
@@ -32,7 +115,7 @@ export const BayutBrowsingAdapter = {
       return [];
     }
     return extractLinks(html, baseUrl, /bayut\.sa/i)
-      .filter((link) => /\/property\/details-\d+\.html/i.test(link.url))
+      .filter((link) => /(?:\/property\/details-\d+\.html|\/العقار\/تفاصيل-\d+\.html)/i.test(decodeURIComponent(link.url)))
       .filter((link, index, all) => all.findIndex((item) => item.url === link.url) === index)
       .slice(0, 30)
       .map((link) => ({
@@ -51,9 +134,7 @@ export const BayutBrowsingAdapter = {
       title,
       text,
     });
-    candidate.photo_refs_json = [...String(html || "").matchAll(/<img\b[^>]*src=["']([^"']+)["']/gi)]
-      .map((match) => absoluteUrl(match[1], BASE_URL))
-      .slice(0, 8);
+    candidate.photo_refs_json = extractPhotoRefs(html, BASE_URL, 8);
     if (detectContactGate(html)) {
       candidate.limited_evidence_snapshot_json = {
         ...candidate.limited_evidence_snapshot_json,
@@ -63,6 +144,15 @@ export const BayutBrowsingAdapter = {
         },
       };
       candidate.contact_access_json = candidate.limited_evidence_snapshot_json.contact_access;
+    } else {
+      const visibleContact = detectVisibleContact(html);
+      if (visibleContact) {
+      candidate.limited_evidence_snapshot_json = {
+        ...candidate.limited_evidence_snapshot_json,
+        contact_access: visibleContact,
+      };
+      candidate.contact_access_json = candidate.limited_evidence_snapshot_json.contact_access;
+      }
     }
     return candidate;
   },

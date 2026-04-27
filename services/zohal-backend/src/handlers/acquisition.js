@@ -131,6 +131,15 @@ function candidateNeedsContactAccess(candidate = {}) {
   return contact.status === "requires_sign_in" || contact.reason === "broker_contact_gated";
 }
 
+function normalizePhotoRefs(value) {
+  const refs = Array.isArray(value) ? value : [];
+  return [...new Set(refs
+    .map((item) => normalizeText(item))
+    .filter((item) => /^https?:\/\//i.test(item))
+    .filter((item) => !/\.(svg|gif)(?:$|[?#])/i.test(item))
+  )].slice(0, 12);
+}
+
 function normalizeComparable(value) {
   return normalizeText(value)
     .toLowerCase()
@@ -621,6 +630,8 @@ async function promoteCandidate(supabase, candidateId) {
         source_url: candidate.source_url,
         source: candidate.source,
         original_source_channel: candidate.source,
+        photo_refs: normalizePhotoRefs(candidate.photo_refs_json),
+        photoRefs: normalizePhotoRefs(candidate.photo_refs_json),
         asking_price: candidate.asking_price,
         price: candidate.asking_price,
         area_sqm: candidate.area_sqm,
@@ -929,12 +940,12 @@ async function enrichOpportunity(supabase, opportunityId, body = {}) {
     value_json: {
       status: "placeholder",
       note: kind === "market"
-        ? "Aqarsas enrichment hook is ready; external call is intentionally not executed in this MVP pass."
+        ? "Market CSV enrichment hook is ready; upload/import is handled as a separate source snapshot."
         : "Restb.ai enrichment hook is ready; external call is intentionally not executed in this MVP pass.",
     },
     basis_label: basis,
     confidence: 0.5,
-    source_channel: kind === "market" ? "aqarsas" : "restb_ai",
+    source_channel: kind === "market" ? "market_csv" : "restb_ai",
     evidence_refs_json: [],
   }).select("*").single();
   if (claimError) throw new Error(`Failed to write enrichment claim: ${claimError.message}`);

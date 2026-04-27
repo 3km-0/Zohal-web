@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "auth:capture": "node scripts/capture-auth-state.mjs",
     "start": "node src/server.js",
     "test": "node --test"
   },

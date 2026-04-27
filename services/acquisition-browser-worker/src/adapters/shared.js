@@ -5,11 +5,18 @@ export function normalizeText(value) {
 }
 
 export function boundedTextSnapshot(html, limit = 1200) {
-  return stripTags(html).slice(0, Math.max(120, Math.min(3000, Number(limit) || 1200)));
+  return redactSensitiveText(stripTags(html)).slice(0, Math.max(120, Math.min(3000, Number(limit) || 1200)));
 }
 
 export function stripTags(html) {
   return normalizeText(String(html || "").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " "));
+}
+
+export function redactSensitiveText(value) {
+  return normalizeText(value)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
+    .replace(/(?:\+?966|0)?\s*5(?:[\s.-]?\d){8}\b/g, "[redacted-sa-mobile]")
+    .replace(/\b(?:\+?\d[\s.-]?){9,15}\b/g, "[redacted-phone]");
 }
 
 export function absoluteUrl(url, baseUrl) {
@@ -104,6 +111,44 @@ export function detectContactGate(html) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+export function detectVisibleContact(html) {
+  const text = stripTags(html);
+  const hasPhone = /(?:\+?966|0)?\s*5(?:[\s.-]?\d){8}\b/.test(text) ||
+    /\b(?:\+?\d[\s.-]?){9,15}\b/.test(text);
+  const hasWhatsApp = /whatsapp|واتساب|واتس/i.test(text);
+  const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text);
+  if (!hasPhone && !hasWhatsApp && !hasEmail) return null;
+  return {
+    status: "available_via_authenticated_session",
+    phone_visible: hasPhone,
+    whatsapp_visible: hasWhatsApp,
+    email_visible: hasEmail,
+    raw_contact_storage: "not_stored",
+  };
+}
+
+export function extractPhotoRefs(html, baseUrl, limit = 8) {
+  const refs = [];
+  const seen = new Set();
+  const add = (raw) => {
+    const url = absoluteUrl(raw, baseUrl);
+    if (!url || seen.has(url)) return;
+    if (!/^https?:\/\//i.test(url)) return;
+    if (/\.(svg|gif)(?:$|[?#])/i.test(url)) return;
+    if (/(logo|icon|avatar|user|placeholder|sprite|grid)\.(?:png|jpe?g|webp|svg)/i.test(url)) return;
+    if (!/\.(?:png|jpe?g|webp|avif)(?:$|[?#])/i.test(url)) return;
+    seen.add(url);
+    refs.push(url);
+  };
+  for (const match of String(html || "").matchAll(/<img\b[^>]*(?:src|data-src|data-lazy-src)=["']([^"']+)["']/gi)) {
+    add(match[1]);
+  }
+  for (const match of String(html || "").matchAll(/["'](https?:\/\/[^"']+\.(?:png|jpe?g|webp|avif)(?:\?[^"']*)?)["']/gi)) {
+    add(match[1]);
+  }
+  return refs.slice(0, Math.max(0, Number(limit) || 8));
+}
+
 export function extractLinks(html, baseUrl, sourceHostPattern) {
   const links = [];
   const seen = new Set();
@@ -139,11 +184,11 @@ export function candidateFromText({ source, sourceUrl, title, text, capturedAt =
     area_sqm: area ? Number(area[1]) : null,
     bedroom_count: beds ? Number(beds[1]) : null,
     bathroom_count: baths ? Number(baths[1]) : null,
-    short_description: normalizeText(text).slice(0, 500) || null,
+    short_description: redactSensitiveText(text).slice(0, 500) || null,
     terms_policy: "unknown",
     captured_at: capturedAt,
     limited_evidence_snapshot_json: {
-      text: normalizeText(text).slice(0, 1200),
+      text: redactSensitiveText(text).slice(0, 1200),
       source_url: sourceUrl,
       captured_at: capturedAt,
     },

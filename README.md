@@ -78,5 +78,6 @@ Start with:
 - `../zohal-core/Documentation/Templates/Document-Templates.md`
 - `../zohal-core/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
 - `../zohal-platform/Documentation/Experiences/README.md`
+- `docs/acquisition-playwright-runtime.md`
 
 For repo-local workflow rules, read `AGENTS.md`.

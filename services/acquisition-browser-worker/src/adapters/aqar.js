@@ -2,7 +2,9 @@ import {
   absoluteUrl,
   candidateFromText,
   detectContactGate,
+  detectVisibleContact,
   extractLinks,
+  extractPhotoRefs,
   normalizeText,
   stripTags,
 } from "./shared.js";
@@ -24,6 +26,57 @@ function primaryDistrict(mandate = {}) {
   const buyBox = mandate.buy_box_json && typeof mandate.buy_box_json === "object" ? mandate.buy_box_json : {};
   const locations = Array.isArray(mandate.target_locations_json) ? mandate.target_locations_json : [];
   return normalizeText(buyBox.district || locations[0] || "");
+}
+
+function buyBox(mandate = {}) {
+  return mandate.buy_box_json && typeof mandate.buy_box_json === "object" ? mandate.buy_box_json : {};
+}
+
+function aqarCategoryLabel(mandate = {}) {
+  const propertyType = String(buyBox(mandate).property_type || "").toLowerCase();
+  if (/apartment|شقة|شقق/.test(propertyType)) return "شقق للبيع";
+  if (/land|plot|أرض|ارض/.test(propertyType)) return "أراضي للبيع";
+  if (/building|عمارة|مبنى/.test(propertyType)) return "عمائر للبيع";
+  if (/retail|commercial|محل|تجاري/.test(propertyType)) return "محلات للبيع";
+  return "فلل للبيع";
+}
+
+function cityLabel(mandate = {}) {
+  const value = normalizeComparable(buyBox(mandate).city || mandate.target_city || "");
+  if (/jeddah|جده/.test(value)) return "جدة";
+  if (/dammam|الدمام/.test(value)) return "الدمام";
+  if (/khobar|الخبر/.test(value)) return "الخبر";
+  if (/makkah|mecca|مكه/.test(value)) return "مكة المكرمة";
+  if (/madinah|medina|المدينه/.test(value)) return "المدينة المنورة";
+  return "الرياض";
+}
+
+function aqarCategoryPath(mandate = {}) {
+  const category = aqarCategoryLabel(mandate);
+  if (category === "شقق للبيع") return "شقق-للبيع";
+  if (category === "أراضي للبيع") return "أراضي-للبيع";
+  if (category === "عمائر للبيع") return "عمائر-للبيع";
+  if (category === "محلات للبيع") return "محلات-للبيع";
+  return "فلل-للبيع";
+}
+
+function knownDistrictPath(mandate = {}) {
+  const city = cityLabel(mandate);
+  const value = normalizeComparable(primaryDistrict(mandate) || mandateQuery(mandate));
+  if (city !== "الرياض") return "";
+  if (/al arid|alarid|العارض/.test(value)) return "شمال-الرياض/حي-العارض";
+  if (/narjis|النرجس/.test(value)) return "شمال-الرياض/حي-النرجس";
+  if (/malqa|الملقا/.test(value)) return "شمال-الرياض/حي-الملقا";
+  if (/hittin|حطين/.test(value)) return "شمال-الرياض/حي-حطين";
+  if (/yasmin|الياسمين/.test(value)) return "شمال-الرياض/حي-الياسمين";
+  return "";
+}
+
+function buildFilteredPath(mandate = {}) {
+  const category = aqarCategoryPath(mandate);
+  const city = cityLabel(mandate);
+  const district = knownDistrictPath(mandate);
+  return [category, city, district].filter(Boolean).join("/");
 }
 
 function normalizeComparable(value) {
@@ -64,15 +117,57 @@ function scoreSearchCard(link, targetAliases) {
 export const AqarBrowsingAdapter = {
   source: "aqar",
   buildSearchUrl(mandate, limits = {}) {
-    const buyBox = mandate?.buy_box_json && typeof mandate.buy_box_json === "object" ? mandate.buy_box_json : {};
-    const path = /villa|فيلا|فلل/i.test(String(buyBox.property_type || ""))
-      ? "/فلل-للبيع"
-      : "/عقارات";
-    const query = primaryDistrict(mandate) || mandateQuery(mandate) || "العارض";
-    const url = new URL(path, BASE_URL);
-    url.searchParams.set("q", query);
+    const url = new URL(`/${buildFilteredPath(mandate) || "عقارات"}`, BASE_URL);
     url.searchParams.set("page", String(limits.page || 1));
     return url.toString();
+  },
+  async applySearchFilters(page, mandate, limits = {}) {
+    const warnings = [];
+    await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: limits.per_source_timeout_ms });
+    await page.waitForTimeout(700);
+
+    const category = aqarCategoryLabel(mandate);
+    const categoryLink = page.getByRole("link", { name: category, exact: true }).first();
+    if (await categoryLink.count().catch(() => 0)) {
+      await categoryLink.click({ timeout: 8_000 }).catch((error) => {
+        throw new Error(`aqar_ui_category_filter_failed:${error.message}`);
+      });
+    } else {
+      await page.locator(`a:has-text("${category}")`).first().click({ timeout: 8_000 }).catch((error) => {
+        throw new Error(`aqar_ui_category_filter_failed:${error.message}`);
+      });
+    }
+    await page.waitForLoadState("domcontentloaded", { timeout: limits.per_source_timeout_ms }).catch(() => {});
+    await page.waitForTimeout(700);
+
+    const city = cityLabel(mandate);
+    const cityLink = page.getByRole("link", { name: new RegExp(`${city}`) }).first();
+    if (await cityLink.count().catch(() => 0)) {
+      await cityLink.click({ timeout: 6_000 }).catch((error) => {
+        warnings.push(`aqar_city_filter_failed:${error.message}`);
+      });
+      await page.waitForLoadState("domcontentloaded", { timeout: limits.per_source_timeout_ms }).catch(() => {});
+      await page.waitForTimeout(700);
+    } else {
+      warnings.push(`aqar_city_filter_not_visible:${city}`);
+    }
+
+    const districtPath = knownDistrictPath(mandate);
+    if (districtPath) {
+      await page.goto(new URL(`/${buildFilteredPath(mandate)}`, BASE_URL).toString(), {
+        waitUntil: "domcontentloaded",
+        timeout: limits.per_source_timeout_ms,
+      });
+      await page.waitForTimeout(700);
+      warnings.push(`aqar_district_loaded_from_public_filter_path:${districtPath}`);
+    } else if (primaryDistrict(mandate)) {
+      warnings.push(`aqar_district_refined_by_zohal_ranker:${primaryDistrict(mandate)}`);
+    }
+    return {
+      url: page.url(),
+      html: await page.content(),
+      warnings,
+    };
   },
   parseSearchResults(html, baseUrl = BASE_URL) {
     const targetAliases = targetAliasesFromUrl(baseUrl);
@@ -107,9 +202,7 @@ export const AqarBrowsingAdapter = {
       title,
       text,
     });
-    candidate.photo_refs_json = [...String(html || "").matchAll(/<img\b[^>]*src=["']([^"']+)["']/gi)]
-      .map((match) => absoluteUrl(match[1], BASE_URL))
-      .slice(0, 8);
+    candidate.photo_refs_json = extractPhotoRefs(html, BASE_URL, 8);
     if (detectContactGate(html)) {
       candidate.limited_evidence_snapshot_json = {
         ...candidate.limited_evidence_snapshot_json,
@@ -119,6 +212,15 @@ export const AqarBrowsingAdapter = {
         },
       };
       candidate.contact_access_json = candidate.limited_evidence_snapshot_json.contact_access;
+    } else {
+      const visibleContact = detectVisibleContact(html);
+      if (visibleContact) {
+      candidate.limited_evidence_snapshot_json = {
+        ...candidate.limited_evidence_snapshot_json,
+        contact_access: visibleContact,
+      };
+      candidate.contact_access_json = candidate.limited_evidence_snapshot_json.contact_access;
+      }
     }
     return candidate;
   },

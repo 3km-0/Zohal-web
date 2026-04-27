@@ -9,6 +9,7 @@
 /artifacts/playwright/
 /services/zohal-backend/artifacts/acquisition-smoke/
 /services/acquisition-browser-worker/artifacts/browser-worker/
+/services/acquisition-browser-worker/artifacts/auth-state/
 
 # Next.js
 /.next/
