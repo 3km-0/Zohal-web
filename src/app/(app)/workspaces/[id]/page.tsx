@@ -19,6 +19,8 @@ import {
   MapPin,
   MessageSquare,
   PanelRightOpen,
+  Pencil,
+  Radar,
   Search,
   Send,
   ShieldCheck,
@@ -341,6 +343,9 @@ export default function WorkspaceCockpitPage() {
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [readinessBusy, setReadinessBusy] = useState(false);
   const [scenarioBusy, setScenarioBusy] = useState(false);
+  const [buyBoxEditorOpen, setBuyBoxEditorOpen] = useState(false);
+  const [buyBoxDraft, setBuyBoxDraft] = useState('');
+  const [buyBoxSaving, setBuyBoxSaving] = useState(false);
 
   const agentScope: AgentScope = { kind: 'workspace', workspaceId };
 
@@ -476,8 +481,31 @@ export default function WorkspaceCockpitPage() {
     setDrawerOpen(true);
   }, []);
 
+  const openBuyBoxEditor = useCallback(() => {
+    setBuyBoxDraft(workspace?.analysis_brief || workspace?.description || '');
+    setBuyBoxEditorOpen(true);
+  }, [workspace]);
+
+  const saveBuyBox = useCallback(async () => {
+    const nextBrief = buyBoxDraft.trim();
+    setBuyBoxSaving(true);
+    setApprovalError(null);
+    try {
+      const { error } = await supabase
+        .from('workspaces')
+        .update({ analysis_brief: nextBrief || null })
+        .eq('id', workspaceId);
+      if (error) throw error;
+      setWorkspace((current) => current ? { ...current, analysis_brief: nextBrief || null } : current);
+      setBuyBoxEditorOpen(false);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('buyBoxSaveError'));
+    } finally {
+      setBuyBoxSaving(false);
+    }
+  }, [buyBoxDraft, supabase, t, workspaceId]);
+
   const requestExternalAction = useCallback(async (actionType: string, draftPayload: Record<string, string> = {}) => {
-    if (!selectedOpportunity) return;
     setApprovalBusy(actionType);
     setApprovalError(null);
     try {
@@ -485,12 +513,12 @@ export default function WorkspaceCockpitPage() {
         .from('external_action_approvals')
         .insert({
           workspace_id: workspaceId,
-          opportunity_id: selectedOpportunity.id,
+          opportunity_id: selectedOpportunity?.id ?? null,
           buyer_profile_id: readinessProfile?.id ?? null,
           action_type: actionType,
           draft_payload_json: {
             source: 'web_acquisition_cockpit',
-            opportunity_title: titleFor(selectedOpportunity) || selectedOpportunity.summary || selectedOpportunity.id,
+            opportunity_title: selectedOpportunity ? titleFor(selectedOpportunity) || selectedOpportunity.summary || selectedOpportunity.id : workspace?.name || workspaceId,
             ...draftPayload,
           },
           approval_status: 'pending',
@@ -504,7 +532,7 @@ export default function WorkspaceCockpitPage() {
     } finally {
       setApprovalBusy(null);
     }
-  }, [readinessProfile, selectedOpportunity, supabase, t, workspaceId]);
+  }, [readinessProfile, selectedOpportunity, supabase, t, workspace?.name, workspaceId]);
 
   const startReadiness = useCallback(async () => {
     setReadinessBusy(true);
@@ -587,7 +615,12 @@ export default function WorkspaceCockpitPage() {
 
         <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt/85 p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
-          <BuyBoxCard workspace={workspace} />
+          <BuyBoxCard
+            workspace={workspace}
+            onEdit={openBuyBoxEditor}
+            onSource={() => void requestExternalAction('send_outreach', { request_kind: 'mandate_sourcing', mandate: workspace?.analysis_brief || workspace?.description || workspace?.name || '' })}
+            onOpenAgent={() => setAgentOpen(true)}
+          />
           <OpportunityRail
             opportunities={opportunities}
             selectedId={selectedOpportunity?.id ?? null}
@@ -749,6 +782,15 @@ export default function WorkspaceCockpitPage() {
           </div>
         </aside>
       ) : null}
+      {buyBoxEditorOpen ? (
+        <BuyBoxEditorModal
+          value={buyBoxDraft}
+          saving={buyBoxSaving}
+          onChange={setBuyBoxDraft}
+          onSave={saveBuyBox}
+          onClose={() => setBuyBoxEditorOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -766,15 +808,35 @@ function BrandBlock() {
   );
 }
 
-function BuyBoxCard({ workspace }: { workspace: WorkspaceRow | null }) {
+function BuyBoxCard({
+  workspace,
+  onEdit,
+  onSource,
+  onOpenAgent,
+}: {
+  workspace: WorkspaceRow | null;
+  onEdit: () => void;
+  onSource: () => void;
+  onOpenAgent: () => void;
+}) {
   const t = useTranslations('workspaceCockpitPage');
   const brief = workspace?.analysis_brief || workspace?.description || '';
   const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
   return (
     <Panel className="mb-5 p-4" data-testid="acquisition-buy-box">
       <div className="mb-4 flex items-center justify-between">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
-        <Home className="h-5 w-5 rounded-xl bg-accent/15 p-1 text-accent" />
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
+          <p className="mt-1 text-xs text-text-muted">{t('buyBoxSubtitle')}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="grid h-9 w-9 place-items-center rounded-[10px] border border-accent/25 bg-accent/10 text-accent transition hover:bg-accent/15"
+          aria-label={t('editBuyBox')}
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
       </div>
       <div className="space-y-2">
         <MandateRow label={t('buyBox')} value={briefParts[0] || t('notSet')} />
@@ -783,7 +845,68 @@ function BuyBoxCard({ workspace }: { workspace: WorkspaceRow | null }) {
         <MandateRow label={t('riskAppetite')} value={briefParts[3] || t('notSet')} />
         <MandateRow label={t('customInstruction')} value={workspace?.description || t('notSet')} />
       </div>
+      <div className="mt-4 grid gap-2">
+        <button
+          type="button"
+          onClick={onSource}
+          className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-accent px-3 py-2.5 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_18px_var(--accent-soft)] transition hover:bg-accent-alt"
+        >
+          <Radar className="h-4 w-4" />
+          {t('sourceDeals')}
+        </button>
+        <button
+          type="button"
+          onClick={onOpenAgent}
+          className="inline-flex items-center justify-center gap-2 rounded-[12px] border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-text transition hover:bg-surface-alt"
+        >
+          <MessageSquare className="h-4 w-4" />
+          {t('openSourcingAgent')}
+        </button>
+      </div>
     </Panel>
+  );
+}
+
+function BuyBoxEditorModal({
+  value,
+  saving,
+  onChange,
+  onSave,
+  onClose,
+}: {
+  value: string;
+  saving: boolean;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4 backdrop-blur-md" role="dialog" aria-modal="true">
+      <div className="w-full max-w-xl rounded-[20px] border border-border bg-surface p-5 shadow-2xl shadow-black/35">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('editBuyBox')}</p>
+            <h3 className="mt-1 text-xl font-semibold text-text">{t('editBuyBoxTitle')}</h3>
+            <p className="mt-1 text-sm leading-6 text-text-muted">{t('editBuyBoxHint')}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('close')}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          rows={7}
+          className="w-full resize-y rounded-[14px] border border-border bg-background p-3 text-sm leading-6 text-text outline-none ring-accent/30 focus:ring-2"
+          placeholder={t('editBuyBoxPlaceholder')}
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? t('savingAssumptions') : t('saveBuyBox')}</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1026,39 +1149,80 @@ function ProgressTracker({
           ? t('progress.nextVisit')
           : t('progress.nextOffer');
   return (
-    <Panel className="p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+    <Panel className="overflow-hidden p-0">
+      <div className="border-b border-border bg-[linear-gradient(135deg,rgba(var(--highlight-rgb,35,215,255),.10),rgba(var(--accent-rgb,185,255,38),.08))] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('progress.title')}</p>
-          <h3 className="mt-1 text-xl font-semibold text-text">{nextAction}</h3>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {blockers.length ? blockers.map((blocker) => (
-            <span key={blocker} className="rounded-[10px] border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-medium text-text-soft">{blocker}</span>
-          )) : (
-            <span className="rounded-[10px] border border-success/25 bg-success/10 px-3 py-2 text-xs font-medium text-success">{t('progress.noBlockers')}</span>
-          )}
+            <h3 className="mt-1 text-2xl font-bold leading-tight text-text">{nextAction}</h3>
+            <p className="mt-2 text-sm leading-6 text-text-muted">{t('progress.helper')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            {blockers.length ? blockers.map((blocker) => (
+              <span key={blocker} className="rounded-full border border-warning/30 bg-warning/12 px-3 py-2 text-xs font-semibold text-text">{blocker}</span>
+            )) : (
+              <span className="rounded-full border border-success/30 bg-success/12 px-3 py-2 text-xs font-semibold text-success">{t('progress.noBlockers')}</span>
+            )}
+          </div>
         </div>
       </div>
-      <div className="mt-5 grid gap-2 md:grid-cols-7">
+      <div className="p-5">
+      <div className="grid gap-3 md:grid-cols-7">
         {steps.map((step, index) => {
-          const reached = index <= current;
+          const completed = index < current;
           const active = index === current;
+          const pending = index > current;
+          const blocked = active && blockers.length > 0;
           return (
-            <div key={step} className={cn('rounded-[12px] border px-3 py-3', reached ? 'border-accent/35 bg-accent/10' : 'border-border bg-surface-alt', active && 'shadow-[0_0_22px_var(--accent-soft)]')}>
-              <div className={cn('mb-2 h-2 rounded-full', reached ? 'bg-accent' : 'bg-border')} />
-              <p className={cn('text-xs font-semibold', reached ? 'text-text' : 'text-text-muted')}>{step}</p>
+            <div key={step} className="relative">
+              {index < steps.length - 1 ? (
+                <div className={cn('absolute left-[calc(50%+18px)] right-[calc(-50%+18px)] top-[21px] hidden h-0.5 md:block', completed ? 'bg-success/70' : active ? 'bg-accent/70' : 'bg-border')} />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  if (index <= 1) onOpenDrawer('command');
+                  else if (index <= 3) onOpenDrawer('map');
+                  else if (index === 4) onOpenDrawer('evidence');
+                  else onOpenDrawer('consent');
+                }}
+                className={cn(
+                  'relative flex min-h-[112px] w-full flex-col items-center rounded-[16px] border px-3 py-3 text-center transition',
+                  completed && 'border-success/30 bg-success/10 text-success',
+                  active && !blocked && 'border-accent/55 bg-accent/12 text-text shadow-[0_0_26px_var(--accent-soft)]',
+                  blocked && 'border-warning/45 bg-warning/12 text-text shadow-[0_0_22px_rgba(245,158,11,.15)]',
+                  pending && 'border-border bg-surface-alt text-text-muted hover:bg-surface'
+                )}
+              >
+                <span className={cn(
+                  'grid h-10 w-10 place-items-center rounded-full border text-sm font-black',
+                  completed && 'border-success/35 bg-success text-white',
+                  active && !blocked && 'border-accent/40 bg-accent text-[color:var(--accent-text)]',
+                  blocked && 'border-warning/40 bg-warning text-black',
+                  pending && 'border-border bg-background text-text-muted'
+                )}>
+                  {completed ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
+                </span>
+                <p className={cn('mt-3 text-xs font-bold', pending ? 'text-text-muted' : 'text-text')}>{step}</p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                  {completed ? t('progress.done') : active ? t(blocked ? 'progress.blocked' : 'progress.current') : t('progress.pending')}
+                </p>
+              </button>
             </div>
           );
         })}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => onOpenDrawer(!readinessProfile ? 'files' : missingItems.length ? 'evidence' : 'command')} className="rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-[color:var(--accent-text)]">
           {t('progress.primaryAction')}
         </button>
         <button type="button" onClick={onRequestVisit} disabled={!opportunity || !readinessProfile} className="rounded-[12px] border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
           {t('scheduleVisit')}
         </button>
+        <button type="button" onClick={() => onOpenDrawer('command')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
+          {t('progress.command')}
+        </button>
+      </div>
       </div>
     </Panel>
   );
@@ -1575,18 +1739,18 @@ function WorkspaceCommandDrawer({
 
   return (
     <aside
-      className="fixed inset-0 z-40 flex bg-background/45 backdrop-blur-sm xl:absolute xl:inset-y-0 xl:right-0 xl:left-auto xl:bg-transparent xl:backdrop-blur-0"
+      className="fixed inset-0 z-40 flex bg-background/55 backdrop-blur-sm xl:absolute xl:inset-y-0 xl:right-0 xl:left-auto xl:bg-transparent xl:backdrop-blur-0"
       data-testid="acquisition-command-drawer"
     >
       <button type="button" aria-label={t('close')} onClick={onClose} className="hidden flex-1 xl:block" />
       <div
-        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-border bg-surface shadow-2xl shadow-[color:var(--border)] xl:max-w-none"
+        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-border bg-[#F8FCFA] shadow-2xl shadow-black/30 dark:border-white/12 dark:bg-[#061018] dark:shadow-black/65 xl:max-w-none"
         style={{ width: `${width}px` } as CSSProperties}
       >
         <div onPointerDown={handleDragStart} aria-hidden="true" className="absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize touch-none items-center justify-center xl:flex">
           <div className={cn('h-10 w-1 rounded-full transition-colors', isDragging ? 'bg-accent' : 'bg-border hover:bg-accent/60')} />
         </div>
-        <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border bg-white/80 px-4 py-3 dark:bg-[#091722]">
           <div>
             <p className="text-sm font-semibold text-text">{t('drawer.title')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
@@ -1595,7 +1759,7 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-3 gap-1 border-b border-border bg-background/60 p-2">
+        <div className="grid grid-cols-3 gap-1 border-b border-border bg-[#ECF5F1] p-2 dark:bg-[#03080D]">
           {tabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
