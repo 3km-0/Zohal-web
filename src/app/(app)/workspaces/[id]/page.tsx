@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { HTMLAttributes, ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, HTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -11,11 +11,16 @@ import {
   CheckCircle2,
   ClipboardList,
   ExternalLink,
+  FileText,
   Gauge,
+  HelpCircle,
   Home,
   Map,
+  MapPin,
   MessageSquare,
+  PanelRightOpen,
   Search,
+  Send,
   ShieldCheck,
   TrendingUp,
   Wrench,
@@ -24,6 +29,15 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { AskAgentView } from '@/components/ask/AskAgentView';
 import { Button, Spinner } from '@/components/ui';
+import {
+  acquisitionMetadataNumber,
+  acquisitionMetadataString,
+  acquisitionMetadataValue,
+  displayTitleForOpportunity,
+  photoRefsForOpportunity,
+  progressStepIndexForStage,
+  seedScenarioFromOpportunity,
+} from '@/lib/acquisition-workspace-ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
@@ -103,7 +117,18 @@ type ExternalActionApprovalRow = {
   created_at?: string | null;
 };
 
-type CockpitModule = 'evidence' | 'model' | 'renovation' | 'openItems' | 'comps';
+type AcquisitionClaimRow = {
+  id: string;
+  fact_key?: string | null;
+  value_json?: Record<string, unknown> | null;
+  basis_label?: string | null;
+  confidence?: number | null;
+  source_channel?: string | null;
+  evidence_refs_json?: unknown;
+};
+
+type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
+type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
 
 type ScenarioState = {
   price: number;
@@ -115,11 +140,12 @@ type ScenarioState = {
 };
 
 const moduleIcons: Record<CockpitModule, LucideIcon> = {
-  evidence: ShieldCheck,
+  overview: ShieldCheck,
   model: Gauge,
-  renovation: Wrench,
   openItems: ClipboardList,
-  comps: BarChart3,
+  renovation: Wrench,
+  outreach: Send,
+  offer: CheckCircle2,
 };
 
 const formatSAR = new Intl.NumberFormat('en-SA', {
@@ -135,26 +161,15 @@ function humanize(value: string | null | undefined): string {
 }
 
 function metadataValue(item: OpportunityRow | null | undefined, keys: string[]): unknown {
-  const metadata = item?.metadata_json ?? {};
-  for (const key of keys) {
-    if (metadata[key] !== undefined && metadata[key] !== null) return metadata[key];
-  }
-  return undefined;
+  return acquisitionMetadataValue(item, keys);
 }
 
 function metadataString(item: OpportunityRow | null | undefined, keys: string[]): string | null {
-  const value = metadataValue(item, keys);
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
+  return acquisitionMetadataString(item, keys);
 }
 
 function metadataNumber(item: OpportunityRow | null | undefined, keys: string[]): number | null {
-  const value = metadataValue(item, keys);
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = Number(value.replace(/[^0-9.-]/g, ''));
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  return acquisitionMetadataNumber(item, keys);
 }
 
 function recommendationFor(item: OpportunityRow | null | undefined): string | null {
@@ -182,13 +197,7 @@ function sourceUrlFor(item: OpportunityRow | null | undefined): string | null {
 }
 
 function photoRefsFor(item: OpportunityRow | null | undefined): string[] {
-  const value = metadataValue(item, ['photo_refs', 'photoRefs', 'photos', 'image_urls']);
-  const refs = Array.isArray(value) ? value : [];
-  return [...new Set(refs
-    .map((item) => (typeof item === 'string' ? item.trim() : ''))
-    .filter((item) => /^https?:\/\//i.test(item))
-    .filter((item) => !/\.(svg|gif)(?:$|[?#])/i.test(item))
-  )].slice(0, 8);
+  return photoRefsForOpportunity(item);
 }
 
 function displayUrl(value: string): string {
@@ -201,7 +210,7 @@ function displayUrl(value: string): string {
 }
 
 function titleFor(item: OpportunityRow | null | undefined): string | null {
-  return item?.title?.trim() || metadataString(item, ['title', 'name']) || null;
+  return displayTitleForOpportunity(item);
 }
 
 function arabicTitleFor(item: OpportunityRow | null | undefined): string | null {
@@ -314,6 +323,7 @@ export default function WorkspaceCockpitPage() {
   const [workspace, setWorkspace] = useState<WorkspaceRow | null>(null);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
   const [events, setEvents] = useState<AcquisitionEventRow[]>([]);
+  const [claims, setClaims] = useState<AcquisitionClaimRow[]>([]);
   const [readinessProfile, setReadinessProfile] = useState<BuyerReadinessProfileRow | null>(null);
   const [readinessEvidence, setReadinessEvidence] = useState<BuyerReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<DocumentSharingGrantRow[]>([]);
@@ -323,9 +333,14 @@ export default function WorkspaceCockpitPage() {
   const [agentOpen, setAgentOpen] = useState(false);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeDrawerTab, setActiveDrawerTab] = useState<WorkspaceDrawerTab>('command');
+  const [drawerWidth, setDrawerWidth] = useState(430);
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
   const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [readinessBusy, setReadinessBusy] = useState(false);
+  const [scenarioBusy, setScenarioBusy] = useState(false);
 
   const agentScope: AgentScope = { kind: 'workspace', workspaceId };
 
@@ -359,6 +374,13 @@ export default function WorkspaceCockpitPage() {
       setDocumentCount(documentsResult.count ?? 0);
       setSelectedOpportunityId((current) => current ?? opportunityRows[0]?.id ?? null);
 
+      const approvalsPromise = supabase
+        .from('external_action_approvals')
+        .select('id, action_type, approval_status, opportunity_id, executed_at, created_at')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false })
+        .limit(12);
+
       if (currentReadinessProfile) {
         const [evidenceResult, grantsResult, approvalsResult] = await Promise.all([
           supabase
@@ -373,20 +395,16 @@ export default function WorkspaceCockpitPage() {
             .eq('buyer_profile_id', currentReadinessProfile.id)
             .order('created_at', { ascending: false })
             .limit(8),
-          supabase
-            .from('external_action_approvals')
-            .select('id, action_type, approval_status, opportunity_id, executed_at, created_at')
-            .eq('buyer_profile_id', currentReadinessProfile.id)
-            .order('created_at', { ascending: false })
-            .limit(8),
+          approvalsPromise,
         ]);
         setReadinessEvidence((evidenceResult.data ?? []) as BuyerReadinessEvidenceRow[]);
         setSharingGrants((grantsResult.data ?? []) as DocumentSharingGrantRow[]);
         setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
       } else {
+        const approvalsResult = await approvalsPromise;
         setReadinessEvidence([]);
         setSharingGrants([]);
-        setActionApprovals([]);
+        setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
       }
 
       const selectedOpportunityIds = opportunityRows.map((item) => item.id).slice(0, 6);
@@ -418,11 +436,48 @@ export default function WorkspaceCockpitPage() {
   const brokerageActive = readinessProfile?.brokerage_status === 'signed' || readinessProfile?.brokerage_status === 'active';
 
   useEffect(() => {
+    const stored = window.localStorage.getItem('acquisition_workspace_drawer_width');
+    if (!stored) return;
+    const parsed = Number(stored);
+    if (Number.isFinite(parsed)) setDrawerWidth(Math.min(Math.max(parsed, 340), Math.min(window.innerWidth * 0.75, 760)));
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('acquisition_workspace_drawer_width', String(Math.round(drawerWidth)));
+  }, [drawerWidth]);
+
+  useEffect(() => {
     setScenario(scenarioFromOpportunity(selectedOpportunity));
   }, [selectedOpportunity]);
 
-  const requestExternalAction = useCallback(async (actionType: string) => {
-    if (!selectedOpportunity || !readinessProfile) return;
+  useEffect(() => {
+    let cancelled = false;
+    async function loadClaims() {
+      if (!selectedOpportunity?.id) {
+        setClaims([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('acquisition_claims')
+        .select('id, fact_key, value_json, basis_label, confidence, source_channel, evidence_refs_json')
+        .eq('opportunity_id', selectedOpportunity.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (!cancelled) setClaims((data ?? []) as AcquisitionClaimRow[]);
+    }
+    void loadClaims();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOpportunity?.id, supabase]);
+
+  const openDrawer = useCallback((tab: WorkspaceDrawerTab) => {
+    setActiveDrawerTab(tab);
+    setDrawerOpen(true);
+  }, []);
+
+  const requestExternalAction = useCallback(async (actionType: string, draftPayload: Record<string, string> = {}) => {
+    if (!selectedOpportunity) return;
     setApprovalBusy(actionType);
     setApprovalError(null);
     try {
@@ -431,11 +486,12 @@ export default function WorkspaceCockpitPage() {
         .insert({
           workspace_id: workspaceId,
           opportunity_id: selectedOpportunity.id,
-          buyer_profile_id: readinessProfile.id,
+          buyer_profile_id: readinessProfile?.id ?? null,
           action_type: actionType,
           draft_payload_json: {
             source: 'web_acquisition_cockpit',
             opportunity_title: titleFor(selectedOpportunity) || selectedOpportunity.summary || selectedOpportunity.id,
+            ...draftPayload,
           },
           approval_status: 'pending',
         })
@@ -449,6 +505,79 @@ export default function WorkspaceCockpitPage() {
       setApprovalBusy(null);
     }
   }, [readinessProfile, selectedOpportunity, supabase, t, workspaceId]);
+
+  const startReadiness = useCallback(async () => {
+    setReadinessBusy(true);
+    setApprovalError(null);
+    try {
+      const mandateSummary = workspace?.analysis_brief || workspace?.description || workspace?.name || null;
+      const { data, error } = await supabase
+        .from('buyer_readiness_profiles')
+        .insert({
+          workspace_id: workspaceId,
+          mandate_summary: mandateSummary,
+          readiness_level: mandateSummary ? 1 : 0,
+          evidence_status: 'self_declared',
+          sharing_mode: 'private',
+          brokerage_status: 'not_started',
+          kyc_state: 'not_started',
+        })
+        .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+        .single();
+      if (error) throw error;
+      setReadinessProfile(data as BuyerReadinessProfileRow);
+      openDrawer('files');
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('buyerReadiness.startError'));
+    } finally {
+      setReadinessBusy(false);
+    }
+  }, [openDrawer, supabase, t, workspace, workspaceId]);
+
+  const saveScenarioAssumptions = useCallback(async (nextScenario: ScenarioState) => {
+    if (!selectedOpportunity) return;
+    setScenarioBusy(true);
+    try {
+      const metadata = {
+        ...(selectedOpportunity.metadata_json ?? {}),
+        price: nextScenario.price,
+        acquisition_price: nextScenario.price,
+        monthly_rent: nextScenario.rent,
+        renovation_budget: nextScenario.renovation,
+        vacancy: nextScenario.vacancy,
+        hold_period: nextScenario.hold,
+        appreciation: nextScenario.appreciation,
+      };
+      const { error } = await supabase
+        .from('acquisition_opportunities')
+        .update({ metadata_json: metadata })
+        .eq('id', selectedOpportunity.id);
+      if (error) throw error;
+      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, metadata_json: metadata } : item));
+      setScenario(nextScenario);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('scenarioSaveError'));
+    } finally {
+      setScenarioBusy(false);
+    }
+  }, [selectedOpportunity, supabase, t]);
+
+  const updateSelectedStage = useCallback(async (stage: string) => {
+    if (!selectedOpportunity) return;
+    setApprovalBusy(`stage:${stage}`);
+    try {
+      const { error } = await supabase
+        .from('acquisition_opportunities')
+        .update({ stage })
+        .eq('id', selectedOpportunity.id);
+      if (error) throw error;
+      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, stage, updated_at: new Date().toISOString() } : item));
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
+    } finally {
+      setApprovalBusy(null);
+    }
+  }, [selectedOpportunity, supabase, t]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
@@ -474,8 +603,8 @@ export default function WorkspaceCockpitPage() {
                 <Spinner size="lg" />
               </div>
             ) : (
-              <div className="grid flex-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_430px]">
-                <section className="min-w-0 space-y-5">
+              <div className="flex flex-1 gap-5">
+                <section className="min-w-0 flex-1 space-y-5">
                   <div className="xl:hidden">
                     <OpportunityRail
                       opportunities={opportunities}
@@ -486,68 +615,123 @@ export default function WorkspaceCockpitPage() {
                     />
                   </div>
 
-                  <CockpitHero
-                    opportunity={selectedOpportunity}
-                    missingCount={selectedMissing.length}
-                    documentCount={documentCount}
-                    latestUpdate={latestUpdate}
-                  />
-
-                  <div className="grid gap-3 md:grid-cols-4">
-                    <MetricCard icon={Search} label={t('candidates')} value={opportunities.length.toString()} />
-                    <MetricCard icon={TrendingUp} label={t('pursue')} value={pursueCount.toString()} hot />
-                    <MetricCard icon={ClipboardList} label={t('openItems')} value={missingCount.toString()} />
-                    <MetricCard icon={BarChart3} label={t('confidence')} value={humanize(confidenceFor(selectedOpportunity)) || t('notSet')} />
-                  </div>
-
-                  <ModuleTabs active={activeModule} onChange={setActiveModule} />
-
-                  <div className="min-h-[380px] space-y-5">
-                    {activeModule === 'evidence' ? (
-                      <EvidenceModule documentCount={documentCount} opportunity={selectedOpportunity} />
-                    ) : null}
-                    {activeModule === 'model' ? (
-                      <ModelModule scenario={scenario} onScenarioChange={setScenario} />
-                    ) : null}
-                    {activeModule === 'renovation' ? (
-                      <RenovationModule opportunity={selectedOpportunity} />
-                    ) : null}
-                    {activeModule === 'openItems' ? (
-                      <OpenItemsModule items={selectedMissing} />
-                    ) : null}
-                    {activeModule === 'comps' ? (
-                      <CompsModule opportunity={selectedOpportunity} />
-                    ) : null}
-                    <VisualCompanion
-                      opportunity={selectedOpportunity}
-                      documentCount={documentCount}
-                      missingItems={selectedMissing}
+	                  <CockpitHero
+	                    opportunity={selectedOpportunity}
+	                    missingCount={selectedMissing.length}
+	                    documentCount={documentCount}
+	                    latestUpdate={latestUpdate}
+                      onOpenDrawer={openDrawer}
+	                  />
+	
+                    <MandatePulse
+                      candidates={opportunities.length}
+                      pursue={pursueCount}
+                      openItems={missingCount}
+                      confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
                     />
-                  </div>
-                </section>
 
-                <RightPane
-                  activeModule={activeModule}
-                  events={events}
-                  latestUpdate={latestUpdate}
-                  documentCount={documentCount}
-                  opportunity={selectedOpportunity}
-                  missingItems={selectedMissing}
-                  scenario={scenario}
-                  readinessProfile={readinessProfile}
-                  readinessEvidence={readinessEvidence}
-                  sharingGrants={sharingGrants}
-                  actionApprovals={actionApprovals}
-                  brokerageActive={brokerageActive}
-                  approvalBusy={approvalBusy}
-                  approvalError={approvalError}
-                  onRequestAction={requestExternalAction}
-                />
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+                    <ProgressTracker
+                      opportunity={selectedOpportunity}
+                      missingItems={selectedMissing}
+                      readinessProfile={readinessProfile}
+                      brokerageActive={brokerageActive}
+                      onOpenDrawer={openDrawer}
+                      onRequestVisit={() => void requestExternalAction('schedule_visit')}
+                    />
+	
+	                  <ModuleTabs active={activeModule} onChange={setActiveModule} />
+	
+	                  <div className="min-h-[380px] space-y-5">
+	                    {activeModule === 'overview' ? (
+	                      <OverviewModule
+                          documentCount={documentCount}
+                          opportunity={selectedOpportunity}
+                          claims={claims}
+                          onOpenDrawer={openDrawer}
+                        />
+	                    ) : null}
+	                    {activeModule === 'model' ? (
+	                      <ModelModule
+                          opportunity={selectedOpportunity}
+                          scenario={scenario}
+                          saving={scenarioBusy}
+                          onScenarioChange={setScenario}
+                          onSave={saveScenarioAssumptions}
+                        />
+	                    ) : null}
+	                    {activeModule === 'openItems' ? (
+	                      <OpenItemsModule
+                          items={selectedMissing}
+                          onRequestItem={(item) => void requestExternalAction('send_outreach', { request_kind: 'missing_document', requested_item: item })}
+                        />
+	                    ) : null}
+	                    {activeModule === 'renovation' ? (
+	                      <RenovationModule
+                          opportunity={selectedOpportunity}
+                          onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
+                        />
+	                    ) : null}
+	                    {activeModule === 'outreach' ? (
+	                      <OutreachModule
+                          opportunity={selectedOpportunity}
+                          approvals={actionApprovals}
+                          approvalBusy={approvalBusy}
+                          onRequestAction={requestExternalAction}
+                        />
+	                    ) : null}
+	                    {activeModule === 'offer' ? (
+	                      <OfferModule
+                          opportunity={selectedOpportunity}
+                          brokerageActive={brokerageActive}
+                          approvalBusy={approvalBusy}
+                          onRequestAction={requestExternalAction}
+                        />
+	                    ) : null}
+	                  </div>
+	                </section>
+	              </div>
+	            )}
+	          </div>
+	        </main>
+
+          {drawerOpen ? (
+            <WorkspaceCommandDrawer
+              workspaceId={workspaceId}
+              activeTab={activeDrawerTab}
+              width={drawerWidth}
+              events={events}
+              latestUpdate={latestUpdate}
+              documentCount={documentCount}
+              opportunity={selectedOpportunity}
+              missingItems={selectedMissing}
+              claims={claims}
+              readinessProfile={readinessProfile}
+              readinessEvidence={readinessEvidence}
+              sharingGrants={sharingGrants}
+              actionApprovals={actionApprovals}
+              brokerageActive={brokerageActive}
+              approvalBusy={approvalBusy}
+              approvalError={approvalError}
+              readinessBusy={readinessBusy}
+              onTabChange={setActiveDrawerTab}
+              onClose={() => setDrawerOpen(false)}
+              onWidthChange={setDrawerWidth}
+              onStartReadiness={startReadiness}
+              onAttachEvidence={() => openDrawer('files')}
+              onRequestAction={requestExternalAction}
+              onPass={() => void updateSelectedStage('passed')}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => openDrawer('command')}
+              className="absolute bottom-6 right-6 z-30 hidden rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] xl:inline-flex"
+            >
+              <PanelRightOpen className="mr-2 h-4 w-4" />
+              {t('openCommandDrawer')}
+            </button>
+          )}
+	      </div>
 
       {agentOpen ? (
         <aside className="fixed inset-0 z-50 flex bg-background/60 backdrop-blur-sm lg:static lg:z-auto lg:w-[430px] lg:border-l lg:border-border lg:bg-surface">
@@ -677,63 +861,86 @@ function CockpitHero({
   missingCount,
   documentCount,
   latestUpdate,
+  onOpenDrawer,
 }: {
   opportunity: OpportunityRow | null;
   missingCount: number;
   documentCount: number;
   latestUpdate: string | null;
+  onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const title = titleFor(opportunity);
-  const arTitle = arabicTitleFor(opportunity);
   const facts = dealFacts(opportunity);
   const sourceUrl = sourceUrlFor(opportunity);
+  const photos = photoRefsFor(opportunity);
+  const heroPhoto = photos[0] ?? null;
+  const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source', 'original_source_channel']);
   return (
     <Panel className="relative overflow-hidden p-6 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(9,31,32,.92),rgba(8,13,17,.95)_52%,rgba(18,28,17,.92))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]" data-testid="acquisition-cockpit-hero">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,rgba(var(--highlight-rgb,35,215,255),.14),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(var(--accent-rgb,185,255,38),.14),transparent_30%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
-      <div className="grid gap-7 xl:grid-cols-[minmax(0,1.35fr)_430px] xl:items-center">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,.92fr)] xl:items-stretch">
         <div className="relative min-w-0">
           <p className="mb-2 font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
-          <h2 className="max-w-3xl text-4xl font-black leading-[.95] tracking-normal text-text md:text-6xl">
+          <h2 className="line-clamp-2 max-w-4xl text-4xl font-black leading-[.96] tracking-normal text-text md:text-6xl">
             {title || t('emptyCockpitTitle')}
           </h2>
-          {arTitle ? <p className="mt-4 text-xl font-semibold text-text-soft" dir="rtl">{arTitle}</p> : null}
-          <div className="mt-7 max-w-3xl border-l-2 border-accent/60 bg-surface/40 p-5">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
-            <p className="mt-3 text-base leading-7 text-text-soft">
-            {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
-            </p>
-          </div>
           <div className="mt-4 flex flex-wrap gap-2">
+            <TrustPill label={sourceLabel ? humanize(sourceLabel) : t('notSet')} tone="cyan" />
             <TrustPill label={humanize(recommendationFor(opportunity)) || t('notSet')} tone="amber" />
             <TrustPill label={humanize(confidenceFor(opportunity)) || t('notSet')} tone="cyan" />
             {facts.price ? <TrustPill label={facts.price} tone="slate" /> : null}
             {facts.area ? <TrustPill label={facts.area} tone="slate" /> : null}
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
-          {sourceUrl ? (
-            <a
-              href={sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="acquisition-source-link"
-              className="mt-5 inline-flex max-w-full items-center gap-3 rounded-[12px] border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent transition hover:border-accent/50 hover:bg-accent/15"
-            >
-              <ExternalLink className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 truncate">{t('fetchedListing')}: {displayUrl(sourceUrl)}</span>
-            </a>
-          ) : null}
+          <div className="mt-6 max-w-3xl border-l-2 border-accent/60 bg-surface/40 p-5">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
+            <p className="mt-3 text-base leading-7 text-text-soft">
+            {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
+            </p>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button type="button" onClick={() => onOpenDrawer('map')} className="inline-flex items-center gap-2 rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight transition hover:bg-highlight/15">
+              <MapPin className="h-4 w-4" />
+              {t('viewMap')}
+            </button>
+            {sourceUrl ? (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="acquisition-source-link"
+                className="inline-flex max-w-full items-center gap-2 rounded-[12px] border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent transition hover:border-accent/50 hover:bg-accent/15"
+              >
+                <ExternalLink className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 truncate">{t('openListing')}</span>
+              </a>
+            ) : null}
+            <button type="button" onClick={() => onOpenDrawer('evidence')} className="inline-flex items-center gap-2 rounded-[12px] border border-border bg-surface/70 px-4 py-3 text-sm font-semibold text-text transition hover:bg-surface-alt">
+              <ShieldCheck className="h-4 w-4" />
+              {t('showEvidence')}
+            </button>
+          </div>
         </div>
-        <div className="relative grid min-w-0 grid-cols-2 gap-3">
-          <HeroChip label={t('mandateFit')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
-          <HeroChip label={t('confidence')} value={humanize(confidenceFor(opportunity)) || t('notSet')} />
-          <HeroChip label={t('openItems')} value={missingCount.toString()} />
-          <HeroChip label={t('sources')} value={documentCount.toString()} />
-          <div className="col-span-2 rounded-[20px] border border-highlight/25 bg-highlight/10 p-5">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('acquisitionVector')}</p>
-            <div className="mt-5 h-8 rounded-full bg-[linear-gradient(90deg,var(--accent),rgba(var(--highlight-rgb,35,215,255),.55),rgba(255,255,255,.12))] shadow-[0_0_24px_rgba(var(--highlight-rgb,35,215,255),.14)]" />
-            <p className="mt-4 text-sm text-text-soft">{t('acquisitionVectorPath')}</p>
+
+        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+          {heroPhoto ? (
+            <img
+              src={heroPhoto}
+              alt={title || t('emptyCockpitTitle')}
+              data-testid="acquisition-hero-photo"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-4">
+            <HeroChip label={t('mandateFit')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
+            <HeroChip label={t('confidence')} value={humanize(confidenceFor(opportunity)) || t('notSet')} />
+            <HeroChip label={t('openItems')} value={missingCount.toString()} />
+            <HeroChip label={t('sources')} value={documentCount.toString()} />
           </div>
         </div>
       </div>
@@ -750,16 +957,116 @@ function HeroChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MandatePulse({
+  candidates,
+  pursue,
+  openItems,
+  confidence,
+}: {
+  candidates: number;
+  pursue: number;
+  openItems: number;
+  confidence: string;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <Panel className="p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{t('mandatePulse')}</p>
+        <Search className="h-4 w-4 text-accent" />
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <MetricCard icon={Search} label={t('candidates')} value={candidates.toString()} compact />
+        <MetricCard icon={TrendingUp} label={t('pursue')} value={pursue.toString()} hot compact />
+        <MetricCard icon={ClipboardList} label={t('openItems')} value={openItems.toString()} compact />
+        <MetricCard icon={BarChart3} label={t('confidence')} value={confidence} compact />
+      </div>
+    </Panel>
+  );
+}
+
+function ProgressTracker({
+  opportunity,
+  missingItems,
+  readinessProfile,
+  brokerageActive,
+  onOpenDrawer,
+  onRequestVisit,
+}: {
+  opportunity: OpportunityRow | null;
+  missingItems: string[];
+  readinessProfile: BuyerReadinessProfileRow | null;
+  brokerageActive: boolean;
+  onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
+  onRequestVisit: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const steps = [
+    t('progress.mandate'),
+    t('progress.candidate'),
+    t('progress.screened'),
+    t('progress.visit'),
+    t('progress.diligence'),
+    t('progress.offer'),
+    t('progress.close'),
+  ];
+  const current = progressStepIndexForStage(opportunity?.stage);
+  const blockers = [
+    !readinessProfile ? t('progress.blockerReadiness') : null,
+    !brokerageActive ? t('progress.blockerBrokerage') : null,
+    missingItems.length > 0 ? t('progress.blockerMissing', { count: missingItems.length }) : null,
+  ].filter(Boolean) as string[];
+  const nextAction = !readinessProfile
+    ? t('progress.nextReadiness')
+    : missingItems.length > 0
+      ? t('progress.nextDiligence')
+      : !brokerageActive
+        ? t('progress.nextBrokerage')
+        : current < 3
+          ? t('progress.nextVisit')
+          : t('progress.nextOffer');
+  return (
+    <Panel className="p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('progress.title')}</p>
+          <h3 className="mt-1 text-xl font-semibold text-text">{nextAction}</h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {blockers.length ? blockers.map((blocker) => (
+            <span key={blocker} className="rounded-[10px] border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-medium text-text-soft">{blocker}</span>
+          )) : (
+            <span className="rounded-[10px] border border-success/25 bg-success/10 px-3 py-2 text-xs font-medium text-success">{t('progress.noBlockers')}</span>
+          )}
+        </div>
+      </div>
+      <div className="mt-5 grid gap-2 md:grid-cols-7">
+        {steps.map((step, index) => {
+          const reached = index <= current;
+          const active = index === current;
+          return (
+            <div key={step} className={cn('rounded-[12px] border px-3 py-3', reached ? 'border-accent/35 bg-accent/10' : 'border-border bg-surface-alt', active && 'shadow-[0_0_22px_var(--accent-soft)]')}>
+              <div className={cn('mb-2 h-2 rounded-full', reached ? 'bg-accent' : 'bg-border')} />
+              <p className={cn('text-xs font-semibold', reached ? 'text-text' : 'text-text-muted')}>{step}</p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onOpenDrawer(!readinessProfile ? 'files' : missingItems.length ? 'evidence' : 'command')} className="rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-[color:var(--accent-text)]">
+          {t('progress.primaryAction')}
+        </button>
+        <button type="button" onClick={onRequestVisit} disabled={!opportunity || !readinessProfile} className="rounded-[12px] border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
+          {t('scheduleVisit')}
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
 function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (module: CockpitModule) => void }) {
   const t = useTranslations('workspaceCockpitPage.modules');
-  const modules: CockpitModule[] = ['evidence', 'model', 'renovation', 'openItems', 'comps'];
-  const arLabels: Record<CockpitModule, string> = {
-    evidence: 'الأدلة',
-    model: 'السيناريوهات',
-    renovation: 'التجديد',
-    openItems: 'العناصر',
-    comps: 'السوق',
-  };
+  const modules: CockpitModule[] = ['overview', 'model', 'openItems', 'renovation', 'outreach', 'offer'];
   return (
     <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#07101A]/95">
       {modules.map((module) => {
@@ -774,20 +1081,27 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
               'inline-flex min-h-[54px] min-w-fit items-center gap-2 rounded-[10px] px-4 text-left text-sm font-semibold transition',
               selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
             )}
-          >
-            <Icon className="h-4 w-4" />
-            <span className="grid leading-tight">
+            >
+              <Icon className="h-4 w-4" />
               <span>{t(module)}</span>
-              <span className={cn('text-[11px] font-medium', selected ? 'text-[color:var(--accent-text)] opacity-70' : 'text-text-muted')} dir="rtl">{arLabels[module]}</span>
-            </span>
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
     </div>
   );
 }
 
-function EvidenceModule({ documentCount, opportunity }: { documentCount: number; opportunity: OpportunityRow | null }) {
+function OverviewModule({
+  documentCount,
+  opportunity,
+  claims,
+  onOpenDrawer,
+}: {
+  documentCount: number;
+  opportunity: OpportunityRow | null;
+  claims: AcquisitionClaimRow[];
+  onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
+}) {
   const t = useTranslations('workspaceCockpitPage');
   const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source']);
   const sourceUrl = sourceUrlFor(opportunity);
@@ -797,16 +1111,16 @@ function EvidenceModule({ documentCount, opportunity }: { documentCount: number;
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('evidenceLayer')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('evidenceTruthTitle')}</h3>
         <div className="mt-5 space-y-3">
-          <TrustRow label={t('trust.verified')} body={t('sourceDocuments', { count: documentCount })} tone="emerald" />
-          <TrustRow label={t('trust.marketSignal')} body={sourceLabel || t('marketSignalEmpty')} tone="cyan" />
-          <TrustRow label={t('trust.counterparty')} body={metadataString(opportunity, ['broker_note', 'counterparty_note']) || t('counterpartyEmpty')} tone="amber" />
-          <TrustRow label={t('trust.uncertain')} body={missingInfoList(opportunity?.missing_info_json)[0] || t('uncertainEmpty')} tone="rose" />
+          <FactCard label={t('trust.verified')} body={t('sourceDocuments', { count: documentCount })} basis="verified_source" onEvidence={() => onOpenDrawer('evidence')} info={t('info.verified')} />
+          <FactCard label={t('trust.marketSignal')} body={sourceLabel || t('marketSignalEmpty')} basis="market_signal" onEvidence={() => onOpenDrawer('evidence')} info={t('info.marketSignal')} />
+          <FactCard label={t('trust.counterparty')} body={metadataString(opportunity, ['broker_note', 'counterparty_note']) || t('counterpartyEmpty')} basis="counterparty_provided" onEvidence={() => onOpenDrawer('evidence')} info={t('info.counterparty')} />
+          <FactCard label={t('trust.uncertain')} body={missingInfoList(opportunity?.missing_info_json)[0] || t('uncertainEmpty')} basis={missingInfoList(opportunity?.missing_info_json).length ? 'contradicted' : 'uncertain'} onEvidence={() => onOpenDrawer('evidence')} info={t('info.uncertain')} />
         </div>
       </Panel>
       <Panel className="p-5">
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('sourceDrawer')}</p>
-        <h3 className="mt-2 text-2xl font-semibold text-text">{t('trust.verified')}</h3>
-        <p className="mt-3 text-sm leading-6 text-text">{t('evidenceBody')}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-text">{t('overviewClaimTitle')}</h3>
+        <p className="mt-3 text-sm leading-6 text-text">{claims.length ? t('overviewClaimBody', { count: claims.length }) : t('evidenceBody')}</p>
         {sourceUrl ? (
           <a
             href={sourceUrl}
@@ -826,20 +1140,44 @@ function EvidenceModule({ documentCount, opportunity }: { documentCount: number;
           <p className="text-xs text-text-muted">{t('sources')}</p>
           <p className="mt-1 text-sm text-text">{documentCount}</p>
         </div>
+        <button type="button" onClick={() => onOpenDrawer('evidence')} className="mt-3 w-full rounded-[14px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight hover:bg-highlight/15">
+          {t('openEvidenceDrawer')}
+        </button>
       </Panel>
     </div>
   );
 }
 
-function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState | null; onScenarioChange: (next: ScenarioState) => void }) {
+function ModelModule({
+  opportunity,
+  scenario,
+  saving,
+  onScenarioChange,
+  onSave,
+}: {
+  opportunity: OpportunityRow | null;
+  scenario: ScenarioState | null;
+  saving: boolean;
+  onScenarioChange: (next: ScenarioState) => void;
+  onSave: (next: ScenarioState) => Promise<void>;
+}) {
   const t = useTranslations('workspaceCockpitPage');
   if (!scenario) {
+    const seed = seedScenarioFromOpportunity(opportunity);
     return (
       <Panel className="grid min-h-[380px] place-items-center p-8 text-center">
         <div>
           <Gauge className="mx-auto h-12 w-12 text-accent" />
           <h3 className="mt-4 text-2xl font-semibold text-text">{t('modelEmptyTitle')}</h3>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-text-soft">{t('modelEmptyBody')}</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={() => onScenarioChange(seed)} className="rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)]">
+              {t('addAssumptions')}
+            </button>
+            <button type="button" onClick={() => onScenarioChange(seed)} className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
+              {t('useListingFacts')}
+            </button>
+          </div>
         </div>
       </Panel>
     );
@@ -860,6 +1198,14 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
           <ScenarioSlider label={t('holdPeriod')} value={scenario.hold} min={1} max={10} step={1} format={(v) => `${v} ${t('years')}`} onChange={set('hold')} />
           <ScenarioSlider label={t('appreciation')} value={scenario.appreciation} min={0} max={10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
         </div>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void onSave(scenario)}
+          className="mt-4 w-full rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? t('savingAssumptions') : t('saveAssumptions')}
+        </button>
       </Panel>
       <div className="space-y-5">
         <div className="grid min-w-0 gap-3 md:grid-cols-2">
@@ -878,7 +1224,7 @@ function ModelModule({ scenario, onScenarioChange }: { scenario: ScenarioState |
   );
 }
 
-function RenovationModule({ opportunity }: { opportunity: OpportunityRow | null }) {
+function RenovationModule({ opportunity, onRequestQuote }: { opportunity: OpportunityRow | null; onRequestQuote: () => void }) {
   const t = useTranslations('workspaceCockpitPage');
   const capex = metadataNumber(opportunity, ['renovation_budget', 'capex', 'estimated_capex']);
   const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
@@ -895,14 +1241,14 @@ function RenovationModule({ opportunity }: { opportunity: OpportunityRow | null 
         <DecisionBlock icon={Wrench} title={t('capexTitle')} body={capex === null ? t('capexBody') : formatSAR.format(capex)} />
         <DecisionBlock icon={AlertTriangle} title={t('decisionBlockers')} body={condition || t('renovationEmpty')} />
       </div>
-      <button className="mt-5 w-full rounded-3xl border border-accent/25 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent hover:bg-accent/15">
+      <button type="button" onClick={onRequestQuote} className="mt-5 w-full rounded-3xl border border-accent/25 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent hover:bg-accent/15">
         {t('requestQuotePack')}
       </button>
     </Panel>
   );
 }
 
-function OpenItemsModule({ items }: { items: string[] }) {
+function OpenItemsModule({ items, onRequestItem }: { items: string[]; onRequestItem: (item: string) => void }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
     <Panel className="p-5">
@@ -913,10 +1259,10 @@ function OpenItemsModule({ items }: { items: string[] }) {
           <p className="bg-surface-alt p-4 text-sm text-text-soft">{t('openItemsEmpty')}</p>
         ) : (
           items.map((item, index) => (
-            <div key={`${item}-${index}`} className="grid gap-3 border-b border-border bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr_120px]">
+            <div key={`${item}-${index}`} className="grid gap-3 border-b border-border bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr_150px]">
               <p className="font-mono text-xs text-text-muted">#{index + 1}</p>
               <p className="font-medium text-text">{item}</p>
-              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-center text-xs text-accent">{t('openStatus')}</span>
+              <button type="button" onClick={() => onRequestItem(item)} className="rounded-full bg-accent/10 px-2.5 py-1 text-center text-xs font-semibold text-accent hover:bg-accent/15">{t('requestFromBroker')}</button>
             </div>
           ))
         )}
@@ -934,6 +1280,77 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
       <h3 className="mt-1 text-xl font-semibold text-text">{t('compsPressureTitle')}</h3>
       <div className="mt-5 rounded-3xl border border-border bg-surface-alt p-4">
         <p className="text-sm leading-6 text-text">{compsNote || t('compsEmpty')}</p>
+      </div>
+    </Panel>
+  );
+}
+
+function OutreachModule({
+  opportunity,
+  approvals,
+  approvalBusy,
+  onRequestAction,
+}: {
+  opportunity: OpportunityRow | null;
+  approvals: ExternalActionApprovalRow[];
+  approvalBusy: string | null;
+  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const brokerNote = metadataString(opportunity, ['broker_note', 'counterparty_note', 'contact_access']);
+  return (
+    <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+      <Panel className="p-5">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('outreach.title')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('outreach.heading')}</h3>
+        <p className="mt-3 text-sm leading-6 text-text-soft">{brokerNote || t('outreach.body')}</p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button type="button" disabled={!opportunity || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_outreach', { request_kind: 'broker_questions' })} className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:opacity-60">
+            {t('outreach.requestQuestions')}
+          </button>
+          <button type="button" disabled={!opportunity || Boolean(approvalBusy)} onClick={() => void onRequestAction('share_readiness_signal')} className="rounded-[14px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight disabled:opacity-60">
+            {t('outreach.shareReadiness')}
+          </button>
+        </div>
+      </Panel>
+      <Panel className="p-5">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('buyerReadiness.approvalsTitle')}</p>
+        <div className="mt-4 space-y-3">
+          {approvals.length === 0 ? (
+            <p className="text-sm leading-6 text-text-soft">{t('buyerReadiness.noApprovals')}</p>
+          ) : approvals.slice(0, 5).map((item) => (
+            <RightPaneRow key={item.id} label={humanize(item.action_type) || t('buyerReadiness.actionFallback')} value={humanize(item.approval_status) || t('notSet')} tone={statusTone(item.approval_status)} />
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function OfferModule({
+  opportunity,
+  brokerageActive,
+  approvalBusy,
+  onRequestAction,
+}: {
+  opportunity: OpportunityRow | null;
+  brokerageActive: boolean;
+  approvalBusy: string | null;
+  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <Panel className="p-5">
+      <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('offer.title')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{t('offer.heading')}</h3>
+      <p className="mt-3 text-sm leading-6 text-text-soft">{brokerageActive ? t('offer.readyBody') : t('brokerageGateHint')}</p>
+      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+        <button type="button" disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_offer')} className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-55">
+          {t('offer.sendOffer')}
+        </button>
+        <button type="button" disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_negotiation_message')} className="rounded-[14px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
+          {t('proceedNegotiate')}
+        </button>
       </div>
     </Panel>
   );
@@ -1072,6 +1489,399 @@ function VisualCompanion({
   );
 }
 
+function WorkspaceCommandDrawer({
+  workspaceId,
+  activeTab,
+  width,
+  events,
+  latestUpdate,
+  documentCount,
+  opportunity,
+  missingItems,
+  claims,
+  readinessProfile,
+  readinessEvidence,
+  sharingGrants,
+  actionApprovals,
+  brokerageActive,
+  approvalBusy,
+  approvalError,
+  readinessBusy,
+  onTabChange,
+  onClose,
+  onWidthChange,
+  onStartReadiness,
+  onAttachEvidence,
+  onRequestAction,
+  onPass,
+}: {
+  workspaceId: string;
+  activeTab: WorkspaceDrawerTab;
+  width: number;
+  events: AcquisitionEventRow[];
+  latestUpdate: string | null;
+  documentCount: number;
+  opportunity: OpportunityRow | null;
+  missingItems: string[];
+  claims: AcquisitionClaimRow[];
+  readinessProfile: BuyerReadinessProfileRow | null;
+  readinessEvidence: BuyerReadinessEvidenceRow[];
+  sharingGrants: DocumentSharingGrantRow[];
+  actionApprovals: ExternalActionApprovalRow[];
+  brokerageActive: boolean;
+  approvalBusy: string | null;
+  approvalError: string | null;
+  readinessBusy: boolean;
+  onTabChange: (tab: WorkspaceDrawerTab) => void;
+  onClose: () => void;
+  onWidthChange: (width: number) => void;
+  onStartReadiness: () => void;
+  onAttachEvidence: () => void;
+  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
+  onPass: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const tabs: { key: WorkspaceDrawerTab; label: string; icon: LucideIcon }[] = [
+    { key: 'command', label: t('drawer.command'), icon: MessageSquare },
+    { key: 'evidence', label: t('drawer.evidence'), icon: ShieldCheck },
+    { key: 'activity', label: t('drawer.activity'), icon: TrendingUp },
+    { key: 'files', label: t('drawer.files'), icon: FileText },
+    { key: 'consent', label: t('drawer.consent'), icon: CheckCircle2 },
+    { key: 'map', label: t('drawer.map'), icon: Map },
+  ];
+
+  const handleDragStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dragStateRef.current = { startX: event.clientX, startWidth: width };
+    setIsDragging(true);
+    const isRtl = document.documentElement.dir === 'rtl';
+    const onMove = (moveEvent: PointerEvent) => {
+      if (!dragStateRef.current) return;
+      const delta = moveEvent.clientX - dragStateRef.current.startX;
+      const raw = isRtl ? dragStateRef.current.startWidth + delta : dragStateRef.current.startWidth - delta;
+      onWidthChange(Math.min(Math.max(raw, 340), window.innerWidth * 0.75));
+    };
+    const onUp = () => {
+      dragStateRef.current = null;
+      setIsDragging(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [onWidthChange, width]);
+
+  return (
+    <aside
+      className="fixed inset-0 z-40 flex bg-background/45 backdrop-blur-sm xl:absolute xl:inset-y-0 xl:right-0 xl:left-auto xl:bg-transparent xl:backdrop-blur-0"
+      data-testid="acquisition-command-drawer"
+    >
+      <button type="button" aria-label={t('close')} onClick={onClose} className="hidden flex-1 xl:block" />
+      <div
+        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-border bg-surface shadow-2xl shadow-[color:var(--border)] xl:max-w-none"
+        style={{ width: `${width}px` } as CSSProperties}
+      >
+        <div onPointerDown={handleDragStart} aria-hidden="true" className="absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize touch-none items-center justify-center xl:flex">
+          <div className={cn('h-10 w-1 rounded-full transition-colors', isDragging ? 'bg-accent' : 'bg-border hover:bg-accent/60')} />
+        </div>
+        <div className="flex items-center justify-between border-b border-border bg-surface-alt px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-text">{t('drawer.title')}</p>
+            <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('close')}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-1 border-b border-border bg-background/60 p-2">
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onTabChange(key)}
+              className={cn('inline-flex min-h-10 items-center justify-center gap-1 rounded-[9px] px-2 text-xs font-semibold transition', activeTab === key ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text')}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {activeTab === 'command' ? (
+            <div className="space-y-4">
+              <BuyerReadinessPanel
+                profile={readinessProfile}
+                evidence={readinessEvidence}
+                grants={sharingGrants}
+                approvals={actionApprovals}
+                busy={readinessBusy}
+                onStart={onStartReadiness}
+                onAttachEvidence={onAttachEvidence}
+                onShareReadiness={() => void onRequestAction('share_readiness_signal')}
+              />
+              <Panel className="sticky bottom-0 p-3">
+                <button
+                  className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt disabled:cursor-not-allowed disabled:opacity-55"
+                  disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)}
+                  onClick={() => void onRequestAction('send_negotiation_message')}
+                >
+                  {t('proceedNegotiate')}
+                </button>
+                {!brokerageActive ? (
+                  <p className="mt-2 rounded-[10px] border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-text-soft">
+                    {t('brokerageGateHint')}
+                  </p>
+                ) : null}
+                {approvalError ? (
+                  <p className="mt-2 rounded-[10px] border border-error/25 bg-error/10 px-3 py-2 text-xs leading-5 text-error">
+                    {approvalError}
+                  </p>
+                ) : null}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55"
+                    disabled={!opportunity || !readinessProfile || Boolean(approvalBusy)}
+                    onClick={() => void onRequestAction('schedule_visit')}
+                  >
+                    {t('scheduleVisit')}
+                  </button>
+                  <button className="rounded-[12px] border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity || Boolean(approvalBusy)} onClick={onPass}>{t('pass')}</button>
+                </div>
+              </Panel>
+            </div>
+          ) : null}
+
+          {activeTab === 'evidence' ? (
+            <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
+          ) : null}
+
+          {activeTab === 'activity' ? (
+            <DrawerActivity events={events} latestUpdate={latestUpdate} />
+          ) : null}
+
+          {activeTab === 'files' ? (
+            <DrawerFiles documentCount={documentCount} evidence={readinessEvidence} />
+          ) : null}
+
+          {activeTab === 'consent' ? (
+            <DrawerConsent grants={sharingGrants} approvals={actionApprovals} />
+          ) : null}
+
+          {activeTab === 'map' ? (
+            <DrawerMap opportunity={opportunity} />
+          ) : null}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function claimValue(claim: AcquisitionClaimRow): string {
+  const value = claim.value_json?.value ?? claim.value_json;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (value && typeof value === 'object') return JSON.stringify(value);
+  return '';
+}
+
+function firstEvidenceRef(claim: AcquisitionClaimRow): Record<string, unknown> | null {
+  const refs = claim.evidence_refs_json;
+  if (Array.isArray(refs) && refs[0] && typeof refs[0] === 'object') return refs[0] as Record<string, unknown>;
+  if (refs && typeof refs === 'object') return refs as Record<string, unknown>;
+  return null;
+}
+
+function evidenceHrefForClaim(claim: AcquisitionClaimRow, workspaceId: string): string | null {
+  const ref = firstEvidenceRef(claim);
+  if (!ref) return null;
+  const sourceUrl = typeof ref.source_url === 'string' ? ref.source_url : null;
+  if (sourceUrl && /^https?:\/\//i.test(sourceUrl)) return sourceUrl;
+  const documentId = typeof ref.document_id === 'string' ? ref.document_id : typeof ref.source_document_id === 'string' ? ref.source_document_id : null;
+  if (!documentId) return null;
+  const params = new URLSearchParams();
+  const page = typeof ref.page === 'number' ? ref.page : typeof ref.page_number === 'number' ? ref.page_number : null;
+  const quote = typeof ref.quote === 'string' ? ref.quote : typeof ref.snippet === 'string' ? ref.snippet : null;
+  const bbox = ref.bbox && typeof ref.bbox === 'object' ? ref.bbox as Record<string, unknown> : null;
+  if (page) params.set('page', String(page));
+  if (quote) params.set('quote', quote);
+  if (bbox && ['x', 'y', 'width', 'height'].every((key) => typeof bbox[key] === 'number')) {
+    params.set('bbox', `${bbox.x},${bbox.y},${bbox.width},${bbox.height}`);
+  }
+  return `/workspaces/${encodeURIComponent(workspaceId)}/documents/${encodeURIComponent(documentId)}${params.size ? `?${params.toString()}` : ''}`;
+}
+
+function DrawerEvidence({
+  workspaceId,
+  opportunity,
+  claims,
+  documentCount,
+  missingItems,
+}: {
+  workspaceId: string;
+  opportunity: OpportunityRow | null;
+  claims: AcquisitionClaimRow[];
+  documentCount: number;
+  missingItems: string[];
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const sourceUrl = sourceUrlFor(opportunity);
+  return (
+    <div className="space-y-4">
+      <Panel className="p-5">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.evidence')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('evidenceDrawerTitle')}</h3>
+        <p className="mt-2 text-sm leading-6 text-text-soft">{t('sourceDocuments', { count: documentCount })}</p>
+        {sourceUrl ? (
+          <a href={sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex max-w-full items-center gap-2 rounded-[12px] border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent">
+            <ExternalLink className="h-4 w-4" />
+            <span className="truncate">{displayUrl(sourceUrl)}</span>
+          </a>
+        ) : null}
+      </Panel>
+      {claims.length === 0 ? (
+        <Panel className="p-5">
+          <p className="text-sm leading-6 text-text-soft">{t('noClaims')}</p>
+        </Panel>
+      ) : claims.map((claim) => {
+        const href = evidenceHrefForClaim(claim, workspaceId);
+        return (
+          <Panel key={claim.id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-text">{humanize(claim.fact_key) || t('factFallback')}</p>
+                <p className="mt-1 break-words text-sm leading-6 text-text-soft">{claimValue(claim) || t('notSet')}</p>
+                <p className="mt-2 text-xs text-text-muted">{[humanize(claim.basis_label), claim.source_channel, claim.confidence ? `${Math.round(claim.confidence * 100)}%` : null].filter(Boolean).join(' · ')}</p>
+              </div>
+              <ConfidenceDot basis={claim.basis_label} />
+            </div>
+            {href ? (
+              <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-[10px] border border-highlight/25 bg-highlight/10 px-3 py-2 text-xs font-semibold text-highlight">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {t('showSource')}
+              </a>
+            ) : (
+              <p className="mt-3 rounded-[10px] border border-border bg-surface-alt px-3 py-2 text-xs text-text-muted">{t('noSourceAttached')}</p>
+            )}
+          </Panel>
+        );
+      })}
+      {missingItems.length ? (
+        <Panel className="p-5">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('decisionBlockers')}</p>
+          <div className="mt-3 space-y-2">
+            {missingItems.slice(0, 6).map((item) => <p key={item} className="rounded-[10px] bg-warning/10 px-3 py-2 text-sm text-text">{item}</p>)}
+          </div>
+        </Panel>
+      ) : null}
+    </div>
+  );
+}
+
+function DrawerActivity({ events, latestUpdate }: { events: AcquisitionEventRow[]; latestUpdate: string | null }) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('coordinationLog')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{t('dealCommandChannel')}</h3>
+      <p className="mb-3 mt-2 text-xs text-text-muted">{latestUpdate ? t('latestUpdate', { time: formatRelativeTime(latestUpdate) }) : t('noActivity')}</p>
+      <div className="space-y-3">
+        {events.length === 0 ? (
+          <p className="text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
+        ) : events.map((event) => (
+          <div key={event.id} className="rounded-[14px] border border-border bg-surface-alt p-4">
+            <div className="mb-2 flex justify-between gap-3">
+              <p className="text-sm font-medium text-text">{humanize(event.event_type)}</p>
+              {event.created_at ? <span className="text-xs text-text-muted">{formatRelativeTime(event.created_at)}</span> : null}
+            </div>
+            {event.body_text ? <p className="text-sm leading-6 text-text">{event.body_text}</p> : null}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function DrawerFiles({ documentCount, evidence }: { documentCount: number; evidence: BuyerReadinessEvidenceRow[] }) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.files')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{t('filesDrawerTitle')}</h3>
+      <p className="mt-2 text-sm leading-6 text-text-soft">{t('sourceDocuments', { count: documentCount })}</p>
+      <ReadinessList
+        title={t('buyerReadiness.evidenceTitle')}
+        empty={t('buyerReadiness.noEvidence')}
+        items={evidence.map((item) => ({
+          id: item.id,
+          label: humanize(item.evidence_type) || t('buyerReadiness.evidenceFallback'),
+          meta: [humanize(item.status), humanize(item.sensitivity_level)].filter(Boolean).join(' · '),
+          tone: statusTone(item.status),
+        }))}
+      />
+    </Panel>
+  );
+}
+
+function DrawerConsent({ grants, approvals }: { grants: DocumentSharingGrantRow[]; approvals: ExternalActionApprovalRow[] }) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <div className="space-y-4">
+      <Panel className="p-5">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.consent')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('consentDrawerTitle')}</h3>
+        <ReadinessList
+          title={t('buyerReadiness.sharingTitle')}
+          empty={t('buyerReadiness.noSharing')}
+          items={grants.map((item) => ({
+            id: item.id,
+            label: humanize(item.share_mode) || t('buyerReadiness.shareFallback'),
+            meta: [humanize(item.allowed_action), item.revoked_at ? t('buyerReadiness.revoked') : item.expires_at ? t('buyerReadiness.expires', { time: formatRelativeTime(item.expires_at) }) : t('buyerReadiness.noExpiry')].filter(Boolean).join(' · '),
+            tone: item.revoked_at ? 'warn' : 'lime',
+          }))}
+        />
+      </Panel>
+      <Panel className="p-5">
+        <ReadinessList
+          title={t('buyerReadiness.approvalsTitle')}
+          empty={t('buyerReadiness.noApprovals')}
+          items={approvals.map((item) => ({
+            id: item.id,
+            label: humanize(item.action_type) || t('buyerReadiness.actionFallback'),
+            meta: humanize(item.approval_status) || '',
+            tone: statusTone(item.approval_status),
+          }))}
+        />
+      </Panel>
+    </div>
+  );
+}
+
+function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const title = titleFor(opportunity) || t('emptyCockpitTitle');
+  const sourceLabel = metadataString(opportunity, ['district', 'city', 'source', 'source_label', 'listing_source']);
+  return (
+    <Panel className="p-4">
+      <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.map')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{title}</h3>
+      <div className="relative mt-4 min-h-[360px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+        <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
+        <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
+        <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
+        <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
+          {scoreFor(opportunity) ?? '--'}
+        </div>
+        <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-border bg-background/80 p-3 backdrop-blur">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
+          <p className="mt-1 text-sm font-semibold text-text">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-text-soft">{sourceLabel || t('marketSignalEmpty')}</p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 function RightPane({
   activeModule,
   events,
@@ -1107,11 +1917,12 @@ function RightPane({
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const titleKey = {
-    evidence: 'rightPaneTitles.evidence',
+    overview: 'rightPaneTitles.evidence',
     model: 'rightPaneTitles.model',
     renovation: 'rightPaneTitles.renovation',
     openItems: 'rightPaneTitles.openItems',
-    comps: 'rightPaneTitles.comps',
+    outreach: 'rightPaneTitles.openItems',
+    offer: 'rightPaneTitles.model',
   }[activeModule];
 
   return (
@@ -1216,11 +2027,19 @@ function BuyerReadinessPanel({
   evidence,
   grants,
   approvals,
+  busy = false,
+  onStart,
+  onAttachEvidence,
+  onShareReadiness,
 }: {
   profile: BuyerReadinessProfileRow | null;
   evidence: BuyerReadinessEvidenceRow[];
   grants: DocumentSharingGrantRow[];
   approvals: ExternalActionApprovalRow[];
+  busy?: boolean;
+  onStart?: () => void;
+  onAttachEvidence?: () => void;
+  onShareReadiness?: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   if (!profile) {
@@ -1234,6 +2053,14 @@ function BuyerReadinessPanel({
           <ShieldCheck className="h-5 w-5 text-highlight" />
         </div>
         <p className="text-sm leading-6 text-text-soft">{t('buyerReadiness.emptyBody')}</p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button type="button" disabled={busy} onClick={onStart} className="rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60">
+            {busy ? t('buyerReadiness.starting') : t('buyerReadiness.start')}
+          </button>
+          <button type="button" onClick={onAttachEvidence} className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
+            {t('buyerReadiness.attachEvidence')}
+          </button>
+        </div>
       </Panel>
     );
   }
@@ -1263,6 +2090,14 @@ function BuyerReadinessPanel({
       </div>
 
       <div className="mt-5 grid gap-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button type="button" onClick={onAttachEvidence} className="rounded-[12px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight">
+            {t('buyerReadiness.attachEvidence')}
+          </button>
+          <button type="button" onClick={onShareReadiness} className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
+            {t('outreach.shareReadiness')}
+          </button>
+        </div>
         <ReadinessList
           title={t('buyerReadiness.evidenceTitle')}
           empty={t('buyerReadiness.noEvidence')}
@@ -1360,6 +2195,73 @@ function RightPaneRow({ label, value, tone = 'neutral' }: { label: string; value
   );
 }
 
+function basisTone(value: string | null | undefined): 'green' | 'cyan' | 'amber' | 'red' | 'grey' {
+  switch (value) {
+    case 'verified_source':
+    case 'verified':
+      return 'green';
+    case 'counterparty_provided':
+    case 'market_signal':
+      return 'cyan';
+    case 'modeled_output':
+    case 'user_assumption':
+      return 'amber';
+    case 'contradicted':
+    case 'rejected':
+      return 'red';
+    default:
+      return 'grey';
+  }
+}
+
+function ConfidenceDot({ basis }: { basis: string | null | undefined }) {
+  const styles = {
+    green: 'border-success/30 bg-success text-success',
+    cyan: 'border-highlight/30 bg-highlight text-highlight',
+    amber: 'border-accent/30 bg-accent text-accent',
+    red: 'border-error/30 bg-error text-error',
+    grey: 'border-border bg-text-muted text-text-muted',
+  }[basisTone(basis)];
+  return <span className={cn('mt-1 h-3 w-3 shrink-0 rounded-full border shadow-[0_0_14px_currentColor]', styles)} />;
+}
+
+function FactCard({
+  label,
+  body,
+  basis,
+  info,
+  onEvidence,
+}: {
+  label: string;
+  body: string;
+  basis: string;
+  info: string;
+  onEvidence: () => void;
+}) {
+  return (
+    <div className="w-full rounded-[16px] border border-border bg-surface-alt p-4 text-left">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ConfidenceDot basis={basis} />
+          <span className="rounded-[6px] border border-border bg-background/40 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-text">{label}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={onEvidence} className="rounded-[8px] border border-highlight/25 bg-highlight/10 p-1.5 text-highlight" aria-label="Evidence">
+            <ShieldCheck className="h-3.5 w-3.5" />
+          </button>
+          <span className="group relative rounded-[8px] border border-border bg-background/40 p-1.5 text-text-muted">
+            <HelpCircle className="h-3.5 w-3.5" />
+            <span className="pointer-events-none absolute right-0 top-full z-20 mt-2 hidden w-56 rounded-[10px] border border-border bg-surface p-3 text-xs leading-5 text-text shadow-xl group-hover:block">
+              {info}
+            </span>
+          </span>
+        </div>
+      </div>
+      <p className="text-sm leading-6 text-text">{body}</p>
+    </div>
+  );
+}
+
 function TrustRow({ label, body, tone }: { label: string; body: string; tone: 'emerald' | 'cyan' | 'amber' | 'rose' }) {
   const styles = {
     emerald: 'border-success/30 bg-success/10 text-success',
@@ -1412,12 +2314,12 @@ function OutputMetric({ label, value, hot = false }: { label: string; value: str
   );
 }
 
-function MetricCard({ icon: Icon, label, value, hot = false }: { icon: LucideIcon; label: string; value: string; hot?: boolean }) {
+function MetricCard({ icon: Icon, label, value, hot = false, compact = false }: { icon: LucideIcon; label: string; value: string; hot?: boolean; compact?: boolean }) {
   return (
-    <Panel className={cn('p-4', hot && 'border-accent/25 bg-accent/10')}>
+    <Panel className={cn(compact ? 'p-3' : 'p-4', hot && 'border-accent/25 bg-accent/10')}>
       <Icon className="h-4 w-4 text-accent" />
       <p className="mt-3 truncate text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
-      <p className="mt-1 truncate text-2xl font-semibold text-text">{value}</p>
+      <p className={cn('mt-1 truncate font-semibold text-text', compact ? 'text-xl' : 'text-2xl')}>{value}</p>
     </Panel>
   );
 }
