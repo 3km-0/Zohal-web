@@ -23,6 +23,19 @@ const BROWSER_WORKER_URL = String(
 
 const ALLOWED_SOURCES = new Set(["aqar", "bayut", "haraj", "developer_page", "broker_page"]);
 const MVP_SOURCES = ["aqar", "bayut"];
+const OPPORTUNITY_SOURCE_CHANNELS = new Set([
+  "whatsapp",
+  "aqar",
+  "bayut",
+  "haraj",
+  "user_provided_listing",
+  "developer_page",
+  "broker_page",
+  "broker_whatsapp",
+  "manual_operator",
+  "operator",
+  "api",
+]);
 const CANDIDATE_STATUSES = new Set([
   "submitted",
   "screening",
@@ -40,13 +53,33 @@ const OPPORTUNITY_STAGES = new Set([
   "workspace_created",
   "watch",
   "pursue",
+  "visit_requested",
+  "quote_requested",
   "negotiation",
   "offer",
+  "offer_drafted",
+  "offer_submitted",
   "formal_diligence",
   "passed",
   "closed",
   "archived",
 ]);
+const READINESS_LEVEL_MIN = 0;
+const READINESS_LEVEL_MAX = 5;
+const KYC_STATES = new Set(["not_started", "basic_verified", "buyer_verified", "brokerage_ready", "restricted", "escalated"]);
+const BUYER_TYPES = new Set(["individual", "company", "family_office", "other"]);
+const EVIDENCE_STATUSES = new Set(["pending", "self_declared", "verified", "rejected", "expired", "revoked"]);
+const ACTION_TYPES_REQUIRING_BROKERAGE = new Set(["send_outreach", "send_offer", "send_negotiation_message"]);
+const EXTERNAL_ACTION_TYPES = new Set([
+  "send_outreach",
+  "share_readiness_signal",
+  "share_document",
+  "schedule_visit",
+  "send_offer",
+  "send_negotiation_message",
+]);
+const HIGH_RISK_SEVERITIES = new Set(["high", "critical"]);
+const RESOLVED_FLAG_STATUSES = new Set(["resolved", "waived"]);
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -115,12 +148,8 @@ function mapDecisionToCandidateStatus(decision) {
 }
 
 function opportunitySourceChannelForCandidate(candidate = {}) {
-  // Current DB constraint still only accepts whatsapp for acquisition opportunities.
-  // Preserve the true portal source in metadata/source records until the schema is widened.
-  if (["aqar", "bayut", "haraj", "developer_page", "broker_page"].includes(candidate.source)) {
-    return "whatsapp";
-  }
-  return candidate.source || "whatsapp";
+  const source = normalizeText(candidate.source).toLowerCase();
+  return OPPORTUNITY_SOURCE_CHANNELS.has(source) ? source : "whatsapp";
 }
 
 function candidateNeedsContactAccess(candidate = {}) {
@@ -439,6 +468,203 @@ async function fetchCandidate(supabase, candidateId) {
   return data;
 }
 
+async function fetchReadinessProfile(supabase, profileId) {
+  const { data, error } = await supabase
+    .from("buyer_readiness_profiles")
+    .select("*")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (error) throw new Error(`Failed to load buyer readiness profile: ${error.message}`);
+  if (!data) {
+    const notFound = new Error("Buyer readiness profile not found");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+  return data;
+}
+
+function normalizeBuyerType(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return BUYER_TYPES.has(normalized) ? normalized : "individual";
+}
+
+function isActiveTimestampWindow(row = {}) {
+  if (row.revoked_at) return false;
+  if (!row.expires_at) return true;
+  return new Date(row.expires_at).getTime() > Date.now();
+}
+
+function isVerifiedEvidence(evidence = {}) {
+  return evidence.status === "verified" && isActiveTimestampWindow(evidence);
+}
+
+function hasEvidenceType(evidenceRows, types) {
+  const wanted = new Set(types);
+  return evidenceRows.some((evidence) => isVerifiedEvidence(evidence) && wanted.has(evidence.evidence_type));
+}
+
+function hasActiveBrokerageAgreement(agreements = []) {
+  return agreements.some((agreement) =>
+    agreement.status === "active" &&
+    (!agreement.effective_at || new Date(agreement.effective_at).getTime() <= Date.now()) &&
+    isActiveTimestampWindow(agreement)
+  );
+}
+
+function hasHighUnresolvedRiskFlag(flags = []) {
+  return flags.some((flag) => HIGH_RISK_SEVERITIES.has(flag.severity) && !RESOLVED_FLAG_STATUSES.has(flag.status));
+}
+
+function deriveReadinessState({ profile, evidence = [], brokerageAgreements = [], kycCases = [], riskFlags = [] }) {
+  const buyerType = normalizeBuyerType(profile?.buyer_type);
+  const hasMandate = Boolean(normalizeText(profile?.mandate_summary) || profile?.mandate_id ||
+    hasEvidenceType(evidence, ["mandate_defined", "mandate"]));
+  const hasIndividualIdentity = hasEvidenceType(evidence, ["identity", "national_id", "id", "passport"]);
+  const hasCompanyIdentity = hasEvidenceType(evidence, ["commercial_registration", "company_registration"]);
+  const hasAuthority = hasEvidenceType(evidence, ["authority_letter", "company_authorization", "authorized_signatory"]);
+  const hasBeneficialOwner = hasEvidenceType(evidence, ["beneficial_owner", "beneficial_owner_capture"]);
+  const hasFunding = hasEvidenceType(evidence, [
+    "proof_of_funds",
+    "mortgage_preapproval",
+    "bank_relationship_letter",
+    "funding_path_attestation",
+    "buyer_self_attestation",
+  ]);
+  const hasOfferTerms = hasEvidenceType(evidence, ["decision_maker", "max_budget_terms", "preferred_terms", "offer_readiness"]);
+  const identityReady = buyerType === "individual"
+    ? hasIndividualIdentity
+    : hasCompanyIdentity && hasAuthority && hasBeneficialOwner;
+  const latestKyc = [...kycCases].sort((left, right) =>
+    new Date(right.updated_at || right.created_at || 0).getTime() - new Date(left.updated_at || left.created_at || 0).getTime()
+  )[0] || null;
+  const riskBlocked = hasHighUnresolvedRiskFlag(riskFlags);
+  let level = READINESS_LEVEL_MIN;
+  if (hasMandate) level = 1;
+  if (level >= 1 && identityReady) level = 2;
+  if (level >= 2 && hasFunding) level = 3;
+  if (level >= 3 && normalizeText(profile?.visit_readiness) && hasOfferTerms) level = 4;
+  if (level >= 4 && hasActiveBrokerageAgreement(brokerageAgreements) && latestKyc?.state === "brokerage_ready") level = 5;
+  if (riskBlocked) level = Math.min(level, 2);
+
+  const verifiedEvidence = evidence.filter(isVerifiedEvidence).length;
+  const expiredEvidence = evidence.some((item) => item.status === "expired" || (item.expires_at && !isActiveTimestampWindow(item)));
+  const rejectedEvidence = evidence.some((item) => item.status === "rejected");
+  const evidenceStatus = rejectedEvidence
+    ? "rejected"
+    : expiredEvidence && verifiedEvidence === 0
+      ? "expired"
+      : verifiedEvidence >= 2
+        ? "verified"
+        : verifiedEvidence === 1
+          ? "partially_verified"
+          : "self_declared";
+  const kycState = riskBlocked
+    ? "escalated"
+    : KYC_STATES.has(latestKyc?.state)
+      ? latestKyc.state
+      : profile?.kyc_state || "not_started";
+  const brokerageStatus = hasActiveBrokerageAgreement(brokerageAgreements)
+    ? "signed"
+    : profile?.brokerage_status || "not_started";
+  return {
+    readiness_level: Math.max(READINESS_LEVEL_MIN, Math.min(READINESS_LEVEL_MAX, level)),
+    evidence_status: evidenceStatus,
+    kyc_state: kycState,
+    brokerage_status: brokerageStatus,
+  };
+}
+
+async function loadReadinessContext(supabase, profileId) {
+  const profile = await fetchReadinessProfile(supabase, profileId);
+  const [evidenceResult, brokerageResult, kycResult] = await Promise.all([
+    supabase.from("buyer_readiness_evidence").select("*").eq("profile_id", profile.id),
+    supabase.from("brokerage_agreements").select("*").eq("buyer_profile_id", profile.id),
+    supabase.from("kyc_cases").select("*").eq("buyer_profile_id", profile.id),
+  ]);
+  if (evidenceResult.error) throw new Error(`Failed to load readiness evidence: ${evidenceResult.error.message}`);
+  if (brokerageResult.error) throw new Error(`Failed to load brokerage agreements: ${brokerageResult.error.message}`);
+  if (kycResult.error) throw new Error(`Failed to load KYC cases: ${kycResult.error.message}`);
+  const kycCaseIds = (kycResult.data || []).map((item) => item.id);
+  let riskFlags = [];
+  if (kycCaseIds.length) {
+    const flagRows = await Promise.all(kycCaseIds.map((caseId) =>
+      supabase.from("kyc_risk_flags").select("*").eq("kyc_case_id", caseId)
+    ));
+    for (const result of flagRows) {
+      if (result.error) throw new Error(`Failed to load KYC risk flags: ${result.error.message}`);
+      riskFlags.push(...(result.data || []));
+    }
+  }
+  return {
+    profile,
+    evidence: evidenceResult.data || [],
+    brokerageAgreements: brokerageResult.data || [],
+    kycCases: kycResult.data || [],
+    riskFlags,
+  };
+}
+
+async function recomputeReadinessProfile(supabase, profileId) {
+  const context = await loadReadinessContext(supabase, profileId);
+  const derived = deriveReadinessState(context);
+  const { data, error } = await supabase
+    .from("buyer_readiness_profiles")
+    .update(derived)
+    .eq("id", profileId)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to update buyer readiness profile: ${error?.message || "unknown"}`);
+  return { ...context, profile: data, derived };
+}
+
+function normalizeShareMode(value, documentKind = "") {
+  const normalized = normalizeText(value).toLowerCase();
+  if (["status_only", "redacted_copy", "full_document"].includes(normalized)) return normalized;
+  return /financial|funding|bank|proof|mortgage/i.test(documentKind) ? "status_only" : "status_only";
+}
+
+async function assertActiveDocumentGrant(supabase, { documentId, buyerProfileId, opportunityId }) {
+  if (!documentId) {
+    const error = new Error("share_document approval requires draft_payload_json.document_id");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data, error } = await supabase
+    .from("document_sharing_grants")
+    .select("*")
+    .eq("document_id", documentId);
+  if (error) throw new Error(`Failed to load document sharing grants: ${error.message}`);
+  const activeGrant = (data || []).find((grant) =>
+    isActiveTimestampWindow(grant) &&
+    (!buyerProfileId || grant.buyer_profile_id === buyerProfileId) &&
+    (!opportunityId || !grant.opportunity_id || grant.opportunity_id === opportunityId)
+  );
+  if (!activeGrant) {
+    const denied = new Error("Active document sharing grant required before sharing this document");
+    denied.statusCode = 409;
+    throw denied;
+  }
+  return activeGrant;
+}
+
+async function assertActiveBrokerageAuthority(supabase, buyerProfileId) {
+  if (!buyerProfileId) {
+    const error = new Error("Brokerage-gated action requires buyer_profile_id");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data, error } = await supabase
+    .from("brokerage_agreements")
+    .select("*")
+    .eq("buyer_profile_id", buyerProfileId);
+  if (error) throw new Error(`Failed to load brokerage agreements: ${error.message}`);
+  if (!hasActiveBrokerageAgreement(data || [])) {
+    const denied = new Error("Active brokerage agreement required before executing this action");
+    denied.statusCode = 409;
+    throw denied;
+  }
+}
+
 async function insertEvent(supabase, payload) {
   const { data, error } = await supabase
     .from("acquisition_events")
@@ -474,7 +700,7 @@ async function createCandidateClaimRows(supabase, candidate, screeningOutput) {
       workspace_id: candidate.workspace_id,
       fact_key: fact.field || "assumption",
       value_json: { value: fact.value ?? null },
-      basis_label: "modeled_output",
+      basis_label: "user_assumption",
       confidence,
       source_channel: "screening",
       evidence_refs_json: [],
@@ -1001,6 +1227,389 @@ async function updateOpportunityStage(supabase, opportunityId, body = {}) {
   return data;
 }
 
+async function createReadinessProfile(supabase, body = {}) {
+  const payload = {
+    workspace_id: normalizeUuid(body.workspace_id),
+    mandate_id: normalizeUuid(body.mandate_id),
+    buyer_user_id: normalizeUuid(body.buyer_user_id || body.user_id),
+    organization_id: normalizeUuid(body.organization_id),
+    buyer_type: normalizeBuyerType(body.buyer_type),
+    mandate_summary: normalizeText(body.mandate_summary),
+    funding_path: normalizeText(body.funding_path),
+    readiness_level: 0,
+    evidence_status: "self_declared",
+    sharing_mode: ["private", "anonymous_mandate", "named_buyer", "selected_documents"].includes(body.sharing_mode)
+      ? body.sharing_mode
+      : "private",
+    visit_readiness: normalizeText(body.visit_readiness),
+    brokerage_status: "not_started",
+    kyc_state: "not_started",
+    metadata_json: body.metadata_json || body.metadata || {},
+    created_by: normalizeUuid(body.created_by || body.user_id),
+  };
+  const { data, error } = await supabase
+    .from("buyer_readiness_profiles")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create buyer readiness profile: ${error?.message || "unknown"}`);
+  const context = await recomputeReadinessProfile(supabase, data.id);
+  return context.profile;
+}
+
+async function updateReadinessProfile(supabase, profileId, body = {}) {
+  const patch = {};
+  if (body.buyer_type !== undefined) patch.buyer_type = normalizeBuyerType(body.buyer_type);
+  if (body.mandate_summary !== undefined) patch.mandate_summary = normalizeText(body.mandate_summary);
+  if (body.funding_path !== undefined) patch.funding_path = normalizeText(body.funding_path);
+  if (body.sharing_mode !== undefined) patch.sharing_mode = body.sharing_mode;
+  if (body.visit_readiness !== undefined) patch.visit_readiness = normalizeText(body.visit_readiness);
+  if (body.metadata_json !== undefined || body.metadata !== undefined) patch.metadata_json = body.metadata_json || body.metadata || {};
+  const { data, error } = await supabase
+    .from("buyer_readiness_profiles")
+    .update(patch)
+    .eq("id", profileId)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to update buyer readiness profile: ${error?.message || "unknown"}`);
+  const context = await recomputeReadinessProfile(supabase, data.id);
+  return context.profile;
+}
+
+async function attachReadinessEvidence(supabase, profileId, body = {}) {
+  const profile = await fetchReadinessProfile(supabase, profileId);
+  const status = EVIDENCE_STATUSES.has(body.status) ? body.status : "pending";
+  const payload = {
+    profile_id: profile.id,
+    workspace_id: profile.workspace_id,
+    document_id: normalizeUuid(body.document_id),
+    evidence_type: normalizeText(body.evidence_type || body.type),
+    attestation_json: body.attestation_json || body.attestation || {},
+    status,
+    sensitivity_level: ["low", "medium", "high", "financial", "identity"].includes(body.sensitivity_level)
+      ? body.sensitivity_level
+      : "medium",
+    verified_by: status === "verified" ? normalizeUuid(body.verified_by || body.user_id) : null,
+    verified_at: status === "verified" ? (body.verified_at || new Date().toISOString()) : null,
+    expires_at: body.expires_at || null,
+    created_by: normalizeUuid(body.created_by || body.user_id),
+  };
+  if (!payload.evidence_type) {
+    const error = new Error("Evidence type is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data, error } = await supabase
+    .from("buyer_readiness_evidence")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to attach buyer readiness evidence: ${error?.message || "unknown"}`);
+  await recomputeReadinessProfile(supabase, profile.id);
+  return data;
+}
+
+async function verifyReadinessEvidence(supabase, evidenceId, body = {}) {
+  const result = ["verified", "rejected", "needs_review", "expired"].includes(body.result) ? body.result : "verified";
+  const status = result === "needs_review" ? "pending" : result;
+  const { data: evidence, error: loadError } = await supabase
+    .from("buyer_readiness_evidence")
+    .select("*")
+    .eq("id", evidenceId)
+    .maybeSingle();
+  if (loadError) throw new Error(`Failed to load buyer readiness evidence: ${loadError.message}`);
+  if (!evidence) {
+    const notFound = new Error("Buyer readiness evidence not found");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+  const reviewerId = normalizeUuid(body.reviewer_id || body.user_id);
+  const { data, error } = await supabase
+    .from("buyer_readiness_evidence")
+    .update({
+      status,
+      verified_by: result === "verified" ? reviewerId : evidence.verified_by,
+      verified_at: result === "verified" ? new Date().toISOString() : evidence.verified_at,
+    })
+    .eq("id", evidence.id)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to verify buyer readiness evidence: ${error?.message || "unknown"}`);
+  await supabase.from("buyer_readiness_verifications").insert({
+    profile_id: evidence.profile_id,
+    evidence_id: evidence.id,
+    workspace_id: evidence.workspace_id,
+    verification_type: normalizeText(body.verification_type) || "manual_review",
+    result,
+    reviewer_id: reviewerId,
+    notes: normalizeText(body.notes),
+  });
+  const context = await recomputeReadinessProfile(supabase, evidence.profile_id);
+  return { evidence: data, profile: context.profile };
+}
+
+async function createDocumentSharingGrant(supabase, body = {}) {
+  const documentId = normalizeUuid(body.document_id);
+  if (!documentId) {
+    const error = new Error("document_id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const purpose = normalizeText(body.purpose);
+  if (!purpose) {
+    const error = new Error("purpose is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const payload = {
+    document_id: documentId,
+    workspace_id: normalizeUuid(body.workspace_id),
+    opportunity_id: normalizeUuid(body.opportunity_id),
+    buyer_profile_id: normalizeUuid(body.buyer_profile_id),
+    granted_by: normalizeUuid(body.granted_by || body.user_id),
+    granted_to_kind: normalizeText(body.granted_to_kind) || "counterparty",
+    granted_to_identifier: normalizeText(body.granted_to_identifier),
+    purpose,
+    allowed_action: ["share_status", "share_document", "view", "download"].includes(body.allowed_action)
+      ? body.allowed_action
+      : "share_status",
+    share_mode: normalizeShareMode(body.share_mode, `${body.document_kind || ""} ${purpose}`),
+    token_hash: normalizeText(body.token_hash),
+    expires_at: body.expires_at || null,
+  };
+  const { data, error } = await supabase
+    .from("document_sharing_grants")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create document sharing grant: ${error?.message || "unknown"}`);
+  return data;
+}
+
+async function createBrokerageAgreement(supabase, body = {}) {
+  const profile = await fetchReadinessProfile(supabase, normalizeUuid(body.buyer_profile_id));
+  const payload = {
+    buyer_profile_id: profile.id,
+    workspace_id: profile.workspace_id || normalizeUuid(body.workspace_id),
+    agreement_type: ["buyer_representation", "limited_authority", "offer_support", "closing_coordination"].includes(body.agreement_type)
+      ? body.agreement_type
+      : "buyer_representation",
+    scope: normalizeText(body.scope),
+    authority_json: body.authority_json || body.authority || {},
+    commission_terms_json: body.commission_terms_json || body.commission_terms || {},
+    signed_document_id: normalizeUuid(body.signed_document_id),
+    status: ["draft", "active", "expired", "revoked", "terminated"].includes(body.status) ? body.status : "draft",
+    effective_at: body.effective_at || null,
+    expires_at: body.expires_at || null,
+    created_by: normalizeUuid(body.created_by || body.user_id),
+  };
+  const { data, error } = await supabase
+    .from("brokerage_agreements")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create brokerage agreement: ${error?.message || "unknown"}`);
+  const context = await recomputeReadinessProfile(supabase, profile.id);
+  return { agreement: data, profile: context.profile };
+}
+
+async function createKycCase(supabase, body = {}) {
+  const profile = await fetchReadinessProfile(supabase, normalizeUuid(body.buyer_profile_id));
+  const state = KYC_STATES.has(body.state) ? body.state : "not_started";
+  const payload = {
+    buyer_profile_id: profile.id,
+    workspace_id: profile.workspace_id || normalizeUuid(body.workspace_id),
+    state,
+    risk_level: ["low", "medium", "high", "critical"].includes(body.risk_level) ? body.risk_level : "low",
+    customer_type: normalizeBuyerType(body.customer_type || profile.buyer_type),
+    assigned_reviewer_id: normalizeUuid(body.assigned_reviewer_id),
+    started_at: body.started_at || (state === "not_started" ? null : new Date().toISOString()),
+    completed_at: body.completed_at || null,
+    escalated_at: body.escalated_at || (state === "escalated" ? new Date().toISOString() : null),
+    metadata_json: body.metadata_json || body.metadata || {},
+  };
+  const { data, error } = await supabase
+    .from("kyc_cases")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create KYC case: ${error?.message || "unknown"}`);
+  const context = await recomputeReadinessProfile(supabase, profile.id);
+  return { kyc_case: data, profile: context.profile };
+}
+
+async function createKycRiskFlag(supabase, kycCaseId, body = {}) {
+  const { data: kycCase, error: loadError } = await supabase
+    .from("kyc_cases")
+    .select("*")
+    .eq("id", kycCaseId)
+    .maybeSingle();
+  if (loadError) throw new Error(`Failed to load KYC case: ${loadError.message}`);
+  if (!kycCase) {
+    const notFound = new Error("KYC case not found");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+  const payload = {
+    kyc_case_id: kycCase.id,
+    buyer_profile_id: kycCase.buyer_profile_id,
+    workspace_id: kycCase.workspace_id,
+    flag_type: normalizeText(body.flag_type),
+    severity: ["low", "medium", "high", "critical"].includes(body.severity) ? body.severity : "medium",
+    source: normalizeText(body.source),
+    status: ["open", "reviewing", "resolved", "waived"].includes(body.status) ? body.status : "open",
+    resolution_note: normalizeText(body.resolution_note),
+  };
+  if (!payload.flag_type) {
+    const error = new Error("flag_type is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data, error } = await supabase
+    .from("kyc_risk_flags")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create KYC risk flag: ${error?.message || "unknown"}`);
+  if (HIGH_RISK_SEVERITIES.has(payload.severity) && !RESOLVED_FLAG_STATUSES.has(payload.status)) {
+    await supabase
+      .from("kyc_cases")
+      .update({
+        state: "escalated",
+        risk_level: payload.severity === "critical" ? "critical" : "high",
+        escalated_at: new Date().toISOString(),
+      })
+      .eq("id", kycCase.id);
+  }
+  const context = await recomputeReadinessProfile(supabase, kycCase.buyer_profile_id);
+  return { risk_flag: data, profile: context.profile };
+}
+
+async function createExternalActionApproval(supabase, body = {}) {
+  const actionType = normalizeText(body.action_type);
+  if (!EXTERNAL_ACTION_TYPES.has(actionType)) {
+    const error = new Error("Invalid external action type");
+    error.statusCode = 400;
+    throw error;
+  }
+  const payload = {
+    workspace_id: normalizeUuid(body.workspace_id),
+    opportunity_id: normalizeUuid(body.opportunity_id),
+    buyer_profile_id: normalizeUuid(body.buyer_profile_id),
+    action_type: actionType,
+    draft_payload_json: body.draft_payload_json || body.draft_payload || {},
+    approval_status: ["draft", "pending", "approved", "rejected", "executed", "cancelled"].includes(body.approval_status)
+      ? body.approval_status
+      : "pending",
+    requested_by: normalizeUuid(body.requested_by || body.user_id),
+  };
+  const { data, error } = await supabase
+    .from("external_action_approvals")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create external action approval: ${error?.message || "unknown"}`);
+  return data;
+}
+
+async function approveExternalAction(supabase, approvalId, body = {}) {
+  const { data: approval, error: loadError } = await supabase
+    .from("external_action_approvals")
+    .select("*")
+    .eq("id", approvalId)
+    .maybeSingle();
+  if (loadError) throw new Error(`Failed to load external action approval: ${loadError.message}`);
+  if (!approval) {
+    const notFound = new Error("External action approval not found");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+  if (ACTION_TYPES_REQUIRING_BROKERAGE.has(approval.action_type)) {
+    await assertActiveBrokerageAuthority(supabase, approval.buyer_profile_id);
+  }
+  if (approval.action_type === "share_document") {
+    await assertActiveDocumentGrant(supabase, {
+      documentId: approval.draft_payload_json?.document_id,
+      buyerProfileId: approval.buyer_profile_id,
+      opportunityId: approval.opportunity_id,
+    });
+  }
+  const status = body.approval_status === "rejected" ? "rejected" : "approved";
+  const { data, error } = await supabase
+    .from("external_action_approvals")
+    .update({
+      approval_status: status,
+      approved_by: normalizeUuid(body.approved_by || body.user_id),
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", approval.id)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to approve external action: ${error?.message || "unknown"}`);
+  return data;
+}
+
+async function executeExternalAction(supabase, approvalId, body = {}) {
+  const { data: approval, error: loadError } = await supabase
+    .from("external_action_approvals")
+    .select("*")
+    .eq("id", approvalId)
+    .maybeSingle();
+  if (loadError) throw new Error(`Failed to load external action approval: ${loadError.message}`);
+  if (!approval) {
+    const notFound = new Error("External action approval not found");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+  if (approval.approval_status !== "approved") {
+    const denied = new Error("External action must be approved before execution");
+    denied.statusCode = 409;
+    throw denied;
+  }
+  if (ACTION_TYPES_REQUIRING_BROKERAGE.has(approval.action_type)) {
+    await assertActiveBrokerageAuthority(supabase, approval.buyer_profile_id);
+  }
+  if (approval.action_type === "share_document") {
+    await assertActiveDocumentGrant(supabase, {
+      documentId: approval.draft_payload_json?.document_id,
+      buyerProfileId: approval.buyer_profile_id,
+      opportunityId: approval.opportunity_id,
+    });
+  }
+  const executionResult = body.execution_result_json || body.execution_result || {
+    status: "recorded",
+    note: "External execution is recorded for MVP; delivery happens through approved operator workflow.",
+  };
+  const { data, error } = await supabase
+    .from("external_action_approvals")
+    .update({
+      approval_status: "executed",
+      executed_by: normalizeUuid(body.executed_by || body.user_id),
+      executed_at: new Date().toISOString(),
+      execution_result_json: executionResult,
+    })
+    .eq("id", approval.id)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to execute external action: ${error?.message || "unknown"}`);
+  if (approval.opportunity_id) {
+    await insertEvent(supabase, {
+      opportunity_id: approval.opportunity_id,
+      workspace_id: approval.workspace_id,
+      created_by: normalizeUuid(body.executed_by || body.user_id),
+      event_type: "external_action_executed",
+      event_direction: "operator",
+      body_text: `Approved action executed: ${approval.action_type}`,
+      event_payload: {
+        approval_id: approval.id,
+        action_type: approval.action_type,
+        result: executionResult,
+      },
+    });
+  }
+  return data;
+}
+
 function matchRoute(method, pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "api" || parts[1] !== "acquisition" || parts[2] !== "v1") return null;
@@ -1015,6 +1624,18 @@ function matchRoute(method, pathname) {
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "enrich") return { name: "enrichOpportunity", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "notes") return { name: "addOpportunityNote", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "stage") return { name: "updateOpportunityStage", opportunityId: parts[4] };
+  if (method === "POST" && parts[3] === "readiness-profiles" && parts.length === 4) return { name: "createReadinessProfile" };
+  if (method === "GET" && parts[3] === "readiness-profiles" && parts.length === 5) return { name: "getReadinessProfile", profileId: parts[4] };
+  if (method === "PATCH" && parts[3] === "readiness-profiles" && parts.length === 5) return { name: "updateReadinessProfile", profileId: parts[4] };
+  if (method === "POST" && parts[3] === "readiness-profiles" && parts[5] === "evidence") return { name: "attachReadinessEvidence", profileId: parts[4] };
+  if (method === "POST" && parts[3] === "readiness-evidence" && parts[5] === "verify") return { name: "verifyReadinessEvidence", evidenceId: parts[4] };
+  if (method === "POST" && parts[3] === "document-sharing-grants" && parts.length === 4) return { name: "createDocumentSharingGrant" };
+  if (method === "POST" && parts[3] === "brokerage-agreements" && parts.length === 4) return { name: "createBrokerageAgreement" };
+  if (method === "POST" && parts[3] === "kyc-cases" && parts.length === 4) return { name: "createKycCase" };
+  if (method === "POST" && parts[3] === "kyc-cases" && parts[5] === "risk-flags") return { name: "createKycRiskFlag", kycCaseId: parts[4] };
+  if (method === "POST" && parts[3] === "approvals" && parts.length === 4) return { name: "createExternalActionApproval" };
+  if (method === "POST" && parts[3] === "approvals" && parts[5] === "approve") return { name: "approveExternalAction", approvalId: parts[4] };
+  if (method === "POST" && parts[3] === "approvals" && parts[5] === "execute") return { name: "executeExternalAction", approvalId: parts[4] };
   return null;
 }
 
@@ -1076,6 +1697,43 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
     if (route.name === "updateOpportunityStage") {
       return sendJson(res, 200, buildEnvelope(requestId, { opportunity: await updateOpportunityStage(supabase, route.opportunityId, body) }));
     }
+    if (route.name === "createReadinessProfile") {
+      return sendJson(res, 201, buildEnvelope(requestId, { profile: await createReadinessProfile(supabase, body) }));
+    }
+    if (route.name === "getReadinessProfile") {
+      const context = await loadReadinessContext(supabase, route.profileId);
+      return sendJson(res, 200, buildEnvelope(requestId, context));
+    }
+    if (route.name === "updateReadinessProfile") {
+      return sendJson(res, 200, buildEnvelope(requestId, { profile: await updateReadinessProfile(supabase, route.profileId, body) }));
+    }
+    if (route.name === "attachReadinessEvidence") {
+      return sendJson(res, 201, buildEnvelope(requestId, { evidence: await attachReadinessEvidence(supabase, route.profileId, body) }));
+    }
+    if (route.name === "verifyReadinessEvidence") {
+      return sendJson(res, 200, buildEnvelope(requestId, await verifyReadinessEvidence(supabase, route.evidenceId, body)));
+    }
+    if (route.name === "createDocumentSharingGrant") {
+      return sendJson(res, 201, buildEnvelope(requestId, { grant: await createDocumentSharingGrant(supabase, body) }));
+    }
+    if (route.name === "createBrokerageAgreement") {
+      return sendJson(res, 201, buildEnvelope(requestId, await createBrokerageAgreement(supabase, body)));
+    }
+    if (route.name === "createKycCase") {
+      return sendJson(res, 201, buildEnvelope(requestId, await createKycCase(supabase, body)));
+    }
+    if (route.name === "createKycRiskFlag") {
+      return sendJson(res, 201, buildEnvelope(requestId, await createKycRiskFlag(supabase, route.kycCaseId, body)));
+    }
+    if (route.name === "createExternalActionApproval") {
+      return sendJson(res, 201, buildEnvelope(requestId, { approval: await createExternalActionApproval(supabase, body) }));
+    }
+    if (route.name === "approveExternalAction") {
+      return sendJson(res, 200, buildEnvelope(requestId, { approval: await approveExternalAction(supabase, route.approvalId, body) }));
+    }
+    if (route.name === "executeExternalAction") {
+      return sendJson(res, 200, buildEnvelope(requestId, { approval: await executeExternalAction(supabase, route.approvalId, body) }));
+    }
   } catch (error) {
     log?.error?.("Acquisition API error", { error: error instanceof Error ? error.message : String(error) });
     return sendJson(res, error.statusCode || 500, buildEnvelope(requestId, { error: error.message || "Acquisition API error" }));
@@ -1109,13 +1767,26 @@ export async function handleAcquisitionInternal(req, res, { requestId, log, read
 export const __test = {
   buildScreeningOutput,
   buildSourceFingerprint,
+  approveExternalAction,
+  attachReadinessEvidence,
+  createBrokerageAgreement,
+  createDocumentSharingGrant,
+  createExternalActionApproval,
   buildMandateFit,
   createListingCandidate,
+  createKycCase,
+  createKycRiskFlag,
   createMandate,
+  createReadinessProfile,
   createSearchRun,
+  deriveReadinessState,
+  executeExternalAction,
   normalizeSearchLimits,
   normalizeSources,
   promoteCandidate,
+  recomputeReadinessProfile,
   screenCandidate,
   upsertCandidateDraft,
+  updateReadinessProfile,
+  verifyReadinessEvidence,
 };

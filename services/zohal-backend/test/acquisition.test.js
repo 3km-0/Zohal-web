@@ -291,6 +291,7 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
 
   assert.equal(promoted.candidate.status, "promoted");
   assert.equal(promoted.opportunity.stage, "workspace_created");
+  assert.equal(promoted.opportunity.source_channel, "user_provided_listing");
   assert.deepEqual(promoted.opportunity.metadata_json.photo_refs, ["https://example.com/photo-1.jpg"]);
   assert.equal(supabase.db.acquisition_opportunities.length, 1);
   assert.equal(supabase.db.acquisition_scenarios.length, 1);
@@ -298,4 +299,136 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   assert(
     supabase.db.acquisition_claims.some((claim) => claim.opportunity_id === promoted.opportunity.id),
   );
+});
+
+test("buyer readiness profile computes transaction readiness from verified evidence", async () => {
+  const supabase = createMockSupabase();
+  const profile = await __test.createReadinessProfile(supabase, {
+    workspace_id: "ws_1",
+    user_id: "user_1",
+    buyer_type: "individual",
+    mandate_summary: "Villa in North Riyadh, SAR 3M-5M",
+    funding_path: "cash",
+    visit_readiness: "available this week",
+  });
+
+  const identity = await __test.attachReadinessEvidence(supabase, profile.id, {
+    evidence_type: "identity",
+    status: "verified",
+    user_id: "operator_1",
+    sensitivity_level: "identity",
+  });
+  await __test.attachReadinessEvidence(supabase, profile.id, {
+    evidence_type: "proof_of_funds",
+    status: "verified",
+    user_id: "operator_1",
+    sensitivity_level: "financial",
+  });
+  await __test.attachReadinessEvidence(supabase, profile.id, {
+    evidence_type: "offer_readiness",
+    status: "verified",
+    user_id: "operator_1",
+  });
+
+  let recomputed = await __test.recomputeReadinessProfile(supabase, profile.id);
+  assert.equal(recomputed.profile.readiness_level, 4);
+  assert.equal(recomputed.profile.evidence_status, "verified");
+  assert.equal(identity.status, "verified");
+
+  await __test.createKycCase(supabase, {
+    buyer_profile_id: profile.id,
+    state: "brokerage_ready",
+  });
+  await __test.createBrokerageAgreement(supabase, {
+    buyer_profile_id: profile.id,
+    status: "active",
+    effective_at: new Date(Date.now() - 1000).toISOString(),
+  });
+  recomputed = await __test.recomputeReadinessProfile(supabase, profile.id);
+  assert.equal(recomputed.profile.readiness_level, 5);
+  assert.equal(recomputed.profile.kyc_state, "brokerage_ready");
+  assert.equal(recomputed.profile.brokerage_status, "signed");
+});
+
+test("document sharing grants default financial evidence to status-only", async () => {
+  const supabase = createMockSupabase();
+  const grant = await __test.createDocumentSharingGrant(supabase, {
+    document_id: "doc_1",
+    workspace_id: "ws_1",
+    buyer_profile_id: "profile_1",
+    purpose: "proof of funds readiness signal",
+    document_kind: "financial",
+    allowed_action: "share_document",
+  });
+
+  assert.equal(grant.share_mode, "status_only");
+  assert.equal(grant.allowed_action, "share_document");
+});
+
+test("approval-gated actions require brokerage authority before execution", async () => {
+  const supabase = createMockSupabase({
+    buyer_readiness_profiles: [{
+      id: "profile_1",
+      workspace_id: "ws_1",
+      buyer_type: "individual",
+      mandate_summary: "North Riyadh villas",
+      visit_readiness: "available this week",
+      brokerage_status: "not_started",
+      kyc_state: "not_started",
+      evidence_status: "self_declared",
+      readiness_level: 1,
+    }],
+  });
+  const approval = await __test.createExternalActionApproval(supabase, {
+    workspace_id: "ws_1",
+    opportunity_id: "opp_1",
+    buyer_profile_id: "profile_1",
+    action_type: "send_outreach",
+    draft_payload: { message: "Zohal represents a verified buyer mandate." },
+  });
+
+  await assert.rejects(
+    () => __test.approveExternalAction(supabase, approval.id, { user_id: "operator_1" }),
+    /Active brokerage agreement required/,
+  );
+
+  await __test.createBrokerageAgreement(supabase, {
+    buyer_profile_id: "profile_1",
+    status: "active",
+    effective_at: new Date(Date.now() - 1000).toISOString(),
+  });
+  const approved = await __test.approveExternalAction(supabase, approval.id, { user_id: "operator_1" });
+  assert.equal(approved.approval_status, "approved");
+
+  const executed = await __test.executeExternalAction(supabase, approved.id, { user_id: "operator_1" });
+  assert.equal(executed.approval_status, "executed");
+  assert.equal(supabase.db.acquisition_events.length, 1);
+  assert.equal(supabase.db.acquisition_events[0].event_type, "external_action_executed");
+});
+
+test("high severity KYC flags restrict readiness", async () => {
+  const supabase = createMockSupabase();
+  const profile = await __test.createReadinessProfile(supabase, {
+    workspace_id: "ws_1",
+    buyer_type: "company",
+    mandate_summary: "Residential acquisition mandate",
+    visit_readiness: "available this week",
+  });
+  await __test.attachReadinessEvidence(supabase, profile.id, { evidence_type: "commercial_registration", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, profile.id, { evidence_type: "company_authorization", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, profile.id, { evidence_type: "beneficial_owner", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, profile.id, { evidence_type: "proof_of_funds", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, profile.id, { evidence_type: "offer_readiness", status: "verified" });
+  const kyc = await __test.createKycCase(supabase, {
+    buyer_profile_id: profile.id,
+    state: "buyer_verified",
+  });
+
+  const flagged = await __test.createKycRiskFlag(supabase, kyc.kyc_case.id, {
+    flag_type: "beneficial_owner_missing",
+    severity: "high",
+  });
+
+  assert.equal(flagged.profile.kyc_state, "escalated");
+  assert.equal(flagged.profile.readiness_level, 2);
 });

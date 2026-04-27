@@ -60,6 +60,49 @@ type AcquisitionEventRow = {
   created_at?: string | null;
 };
 
+type BuyerReadinessProfileRow = {
+  id: string;
+  buyer_type?: string | null;
+  mandate_summary?: string | null;
+  funding_path?: string | null;
+  readiness_level?: number | null;
+  evidence_status?: string | null;
+  sharing_mode?: string | null;
+  visit_readiness?: string | null;
+  brokerage_status?: string | null;
+  kyc_state?: string | null;
+  updated_at?: string | null;
+};
+
+type BuyerReadinessEvidenceRow = {
+  id: string;
+  evidence_type?: string | null;
+  status?: string | null;
+  sensitivity_level?: string | null;
+  document_id?: string | null;
+  verified_at?: string | null;
+  expires_at?: string | null;
+};
+
+type DocumentSharingGrantRow = {
+  id: string;
+  document_id?: string | null;
+  share_mode?: string | null;
+  allowed_action?: string | null;
+  purpose?: string | null;
+  expires_at?: string | null;
+  revoked_at?: string | null;
+};
+
+type ExternalActionApprovalRow = {
+  id: string;
+  action_type?: string | null;
+  approval_status?: string | null;
+  opportunity_id?: string | null;
+  executed_at?: string | null;
+  created_at?: string | null;
+};
+
 type CockpitModule = 'evidence' | 'model' | 'renovation' | 'openItems' | 'comps';
 
 type ScenarioState = {
@@ -227,6 +270,41 @@ function countMissingInfo(opportunities: OpportunityRow[]): number {
   return opportunities.reduce((total, opportunity) => total + missingInfoList(opportunity.missing_info_json).length, 0);
 }
 
+function activeGrantCount(grants: DocumentSharingGrantRow[]): number {
+  const now = Date.now();
+  return grants.filter((grant) => {
+    if (grant.revoked_at) return false;
+    if (!grant.expires_at) return true;
+    const expires = Date.parse(grant.expires_at);
+    return !Number.isFinite(expires) || expires > now;
+  }).length;
+}
+
+function statusTone(value: string | null | undefined): 'neutral' | 'lime' | 'cyan' | 'warn' {
+  switch (value) {
+    case 'verified':
+    case 'approved':
+    case 'active':
+    case 'signed':
+    case 'brokerage_ready':
+    case 'executed':
+      return 'lime';
+    case 'pending':
+    case 'partially_verified':
+    case 'self_declared':
+    case 'basic_verified':
+      return 'cyan';
+    case 'restricted':
+    case 'escalated':
+    case 'rejected':
+    case 'revoked':
+    case 'expired':
+      return 'warn';
+    default:
+      return 'neutral';
+  }
+}
+
 export default function WorkspaceCockpitPage() {
   const params = useParams();
   const workspaceId = params.id as string;
@@ -236,6 +314,10 @@ export default function WorkspaceCockpitPage() {
   const [workspace, setWorkspace] = useState<WorkspaceRow | null>(null);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
   const [events, setEvents] = useState<AcquisitionEventRow[]>([]);
+  const [readinessProfile, setReadinessProfile] = useState<BuyerReadinessProfileRow | null>(null);
+  const [readinessEvidence, setReadinessEvidence] = useState<BuyerReadinessEvidenceRow[]>([]);
+  const [sharingGrants, setSharingGrants] = useState<DocumentSharingGrantRow[]>([]);
+  const [actionApprovals, setActionApprovals] = useState<ExternalActionApprovalRow[]>([]);
   const [documentCount, setDocumentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [agentOpen, setAgentOpen] = useState(false);
@@ -248,7 +330,7 @@ export default function WorkspaceCockpitPage() {
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
     try {
-      const [workspaceResult, opportunitiesResult, documentsResult] = await Promise.all([
+      const [workspaceResult, opportunitiesResult, documentsResult, profileResult] = await Promise.all([
         supabase.from('workspaces').select('id, name, description, analysis_brief').eq('id', workspaceId).maybeSingle(),
         supabase
           .from('acquisition_opportunities')
@@ -258,13 +340,52 @@ export default function WorkspaceCockpitPage() {
           .order('updated_at', { ascending: false })
           .limit(12),
         supabase.from('documents').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+        supabase
+          .from('buyer_readiness_profiles')
+          .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+          .eq('workspace_id', workspaceId)
+          .order('updated_at', { ascending: false })
+          .limit(1),
       ]);
 
       const opportunityRows = (opportunitiesResult.data ?? []) as OpportunityRow[];
+      const profileRows = (profileResult.data ?? []) as BuyerReadinessProfileRow[];
+      const currentReadinessProfile = profileRows[0] ?? null;
       setWorkspace((workspaceResult.data as WorkspaceRow | null) ?? null);
       setOpportunities(opportunityRows);
+      setReadinessProfile(currentReadinessProfile);
       setDocumentCount(documentsResult.count ?? 0);
       setSelectedOpportunityId((current) => current ?? opportunityRows[0]?.id ?? null);
+
+      if (currentReadinessProfile) {
+        const [evidenceResult, grantsResult, approvalsResult] = await Promise.all([
+          supabase
+            .from('buyer_readiness_evidence')
+            .select('id, evidence_type, status, sensitivity_level, document_id, verified_at, expires_at')
+            .eq('profile_id', currentReadinessProfile.id)
+            .order('created_at', { ascending: false })
+            .limit(8),
+          supabase
+            .from('document_sharing_grants')
+            .select('id, document_id, share_mode, allowed_action, purpose, expires_at, revoked_at')
+            .eq('buyer_profile_id', currentReadinessProfile.id)
+            .order('created_at', { ascending: false })
+            .limit(8),
+          supabase
+            .from('external_action_approvals')
+            .select('id, action_type, approval_status, opportunity_id, executed_at, created_at')
+            .eq('buyer_profile_id', currentReadinessProfile.id)
+            .order('created_at', { ascending: false })
+            .limit(8),
+        ]);
+        setReadinessEvidence((evidenceResult.data ?? []) as BuyerReadinessEvidenceRow[]);
+        setSharingGrants((grantsResult.data ?? []) as DocumentSharingGrantRow[]);
+        setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
+      } else {
+        setReadinessEvidence([]);
+        setSharingGrants([]);
+        setActionApprovals([]);
+      }
 
       const selectedOpportunityIds = opportunityRows.map((item) => item.id).slice(0, 6);
       if (selectedOpportunityIds.length > 0) {
@@ -292,6 +413,7 @@ export default function WorkspaceCockpitPage() {
   const missingCount = countMissingInfo(opportunities);
   const pursueCount = opportunities.filter((item) => recommendationFor(item) === 'pursue' || item.stage === 'pursue').length;
   const latestUpdate = events[0]?.created_at ?? selectedOpportunity?.updated_at ?? null;
+  const brokerageActive = readinessProfile?.brokerage_status === 'signed' || readinessProfile?.brokerage_status === 'active';
 
   useEffect(() => {
     setScenario(scenarioFromOpportunity(selectedOpportunity));
@@ -381,6 +503,11 @@ export default function WorkspaceCockpitPage() {
                   opportunity={selectedOpportunity}
                   missingItems={selectedMissing}
                   scenario={scenario}
+                  readinessProfile={readinessProfile}
+                  readinessEvidence={readinessEvidence}
+                  sharingGrants={sharingGrants}
+                  actionApprovals={actionApprovals}
+                  brokerageActive={brokerageActive}
                 />
               </div>
             )}
@@ -919,6 +1046,11 @@ function RightPane({
   opportunity,
   missingItems,
   scenario,
+  readinessProfile,
+  readinessEvidence,
+  sharingGrants,
+  actionApprovals,
+  brokerageActive,
 }: {
   activeModule: CockpitModule;
   events: AcquisitionEventRow[];
@@ -927,6 +1059,11 @@ function RightPane({
   opportunity: OpportunityRow | null;
   missingItems: string[];
   scenario: ScenarioState | null;
+  readinessProfile: BuyerReadinessProfileRow | null;
+  readinessEvidence: BuyerReadinessEvidenceRow[];
+  sharingGrants: DocumentSharingGrantRow[];
+  actionApprovals: ExternalActionApprovalRow[];
+  brokerageActive: boolean;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const titleKey = {
@@ -939,6 +1076,13 @@ function RightPane({
 
   return (
     <aside className="space-y-5">
+      <BuyerReadinessPanel
+        profile={readinessProfile}
+        evidence={readinessEvidence}
+        grants={sharingGrants}
+        approvals={actionApprovals}
+      />
+
       <Panel className="p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
@@ -995,15 +1139,154 @@ function RightPane({
       </Panel>
 
       <Panel className="sticky bottom-5 p-3">
-        <button className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt" disabled={!opportunity}>
+        <button className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity || !brokerageActive}>
           {t('proceedNegotiate')}
         </button>
+        {!brokerageActive ? (
+          <p className="mt-2 rounded-[10px] border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-text-soft">
+            {t('brokerageGateHint')}
+          </p>
+        ) : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text" disabled={!opportunity}>{t('scheduleVisit')}</button>
-          <button className="rounded-[12px] border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error" disabled={!opportunity}>{t('pass')}</button>
+          <button className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity}>{t('scheduleVisit')}</button>
+          <button className="rounded-[12px] border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity}>{t('pass')}</button>
         </div>
       </Panel>
     </aside>
+  );
+}
+
+function BuyerReadinessPanel({
+  profile,
+  evidence,
+  grants,
+  approvals,
+}: {
+  profile: BuyerReadinessProfileRow | null;
+  evidence: BuyerReadinessEvidenceRow[];
+  grants: DocumentSharingGrantRow[];
+  approvals: ExternalActionApprovalRow[];
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  if (!profile) {
+    return (
+      <Panel className="p-5" data-testid="buyer-readiness-panel">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('buyerReadiness.title')}</p>
+            <h3 className="mt-1 text-xl font-semibold text-text">{t('buyerReadiness.emptyTitle')}</h3>
+          </div>
+          <ShieldCheck className="h-5 w-5 text-highlight" />
+        </div>
+        <p className="text-sm leading-6 text-text-soft">{t('buyerReadiness.emptyBody')}</p>
+      </Panel>
+    );
+  }
+
+  const level = Math.max(0, Math.min(5, Math.round(profile.readiness_level ?? 0)));
+  const activeGrants = activeGrantCount(grants);
+  return (
+    <Panel className="p-5" data-testid="buyer-readiness-panel">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('buyerReadiness.title')}</p>
+          <h3 className="mt-1 text-xl font-semibold text-text">{t('buyerReadiness.level', { level })}</h3>
+          <p className="mt-2 text-xs leading-5 text-text-muted">{profile.mandate_summary || t('buyerReadiness.noMandate')}</p>
+        </div>
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[14px] border border-highlight/30 bg-highlight/10 font-mono text-lg font-bold text-highlight">
+          {level}/5
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        <RightPaneRow label={t('buyerReadiness.buyerType')} value={humanize(profile.buyer_type) || t('notSet')} tone="neutral" />
+        <RightPaneRow label={t('buyerReadiness.fundingPath')} value={humanize(profile.funding_path) || t('notSet')} tone={statusTone(profile.evidence_status)} />
+        <RightPaneRow label={t('buyerReadiness.sharingMode')} value={humanize(profile.sharing_mode) || t('notSet')} tone={activeGrants > 0 ? 'lime' : 'neutral'} />
+        <RightPaneRow label={t('buyerReadiness.visitReadiness')} value={profile.visit_readiness || t('notSet')} tone="cyan" />
+        <RightPaneRow label={t('buyerReadiness.brokerageStatus')} value={humanize(profile.brokerage_status) || t('notSet')} tone={statusTone(profile.brokerage_status)} />
+        <RightPaneRow label={t('buyerReadiness.kycState')} value={humanize(profile.kyc_state) || t('notSet')} tone={statusTone(profile.kyc_state)} />
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        <ReadinessList
+          title={t('buyerReadiness.evidenceTitle')}
+          empty={t('buyerReadiness.noEvidence')}
+          items={evidence.map((item) => ({
+            id: item.id,
+            label: humanize(item.evidence_type) || t('buyerReadiness.evidenceFallback'),
+            meta: [
+              humanize(item.status),
+              humanize(item.sensitivity_level),
+              item.expires_at ? t('buyerReadiness.expires', { time: formatRelativeTime(item.expires_at) }) : null,
+            ].filter(Boolean).join(' · '),
+            tone: statusTone(item.status),
+          }))}
+        />
+        <ReadinessList
+          title={t('buyerReadiness.sharingTitle')}
+          empty={t('buyerReadiness.noSharing')}
+          items={grants.map((item) => ({
+            id: item.id,
+            label: humanize(item.share_mode) || t('buyerReadiness.shareFallback'),
+            meta: [
+              humanize(item.allowed_action),
+              item.revoked_at ? t('buyerReadiness.revoked') : item.expires_at ? t('buyerReadiness.expires', { time: formatRelativeTime(item.expires_at) }) : t('buyerReadiness.noExpiry'),
+            ].filter(Boolean).join(' · '),
+            tone: item.revoked_at ? 'warn' : 'lime',
+          }))}
+        />
+        <ReadinessList
+          title={t('buyerReadiness.approvalsTitle')}
+          empty={t('buyerReadiness.noApprovals')}
+          items={approvals.map((item) => ({
+            id: item.id,
+            label: humanize(item.action_type) || t('buyerReadiness.actionFallback'),
+            meta: [
+              humanize(item.approval_status),
+              item.executed_at ? t('buyerReadiness.executed', { time: formatRelativeTime(item.executed_at) }) : null,
+            ].filter(Boolean).join(' · '),
+            tone: statusTone(item.approval_status),
+          }))}
+        />
+      </div>
+    </Panel>
+  );
+}
+
+function ReadinessList({
+  title,
+  empty,
+  items,
+}: {
+  title: string;
+  empty: string;
+  items: { id: string; label: string; meta: string; tone: 'neutral' | 'lime' | 'cyan' | 'warn' }[];
+}) {
+  const toneClass = {
+    neutral: 'border-border bg-surface-alt text-text-muted',
+    lime: 'border-accent/20 bg-accent/10 text-accent',
+    cyan: 'border-highlight/20 bg-highlight/10 text-highlight',
+    warn: 'border-warning/25 bg-warning/10 text-warning',
+  };
+  return (
+    <div className="rounded-[12px] border border-border bg-background/40 p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">{title}</p>
+      {items.length === 0 ? (
+        <p className="text-sm leading-5 text-text-soft">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {items.slice(0, 4).map((item) => (
+            <div key={item.id} className="flex items-start justify-between gap-3 rounded-[10px] bg-surface-alt px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-text">{item.label}</p>
+                {item.meta ? <p className="mt-0.5 text-xs leading-5 text-text-muted">{item.meta}</p> : null}
+              </div>
+              <span className={cn('mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border', toneClass[item.tone])} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
