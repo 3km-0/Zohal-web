@@ -2760,6 +2760,7 @@
     "proceedNegotiate": "Proceed to negotiate",
     "scheduleVisit": "Schedule visit",
     "pass": "Pass",
+    "approvalRequestError": "Unable to queue this approval right now.",
     "brokerageGateHint": "Buyer-side representation must be active before Zohal sends negotiation or offer actions.",
     "buyerReadiness": {
       "title": "Buyer Readiness",

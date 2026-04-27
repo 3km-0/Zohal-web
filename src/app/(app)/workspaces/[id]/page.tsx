@@ -324,6 +324,8 @@ export default function WorkspaceCockpitPage() {
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
+  const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
 
   const agentScope: AgentScope = { kind: 'workspace', workspaceId };
 
@@ -419,6 +421,35 @@ export default function WorkspaceCockpitPage() {
     setScenario(scenarioFromOpportunity(selectedOpportunity));
   }, [selectedOpportunity?.id]);
 
+  const requestExternalAction = useCallback(async (actionType: string) => {
+    if (!selectedOpportunity || !readinessProfile) return;
+    setApprovalBusy(actionType);
+    setApprovalError(null);
+    try {
+      const { data, error } = await supabase
+        .from('external_action_approvals')
+        .insert({
+          workspace_id: workspaceId,
+          opportunity_id: selectedOpportunity.id,
+          buyer_profile_id: readinessProfile.id,
+          action_type: actionType,
+          draft_payload_json: {
+            source: 'web_acquisition_cockpit',
+            opportunity_title: titleFor(selectedOpportunity) || selectedOpportunity.summary || selectedOpportunity.id,
+          },
+          approval_status: 'pending',
+        })
+        .select('id, action_type, approval_status, opportunity_id, executed_at, created_at')
+        .single();
+      if (error) throw error;
+      setActionApprovals((current) => [data as ExternalActionApprovalRow, ...current]);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
+    } finally {
+      setApprovalBusy(null);
+    }
+  }, [readinessProfile, selectedOpportunity, supabase, t, workspaceId]);
+
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
       <div className={cn('relative flex min-h-0 min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
@@ -508,6 +539,9 @@ export default function WorkspaceCockpitPage() {
                   sharingGrants={sharingGrants}
                   actionApprovals={actionApprovals}
                   brokerageActive={brokerageActive}
+                  approvalBusy={approvalBusy}
+                  approvalError={approvalError}
+                  onRequestAction={requestExternalAction}
                 />
               </div>
             )}
@@ -1051,6 +1085,9 @@ function RightPane({
   sharingGrants,
   actionApprovals,
   brokerageActive,
+  approvalBusy,
+  approvalError,
+  onRequestAction,
 }: {
   activeModule: CockpitModule;
   events: AcquisitionEventRow[];
@@ -1064,6 +1101,9 @@ function RightPane({
   sharingGrants: DocumentSharingGrantRow[];
   actionApprovals: ExternalActionApprovalRow[];
   brokerageActive: boolean;
+  approvalBusy: string | null;
+  approvalError: string | null;
+  onRequestAction: (actionType: string) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const titleKey = {
@@ -1139,7 +1179,11 @@ function RightPane({
       </Panel>
 
       <Panel className="sticky bottom-5 p-3">
-        <button className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity || !brokerageActive}>
+        <button
+          className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt disabled:cursor-not-allowed disabled:opacity-55"
+          disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)}
+          onClick={() => void onRequestAction('send_negotiation_message')}
+        >
           {t('proceedNegotiate')}
         </button>
         {!brokerageActive ? (
@@ -1147,8 +1191,19 @@ function RightPane({
             {t('brokerageGateHint')}
           </p>
         ) : null}
+        {approvalError ? (
+          <p className="mt-2 rounded-[10px] border border-error/25 bg-error/10 px-3 py-2 text-xs leading-5 text-error">
+            {approvalError}
+          </p>
+        ) : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity}>{t('scheduleVisit')}</button>
+          <button
+            className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55"
+            disabled={!opportunity || !readinessProfile || Boolean(approvalBusy)}
+            onClick={() => void onRequestAction('schedule_visit')}
+          >
+            {t('scheduleVisit')}
+          </button>
           <button className="rounded-[12px] border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity}>{t('pass')}</button>
         </div>
       </Panel>
