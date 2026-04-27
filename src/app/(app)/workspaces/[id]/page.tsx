@@ -419,7 +419,7 @@ export default function WorkspaceCockpitPage() {
 
   useEffect(() => {
     setScenario(scenarioFromOpportunity(selectedOpportunity));
-  }, [selectedOpportunity?.id]);
+  }, [selectedOpportunity]);
 
   const requestExternalAction = useCallback(async (actionType: string) => {
     if (!selectedOpportunity || !readinessProfile) return;
