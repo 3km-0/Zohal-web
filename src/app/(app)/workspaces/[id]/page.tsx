@@ -1149,12 +1149,11 @@ function ProgressTracker({
           ? t('progress.nextVisit')
           : t('progress.nextOffer');
   return (
-    <Panel className="overflow-hidden p-0">
-      <div className="border-b border-border bg-[linear-gradient(135deg,rgba(var(--highlight-rgb,35,215,255),.10),rgba(var(--accent-rgb,185,255,38),.08))] p-5">
+    <Panel className="p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('progress.title')}</p>
-            <h3 className="mt-1 text-2xl font-bold leading-tight text-text">{nextAction}</h3>
+            <h3 className="mt-1 text-xl font-bold leading-tight text-text">{nextAction}</h3>
             <p className="mt-2 text-sm leading-6 text-text-muted">{t('progress.helper')}</p>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -1165,18 +1164,30 @@ function ProgressTracker({
             )}
           </div>
         </div>
-      </div>
-      <div className="p-5">
-      <div className="grid gap-3 md:grid-cols-7">
+      <div className="mt-6 overflow-x-auto pb-1">
+      <div className="grid min-w-[720px] grid-cols-7">
         {steps.map((step, index) => {
           const completed = index < current;
           const active = index === current;
           const pending = index > current;
           const blocked = active && blockers.length > 0;
           return (
-            <div key={step} className="relative">
+            <div key={step} className="relative flex flex-col items-center">
+              {index > 0 ? (
+                <div
+                  className={cn(
+                    'absolute right-1/2 top-[19px] h-px w-full',
+                    index <= current ? 'bg-success/65' : 'bg-border'
+                  )}
+                />
+              ) : null}
               {index < steps.length - 1 ? (
-                <div className={cn('absolute left-[calc(50%+18px)] right-[calc(-50%+18px)] top-[21px] hidden h-0.5 md:block', completed ? 'bg-success/70' : active ? 'bg-accent/70' : 'bg-border')} />
+                <div
+                  className={cn(
+                    'absolute left-1/2 top-[19px] h-px w-full',
+                    completed ? 'bg-success/65' : active ? 'bg-accent/70' : 'bg-border'
+                  )}
+                />
               ) : null}
               <button
                 type="button"
@@ -1187,30 +1198,30 @@ function ProgressTracker({
                   else onOpenDrawer('consent');
                 }}
                 className={cn(
-                  'relative flex min-h-[112px] w-full flex-col items-center rounded-[16px] border px-3 py-3 text-center transition',
-                  completed && 'border-success/30 bg-success/10 text-success',
-                  active && !blocked && 'border-accent/55 bg-accent/12 text-text shadow-[0_0_26px_var(--accent-soft)]',
-                  blocked && 'border-warning/45 bg-warning/12 text-text shadow-[0_0_22px_rgba(245,158,11,.15)]',
-                  pending && 'border-border bg-surface-alt text-text-muted hover:bg-surface'
+                  'relative flex w-full flex-col items-center px-2 text-center transition hover:text-text',
+                  completed && 'text-success',
+                  active && 'text-text',
+                  pending && 'text-text-muted'
                 )}
               >
                 <span className={cn(
-                  'grid h-10 w-10 place-items-center rounded-full border text-sm font-black',
-                  completed && 'border-success/35 bg-success text-white',
-                  active && !blocked && 'border-accent/40 bg-accent text-[color:var(--accent-text)]',
-                  blocked && 'border-warning/40 bg-warning text-black',
-                  pending && 'border-border bg-background text-text-muted'
+                  'relative grid h-10 w-10 place-items-center rounded-full border text-sm font-black transition',
+                  completed && 'border-success bg-success text-[#030509]',
+                  active && !blocked && 'border-accent bg-accent text-[color:var(--accent-text)] shadow-[0_0_0_8px_var(--accent-dim),0_0_34px_var(--accent-soft)]',
+                  blocked && 'border-warning bg-warning text-[#030509] shadow-[0_0_0_8px_var(--warning-soft),0_0_30px_rgba(255,176,32,.18)]',
+                  pending && 'border-border bg-[color:var(--bg)] text-text-muted'
                 )}>
                   {completed ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
                 </span>
-                <p className={cn('mt-3 text-xs font-bold', pending ? 'text-text-muted' : 'text-text')}>{step}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                <p className={cn('mt-3 max-w-[96px] text-xs font-bold leading-4', pending ? 'text-text-muted' : 'text-text')}>{step}</p>
+                <p className={cn('mt-1 text-[10px] uppercase tracking-[0.14em]', active ? (blocked ? 'text-warning' : 'text-accent') : 'text-text-muted')}>
                   {completed ? t('progress.done') : active ? t(blocked ? 'progress.blocked' : 'progress.current') : t('progress.pending')}
                 </p>
               </button>
             </div>
           );
         })}
+      </div>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => onOpenDrawer(!readinessProfile ? 'files' : missingItems.length ? 'evidence' : 'command')} className="rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-[color:var(--accent-text)]">
@@ -1222,7 +1233,6 @@ function ProgressTracker({
         <button type="button" onClick={() => onOpenDrawer('command')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
           {t('progress.command')}
         </button>
-      </div>
       </div>
     </Panel>
   );
@@ -1744,13 +1754,13 @@ function WorkspaceCommandDrawer({
     >
       <button type="button" aria-label={t('close')} onClick={onClose} className="hidden flex-1 xl:block" />
       <div
-        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-border bg-[#F8FCFA] shadow-2xl shadow-black/30 dark:border-white/12 dark:bg-[#061018] dark:shadow-black/65 xl:max-w-none"
-        style={{ width: `${width}px` } as CSSProperties}
+        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-border shadow-2xl shadow-black/30 dark:border-white/12 dark:shadow-black/65 xl:max-w-none"
+        style={{ width: `${width}px`, background: 'var(--console-bg, var(--bg))' } as CSSProperties}
       >
         <div onPointerDown={handleDragStart} aria-hidden="true" className="absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize touch-none items-center justify-center xl:flex">
           <div className={cn('h-10 w-1 rounded-full transition-colors', isDragging ? 'bg-accent' : 'bg-border hover:bg-accent/60')} />
         </div>
-        <div className="flex items-center justify-between border-b border-border bg-white/80 px-4 py-3 dark:bg-[#091722]">
+        <div className="flex items-center justify-between border-b border-border bg-[color:var(--bg)] px-4 py-3 dark:bg-[#030509]">
           <div>
             <p className="text-sm font-semibold text-text">{t('drawer.title')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
@@ -1759,7 +1769,7 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-3 gap-1 border-b border-border bg-[#ECF5F1] p-2 dark:bg-[#03080D]">
+        <div className="grid grid-cols-3 gap-1 border-b border-border bg-[color:var(--bg)] p-2 dark:bg-[#07101A]">
           {tabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
