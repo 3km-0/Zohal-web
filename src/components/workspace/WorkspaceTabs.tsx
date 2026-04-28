@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FolderOpen, PanelsTopLeft, MoreHorizontal, Bolt } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, FolderOpen, PanelsTopLeft, MoreHorizontal, Bolt } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -100,79 +100,66 @@ export function WorkspaceTabs({
       : []),
   ];
 
+  const activeTab = tabs.find((tab) => tab.key === resolved) ?? tabs[0];
+  const ActiveIcon = activeTab.icon;
+
   return (
-    <div className={cn('relative border-b border-border bg-background/80 px-4 py-3 md:px-6', className)} data-tour="workspace-tabs">
-      <div className="relative overflow-x-auto">
-        <div className="flex min-w-max items-center gap-1 rounded-[14px] border border-border bg-surface/90 p-1 shadow-[var(--shadowSm)] backdrop-blur dark:bg-[image:var(--panel-bg)]">
+    <div className={cn('relative border-b border-border bg-background/80 px-4 py-3 md:px-6', className)} data-tour="workspace-tabs" ref={moreRef}>
+      <button
+        type="button"
+        aria-expanded={moreOpen}
+        aria-haspopup="menu"
+        onClick={(event) => {
+          event.stopPropagation();
+          setMoreOpen((open) => !open);
+        }}
+        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-border bg-surface px-3 text-sm font-semibold text-text shadow-[var(--shadowSm)] transition hover:bg-surface-alt"
+      >
+        <ActiveIcon className="h-4 w-4 text-accent" />
+        <span>{t('workspaceMenu')}</span>
+        <ChevronDown className={cn('h-4 w-4 text-text-muted transition', moreOpen && 'rotate-180')} />
+      </button>
+      {moreOpen ? (
+        <div
+          role="menu"
+          className="absolute end-0 top-[calc(100%+8px)] z-50 min-w-64 overflow-hidden rounded-[14px] border border-border bg-surface shadow-2xl shadow-black/20"
+        >
           {tabs.map((tab) => {
-            const isActive = resolved === tab.key;
             const Icon = tab.icon;
+            const isActive = resolved === tab.key;
             return (
               <Link
-                key={tab.key}
+                key={tab.href}
                 href={tab.href}
+                role="menuitem"
                 aria-current={isActive ? 'page' : undefined}
+                onClick={() => setMoreOpen(false)}
                 className={cn(
-                  'inline-flex items-center whitespace-nowrap rounded-[10px] transition-all duration-150',
-                  isActive ? 'bg-accent text-[color:var(--accent-text)] shadow-[0_0_26px_var(--accent-soft)]' : 'text-text-soft hover:bg-surface-alt hover:text-text'
+                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition hover:bg-surface-alt hover:text-text',
+                  isActive ? 'bg-accent/10 text-accent' : 'text-text-soft'
                 )}
               >
-                <span
-                  className={cn(
-                    'inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 text-sm transition-colors duration-150',
-                    isActive ? 'font-semibold' : 'font-medium'
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      'flex-shrink-0 transition-colors duration-150',
-                      isActive ? 'h-4 w-4' : 'h-3.5 w-3.5 text-text-muted'
-                    )}
-                  />
-                  {tab.label}
-                </span>
+                <Icon className="h-4 w-4" />
+                {tab.label}
               </Link>
             );
           })}
-
-          <div className="relative ps-1" ref={moreRef}>
-            <button
-              type="button"
-              aria-expanded={moreOpen}
-              aria-haspopup="menu"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMoreOpen((o) => !o);
-              }}
-              className={cn(
-                'inline-flex min-h-[36px] items-center gap-1 rounded-[10px] px-3 py-2 text-sm font-medium text-text-soft transition-colors hover:bg-surface-alt hover:text-text'
-              )}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-              {t('more')}
-            </button>
-            {moreOpen ? (
-              <div
-                role="menu"
-                className="absolute end-0 top-full z-40 mt-2 min-w-[12rem] rounded-xl border border-border bg-surface py-1 shadow-[var(--shadowMd)]"
+          <div className="border-t border-border py-1">
+            {secondaryLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                role="menuitem"
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-text-soft transition hover:bg-surface-alt hover:text-text"
+                onClick={() => setMoreOpen(false)}
               >
-                {secondaryLinks.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    role="menuitem"
-                    className="block px-3 py-2 text-sm text-text hover:bg-surface-alt"
-                    onClick={() => setMoreOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
+                <MoreHorizontal className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -153,6 +153,7 @@ type AcquisitionClaimRow = {
 
 type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
+type PrimaryWorkspaceTab = 'deal' | 'actions';
 
 type ScenarioState = {
   price: number;
@@ -360,9 +361,10 @@ export default function WorkspaceCockpitPage() {
   const [agentOpen, setAgentOpen] = useState(false);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
+  const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryWorkspaceTab>('deal');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeDrawerTab, setActiveDrawerTab] = useState<WorkspaceDrawerTab>('command');
   const [drawerWidth, setDrawerWidth] = useState(430);
+  const [heroMapOpen, setHeroMapOpen] = useState(false);
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
   const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
@@ -483,6 +485,13 @@ export default function WorkspaceCockpitPage() {
   const pursueCount = opportunities.filter((item) => recommendationFor(item) === 'pursue' || item.stage === 'pursue').length;
   const latestUpdate = events[0]?.created_at ?? selectedOpportunity?.updated_at ?? null;
   const brokerageActive = readinessProfile?.brokerage_status === 'signed' || readinessProfile?.brokerage_status === 'active';
+  const currentBlocker = !readinessProfile
+    ? t('progress.nextReadiness')
+    : selectedMissing.length > 0
+      ? t('progress.nextDiligence')
+      : !brokerageActive
+        ? t('progress.nextBrokerage')
+        : t('progress.nextOffer');
 
   useEffect(() => {
     const stored = window.localStorage.getItem('acquisition_workspace_drawer_width');
@@ -521,7 +530,7 @@ export default function WorkspaceCockpitPage() {
   }, [selectedOpportunity?.id, supabase]);
 
   const openDrawer = useCallback((tab: WorkspaceDrawerTab) => {
-    setActiveDrawerTab(tab);
+    void tab;
     setDrawerOpen(true);
   }, []);
 
@@ -698,7 +707,10 @@ export default function WorkspaceCockpitPage() {
           />
         </aside>
 
-        <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+        <main
+          className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain transition-[margin] duration-200"
+          style={{ marginRight: drawerOpen ? drawerWidth : 0 }}
+        >
           <div className="mx-auto flex min-h-full w-full max-w-[1760px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
@@ -717,21 +729,6 @@ export default function WorkspaceCockpitPage() {
                     />
                   </div>
 
-	                  <CockpitHero
-	                    opportunity={selectedOpportunity}
-	                    missingCount={selectedMissing.length}
-	                    documentCount={documentCount}
-	                    latestUpdate={latestUpdate}
-                      onOpenDrawer={openDrawer}
-	                  />
-	
-                    <MandatePulse
-                      candidates={opportunities.length}
-                      pursue={pursueCount}
-                      openItems={missingCount}
-                      confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
-                    />
-
                     <ProgressTracker
                       opportunity={selectedOpportunity}
                       missingItems={selectedMissing}
@@ -740,55 +737,85 @@ export default function WorkspaceCockpitPage() {
                       onOpenDrawer={openDrawer}
                       onRequestVisit={() => void requestExternalAction('schedule_visit')}
                     />
-	
-	                  <ModuleTabs active={activeModule} onChange={setActiveModule} />
-	
+
+                    <PrimaryWorkspaceTabs
+                      active={activePrimaryTab}
+                      openItems={selectedMissing.length}
+                      onChange={setActivePrimaryTab}
+                    />
+
 	                  <div className="min-h-[380px] space-y-5">
-	                    {activeModule === 'overview' ? (
-	                      <OverviewModule
-                          documentCount={documentCount}
-                          opportunity={selectedOpportunity}
-                          claims={claims}
-                          onOpenDrawer={openDrawer}
-                        />
-	                    ) : null}
-	                    {activeModule === 'model' ? (
-	                      <ModelModule
+                      {activePrimaryTab === 'deal' ? (
+                        <>
+                          <CockpitHero
+                            opportunity={selectedOpportunity}
+                            missingCount={selectedMissing.length}
+                            documentCount={documentCount}
+                            latestUpdate={latestUpdate}
+                            mapOpen={heroMapOpen}
+                            onToggleMap={() => setHeroMapOpen((open) => !open)}
+                            onOpenDrawer={openDrawer}
+                          />
+                          <MandatePulse
+                            candidates={opportunities.length}
+                            pursue={pursueCount}
+                            openItems={missingCount}
+                            confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
+                          />
+                          <ModelModule
                           opportunity={selectedOpportunity}
                           scenario={scenario}
                           saving={scenarioBusy}
                           onScenarioChange={setScenario}
                           onSave={saveScenarioAssumptions}
                         />
-	                    ) : null}
-	                    {activeModule === 'openItems' ? (
-	                      <OpenItemsModule
+                          <RenovationModule
+                            opportunity={selectedOpportunity}
+                            onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <CurrentBlockerBanner
+                            title={currentBlocker}
+                            onPrimaryAction={() => {
+                              if (!readinessProfile) void startReadiness();
+                              else if (selectedMissing.length) setActivePrimaryTab('actions');
+                              else if (!brokerageActive) void requestExternalAction('share_readiness_signal');
+                              else void requestExternalAction('send_negotiation_message');
+                            }}
+                            busy={Boolean(readinessBusy || approvalBusy)}
+                          />
+                          <BuyerReadinessPanel
+                            profile={readinessProfile}
+                            buyerEntity={buyerEntity}
+                            buyerEntityDocuments={buyerEntityDocuments}
+                            evidence={readinessEvidence}
+                            grants={sharingGrants}
+                            approvals={actionApprovals}
+                            busy={readinessBusy}
+                            onStart={startReadiness}
+                            onAttachEvidence={() => openBuyerVault(true)}
+                            onShareReadiness={() => void requestExternalAction('share_readiness_signal')}
+                          />
+                          <OpenItemsModule
                           items={selectedMissing}
                           onRequestItem={(item) => void requestExternalAction('send_outreach', { request_kind: 'missing_document', requested_item: item })}
                         />
-	                    ) : null}
-	                    {activeModule === 'renovation' ? (
-	                      <RenovationModule
-                          opportunity={selectedOpportunity}
-                          onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
-                        />
-	                    ) : null}
-	                    {activeModule === 'outreach' ? (
-	                      <OutreachModule
+                          <OutreachModule
                           opportunity={selectedOpportunity}
                           approvals={actionApprovals}
                           approvalBusy={approvalBusy}
                           onRequestAction={requestExternalAction}
                         />
-	                    ) : null}
-	                    {activeModule === 'offer' ? (
-	                      <OfferModule
+                          <OfferModule
                           opportunity={selectedOpportunity}
                           brokerageActive={brokerageActive}
                           approvalBusy={approvalBusy}
                           onRequestAction={requestExternalAction}
                         />
-	                    ) : null}
+                        </>
+                      )}
 	                  </div>
 	                </section>
 	              </div>
@@ -799,7 +826,6 @@ export default function WorkspaceCockpitPage() {
           {drawerOpen ? (
             <WorkspaceCommandDrawer
               workspaceId={workspaceId}
-              activeTab={activeDrawerTab}
               width={drawerWidth}
               events={events}
               latestUpdate={latestUpdate}
@@ -807,32 +833,20 @@ export default function WorkspaceCockpitPage() {
               opportunity={selectedOpportunity}
               missingItems={selectedMissing}
               claims={claims}
-              readinessProfile={readinessProfile}
-              buyerEntity={buyerEntity}
-              buyerEntityDocuments={buyerEntityDocuments}
               readinessEvidence={readinessEvidence}
               sharingGrants={sharingGrants}
               actionApprovals={actionApprovals}
-              brokerageActive={brokerageActive}
-              approvalBusy={approvalBusy}
-              approvalError={approvalError}
-              readinessBusy={readinessBusy}
-              onTabChange={setActiveDrawerTab}
               onClose={() => setDrawerOpen(false)}
               onWidthChange={setDrawerWidth}
-              onStartReadiness={startReadiness}
-              onAttachEvidence={() => openBuyerVault(true)}
-              onRequestAction={requestExternalAction}
-              onPass={() => void updateSelectedStage('passed')}
             />
           ) : (
             <button
               type="button"
-              onClick={() => openDrawer('command')}
+              onClick={() => openDrawer('evidence')}
               className="absolute bottom-6 right-6 z-30 hidden rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] xl:inline-flex"
             >
               <PanelRightOpen className="mr-2 h-4 w-4" />
-              {t('openCommandDrawer')}
+              {t('openEvidencePane')}
             </button>
           )}
 	      </div>
@@ -893,6 +907,11 @@ function BuyBoxCard({
   const t = useTranslations('workspaceCockpitPage');
   const brief = workspace?.analysis_brief || workspace?.description || '';
   const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
+  const compactMandate = [
+    briefParts[2] ? `${t('budgetRange')}: ${briefParts[2]}` : null,
+    briefParts[1] ? `${t('targetLocations')}: ${briefParts[1]}` : null,
+    briefParts[3] ? `${t('riskAppetite')}: ${briefParts[3]}` : null,
+  ].filter((item): item is string => Boolean(item));
   return (
     <Panel className="mb-5 p-4" data-testid="acquisition-buy-box">
       <div className="mb-4 flex items-center justify-between">
@@ -910,11 +929,14 @@ function BuyBoxCard({
         </button>
       </div>
       <div className="space-y-2">
-        <MandateRow label={t('buyBox')} value={briefParts[0] || t('notSet')} />
-        <MandateRow label={t('targetLocations')} value={briefParts[1] || t('notSet')} />
-        <MandateRow label={t('budgetRange')} value={briefParts[2] || t('notSet')} />
-        <MandateRow label={t('riskAppetite')} value={briefParts[3] || t('notSet')} />
-        <MandateRow label={t('customInstruction')} value={workspace?.description || t('notSet')} />
+        <div className="rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm font-semibold leading-5 text-text">
+          {briefParts[0] || t('notSet')}
+        </div>
+        <div className="space-y-1.5">
+          {(compactMandate.length ? compactMandate : [t('notSet')]).map((item) => (
+            <p key={item} className="truncate text-xs text-text-soft">{item}</p>
+          ))}
+        </div>
       </div>
       <div className="mt-4 grid gap-2">
         <button
@@ -1013,6 +1035,7 @@ function OpportunityRail({
               onClick={() => onSelect(item.id)}
               className={cn(
                 'rounded-[16px] border p-4 text-left transition dark:bg-[#07101A]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.055)]',
+                missingInfoList(item.missing_info_json).length > 0 && 'border-l-4 border-l-warning',
                 compact ? 'min-w-[260px]' : 'w-full',
                 selectedId === item.id
                   ? 'border-accent/50 bg-accent/10 shadow-[0_18px_45px_rgba(var(--accent-rgb,185,255,38),.12)]'
@@ -1033,8 +1056,10 @@ function OpportunityRail({
                 <span className="rounded-2xl bg-black/5 px-3 py-2 text-text dark:bg-black/25">{dealFacts(item).area || t('notSet')}</span>
               </div>
               <div className="mt-3 flex justify-between text-xs text-text-soft">
-                <span>{humanize(recommendationFor(item)) || t('notSet')}</span>
-                <span>{missingInfoList(item.missing_info_json).length} {t('openItemsShort')}</span>
+                <span>{humanize(recommendationFor(item)) || t('notSet')} · {humanize(confidenceFor(item)) || t('notSet')}</span>
+                <span className={cn('rounded-full px-2 py-0.5', missingInfoList(item.missing_info_json).length > 0 ? 'bg-warning/15 text-warning' : 'bg-success/10 text-success')}>
+                  {missingInfoList(item.missing_info_json).length} {t('openItemsShort')}
+                </span>
               </div>
               <div className="mt-3 flex gap-1.5">
                 <SignalDot hot={Boolean(recommendationFor(item))} />
@@ -1055,12 +1080,16 @@ function CockpitHero({
   missingCount,
   documentCount,
   latestUpdate,
+  mapOpen,
+  onToggleMap,
   onOpenDrawer,
 }: {
   opportunity: OpportunityRow | null;
   missingCount: number;
   documentCount: number;
   latestUpdate: string | null;
+  mapOpen: boolean;
+  onToggleMap: () => void;
   onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
@@ -1095,7 +1124,7 @@ function CockpitHero({
             </p>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            <button type="button" onClick={() => onOpenDrawer('map')} className="inline-flex items-center gap-2 rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight transition hover:bg-highlight/15">
+            <button type="button" onClick={onToggleMap} className="inline-flex items-center gap-2 rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight transition hover:bg-highlight/15">
               <MapPin className="h-4 w-4" />
               {t('viewMap')}
             </button>
@@ -1138,6 +1167,23 @@ function CockpitHero({
           </div>
         </div>
       </div>
+      {mapOpen ? (
+        <div className="relative mt-6 overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+          <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
+          <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
+          <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
+          <div className="relative min-h-[320px]">
+            <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
+              {scoreFor(opportunity) ?? '--'}
+            </div>
+            <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-border bg-background/80 p-3 backdrop-blur">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
+              <p className="mt-1 text-sm font-semibold text-text">{title || t('emptyCockpitTitle')}</p>
+              <p className="mt-1 text-xs leading-5 text-text-soft">{metadataString(opportunity, ['district', 'city', 'source', 'source_label', 'listing_source']) || t('marketSignalEmpty')}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </Panel>
   );
 }
@@ -1303,6 +1349,78 @@ function ProgressTracker({
         </button>
         <button type="button" onClick={() => onOpenDrawer('command')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
           {t('progress.command')}
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function PrimaryWorkspaceTabs({
+  active,
+  openItems,
+  onChange,
+}: {
+  active: PrimaryWorkspaceTab;
+  openItems: number;
+  onChange: (tab: PrimaryWorkspaceTab) => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = [
+    { key: 'deal', label: t('dealTab'), icon: Building2 },
+    { key: 'actions', label: t('actionsTab'), icon: ClipboardList },
+  ];
+  return (
+    <div className="flex w-full gap-2 rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#07101A]/95">
+      {tabs.map(({ key, label, icon: Icon }) => {
+        const selected = active === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            className={cn(
+              'inline-flex min-h-[50px] flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-semibold transition',
+              selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+            {key === 'actions' && openItems > 0 ? (
+              <span className="rounded-full bg-warning px-2 py-0.5 font-mono text-[11px] font-bold text-[#030509]">
+                {openItems}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CurrentBlockerBanner({
+  title,
+  busy,
+  onPrimaryAction,
+}: {
+  title: string;
+  busy: boolean;
+  onPrimaryAction: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <Panel className="border-warning/35 bg-warning/10 p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('currentBlocker')}</p>
+          <h3 className="mt-1 text-xl font-bold leading-tight text-text">{title}</h3>
+        </div>
+        <button
+          type="button"
+          onClick={onPrimaryAction}
+          disabled={busy}
+          className="rounded-[12px] bg-warning px-4 py-3 text-sm font-bold text-[#030509] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {t('progress.primaryAction')}
         </button>
       </div>
     </Panel>
@@ -1736,7 +1854,6 @@ function VisualCompanion({
 
 function WorkspaceCommandDrawer({
   workspaceId,
-  activeTab,
   width,
   events,
   latestUpdate,
@@ -1744,26 +1861,13 @@ function WorkspaceCommandDrawer({
   opportunity,
   missingItems,
   claims,
-  readinessProfile,
-  buyerEntity,
-  buyerEntityDocuments,
   readinessEvidence,
   sharingGrants,
   actionApprovals,
-  brokerageActive,
-  approvalBusy,
-  approvalError,
-  readinessBusy,
-  onTabChange,
   onClose,
   onWidthChange,
-  onStartReadiness,
-  onAttachEvidence,
-  onRequestAction,
-  onPass,
 }: {
   workspaceId: string;
-  activeTab: WorkspaceDrawerTab;
   width: number;
   events: AcquisitionEventRow[];
   latestUpdate: string | null;
@@ -1771,36 +1875,15 @@ function WorkspaceCommandDrawer({
   opportunity: OpportunityRow | null;
   missingItems: string[];
   claims: AcquisitionClaimRow[];
-  readinessProfile: BuyerReadinessProfileRow | null;
-  buyerEntity: BuyerEntityRow | null;
-  buyerEntityDocuments: BuyerEntityDocumentRow[];
   readinessEvidence: BuyerReadinessEvidenceRow[];
   sharingGrants: DocumentSharingGrantRow[];
   actionApprovals: ExternalActionApprovalRow[];
-  brokerageActive: boolean;
-  approvalBusy: string | null;
-  approvalError: string | null;
-  readinessBusy: boolean;
-  onTabChange: (tab: WorkspaceDrawerTab) => void;
   onClose: () => void;
   onWidthChange: (width: number) => void;
-  onStartReadiness: () => void;
-  onAttachEvidence: () => void;
-  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
-  onPass: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const tabs: { key: WorkspaceDrawerTab; label: string; icon: LucideIcon }[] = [
-    { key: 'command', label: t('drawer.command'), icon: MessageSquare },
-    { key: 'evidence', label: t('drawer.evidence'), icon: ShieldCheck },
-    { key: 'activity', label: t('drawer.activity'), icon: TrendingUp },
-    { key: 'files', label: t('drawer.files'), icon: FileText },
-    { key: 'consent', label: t('drawer.consent'), icon: CheckCircle2 },
-    { key: 'map', label: t('drawer.map'), icon: Map },
-  ];
-
   const handleDragStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     dragStateRef.current = { startX: event.clientX, startWidth: width };
@@ -1837,92 +1920,20 @@ function WorkspaceCommandDrawer({
         </div>
         <div className="flex items-center justify-between border-b border-border bg-[color:var(--bg)] px-4 py-3 dark:bg-[#030509]">
           <div>
-            <p className="text-sm font-semibold text-text">{t('drawer.title')}</p>
+            <p className="text-sm font-semibold text-text">{t('evidencePaneTitle')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('close')}>
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-3 gap-1 border-b border-border bg-[color:var(--bg)] p-2 dark:bg-[#07101A]">
-          {tabs.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onTabChange(key)}
-              className={cn('inline-flex min-h-10 items-center justify-center gap-1 rounded-[9px] px-2 text-xs font-semibold transition', activeTab === key ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text')}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          {activeTab === 'command' ? (
-            <div className="space-y-4">
-              <BuyerReadinessPanel
-                profile={readinessProfile}
-                buyerEntity={buyerEntity}
-                buyerEntityDocuments={buyerEntityDocuments}
-                evidence={readinessEvidence}
-                grants={sharingGrants}
-                approvals={actionApprovals}
-                busy={readinessBusy}
-                onStart={onStartReadiness}
-                onAttachEvidence={onAttachEvidence}
-                onShareReadiness={() => void onRequestAction('share_readiness_signal')}
-              />
-              <Panel className="sticky bottom-0 p-3">
-                <button
-                  className="w-full rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_22px_var(--accent-soft)] hover:bg-accent-alt disabled:cursor-not-allowed disabled:opacity-55"
-                  disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)}
-                  onClick={() => void onRequestAction('send_negotiation_message')}
-                >
-                  {t('proceedNegotiate')}
-                </button>
-                {!brokerageActive ? (
-                  <p className="mt-2 rounded-[10px] border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-text-soft">
-                    {t('brokerageGateHint')}
-                  </p>
-                ) : null}
-                {approvalError ? (
-                  <p className="mt-2 rounded-[10px] border border-error/25 bg-error/10 px-3 py-2 text-xs leading-5 text-error">
-                    {approvalError}
-                  </p>
-                ) : null}
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button
-                    className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55"
-                    disabled={!opportunity || !readinessProfile || Boolean(approvalBusy)}
-                    onClick={() => void onRequestAction('schedule_visit')}
-                  >
-                    {t('scheduleVisit')}
-                  </button>
-                  <button className="rounded-[12px] border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error disabled:cursor-not-allowed disabled:opacity-55" disabled={!opportunity || Boolean(approvalBusy)} onClick={onPass}>{t('pass')}</button>
-                </div>
-              </Panel>
-            </div>
-          ) : null}
-
-          {activeTab === 'evidence' ? (
+          <div className="space-y-4">
             <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
-          ) : null}
-
-          {activeTab === 'activity' ? (
-            <DrawerActivity events={events} latestUpdate={latestUpdate} />
-          ) : null}
-
-          {activeTab === 'files' ? (
             <DrawerFiles documentCount={documentCount} evidence={readinessEvidence} />
-          ) : null}
-
-          {activeTab === 'consent' ? (
+            <DrawerActivity events={events} latestUpdate={latestUpdate} />
             <DrawerConsent grants={sharingGrants} approvals={actionApprovals} />
-          ) : null}
-
-          {activeTab === 'map' ? (
-            <DrawerMap opportunity={opportunity} />
-          ) : null}
+          </div>
         </div>
       </div>
     </aside>
