@@ -75,9 +75,91 @@ const EXTERNAL_ACTION_TYPES = new Set([
   "share_readiness_signal",
   "share_document",
   "schedule_visit",
+  "request_contractor_evaluation",
+  "activate_buyer_broker",
+  "share_financing_packet",
+  "upload_property_document",
+  "upload_financing_document",
+  "add_listing_evidence",
+  "pass_property",
+  "close_property",
   "send_offer",
   "send_negotiation_message",
 ]);
+const ACQUISITION_ACTION_DEFINITIONS = {
+  add_listing_evidence: {
+    stage: "submitted",
+    label: "Add listing evidence",
+    adapter: "files",
+    result: "Creates a property folder and starts property analysis.",
+  },
+  request_missing_documents: {
+    stage: "needs_info",
+    label: "Request missing documents",
+    adapter: "whatsapp",
+    result: "Records broker outreach and marks diligence items as requested.",
+  },
+  schedule_visit: {
+    stage: "visit_requested",
+    label: "Schedule visit",
+    adapter: "calendar",
+    result: "Creates a calendar event and advances the visit stage.",
+  },
+  request_contractor_evaluation: {
+    stage: "quote_requested",
+    label: "Request contractor evaluation",
+    adapter: "contractor",
+    result: "Creates a contractor coordination thread and awaits a report.",
+  },
+  upload_property_document: {
+    stage: "formal_diligence",
+    label: "Upload diligence document",
+    adapter: "files",
+    result: "Triggers property corpus analysis and discrepancy checks.",
+  },
+  upload_financing_document: {
+    stage: "buyer_readiness",
+    label: "Upload financing document",
+    adapter: "readiness",
+    result: "Stores financing evidence privately without underwriting creditworthiness.",
+  },
+  share_financing_packet: {
+    stage: "buyer_readiness",
+    label: "Grant financing consent",
+    adapter: "readiness",
+    result: "Records consent before any financing status or document share.",
+  },
+  activate_buyer_broker: {
+    stage: "brokerage",
+    label: "Activate buyer broker",
+    adapter: "brokerage",
+    result: "Records buyer-side authority before negotiation actions.",
+  },
+  prepare_offer: {
+    stage: "offer",
+    label: "Prepare offer",
+    adapter: "offer",
+    result: "Drafts approval-gated offer support.",
+  },
+  send_offer: {
+    stage: "offer",
+    label: "Send offer",
+    adapter: "offer",
+    result: "Queues approval-gated offer delivery.",
+  },
+  pass_property: {
+    stage: "passed",
+    label: "Pass",
+    adapter: "decision",
+    result: "Records the terminal pass decision.",
+  },
+  close_property: {
+    stage: "closed",
+    label: "Close",
+    adapter: "decision",
+    result: "Records the completed acquisition decision.",
+  },
+};
 const HIGH_RISK_SEVERITIES = new Set(["high", "critical"]);
 const RESOLVED_FLAG_STATUSES = new Set(["resolved", "waived"]);
 
@@ -87,6 +169,41 @@ function normalizeText(value) {
 
 function normalizeUuid(value) {
   return normalizeText(value).toLowerCase() || null;
+}
+
+function normalizeMissingItems(value) {
+  if (Array.isArray(value)) return value.map((item) => normalizeText(item)).filter(Boolean);
+  if (value && typeof value === "object") {
+    return Object.entries(value).map(([key, item]) => normalizeText(item) || normalizeText(key)).filter(Boolean);
+  }
+  return [];
+}
+
+function activeGrantCount(grants = []) {
+  const now = Date.now();
+  return grants.filter((grant) => {
+    if (grant.revoked_at) return false;
+    if (!grant.expires_at) return true;
+    const expires = Date.parse(grant.expires_at);
+    return !Number.isFinite(expires) || expires > now;
+  }).length;
+}
+
+function resolvePrimaryAcquisitionAction({ opportunity, readinessProfile, brokerageActive, sharingGrants = [] }) {
+  const stage = opportunity?.stage || "submitted";
+  const missing = normalizeMissingItems(opportunity?.missing_info_json);
+  if (!opportunity?.id) return { action_id: "add_listing_evidence", ...ACQUISITION_ACTION_DEFINITIONS.add_listing_evidence, blocked: false };
+  if (!readinessProfile?.id) return { action_id: "upload_financing_document", ...ACQUISITION_ACTION_DEFINITIONS.upload_financing_document, blocked: false, secondary_action_id: "add_listing_evidence" };
+  if (missing.length || ["needs_info", "screening", "pursue", "workspace_created"].includes(stage)) {
+    return { action_id: "request_missing_documents", ...ACQUISITION_ACTION_DEFINITIONS.request_missing_documents, blocked: false, secondary_action_id: "upload_property_document" };
+  }
+  if (stage === "visit_requested") return { action_id: "request_contractor_evaluation", ...ACQUISITION_ACTION_DEFINITIONS.request_contractor_evaluation, blocked: false };
+  if (stage === "quote_requested" || stage === "formal_diligence") return { action_id: "upload_property_document", ...ACQUISITION_ACTION_DEFINITIONS.upload_property_document, blocked: false };
+  if (!brokerageActive) return { action_id: "activate_buyer_broker", ...ACQUISITION_ACTION_DEFINITIONS.activate_buyer_broker, blocked: false };
+  if (activeGrantCount(sharingGrants) < 1) return { action_id: "share_financing_packet", ...ACQUISITION_ACTION_DEFINITIONS.share_financing_packet, blocked: false };
+  if (["negotiation", "offer", "offer_drafted", "offer_submitted"].includes(stage)) return { action_id: "send_offer", ...ACQUISITION_ACTION_DEFINITIONS.send_offer, blocked: false, secondary_action_id: "pass_property" };
+  if (stage === "closed") return { action_id: "close_property", ...ACQUISITION_ACTION_DEFINITIONS.close_property, blocked: false };
+  return { action_id: "schedule_visit", ...ACQUISITION_ACTION_DEFINITIONS.schedule_visit, blocked: false, secondary_action_id: "pass_property" };
 }
 
 function clampNumber(value, fallback, min, max) {
@@ -1497,6 +1614,10 @@ async function createExternalActionApproval(supabase, body = {}) {
     opportunity_id: normalizeUuid(body.opportunity_id),
     buyer_profile_id: normalizeUuid(body.buyer_profile_id),
     action_type: actionType,
+    acquisition_action_id: normalizeText(body.acquisition_action_id || body.draft_payload_json?.acquisition_action_id || body.draft_payload?.acquisition_action_id),
+    resolved_stage: normalizeText(body.resolved_stage),
+    result_status: normalizeText(body.result_status) || "pending",
+    blocker_reason: normalizeText(body.blocker_reason),
     draft_payload_json: body.draft_payload_json || body.draft_payload || {},
     approval_status: ["draft", "pending", "approved", "rejected", "executed", "cancelled"].includes(body.approval_status)
       ? body.approval_status
@@ -1610,6 +1731,179 @@ async function executeExternalAction(supabase, approvalId, body = {}) {
   return data;
 }
 
+async function ensureWorkspaceFolder(supabase, { workspaceId, parentId = null, name, folderKind, opportunityId = null, buyerEntityId = null, readinessProfileId = null, sensitivityLevel = "standard", analysisPolicy = "manual" }) {
+  const query = supabase
+    .from("workspace_folders")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("name", name)
+    .is("deleted_at", null)
+    .limit(1);
+  const scoped = parentId ? query.eq("parent_id", parentId) : query.is("parent_id", null);
+  const { data: existing, error: loadError } = await scoped.maybeSingle();
+  if (loadError) throw new Error(`Failed to load workspace folder: ${loadError.message}`);
+  if (existing?.id) return existing;
+  const payload = {
+    workspace_id: workspaceId,
+    parent_id: parentId,
+    name,
+    folder_kind: folderKind,
+    related_opportunity_id: opportunityId,
+    buyer_entity_id: buyerEntityId,
+    buyer_readiness_profile_id: readinessProfileId,
+    sensitivity_level: sensitivityLevel,
+    analysis_policy: analysisPolicy,
+  };
+  const { data, error } = await supabase.from("workspace_folders").insert(payload).select("*").single();
+  if (error || !data) throw new Error(`Failed to create workspace folder: ${error?.message || "unknown"}`);
+  return data;
+}
+
+async function ensureAcquisitionFolders(supabase, { opportunity, readinessProfile = null }) {
+  if (!opportunity?.workspace_id) return {};
+  const propertiesRoot = await ensureWorkspaceFolder(supabase, {
+    workspaceId: opportunity.workspace_id,
+    name: "Properties",
+    folderKind: "acquisition_property_root",
+    analysisPolicy: "none",
+  });
+  const propertyFolder = await ensureWorkspaceFolder(supabase, {
+    workspaceId: opportunity.workspace_id,
+    parentId: propertiesRoot.id,
+    name: normalizeText(opportunity.title || opportunity.summary || `Opportunity ${String(opportunity.id).slice(0, 8)}`).slice(0, 96),
+    folderKind: "acquisition_property",
+    opportunityId: opportunity.id,
+    analysisPolicy: "acquisition_property",
+  });
+  const buyerRoot = await ensureWorkspaceFolder(supabase, {
+    workspaceId: opportunity.workspace_id,
+    name: "Buyer",
+    folderKind: "buyer_root",
+    analysisPolicy: "none",
+  });
+  const financingFolder = await ensureWorkspaceFolder(supabase, {
+    workspaceId: opportunity.workspace_id,
+    parentId: buyerRoot.id,
+    name: "Secure Financing",
+    folderKind: "buyer_secure_financing",
+    buyerEntityId: readinessProfile?.buyer_entity_id || null,
+    readinessProfileId: readinessProfile?.id || null,
+    sensitivityLevel: "financial",
+    analysisPolicy: "buyer_readiness_financing",
+  });
+  return { properties_root: propertiesRoot, property_folder: propertyFolder, buyer_root: buyerRoot, financing_folder: financingFolder };
+}
+
+async function loadOpportunityActionState(supabase, opportunityId) {
+  const { data: opportunity, error } = await supabase
+    .from("acquisition_opportunities")
+    .select("*")
+    .eq("id", opportunityId)
+    .maybeSingle();
+  if (error) throw new Error(`Failed to load acquisition opportunity: ${error.message}`);
+  if (!opportunity) {
+    const notFound = new Error("Acquisition opportunity not found");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+  const [{ data: profiles }, { data: grants }, { data: agreements }] = await Promise.all([
+    supabase.from("buyer_readiness_profiles").select("*").eq("workspace_id", opportunity.workspace_id).order("updated_at", { ascending: false }).limit(1),
+    supabase.from("document_sharing_grants").select("*").eq("workspace_id", opportunity.workspace_id).order("created_at", { ascending: false }).limit(20),
+    supabase.from("brokerage_agreements").select("*").eq("workspace_id", opportunity.workspace_id).order("created_at", { ascending: false }).limit(20),
+  ]);
+  const readinessProfile = (profiles || [])[0] || null;
+  const brokerageActive = hasActiveBrokerageAgreement(agreements || []);
+  const action = resolvePrimaryAcquisitionAction({ opportunity, readinessProfile, brokerageActive, sharingGrants: grants || [] });
+  return {
+    opportunity,
+    readiness_profile: readinessProfile,
+    sharing_grants: grants || [],
+    brokerage_active: brokerageActive,
+    primary_action: action,
+    actions: [action],
+  };
+}
+
+async function listOpportunityActions(supabase, opportunityId) {
+  const state = await loadOpportunityActionState(supabase, opportunityId);
+  const folders = await ensureAcquisitionFolders(supabase, { opportunity: state.opportunity, readinessProfile: state.readiness_profile });
+  return { ...state, folders };
+}
+
+async function prepareOpportunityAction(supabase, opportunityId, actionId, body = {}) {
+  const state = await loadOpportunityActionState(supabase, opportunityId);
+  const definition = ACQUISITION_ACTION_DEFINITIONS[actionId];
+  if (!definition) {
+    const error = new Error("Unknown acquisition action");
+    error.statusCode = 400;
+    throw error;
+  }
+  const folders = await ensureAcquisitionFolders(supabase, { opportunity: state.opportunity, readinessProfile: state.readiness_profile });
+  return {
+    action: { action_id: actionId, ...definition, blocked: false },
+    primary_action: state.primary_action,
+    folders,
+    manual_whatsapp_url: state.opportunity.phone_number ? `https://wa.me/${String(state.opportunity.phone_number).replace(/[^0-9]/g, "")}` : null,
+    consent_disclaimer: actionId === "share_financing_packet" || actionId === "upload_financing_document"
+      ? "Zohal records readiness evidence and consent only. Zohal does not perform underwriting or determine creditworthiness."
+      : null,
+  };
+}
+
+async function executeOpportunityAction(supabase, opportunityId, actionId, body = {}) {
+  const state = await loadOpportunityActionState(supabase, opportunityId);
+  const definition = ACQUISITION_ACTION_DEFINITIONS[actionId];
+  if (!definition) {
+    const error = new Error("Unknown acquisition action");
+    error.statusCode = 400;
+    throw error;
+  }
+  const folders = await ensureAcquisitionFolders(supabase, { opportunity: state.opportunity, readinessProfile: state.readiness_profile });
+  const event = await insertEvent(supabase, {
+    opportunity_id: state.opportunity.id,
+    workspace_id: state.opportunity.workspace_id,
+    created_by: normalizeUuid(body.user_id || body.executed_by),
+    event_type: actionId,
+    event_direction: "operator",
+    body_text: definition.result,
+    event_payload: {
+      action_id: actionId,
+      adapter: definition.adapter,
+      result_status: "recorded",
+      folders,
+      payload: body.payload || {},
+    },
+  });
+  if (actionId === "schedule_visit") {
+    await supabase.from("acquisition_opportunities").update({ stage: "visit_requested" }).eq("id", state.opportunity.id);
+  }
+  if (actionId === "request_contractor_evaluation") {
+    await supabase.from("acquisition_threads").insert({
+      opportunity_id: state.opportunity.id,
+      workspace_id: state.opportunity.workspace_id,
+      thread_kind: "contractor",
+      status: "active",
+      title: "Contractor evaluation",
+      summary: "In-person contractor evaluation requested.",
+      metadata_json: { action_id: actionId },
+    });
+  }
+  if (actionId === "request_missing_documents") {
+    await supabase
+      .from("acquisition_diligence_items")
+      .update({ status: "requested" })
+      .eq("opportunity_id", state.opportunity.id)
+      .eq("status", "open");
+  }
+  if (actionId === "pass_property") {
+    await supabase.from("acquisition_opportunities").update({ stage: "passed" }).eq("id", state.opportunity.id);
+  }
+  if (actionId === "close_property") {
+    await supabase.from("acquisition_opportunities").update({ stage: "closed" }).eq("id", state.opportunity.id);
+  }
+  return { action: { action_id: actionId, ...definition }, event, folders };
+}
+
 function matchRoute(method, pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "api" || parts[1] !== "acquisition" || parts[2] !== "v1") return null;
@@ -1621,6 +1915,9 @@ function matchRoute(method, pathname) {
   if (method === "POST" && parts[3] === "candidates" && parts[5] === "screen") return { name: "screenCandidate", candidateId: parts[4] };
   if (method === "POST" && parts[3] === "candidates" && parts[5] === "promote") return { name: "promoteCandidate", candidateId: parts[4] };
   if (method === "GET" && parts[3] === "opportunities" && parts.length === 5) return { name: "getOpportunity", opportunityId: parts[4] };
+  if (method === "GET" && parts[3] === "opportunities" && parts[5] === "actions" && parts.length === 6) return { name: "listOpportunityActions", opportunityId: parts[4] };
+  if (method === "POST" && parts[3] === "opportunities" && parts[5] === "actions" && parts[7] === "prepare") return { name: "prepareOpportunityAction", opportunityId: parts[4], actionId: parts[6] };
+  if (method === "POST" && parts[3] === "opportunities" && parts[5] === "actions" && parts[7] === "execute") return { name: "executeOpportunityAction", opportunityId: parts[4], actionId: parts[6] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "enrich") return { name: "enrichOpportunity", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "notes") return { name: "addOpportunityNote", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "stage") return { name: "updateOpportunityStage", opportunityId: parts[4] };
@@ -1687,6 +1984,15 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
       const { data, error } = await supabase.from("acquisition_opportunities").select("*, acquisition_claims(*), acquisition_diligence_items(*), acquisition_events(*), acquisition_threads(*)").eq("id", route.opportunityId).single();
       if (error) throw error;
       return sendJson(res, 200, buildEnvelope(requestId, { opportunity: data }));
+    }
+    if (route.name === "listOpportunityActions") {
+      return sendJson(res, 200, buildEnvelope(requestId, await listOpportunityActions(supabase, route.opportunityId)));
+    }
+    if (route.name === "prepareOpportunityAction") {
+      return sendJson(res, 200, buildEnvelope(requestId, await prepareOpportunityAction(supabase, route.opportunityId, route.actionId, body)));
+    }
+    if (route.name === "executeOpportunityAction") {
+      return sendJson(res, 200, buildEnvelope(requestId, await executeOpportunityAction(supabase, route.opportunityId, route.actionId, body)));
     }
     if (route.name === "enrichOpportunity") {
       return sendJson(res, 200, buildEnvelope(requestId, await enrichOpportunity(supabase, route.opportunityId, body)));
@@ -1785,6 +2091,7 @@ export const __test = {
   normalizeSources,
   promoteCandidate,
   recomputeReadinessProfile,
+  resolvePrimaryAcquisitionAction,
   screenCandidate,
   upsertCandidateDraft,
   updateReadinessProfile,

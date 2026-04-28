@@ -1,7 +1,9 @@
 export type AcquisitionUiOpportunity = {
+  id?: string | null;
   stage?: string | null;
   title?: string | null;
   summary?: string | null;
+  missing_info_json?: unknown;
   area_summary?: string | null;
   metadata_json?: Record<string, unknown> | null;
 };
@@ -13,6 +15,38 @@ export type AcquisitionScenarioSeed = {
   vacancy: number;
   hold: number;
   appreciation: number;
+};
+
+export type AcquisitionActionId =
+  | 'add_listing_evidence'
+  | 'request_missing_documents'
+  | 'schedule_visit'
+  | 'request_contractor_evaluation'
+  | 'upload_property_document'
+  | 'upload_financing_document'
+  | 'share_financing_packet'
+  | 'activate_buyer_broker'
+  | 'prepare_offer'
+  | 'send_offer'
+  | 'pass_property'
+  | 'close_property';
+
+export type AcquisitionPrimaryAction = {
+  action_id: AcquisitionActionId;
+  stage: string;
+  label: string;
+  result: string;
+  adapter: 'files' | 'whatsapp' | 'calendar' | 'contractor' | 'readiness' | 'brokerage' | 'offer' | 'decision';
+  blocked: boolean;
+  blocker_reason?: string | null;
+  secondary_action_id?: AcquisitionActionId | null;
+};
+
+export type AcquisitionActionContext = {
+  opportunity?: AcquisitionUiOpportunity | null;
+  hasReadinessProfile?: boolean;
+  brokerageActive?: boolean;
+  activeFinancingConsentCount?: number;
 };
 
 const TITLE_NOISE_PATTERNS = [
@@ -104,6 +138,137 @@ export function progressStepIndexForStage(stage: string | null | undefined): num
     default:
       return 0;
   }
+}
+
+export function acquisitionMissingItems(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+      if (typeof item === 'string' && item.trim()) return item.trim();
+      return key;
+    }).filter(Boolean);
+  }
+  return [];
+}
+
+export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContext): AcquisitionPrimaryAction {
+  const stage = context.opportunity?.stage || 'submitted';
+  const missing = acquisitionMissingItems(context.opportunity?.missing_info_json);
+  const hasReadiness = Boolean(context.hasReadinessProfile);
+  const brokerageActive = Boolean(context.brokerageActive);
+  const consented = (context.activeFinancingConsentCount ?? 0) > 0;
+
+  if (!context.opportunity?.id) {
+    return {
+      action_id: 'add_listing_evidence',
+      stage: 'submitted',
+      label: 'Add listing evidence',
+      result: 'Creates a property folder and starts property analysis.',
+      adapter: 'files',
+      blocked: false,
+    };
+  }
+
+  if (!hasReadiness) {
+    return {
+      action_id: 'upload_financing_document',
+      stage,
+      label: 'Start secure financing folder',
+      result: 'Creates buyer readiness and stores financing evidence privately.',
+      adapter: 'readiness',
+      blocked: false,
+      secondary_action_id: 'add_listing_evidence',
+    };
+  }
+
+  if (missing.length > 0 || stage === 'needs_info' || stage === 'screening' || stage === 'pursue' || stage === 'workspace_created') {
+    return {
+      action_id: 'request_missing_documents',
+      stage,
+      label: 'Request missing documents',
+      result: 'Records broker outreach and marks diligence items as requested.',
+      adapter: 'whatsapp',
+      blocked: false,
+      secondary_action_id: 'upload_property_document',
+    };
+  }
+
+  if (stage === 'visit_requested') {
+    return {
+      action_id: 'request_contractor_evaluation',
+      stage,
+      label: 'Request contractor evaluation',
+      result: 'Creates a contractor coordination thread and awaits a report.',
+      adapter: 'contractor',
+      blocked: false,
+    };
+  }
+
+  if (stage === 'quote_requested' || stage === 'formal_diligence') {
+    return {
+      action_id: 'upload_property_document',
+      stage,
+      label: 'Upload diligence document',
+      result: 'Triggers property corpus analysis and discrepancy checks.',
+      adapter: 'files',
+      blocked: false,
+    };
+  }
+
+  if (!brokerageActive) {
+    return {
+      action_id: 'activate_buyer_broker',
+      stage,
+      label: 'Activate buyer broker',
+      result: 'Records buyer-side authority before negotiation actions.',
+      adapter: 'brokerage',
+      blocked: false,
+    };
+  }
+
+  if (!consented) {
+    return {
+      action_id: 'share_financing_packet',
+      stage,
+      label: 'Grant financing consent',
+      result: 'Records consent before sharing financing status or documents.',
+      adapter: 'readiness',
+      blocked: false,
+    };
+  }
+
+  if (stage === 'negotiation' || stage === 'offer' || stage === 'offer_drafted' || stage === 'offer_submitted') {
+    return {
+      action_id: 'send_offer',
+      stage,
+      label: 'Send offer',
+      result: 'Queues approval-gated offer delivery.',
+      adapter: 'offer',
+      blocked: false,
+      secondary_action_id: 'pass_property',
+    };
+  }
+
+  if (stage === 'closed') {
+    return {
+      action_id: 'close_property',
+      stage,
+      label: 'Close property',
+      result: 'Records the completed acquisition decision.',
+      adapter: 'decision',
+      blocked: false,
+    };
+  }
+
+  return {
+    action_id: 'schedule_visit',
+    stage,
+    label: 'Schedule visit',
+    result: 'Creates a Google Calendar event and advances the visit stage.',
+    adapter: 'calendar',
+    blocked: false,
+    secondary_action_id: 'pass_property',
+  };
 }
 
 export function seedScenarioFromOpportunity(item: AcquisitionUiOpportunity | null | undefined): AcquisitionScenarioSeed {

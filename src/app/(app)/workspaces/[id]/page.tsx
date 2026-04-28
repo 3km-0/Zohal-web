@@ -41,6 +41,7 @@ import {
   displayTitleForOpportunity,
   photoRefsForOpportunity,
   progressStepIndexForStage,
+  resolvePrimaryAcquisitionAction,
   seedScenarioFromOpportunity,
 } from '@/lib/acquisition-workspace-ui';
 import { createClient } from '@/lib/supabase/client';
@@ -499,6 +500,12 @@ export default function WorkspaceCockpitPage() {
         ? t('progress.nextBrokerage')
         : t('progress.nextOffer');
   const hasActionBlocker = !readinessProfile || selectedMissing.length > 0 || !brokerageActive;
+  const primaryAction = resolvePrimaryAcquisitionAction({
+    opportunity: selectedOpportunity,
+    hasReadinessProfile: Boolean(readinessProfile),
+    brokerageActive,
+    activeFinancingConsentCount: activeGrantCount(sharingGrants),
+  });
 
   useEffect(() => {
     const stored = window.localStorage.getItem('acquisition_workspace_drawer_width');
@@ -613,6 +620,33 @@ export default function WorkspaceCockpitPage() {
     }
   }, [readinessProfile, selectedOpportunity, supabase, t, workspace?.name, workspaceId]);
 
+  const scheduleVisit = useCallback(async () => {
+    if (!selectedOpportunity) return;
+    setApprovalBusy('schedule_visit');
+    setApprovalError(null);
+    try {
+      const response = await fetch('/google-calendar/acquisition-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          opportunity_id: selectedOpportunity.id,
+          title: `Property visit: ${titleFor(selectedOpportunity) || selectedOpportunity.summary || workspace?.name || 'Acquisition opportunity'}`,
+          description: selectedOpportunity.summary || workspace?.analysis_brief || workspace?.description || null,
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || t('approvalRequestError'));
+      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, stage: 'visit_requested', updated_at: new Date().toISOString() } : item));
+      if (json?.html_link) window.open(String(json.html_link), '_blank', 'noopener,noreferrer');
+      await loadWorkspace();
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
+    } finally {
+      setApprovalBusy(null);
+    }
+  }, [loadWorkspace, selectedOpportunity, t, workspace, workspaceId]);
+
   const startReadiness = useCallback(async () => {
     setReadinessBusy(true);
     setApprovalError(null);
@@ -705,6 +739,84 @@ export default function WorkspaceCockpitPage() {
     }
   }, [selectedOpportunity, supabase, t]);
 
+  const executePrimaryAction = useCallback(async () => {
+    if (!selectedOpportunity && primaryAction.action_id !== 'add_listing_evidence') return;
+    switch (primaryAction.action_id) {
+      case 'add_listing_evidence': {
+        const params = new URLSearchParams({ view: 'property_sources', upload: '1' });
+        if (selectedOpportunity?.id) params.set('opportunity_id', selectedOpportunity.id);
+        router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${params.toString()}`);
+        return;
+      }
+      case 'upload_financing_document':
+        if (!readinessProfile) {
+          await startReadiness();
+        } else {
+          openBuyerVault(true);
+        }
+        return;
+      case 'request_missing_documents':
+        await requestExternalAction('send_outreach', {
+          acquisition_action_id: 'request_missing_documents',
+          request_kind: 'missing_documents',
+          requested_items: selectedMissing.join(', '),
+        });
+        return;
+      case 'schedule_visit':
+        await scheduleVisit();
+        return;
+      case 'request_contractor_evaluation':
+        await requestExternalAction('send_outreach', {
+          acquisition_action_id: 'request_contractor_evaluation',
+          request_kind: 'contractor_evaluation',
+        });
+        return;
+      case 'upload_property_document': {
+        const params = new URLSearchParams({ view: 'property_sources', upload: '1', analysis_policy: 'acquisition_property' });
+        if (selectedOpportunity?.id) params.set('opportunity_id', selectedOpportunity.id);
+        router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${params.toString()}`);
+        return;
+      }
+      case 'activate_buyer_broker':
+        await requestExternalAction('send_outreach', {
+          acquisition_action_id: 'activate_buyer_broker',
+          request_kind: 'brokerage_authority',
+        });
+        return;
+      case 'share_financing_packet':
+        await requestExternalAction('share_readiness_signal', {
+          acquisition_action_id: 'share_financing_packet',
+          consent_required: 'true',
+          disclaimer: 'Zohal records readiness evidence only and does not underwrite creditworthiness.',
+        });
+        return;
+      case 'prepare_offer':
+      case 'send_offer':
+        await requestExternalAction('send_offer', { acquisition_action_id: primaryAction.action_id });
+        return;
+      case 'pass_property':
+        await updateSelectedStage('passed');
+        return;
+      case 'close_property':
+        await updateSelectedStage('closed');
+        return;
+      default:
+        await requestExternalAction('send_negotiation_message', { acquisition_action_id: primaryAction.action_id });
+    }
+  }, [
+    openBuyerVault,
+    primaryAction.action_id,
+    readinessProfile,
+    requestExternalAction,
+    router,
+    scheduleVisit,
+    selectedMissing,
+    selectedOpportunity,
+    startReadiness,
+    updateSelectedStage,
+    workspaceId,
+  ]);
+
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
       {!loading ? (
@@ -715,7 +827,7 @@ export default function WorkspaceCockpitPage() {
             readinessProfile={readinessProfile}
             brokerageActive={brokerageActive}
             onOpenDrawer={openDrawer}
-            onRequestVisit={() => void requestExternalAction('schedule_visit')}
+            onRequestVisit={() => void scheduleVisit()}
             compact
           />
         </HeaderProgressPortal>
@@ -769,7 +881,7 @@ export default function WorkspaceCockpitPage() {
                         readinessProfile={readinessProfile}
                         brokerageActive={brokerageActive}
                         onOpenDrawer={openDrawer}
-                        onRequestVisit={() => void requestExternalAction('schedule_visit')}
+                        onRequestVisit={() => void scheduleVisit()}
                       />
                     </div>
 
@@ -819,6 +931,8 @@ export default function WorkspaceCockpitPage() {
                           <ActionsWorkspace
                             currentBlocker={currentBlocker}
                             hasBlocker={hasActionBlocker}
+                            primaryActionLabel={primaryAction.label}
+                            primaryActionResult={primaryAction.result}
                             readinessProfile={readinessProfile}
                             buyerEntity={buyerEntity}
                             buyerEntityDocuments={buyerEntityDocuments}
@@ -830,12 +944,7 @@ export default function WorkspaceCockpitPage() {
                             selectedMissing={selectedMissing}
                             selectedOpportunity={selectedOpportunity}
                             brokerageActive={brokerageActive}
-                            onPrimaryAction={() => {
-                              if (!readinessProfile) void startReadiness();
-                              else if (selectedMissing.length) setActivePrimaryTab('actions');
-                              else if (!brokerageActive) void requestExternalAction('share_readiness_signal');
-                              else void requestExternalAction('send_negotiation_message');
-                            }}
+                            onPrimaryAction={() => void executePrimaryAction()}
                             onStartReadiness={startReadiness}
                             onAttachEvidence={() => openBuyerVault(true)}
                             onShareReadiness={() => void requestExternalAction('share_readiness_signal')}
@@ -1511,11 +1620,15 @@ function PrimaryWorkspaceTabs({
 
 function CurrentBlockerBanner({
   title,
+  actionLabel,
+  actionResult,
   blocked,
   busy,
   onPrimaryAction,
 }: {
   title: string;
+  actionLabel: string;
+  actionResult: string;
   blocked: boolean;
   busy: boolean;
   onPrimaryAction: () => void;
@@ -1531,18 +1644,20 @@ function CurrentBlockerBanner({
           <div>
             <p className={cn('font-mono text-xs uppercase tracking-[0.22em]', blocked ? 'text-warning' : 'text-success')}>{blocked ? t('actions.now') : t('actions.allClear')}</p>
             <h3 className="mt-1 text-lg font-bold leading-tight text-text">{blocked ? title : t('actions.readyToProceed')}</h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-text-soft">{actionResult}</p>
           </div>
         </div>
-        {blocked ? (
-          <button
-            type="button"
-            onClick={onPrimaryAction}
-            disabled={busy}
-            className="rounded-[12px] bg-warning px-4 py-2.5 text-sm font-bold text-[#030509] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {t('progress.primaryAction')}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={onPrimaryAction}
+          disabled={busy}
+          className={cn(
+            'rounded-[12px] px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
+            blocked ? 'bg-warning text-[#030509]' : 'bg-success text-[#030509]'
+          )}
+        >
+          {actionLabel}
+        </button>
       </div>
     </div>
   );
@@ -1578,6 +1693,8 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
 function ActionsWorkspace({
   currentBlocker,
   hasBlocker,
+  primaryActionLabel,
+  primaryActionResult,
   readinessProfile,
   buyerEntity,
   buyerEntityDocuments,
@@ -1598,6 +1715,8 @@ function ActionsWorkspace({
 }: {
   currentBlocker: string;
   hasBlocker: boolean;
+  primaryActionLabel: string;
+  primaryActionResult: string;
   readinessProfile: BuyerReadinessProfileRow | null;
   buyerEntity: BuyerEntityRow | null;
   buyerEntityDocuments: BuyerEntityDocumentRow[];
@@ -1624,6 +1743,8 @@ function ActionsWorkspace({
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('actions.zoneNow')}</p>
         <CurrentBlockerBanner
           title={currentBlocker}
+          actionLabel={primaryActionLabel}
+          actionResult={primaryActionResult}
           blocked={hasBlocker}
           busy={Boolean(readinessBusy || approvalBusy)}
           onPrimaryAction={onPrimaryAction}

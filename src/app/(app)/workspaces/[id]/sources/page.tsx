@@ -83,8 +83,8 @@ type SharingGrantRow = {
 };
 
 const sourceVaultViews: { key: SourceVaultView; label: string }[] = [
-  { key: 'all', label: 'All sources' },
-  { key: 'property_sources', label: 'Property sources' },
+  { key: 'all', label: 'All files' },
+  { key: 'property_sources', label: 'Property files' },
   { key: 'buyer_vault', label: 'Buyer vault' },
   { key: 'readiness_evidence', label: 'Readiness evidence' },
   { key: 'shared', label: 'Shared / consented' },
@@ -111,6 +111,7 @@ export default function WorkspaceDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -120,6 +121,88 @@ export default function WorkspaceDetailPage() {
   const [buyerEntityDocuments, setBuyerEntityDocuments] = useState<BuyerEntityDocumentRow[]>([]);
   const [readinessEvidence, setReadinessEvidence] = useState<ReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<SharingGrantRow[]>([]);
+  const opportunityId = searchParams.get('opportunity_id');
+
+  const ensureFolder = useCallback(async ({
+    parentId = null,
+    name,
+    folderKind,
+    metadata = {},
+  }: {
+    parentId?: string | null;
+    name: string;
+    folderKind: string;
+    metadata?: Record<string, unknown>;
+  }) => {
+    const query = supabase
+      .from('workspace_folders')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('name', name)
+      .is('deleted_at', null)
+      .limit(1);
+    const scoped = parentId ? query.eq('parent_id', parentId) : query.is('parent_id', null);
+    const { data: existing } = await scoped.maybeSingle();
+    if (existing?.id) return existing.id as string;
+    const { data, error } = await supabase
+      .from('workspace_folders')
+      .insert({
+        workspace_id: workspaceId,
+        parent_id: parentId,
+        name,
+        folder_kind: folderKind,
+        analysis_policy: metadata.analysis_policy || 'manual',
+        sensitivity_level: metadata.sensitivity_level || 'standard',
+        related_opportunity_id: metadata.related_opportunity_id || null,
+        buyer_entity_id: metadata.buyer_entity_id || null,
+        buyer_readiness_profile_id: metadata.buyer_readiness_profile_id || null,
+        metadata_json: metadata,
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data.id as string;
+  }, [supabase, workspaceId]);
+
+  const prepareUploadContext = useCallback(async (view: SourceVaultView) => {
+    if (view === 'property_sources') {
+      const rootId = await ensureFolder({ name: 'Properties', folderKind: 'acquisition_property_root', metadata: { analysis_policy: 'none' } });
+      let label = 'Property files';
+      if (opportunityId) {
+        const { data } = await supabase
+          .from('acquisition_opportunities')
+          .select('title,summary')
+          .eq('id', opportunityId)
+          .maybeSingle();
+        label = String(data?.title || data?.summary || `Opportunity ${opportunityId.slice(0, 8)}`).slice(0, 96);
+      }
+      const folderId = await ensureFolder({
+        parentId: rootId,
+        name: label,
+        folderKind: 'acquisition_property',
+        metadata: { analysis_policy: 'acquisition_property', related_opportunity_id: opportunityId },
+      });
+      setUploadFolderId(folderId);
+      return;
+    }
+    if (view === 'buyer_vault') {
+      const rootId = await ensureFolder({ name: 'Buyer', folderKind: 'buyer_root', metadata: { analysis_policy: 'none' } });
+      const folderId = await ensureFolder({
+        parentId: rootId,
+        name: 'Secure Financing',
+        folderKind: 'buyer_secure_financing',
+        metadata: {
+          analysis_policy: 'buyer_readiness_financing',
+          sensitivity_level: 'financial',
+          buyer_entity_id: readinessProfile?.buyer_entity_id || null,
+          buyer_readiness_profile_id: readinessProfile?.id || null,
+        },
+      });
+      setUploadFolderId(folderId);
+      return;
+    }
+    setUploadFolderId(null);
+  }, [ensureFolder, opportunityId, readinessProfile, supabase]);
 
   const fetchWorkspace = useCallback(async () => {
     const { data, error } = await supabase
@@ -238,9 +321,9 @@ export default function WorkspaceDetailPage() {
       setActiveVaultView(view);
     }
     if (searchParams.get('upload') === '1') {
-      setShowUploadModal(true);
+      void prepareUploadContext(view || activeVaultView).finally(() => setShowUploadModal(true));
     }
-  }, [searchParams]);
+  }, [activeVaultView, prepareUploadContext, searchParams]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -418,6 +501,55 @@ export default function WorkspaceDetailPage() {
     });
   };
 
+  const handlePropertyDocumentCreated = async (documentId: string) => {
+    if (!opportunityId) return;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const [eventResult, diligenceResult] = await Promise.all([
+      supabase.from('acquisition_events').insert({
+        opportunity_id: opportunityId,
+        workspace_id: workspaceId,
+        created_by: user?.id || null,
+        event_type: 'upload_property_document',
+        event_direction: 'operator',
+        body_text: 'Property file uploaded; acquisition property analysis queued.',
+        media_json: [],
+        event_payload: {
+          source: 'web_files_upload',
+          action_id: 'upload_property_document',
+          document_id: documentId,
+          analysis_policy: 'acquisition_property',
+        },
+      }),
+      supabase
+        .from('acquisition_diligence_items')
+        .update({
+          status: 'received',
+          evidence_refs_json: [{ document_id: documentId, source: 'web_files_upload' }],
+        })
+        .eq('opportunity_id', opportunityId)
+        .eq('status', 'requested')
+        .in('item_type', ['missing_info', 'document_request']),
+    ]);
+
+    if (eventResult.error || diligenceResult.error) {
+      showError(eventResult.error || diligenceResult.error, 'acquisition_property_upload');
+    }
+  };
+
+  const handleAcquisitionDocumentCreated = async (documentId: string) => {
+    if (activeVaultView === 'buyer_vault') {
+      await handleBuyerVaultDocumentCreated(documentId);
+      return;
+    }
+    if (activeVaultView === 'property_sources') {
+      await handlePropertyDocumentCreated(documentId);
+    }
+  };
+
   const documentTypes = useMemo(
     () => Array.from(new Set(documents.map((doc) => doc.document_type).filter(Boolean))).sort(),
     [documents]
@@ -459,7 +591,7 @@ export default function WorkspaceDetailPage() {
             description={t('emptyDescription')}
             action={{
               label: t('upload'),
-              onClick: () => setShowUploadModal(true),
+              onClick: () => void prepareUploadContext(activeVaultView).finally(() => setShowUploadModal(true)),
             }}
           />
         ) : (
@@ -519,7 +651,7 @@ export default function WorkspaceDetailPage() {
               )}
 
               <div className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Source views</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">File views</div>
                 <div className="flex flex-wrap gap-2">
                   {sourceVaultViews.map((view) => {
                     const isSelected = activeVaultView === view.key;
@@ -542,10 +674,10 @@ export default function WorkspaceDetailPage() {
                       </button>
                     );
                   })}
-                  {activeVaultView === 'buyer_vault' && (
-                    <Button variant="primary" size="sm" onClick={() => setShowUploadModal(true)}>
+                  {(activeVaultView === 'buyer_vault' || activeVaultView === 'property_sources') && (
+                    <Button variant="primary" size="sm" onClick={() => void prepareUploadContext(activeVaultView).finally(() => setShowUploadModal(true))}>
                       <Upload className="h-4 w-4" />
-                      Upload evidence
+                      {activeVaultView === 'property_sources' ? 'Upload property file' : 'Upload evidence'}
                     </Button>
                   )}
                 </div>
@@ -617,7 +749,7 @@ export default function WorkspaceDetailPage() {
             {visibleDocuments.length > 0 ? (
               <section>
                 <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-soft">
-                  Workspace documents
+                  Workspace files
                 </h2>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {visibleDocuments.map((doc) => (
@@ -652,9 +784,26 @@ export default function WorkspaceDetailPage() {
       {showUploadModal && (
         <DocumentUploadModal
           workspaceId={workspaceId}
-          defaultDocumentTags={activeVaultView === 'buyer_vault' ? ['buyer_vault', 'readiness_evidence'] : undefined}
-          defaultSourceMetadata={activeVaultView === 'buyer_vault' ? { vault: 'buyer', readiness_intent: true } : undefined}
-          onDocumentCreated={activeVaultView === 'buyer_vault' ? handleBuyerVaultDocumentCreated : undefined}
+          folderId={uploadFolderId}
+          defaultDocumentTags={
+            activeVaultView === 'buyer_vault'
+              ? ['buyer_vault', 'readiness_evidence']
+              : activeVaultView === 'property_sources'
+                ? ['property_file', 'acquisition_property']
+                : undefined
+          }
+          defaultSourceMetadata={
+            activeVaultView === 'buyer_vault'
+              ? { vault: 'buyer', readiness_intent: true, analysis_policy: 'buyer_readiness_financing' }
+              : activeVaultView === 'property_sources'
+                ? { vault: 'property', opportunity_id: opportunityId, analysis_policy: 'acquisition_property' }
+                : undefined
+          }
+          onDocumentCreated={
+            activeVaultView === 'buyer_vault' || activeVaultView === 'property_sources'
+              ? handleAcquisitionDocumentCreated
+              : undefined
+          }
           onClose={() => setShowUploadModal(false)}
           onUploaded={(documentId) => {
             setShowUploadModal(false);
