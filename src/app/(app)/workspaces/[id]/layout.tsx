@@ -47,8 +47,8 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
       <div className="border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#030509]/90">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(260px,0.9fr)_minmax(440px,1.4fr)_auto] xl:items-center">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href={backHref}
               className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
@@ -65,7 +65,13 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div
+            id={`workspace-header-progress-${workspaceId}`}
+            className="hidden min-w-0 justify-center xl:flex"
+            aria-label="Workspace lifecycle"
+          />
+
+          <div className="flex shrink-0 items-center gap-2 xl:justify-end">
             <WorkspaceTabs workspaceId={workspaceId} className="border-0 bg-transparent p-0 md:p-0" />
             <button
               type="button"

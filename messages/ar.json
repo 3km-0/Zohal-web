@@ -2672,6 +2672,8 @@
     "heroBody": "راجع الأدلة، ونمذج الصفقة، واكشف مخاطر التجديد، وحدد الخطوة التالية.",
     "emptyCockpitTitle": "لا توجد فرصة محددة بعد",
     "buyBoxPinned": "معايير الشراء المثبتة",
+    "expandMandate": "توسيع التفويض",
+    "collapseMandate": "طي التفويض",
     "rankedOpportunities": "الفرص المرتبة",
     "untitledOpportunity": "فرصة بلا عنوان",
     "openItems": "العناصر المفتوحة",
@@ -2770,6 +2772,7 @@
       "title": "درج قيادة الصفقة",
       "command": "القيادة",
       "evidence": "الأدلة",
+      "coordination": "التنسيق",
       "activity": "النشاط",
       "files": "الملفات",
       "consent": "الموافقات",
@@ -2799,7 +2802,10 @@
       "current": "الحالية",
       "blocked": "معطلة",
       "pending": "قادمة",
-      "command": "مركز القيادة"
+      "notStarted": "لم تبدأ بعد.",
+      "completedTooltip": "اكتملت لهذه الصفقة.",
+      "command": "مركز القيادة",
+      "coordination": "سجل التنسيق"
     },
     "info": {
       "verified": "حقائق مدعومة بمستندات أو سجلات مصدر.",

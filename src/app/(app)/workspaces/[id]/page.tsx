@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, HTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -9,7 +10,9 @@ import {
   BarChart3,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
+  Clock3,
   ExternalLink,
   FileText,
   Gauge,
@@ -154,6 +157,7 @@ type AcquisitionClaimRow = {
 type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
 type PrimaryWorkspaceTab = 'deal' | 'actions';
+type EvidencePaneTab = 'evidence' | 'activity' | 'files' | 'consent';
 
 type ScenarioState = {
   price: number;
@@ -343,6 +347,7 @@ export default function WorkspaceCockpitPage() {
   const params = useParams();
   const router = useRouter();
   const workspaceId = params.id as string;
+  const headerProgressSlotId = `workspace-header-progress-${workspaceId}`;
   const t = useTranslations('workspaceCockpitPage');
   const supabase = useMemo(() => createClient(), []);
 
@@ -363,6 +368,7 @@ export default function WorkspaceCockpitPage() {
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
   const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryWorkspaceTab>('deal');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidencePaneTab>('evidence');
   const [drawerWidth, setDrawerWidth] = useState(430);
   const [heroMapOpen, setHeroMapOpen] = useState(false);
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
@@ -530,7 +536,11 @@ export default function WorkspaceCockpitPage() {
   }, [selectedOpportunity?.id, supabase]);
 
   const openDrawer = useCallback((tab: WorkspaceDrawerTab) => {
-    void tab;
+    if (tab === 'activity' || tab === 'files' || tab === 'consent' || tab === 'evidence') {
+      setActiveEvidenceTab(tab);
+    } else {
+      setActiveEvidenceTab('evidence');
+    }
     setDrawerOpen(true);
   }, []);
 
@@ -687,6 +697,19 @@ export default function WorkspaceCockpitPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
+      {!loading ? (
+        <HeaderProgressPortal targetId={headerProgressSlotId}>
+          <ProgressTracker
+            opportunity={selectedOpportunity}
+            missingItems={selectedMissing}
+            readinessProfile={readinessProfile}
+            brokerageActive={brokerageActive}
+            onOpenDrawer={openDrawer}
+            onRequestVisit={() => void requestExternalAction('schedule_visit')}
+            compact
+          />
+        </HeaderProgressPortal>
+      ) : null}
       <div className={cn('relative flex min-h-0 min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb,35,215,255),.12),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb,185,255,38),.10),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(255,91,112,.06),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
@@ -729,14 +752,16 @@ export default function WorkspaceCockpitPage() {
                     />
                   </div>
 
-                    <ProgressTracker
-                      opportunity={selectedOpportunity}
-                      missingItems={selectedMissing}
-                      readinessProfile={readinessProfile}
-                      brokerageActive={brokerageActive}
-                      onOpenDrawer={openDrawer}
-                      onRequestVisit={() => void requestExternalAction('schedule_visit')}
-                    />
+                    <div className="xl:hidden">
+                      <ProgressTracker
+                        opportunity={selectedOpportunity}
+                        missingItems={selectedMissing}
+                        readinessProfile={readinessProfile}
+                        brokerageActive={brokerageActive}
+                        onOpenDrawer={openDrawer}
+                        onRequestVisit={() => void requestExternalAction('schedule_visit')}
+                      />
+                    </div>
 
                     <PrimaryWorkspaceTabs
                       active={activePrimaryTab}
@@ -826,6 +851,7 @@ export default function WorkspaceCockpitPage() {
           {drawerOpen ? (
             <WorkspaceCommandDrawer
               workspaceId={workspaceId}
+              activeTab={activeEvidenceTab}
               width={drawerWidth}
               events={events}
               latestUpdate={latestUpdate}
@@ -836,6 +862,7 @@ export default function WorkspaceCockpitPage() {
               readinessEvidence={readinessEvidence}
               sharingGrants={sharingGrants}
               actionApprovals={actionApprovals}
+              onTabChange={setActiveEvidenceTab}
               onClose={() => setDrawerOpen(false)}
               onWidthChange={setDrawerWidth}
             />
@@ -893,6 +920,16 @@ function BrandBlock() {
   );
 }
 
+function HeaderProgressPortal({ targetId, children }: { targetId: string; children: ReactNode }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setTarget(document.getElementById(targetId));
+  }, [targetId]);
+
+  return target ? createPortal(children, target) : null;
+}
+
 function BuyBoxCard({
   workspace,
   onEdit,
@@ -905,6 +942,7 @@ function BuyBoxCard({
   onOpenAgent: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
+  const [expanded, setExpanded] = useState(false);
   const brief = workspace?.analysis_brief || workspace?.description || '';
   const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
   const compactMandate = [
@@ -914,21 +952,49 @@ function BuyBoxCard({
   ].filter((item): item is string => Boolean(item));
   return (
     <Panel className="mb-5 p-4" data-testid="acquisition-buy-box">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
-          <p className="mt-1 text-xs text-text-muted">{t('buyBoxSubtitle')}</p>
-        </div>
+      <div className="mb-4 flex items-start justify-between gap-3">
         <button
           type="button"
-          onClick={onEdit}
-          className="grid h-9 w-9 place-items-center rounded-[10px] border border-accent/25 bg-accent/10 text-accent transition hover:bg-accent/15"
-          aria-label={t('editBuyBox')}
+          onClick={() => setExpanded((open) => !open)}
+          className="min-w-0 flex-1 text-left"
+          aria-expanded={expanded}
         >
-          <Pencil className="h-4 w-4" />
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
+          <p className="mt-1 text-xs text-text-muted">{t('buyBoxSubtitle')}</p>
+          <p className="mt-2 truncate text-sm font-semibold text-text">{briefParts[0] || t('notSet')}</p>
         </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            className="grid h-9 w-9 place-items-center rounded-[10px] border border-border bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
+            aria-label={expanded ? t('collapseMandate') : t('expandMandate')}
+            aria-expanded={expanded}
+          >
+            <ChevronDown className={cn('h-4 w-4 transition', expanded && 'rotate-180')} />
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="grid h-9 w-9 place-items-center rounded-[10px] border border-accent/25 bg-accent/10 text-accent transition hover:bg-accent/15"
+            aria-label={t('editBuyBox')}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-      <div className="space-y-2">
+      <div className={cn('space-y-2', !expanded && 'rounded-[12px] border border-border bg-surface-alt px-3 py-3')}>
+        {!expanded ? (
+          <div className="flex flex-wrap gap-2">
+            {(compactMandate.length ? compactMandate : [t('notSet')]).map((item) => (
+              <span key={item} className="max-w-full truncate rounded-full border border-border bg-background/60 px-2.5 py-1 text-xs text-text-soft">
+                {item}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {expanded ? (
+          <>
         <div className="rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm font-semibold leading-5 text-text">
           {briefParts[0] || t('notSet')}
         </div>
@@ -937,6 +1003,8 @@ function BuyBoxCard({
             <p key={item} className="truncate text-xs text-text-soft">{item}</p>
           ))}
         </div>
+          </>
+        ) : null}
       </div>
       <div className="mt-4 grid gap-2">
         <button
@@ -1232,6 +1300,7 @@ function ProgressTracker({
   brokerageActive,
   onOpenDrawer,
   onRequestVisit,
+  compact = false,
 }: {
   opportunity: OpportunityRow | null;
   missingItems: string[];
@@ -1239,6 +1308,7 @@ function ProgressTracker({
   brokerageActive: boolean;
   onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
   onRequestVisit: () => void;
+  compact?: boolean;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const steps = [
@@ -1265,35 +1335,30 @@ function ProgressTracker({
         : current < 3
           ? t('progress.nextVisit')
           : t('progress.nextOffer');
-  return (
-    <Panel className="p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('progress.title')}</p>
-            <h3 className="mt-1 text-xl font-bold leading-tight text-text">{nextAction}</h3>
-            <p className="mt-2 text-sm leading-6 text-text-muted">{t('progress.helper')}</p>
-          </div>
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            {blockers.length ? blockers.map((blocker) => (
-              <span key={blocker} className="rounded-full border border-warning/30 bg-warning/12 px-3 py-2 text-xs font-semibold text-text">{blocker}</span>
-            )) : (
-              <span className="rounded-full border border-success/30 bg-success/12 px-3 py-2 text-xs font-semibold text-success">{t('progress.noBlockers')}</span>
-            )}
-          </div>
-        </div>
-      <div className="mt-6 overflow-x-auto pb-1">
-      <div className="grid min-w-[720px] grid-cols-7">
+  const blocked = blockers.length > 0;
+  const tracker = (
+    <div className={cn(compact ? 'w-full max-w-[620px]' : 'mt-6 overflow-x-auto pb-1')}>
+      <div className={cn('grid grid-cols-7', compact ? 'min-w-0' : 'min-w-[720px]')}>
         {steps.map((step, index) => {
           const completed = index < current;
           const active = index === current;
           const pending = index > current;
-          const blocked = active && blockers.length > 0;
+          const nodeBlocked = active && blocked;
+          const status = completed ? t('progress.done') : active ? t(nodeBlocked ? 'progress.blocked' : 'progress.current') : t('progress.pending');
+          const detail = active
+            ? (blockers[0] || nextAction)
+            : index === 4
+              ? t('progress.blockerMissing', { count: missingItems.length })
+              : pending
+                ? t('progress.notStarted')
+                : t('progress.completedTooltip');
           return (
             <div key={step} className="relative flex flex-col items-center">
               {index > 0 ? (
                 <div
                   className={cn(
-                    'absolute right-1/2 top-[19px] h-px w-full',
+                    'absolute right-1/2 h-0.5 w-full rounded-full',
+                    compact ? 'top-[15px]' : 'top-[19px]',
                     index <= current ? 'bg-success/65' : 'bg-border'
                   )}
                 />
@@ -1301,7 +1366,8 @@ function ProgressTracker({
               {index < steps.length - 1 ? (
                 <div
                   className={cn(
-                    'absolute left-1/2 top-[19px] h-px w-full',
+                    'absolute left-1/2 h-0.5 w-full rounded-full transition-colors',
+                    compact ? 'top-[15px]' : 'top-[19px]',
                     completed ? 'bg-success/65' : active ? 'bg-accent/70' : 'bg-border'
                   )}
                 />
@@ -1309,46 +1375,88 @@ function ProgressTracker({
               <button
                 type="button"
                 onClick={() => {
-                  if (index <= 1) onOpenDrawer('command');
-                  else if (index <= 3) onOpenDrawer('map');
+                  if (index <= 1) onOpenDrawer('evidence');
+                  else if (index <= 3) onOpenDrawer('activity');
                   else if (index === 4) onOpenDrawer('evidence');
                   else onOpenDrawer('consent');
                 }}
                 className={cn(
-                  'relative flex w-full flex-col items-center px-2 text-center transition hover:text-text',
+                  'group relative flex w-full flex-col items-center text-center transition hover:text-text',
+                  compact ? 'px-1' : 'px-2',
                   completed && 'text-success',
                   active && 'text-text',
                   pending && 'text-text-muted'
                 )}
               >
                 <span className={cn(
-                  'relative grid h-10 w-10 place-items-center rounded-full border text-sm font-black transition',
+                  'relative z-[1] grid place-items-center rounded-full border font-black transition',
+                  compact ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-sm',
                   completed && 'border-success bg-success text-[#030509]',
-                  active && !blocked && 'border-accent bg-accent text-[color:var(--accent-text)] shadow-[0_0_0_8px_var(--accent-dim),0_0_34px_var(--accent-soft)]',
-                  blocked && 'border-warning bg-warning text-[#030509] shadow-[0_0_0_8px_var(--warning-soft),0_0_30px_rgba(255,176,32,.18)]',
+                  active && !nodeBlocked && 'border-accent bg-accent text-[color:var(--accent-text)] shadow-[0_0_0_6px_var(--accent-dim),0_0_26px_var(--accent-soft)]',
+                  nodeBlocked && 'border-warning bg-warning text-[#030509] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(255,176,32,.18)]',
                   pending && 'border-border bg-[color:var(--bg)] text-text-muted'
                 )}>
-                  {completed ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
+                  {nodeBlocked ? (
+                    <>
+                      <span className="absolute inset-[-5px] rounded-full border border-warning/55 opacity-70 animate-ping" />
+                      <AlertTriangle className={cn(compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+                    </>
+                  ) : completed ? (
+                    <CheckCircle2 className={cn(compact ? 'h-4 w-4' : 'h-5 w-5')} />
+                  ) : active ? (
+                    <Clock3 className={cn(compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+                  ) : (
+                    index + 1
+                  )}
                 </span>
-                <p className={cn('mt-3 max-w-[96px] text-xs font-bold leading-4', pending ? 'text-text-muted' : 'text-text')}>{step}</p>
-                <p className={cn('mt-1 text-[10px] uppercase tracking-[0.14em]', active ? (blocked ? 'text-warning' : 'text-accent') : 'text-text-muted')}>
-                  {completed ? t('progress.done') : active ? t(blocked ? 'progress.blocked' : 'progress.current') : t('progress.pending')}
-                </p>
+                <p className={cn(compact ? 'mt-1 max-w-[72px] text-[10px] leading-3' : 'mt-3 max-w-[96px] text-xs leading-4', 'font-bold', pending ? 'text-text-muted' : 'text-text')}>{step}</p>
+                {!compact ? (
+                  <p className={cn('mt-1 text-[10px] uppercase tracking-[0.14em]', active ? (nodeBlocked ? 'text-warning' : 'text-accent') : 'text-text-muted')}>
+                    {status}
+                  </p>
+                ) : null}
+                <span className="pointer-events-none absolute top-full z-40 mt-2 w-48 rounded-[10px] border border-border bg-surface px-3 py-2 text-left text-xs leading-5 text-text opacity-0 shadow-2xl transition group-hover:opacity-100">
+                  <span className="block font-semibold">{step} · {status}</span>
+                  <span className="mt-0.5 block text-text-soft">{detail}</span>
+                </span>
               </button>
             </div>
           );
         })}
       </div>
+    </div>
+  );
+
+  if (compact) {
+    return tracker;
+  }
+
+  return (
+    <Panel className="p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('progress.title')}</p>
+          <h3 className="mt-1 text-xl font-bold leading-tight text-text">{nextAction}</h3>
+          <p className="mt-2 text-sm leading-6 text-text-muted">{t('progress.helper')}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          {blockers.length ? blockers.map((blocker) => (
+            <span key={blocker} className="rounded-full border border-warning/30 bg-warning/12 px-3 py-2 text-xs font-semibold text-text">{blocker}</span>
+          )) : (
+            <span className="rounded-full border border-success/30 bg-success/12 px-3 py-2 text-xs font-semibold text-success">{t('progress.noBlockers')}</span>
+          )}
+        </div>
       </div>
+      {tracker}
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => onOpenDrawer(!readinessProfile ? 'files' : missingItems.length ? 'evidence' : 'command')} className="rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-[color:var(--accent-text)]">
+        <button type="button" onClick={() => onOpenDrawer(!readinessProfile ? 'files' : missingItems.length ? 'evidence' : 'activity')} className="rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-[color:var(--accent-text)]">
           {t('progress.primaryAction')}
         </button>
         <button type="button" onClick={onRequestVisit} disabled={!opportunity || !readinessProfile} className="rounded-[12px] border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
           {t('scheduleVisit')}
         </button>
-        <button type="button" onClick={() => onOpenDrawer('command')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
-          {t('progress.command')}
+        <button type="button" onClick={() => onOpenDrawer('activity')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
+          {t('progress.coordination')}
         </button>
       </div>
     </Panel>
@@ -1854,6 +1962,7 @@ function VisualCompanion({
 
 function WorkspaceCommandDrawer({
   workspaceId,
+  activeTab,
   width,
   events,
   latestUpdate,
@@ -1864,10 +1973,12 @@ function WorkspaceCommandDrawer({
   readinessEvidence,
   sharingGrants,
   actionApprovals,
+  onTabChange,
   onClose,
   onWidthChange,
 }: {
   workspaceId: string;
+  activeTab: EvidencePaneTab;
   width: number;
   events: AcquisitionEventRow[];
   latestUpdate: string | null;
@@ -1878,12 +1989,19 @@ function WorkspaceCommandDrawer({
   readinessEvidence: BuyerReadinessEvidenceRow[];
   sharingGrants: DocumentSharingGrantRow[];
   actionApprovals: ExternalActionApprovalRow[];
+  onTabChange: (tab: EvidencePaneTab) => void;
   onClose: () => void;
   onWidthChange: (width: number) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const tabs: { key: EvidencePaneTab; label: string; icon: LucideIcon }[] = [
+    { key: 'evidence', label: t('drawer.evidence'), icon: ShieldCheck },
+    { key: 'activity', label: t('drawer.coordination'), icon: MessageSquare },
+    { key: 'files', label: t('drawer.files'), icon: FileText },
+    { key: 'consent', label: t('drawer.consent'), icon: CheckCircle2 },
+  ];
   const handleDragStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     dragStateRef.current = { startX: event.clientX, startWidth: width };
@@ -1927,13 +2045,38 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
+        <div className="grid grid-cols-4 gap-1 border-b border-border bg-[color:var(--bg)] p-2 dark:bg-[#07101A]">
+          {tabs.map(({ key, label, icon: Icon }) => {
+            const selected = activeTab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onTabChange(key)}
+                className={cn(
+                  'inline-flex min-h-9 items-center justify-center gap-1 rounded-[9px] px-2 text-xs font-semibold transition',
+                  selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span className="truncate">{label}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">
+          {activeTab === 'evidence' ? (
             <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
+          ) : null}
+          {activeTab === 'files' ? (
             <DrawerFiles documentCount={documentCount} evidence={readinessEvidence} />
+          ) : null}
+          {activeTab === 'activity' ? (
             <DrawerActivity events={events} latestUpdate={latestUpdate} />
+          ) : null}
+          {activeTab === 'consent' ? (
             <DrawerConsent grants={sharingGrants} approvals={actionApprovals} />
-          </div>
+          ) : null}
         </div>
       </div>
     </aside>
