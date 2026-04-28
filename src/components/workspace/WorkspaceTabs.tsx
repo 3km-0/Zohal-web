@@ -46,8 +46,15 @@ export function WorkspaceTabs({
     function onDocClick(e: MouseEvent) {
       if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
     }
+    function onCloseMenu() {
+      setMoreOpen(false);
+    }
     document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
+    window.addEventListener('workspace:header-menu-close', onCloseMenu);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      window.removeEventListener('workspace:header-menu-close', onCloseMenu);
+    };
   }, []);
 
   const withFolderContext = (href: string) => {
@@ -111,9 +118,15 @@ export function WorkspaceTabs({
         aria-haspopup="menu"
         onClick={(event) => {
           event.stopPropagation();
-          setMoreOpen((open) => !open);
+          setMoreOpen((open) => {
+            const nextOpen = !open;
+            if (nextOpen) {
+              window.dispatchEvent(new CustomEvent('workspace:header-menu-open'));
+            }
+            return nextOpen;
+          });
         }}
-        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-border bg-surface px-3 text-sm font-semibold text-text shadow-[var(--shadowSm)] transition hover:bg-surface-alt"
+        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-border bg-background px-3 text-sm font-semibold text-text shadow-[var(--shadowSm)] transition hover:bg-surface-alt dark:bg-[#07101A]"
       >
         <ActiveIcon className="h-4 w-4 text-accent" />
         <span>{t('workspaceMenu')}</span>
@@ -122,7 +135,7 @@ export function WorkspaceTabs({
       {moreOpen ? (
         <div
           role="menu"
-          className="absolute end-0 top-[calc(100%+8px)] z-50 min-w-64 overflow-hidden rounded-[14px] border border-border bg-surface shadow-2xl shadow-black/20"
+          className="absolute end-0 top-[calc(100%+8px)] z-50 min-w-64 overflow-hidden rounded-[14px] border border-border bg-background shadow-2xl shadow-black/30 ring-1 ring-black/5 dark:bg-[#07101A] dark:shadow-black/70 dark:ring-white/10"
         >
           {tabs.map((tab) => {
             const Icon = tab.icon;

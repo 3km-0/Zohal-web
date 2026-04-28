@@ -536,12 +536,21 @@ export default function WorkspaceCockpitPage() {
   }, [selectedOpportunity?.id, supabase]);
 
   const openDrawer = useCallback((tab: WorkspaceDrawerTab) => {
+    window.dispatchEvent(new CustomEvent('workspace:header-menu-close'));
     if (tab === 'activity' || tab === 'files' || tab === 'consent' || tab === 'evidence') {
       setActiveEvidenceTab(tab);
     } else {
       setActiveEvidenceTab('evidence');
     }
     setDrawerOpen(true);
+  }, []);
+
+  useEffect(() => {
+    function onHeaderMenuOpen() {
+      setDrawerOpen(false);
+    }
+    window.addEventListener('workspace:header-menu-open', onHeaderMenuOpen);
+    return () => window.removeEventListener('workspace:header-menu-open', onHeaderMenuOpen);
   }, []);
 
   const openBuyerVault = useCallback((upload = false) => {
