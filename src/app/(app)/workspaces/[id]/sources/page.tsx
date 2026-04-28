@@ -51,18 +51,6 @@ type SourceVaultView = 'all' | 'property_sources' | 'buyer_vault' | 'readiness_e
 
 type BuyerReadinessProfileRow = {
   id: string;
-  buyer_entity_id?: string | null;
-};
-
-type BuyerEntityDocumentRow = {
-  id: string;
-  buyer_entity_id: string;
-  document_id: string;
-  workspace_id?: string | null;
-  document_role: string;
-  sensitivity_level: string;
-  status: string;
-  expires_at?: string | null;
 };
 
 type ReadinessEvidenceRow = {
@@ -118,7 +106,6 @@ export default function WorkspaceDetailPage() {
   const [activeSavedViewId, setActiveSavedViewId] = useState<string | null>(null);
   const [activeVaultView, setActiveVaultView] = useState<SourceVaultView>('all');
   const [readinessProfile, setReadinessProfile] = useState<BuyerReadinessProfileRow | null>(null);
-  const [buyerEntityDocuments, setBuyerEntityDocuments] = useState<BuyerEntityDocumentRow[]>([]);
   const [readinessEvidence, setReadinessEvidence] = useState<ReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<SharingGrantRow[]>([]);
   const opportunityId = searchParams.get('opportunity_id');
@@ -144,23 +131,31 @@ export default function WorkspaceDetailPage() {
     const scoped = parentId ? query.eq('parent_id', parentId) : query.is('parent_id', null);
     const { data: existing } = await scoped.maybeSingle();
     if (existing?.id) return existing.id as string;
+    const insertPayload = {
+      workspace_id: workspaceId,
+      parent_id: parentId,
+      name,
+      folder_kind: folderKind,
+      analysis_policy: metadata.analysis_policy || 'manual',
+      sensitivity_level: metadata.sensitivity_level || 'standard',
+      related_opportunity_id: metadata.related_opportunity_id || null,
+      buyer_readiness_profile_id: metadata.buyer_readiness_profile_id || null,
+      metadata_json: metadata,
+    };
     const { data, error } = await supabase
       .from('workspace_folders')
-      .insert({
-        workspace_id: workspaceId,
-        parent_id: parentId,
-        name,
-        folder_kind: folderKind,
-        analysis_policy: metadata.analysis_policy || 'manual',
-        sensitivity_level: metadata.sensitivity_level || 'standard',
-        related_opportunity_id: metadata.related_opportunity_id || null,
-        buyer_entity_id: metadata.buyer_entity_id || null,
-        buyer_readiness_profile_id: metadata.buyer_readiness_profile_id || null,
-        metadata_json: metadata,
-      })
+      .insert(insertPayload)
       .select('id')
       .single();
-    if (error) throw error;
+    if (error) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('workspace_folders')
+        .insert({ workspace_id: workspaceId, parent_id: parentId, name })
+        .select('id')
+        .single();
+      if (fallbackError) throw error;
+      return fallbackData.id as string;
+    }
     return data.id as string;
   }, [supabase, workspaceId]);
 
@@ -194,7 +189,6 @@ export default function WorkspaceDetailPage() {
         metadata: {
           analysis_policy: 'buyer_readiness_financing',
           sensitivity_level: 'financial',
-          buyer_entity_id: readinessProfile?.buyer_entity_id || null,
           buyer_readiness_profile_id: readinessProfile?.id || null,
         },
       });
@@ -252,7 +246,7 @@ export default function WorkspaceDetailPage() {
   const fetchBuyerVault = useCallback(async () => {
     const { data: profiles } = await supabase
       .from('buyer_readiness_profiles')
-      .select('id, buyer_entity_id')
+      .select('id')
       .eq('workspace_id', workspaceId)
       .order('updated_at', { ascending: false })
       .limit(1);
@@ -260,20 +254,12 @@ export default function WorkspaceDetailPage() {
     setReadinessProfile(profile);
 
     if (!profile) {
-      setBuyerEntityDocuments([]);
       setReadinessEvidence([]);
       setSharingGrants([]);
       return;
     }
 
-    const [entityDocsResult, evidenceResult, grantsResult] = await Promise.all([
-      profile.buyer_entity_id
-        ? supabase
-            .from('buyer_entity_documents')
-            .select('id, buyer_entity_id, document_id, workspace_id, document_role, sensitivity_level, status, expires_at')
-            .eq('buyer_entity_id', profile.buyer_entity_id)
-            .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
+    const [evidenceResult, grantsResult] = await Promise.all([
       supabase
         .from('buyer_readiness_evidence')
         .select('id, document_id, evidence_type, status, sensitivity_level, expires_at')
@@ -286,7 +272,6 @@ export default function WorkspaceDetailPage() {
         .order('created_at', { ascending: false }),
     ]);
 
-    setBuyerEntityDocuments((entityDocsResult.data ?? []) as BuyerEntityDocumentRow[]);
     setReadinessEvidence((evidenceResult.data ?? []) as ReadinessEvidenceRow[]);
     setSharingGrants((grantsResult.data ?? []) as SharingGrantRow[]);
   }, [supabase, workspaceId]);
@@ -321,9 +306,11 @@ export default function WorkspaceDetailPage() {
       setActiveVaultView(view);
     }
     if (searchParams.get('upload') === '1') {
-      void prepareUploadContext(view || activeVaultView).finally(() => setShowUploadModal(true));
+      void prepareUploadContext(view || activeVaultView)
+        .catch((error) => showError(error, 'workspace_folders'))
+        .finally(() => setShowUploadModal(true));
     }
-  }, [activeVaultView, prepareUploadContext, searchParams]);
+  }, [activeVaultView, prepareUploadContext, searchParams, showError]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -410,7 +397,6 @@ export default function WorkspaceDetailPage() {
     setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
   };
 
-  const buyerDocById = useMemo(() => new Map(buyerEntityDocuments.map((item) => [item.document_id, item])), [buyerEntityDocuments]);
   const evidenceByDocumentId = useMemo(() => new Map(readinessEvidence.filter((item) => item.document_id).map((item) => [item.document_id as string, item])), [readinessEvidence]);
   const grantByDocumentId = useMemo(() => new Map(sharingGrants.filter((item) => !item.revoked_at).map((item) => [item.document_id, item])), [sharingGrants]);
 
@@ -422,18 +408,17 @@ export default function WorkspaceDetailPage() {
       const tags = doc.document_tags || [];
       const matchesType = selectedDocumentType ? doc.document_type === selectedDocumentType : true;
       const matchesTag = selectedTag ? tags.includes(selectedTag) : true;
-      const buyerDoc = buyerDocById.get(doc.id);
       const evidence = evidenceByDocumentId.get(doc.id);
       const grant = grantByDocumentId.get(doc.id);
-      const expiresAt = buyerDoc?.expires_at || evidence?.expires_at || grant?.expires_at || null;
+      const expiresAt = evidence?.expires_at || grant?.expires_at || null;
       const expiresTime = expiresAt ? new Date(expiresAt).getTime() : null;
       const matchesVaultView =
         activeVaultView === 'all' ? true
-        : activeVaultView === 'buyer_vault' ? Boolean(buyerDoc || tags.includes('buyer_vault'))
+        : activeVaultView === 'buyer_vault' ? Boolean(evidence || tags.includes('buyer_vault'))
         : activeVaultView === 'readiness_evidence' ? Boolean(evidence || tags.includes('readiness_evidence'))
         : activeVaultView === 'shared' ? Boolean(grant)
         : activeVaultView === 'expiring' ? Boolean(expiresTime && expiresTime <= expiringCutoff)
-        : !buyerDoc && !tags.includes('buyer_vault') && !tags.includes('readiness_evidence');
+        : !evidence && !tags.includes('buyer_vault') && !tags.includes('readiness_evidence');
       const matchesSearch = !query
         ? true
         : doc.title.toLowerCase().includes(query) ||
@@ -441,37 +426,27 @@ export default function WorkspaceDetailPage() {
           tags.some((tag) => tag.toLowerCase().includes(query));
       return matchesVaultView && matchesType && matchesTag && matchesSearch;
     });
-  }, [activeVaultView, buyerDocById, documents, evidenceByDocumentId, grantByDocumentId, searchQuery, selectedDocumentType, selectedTag]);
+  }, [activeVaultView, documents, evidenceByDocumentId, grantByDocumentId, searchQuery, selectedDocumentType, selectedTag]);
 
   const attachReadinessEvidence = async (doc: Document) => {
-    if (!readinessProfile?.buyer_entity_id) {
+    if (!readinessProfile?.id) {
       showError(new Error('Start buyer readiness before attaching evidence.'), 'buyer_readiness_profiles');
       return;
     }
 
-    const role = buyerDocById.get(doc.id)?.document_role || 'other';
-    const sensitivity = buyerDocById.get(doc.id)?.sensitivity_level || (role === 'proof_of_funds' ? 'financial' : 'high');
-    const [entityDocResult, evidenceResult] = await Promise.all([
-      supabase.from('buyer_entity_documents').upsert({
-        buyer_entity_id: readinessProfile.buyer_entity_id,
-        document_id: doc.id,
-        workspace_id: workspaceId,
-        document_role: role,
-        sensitivity_level: sensitivity,
-        status: 'pending',
-      }, { onConflict: 'buyer_entity_id,document_id,document_role' }),
-      supabase.from('buyer_readiness_evidence').insert({
-        profile_id: readinessProfile.id,
-        workspace_id: workspaceId,
-        document_id: doc.id,
-        evidence_type: role,
-        status: 'pending',
-        sensitivity_level: sensitivity,
-      }),
-    ]);
+    const role = 'proof_of_funds';
+    const sensitivity = 'financial';
+    const evidenceResult = await supabase.from('buyer_readiness_evidence').insert({
+      profile_id: readinessProfile.id,
+      workspace_id: workspaceId,
+      document_id: doc.id,
+      evidence_type: role,
+      status: 'pending',
+      sensitivity_level: sensitivity,
+    });
 
-    if (entityDocResult.error || evidenceResult.error) {
-      showError(entityDocResult.error || evidenceResult.error, 'buyer_readiness_evidence');
+    if (evidenceResult.error) {
+      showError(evidenceResult.error, 'buyer_readiness_evidence');
       return;
     }
 
@@ -480,17 +455,9 @@ export default function WorkspaceDetailPage() {
   };
 
   const handleBuyerVaultDocumentCreated = async (documentId: string) => {
-    if (!readinessProfile?.buyer_entity_id) return;
-    const role = 'other';
-    const sensitivity = 'high';
-    await supabase.from('buyer_entity_documents').upsert({
-      buyer_entity_id: readinessProfile.buyer_entity_id,
-      document_id: documentId,
-      workspace_id: workspaceId,
-      document_role: role,
-      sensitivity_level: sensitivity,
-      status: 'pending',
-    }, { onConflict: 'buyer_entity_id,document_id,document_role' });
+    if (!readinessProfile?.id) return;
+    const role = 'proof_of_funds';
+    const sensitivity = 'financial';
     await supabase.from('buyer_readiness_evidence').insert({
       profile_id: readinessProfile.id,
       workspace_id: workspaceId,
@@ -591,7 +558,9 @@ export default function WorkspaceDetailPage() {
             description={t('emptyDescription')}
             action={{
               label: t('upload'),
-              onClick: () => void prepareUploadContext(activeVaultView).finally(() => setShowUploadModal(true)),
+              onClick: () => void prepareUploadContext(activeVaultView)
+                .catch((error) => showError(error, 'workspace_folders'))
+                .finally(() => setShowUploadModal(true)),
             }}
           />
         ) : (
@@ -675,7 +644,13 @@ export default function WorkspaceDetailPage() {
                     );
                   })}
                   {(activeVaultView === 'buyer_vault' || activeVaultView === 'property_sources') && (
-                    <Button variant="primary" size="sm" onClick={() => void prepareUploadContext(activeVaultView).finally(() => setShowUploadModal(true))}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void prepareUploadContext(activeVaultView)
+                        .catch((error) => showError(error, 'workspace_folders'))
+                        .finally(() => setShowUploadModal(true))}
+                    >
                       <Upload className="h-4 w-4" />
                       {activeVaultView === 'property_sources' ? 'Upload property file' : 'Upload evidence'}
                     </Button>
@@ -757,7 +732,6 @@ export default function WorkspaceDetailPage() {
                       key={doc.id}
                       document={doc}
                       workspaceId={workspaceId}
-                      buyerDocument={buyerDocById.get(doc.id)}
                       readinessEvidence={evidenceByDocumentId.get(doc.id)}
                       sharingGrant={grantByDocumentId.get(doc.id)}
                       onAttachReadiness={readinessProfile ? () => void attachReadinessEvidence(doc) : undefined}
@@ -822,7 +796,6 @@ export default function WorkspaceDetailPage() {
 interface DocumentCardProps {
   document: Document;
   workspaceId: string;
-  buyerDocument?: BuyerEntityDocumentRow;
   readinessEvidence?: ReadinessEvidenceRow;
   sharingGrant?: SharingGrantRow;
   onAttachReadiness?: () => void;
@@ -942,7 +915,6 @@ function DocumentThumbnail({ document: doc }: { document: Document }) {
 function DocumentCard({
   document: doc,
   workspaceId,
-  buyerDocument,
   readinessEvidence,
   sharingGrant,
   onAttachReadiness,
@@ -959,9 +931,9 @@ function DocumentCard({
     doc.processing_status
   );
   const canRetryIndexing = doc.processing_status === 'failed' || doc.processing_status === 'pending';
-  const readinessStatus = readinessEvidence?.status || buyerDocument?.status;
-  const sensitivity = buyerDocument?.sensitivity_level || readinessEvidence?.sensitivity_level;
-  const role = buyerDocument?.document_role || readinessEvidence?.evidence_type;
+  const readinessStatus = readinessEvidence?.status;
+  const sensitivity = readinessEvidence?.sensitivity_level;
+  const role = readinessEvidence?.evidence_type;
   const shareLabel = sharingGrant ? (sharingGrant.share_mode === 'status_only' ? 'Status only' : 'Document shared') : role ? 'Not shared' : null;
 
   const handleRetryIndexing = async () => {

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { ChevronDown, LayoutDashboard, FolderOpen, PanelsTopLeft, MoreHorizontal, Bolt } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, FolderOpen, PanelsTopLeft, Bolt } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -97,15 +97,9 @@ export function WorkspaceTabs({
     },
   ];
 
-  const secondaryLinks: { href: string; label: string }[] = [
-    { href: withFolderContext(`/workspaces/${workspaceId}/notes`), label: t('notes') },
-    { href: withFolderContext(`/workspaces/${workspaceId}/data-sources`), label: t('dataSources') },
-    { href: withFolderContext(`/workspaces/${workspaceId}/sources`), label: t('corpus') },
-    { href: withFolderContext(`/workspaces/${workspaceId}/playbooks`), label: t('templates') },
-    ...(showMembersLink
-      ? [{ href: withFolderContext(`/workspaces/${workspaceId}/members`), label: t('members') }]
-      : []),
-  ];
+  const secondaryLinks: { href: string; label: string }[] = showMembersLink
+    ? [{ href: withFolderContext(`/workspaces/${workspaceId}/members`), label: t('members') }]
+    : [];
 
   const activeTab = tabs.find((tab) => tab.key === resolved) ?? tabs[0];
   const ActiveIcon = activeTab.icon;
@@ -157,20 +151,21 @@ export function WorkspaceTabs({
               </Link>
             );
           })}
-          <div className="border-t border-slate-200 py-1 dark:border-white/12">
-            {secondaryLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                role="menuitem"
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
-                onClick={() => setMoreOpen(false)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                {item.label}
-              </Link>
-            ))}
-          </div>
+          {secondaryLinks.length > 0 ? (
+            <div className="border-t border-slate-200 py-1 dark:border-white/12">
+              {secondaryLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

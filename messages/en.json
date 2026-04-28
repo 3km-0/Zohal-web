@@ -2851,8 +2851,9 @@
     "buyerReadiness": {
       "title": "Buyer Readiness",
       "emptyTitle": "Readiness not started",
-      "emptyBody": "Create a readiness profile to track mandate evidence, funding path, sharing consent, brokerage authority, and KYC state.",
-      "start": "Start readiness",
+      "emptyBody": "Upload proof of funds or a financing letter into the secure financing folder. Zohal records readiness evidence only; it does not underwrite credit.",
+      "usePrimaryAction": "Use the action at the top of this page when this step is next.",
+      "start": "Upload proof of funds",
       "starting": "Starting...",
       "attachEvidence": "Attach evidence",
       "startError": "Unable to start readiness right now.",
@@ -2905,15 +2906,15 @@
     "outreach": {
       "title": "Broker / seller outreach",
       "heading": "Draft first. Send only after approval.",
-      "body": "Prepare broker questions, missing document requests, and buyer-readiness signals here.",
-      "requestQuestions": "Queue broker questions",
-      "shareReadiness": "Share readiness signal"
+      "body": "Broker and seller messages are recorded here after an approved outreach action.",
+      "requestQuestions": "Ask broker for missing documents",
+      "shareReadiness": "Share financing docs"
     },
     "offer": {
       "title": "Offer support",
       "heading": "Approval-gated offer workflow",
       "readyBody": "Buyer-side authority is active. Draft or send offer actions through approval.",
-      "sendOffer": "Queue offer"
+      "sendOffer": "Send offer"
     },
     "actions": {
       "zoneNow": "Now",
@@ -2923,7 +2924,8 @@
       "allClear": "All clear",
       "readyToProceed": "All clear — ready to proceed",
       "noOpenItems": "No open items.",
-      "outreachReady": "Broker questions and readiness signals"
+      "outreachReady": "Communication history",
+      "usePrimaryAction": "When this becomes the next pipeline step, the action appears at the top."
     },
     "rightPane": "Right pane",
     "rightPaneTitles": {

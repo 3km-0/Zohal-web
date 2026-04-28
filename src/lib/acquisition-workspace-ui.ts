@@ -173,8 +173,8 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     return {
       action_id: 'upload_financing_document',
       stage,
-      label: 'Start secure financing folder',
-      result: 'Creates buyer readiness and stores financing evidence privately.',
+      label: 'Upload proof of funds',
+      result: 'Stores financing documents privately and starts buyer readiness. Zohal does not underwrite credit.',
       adapter: 'readiness',
       blocked: false,
       secondary_action_id: 'add_listing_evidence',
@@ -185,8 +185,8 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     return {
       action_id: 'request_missing_documents',
       stage,
-      label: 'Request missing documents',
-      result: 'Records broker outreach and marks diligence items as requested.',
+      label: 'Ask broker for missing documents',
+      result: 'Creates a broker document request and records it in Communication.',
       adapter: 'whatsapp',
       blocked: false,
       secondary_action_id: 'upload_property_document',
@@ -197,8 +197,8 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     return {
       action_id: 'request_contractor_evaluation',
       stage,
-      label: 'Request contractor evaluation',
-      result: 'Creates a contractor coordination thread and awaits a report.',
+      label: 'Request contractor inspection',
+      result: 'Creates an inspection request and waits for the contractor report.',
       adapter: 'contractor',
       blocked: false,
     };
@@ -208,8 +208,8 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     return {
       action_id: 'upload_property_document',
       stage,
-      label: 'Upload diligence document',
-      result: 'Triggers property corpus analysis and discrepancy checks.',
+      label: 'Upload property document',
+      result: 'Runs property document analysis and flags discrepancies.',
       adapter: 'files',
       blocked: false,
     };
@@ -219,7 +219,7 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     return {
       action_id: 'activate_buyer_broker',
       stage,
-      label: 'Activate buyer broker',
+      label: 'Hire buyer broker',
       result: 'Records buyer-side authority before negotiation actions.',
       adapter: 'brokerage',
       blocked: false,
@@ -230,8 +230,8 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     return {
       action_id: 'share_financing_packet',
       stage,
-      label: 'Grant financing consent',
-      result: 'Records consent before sharing financing status or documents.',
+      label: 'Share financing docs',
+      result: 'Requires explicit consent and a no-underwriting acknowledgement before sharing.',
       adapter: 'readiness',
       blocked: false,
     };
@@ -242,7 +242,7 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
       action_id: 'send_offer',
       stage,
       label: 'Send offer',
-      result: 'Queues approval-gated offer delivery.',
+      result: 'Sends the approved offer through the offer workflow.',
       adapter: 'offer',
       blocked: false,
       secondary_action_id: 'pass_property',
@@ -264,7 +264,7 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
     action_id: 'schedule_visit',
     stage,
     label: 'Schedule visit',
-    result: 'Creates a Google Calendar event and advances the visit stage.',
+    result: 'Creates a Google Calendar event and records the visit request.',
     adapter: 'calendar',
     blocked: false,
     secondary_action_id: 'pass_property',

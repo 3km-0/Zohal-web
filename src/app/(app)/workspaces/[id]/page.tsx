@@ -84,7 +84,6 @@ type AcquisitionEventRow = {
 
 type BuyerReadinessProfileRow = {
   id: string;
-  buyer_entity_id?: string | null;
   buyer_type?: string | null;
   mandate_summary?: string | null;
   funding_path?: string | null;
@@ -95,25 +94,6 @@ type BuyerReadinessProfileRow = {
   brokerage_status?: string | null;
   kyc_state?: string | null;
   updated_at?: string | null;
-};
-
-type BuyerEntityRow = {
-  id: string;
-  entity_type?: string | null;
-  display_name?: string | null;
-  legal_name?: string | null;
-  default_kyc_state?: string | null;
-  status?: string | null;
-};
-
-type BuyerEntityDocumentRow = {
-  id: string;
-  buyer_entity_id?: string | null;
-  document_id?: string | null;
-  document_role?: string | null;
-  sensitivity_level?: string | null;
-  status?: string | null;
-  expires_at?: string | null;
 };
 
 type BuyerReadinessEvidenceRow = {
@@ -357,8 +337,6 @@ export default function WorkspaceCockpitPage() {
   const [events, setEvents] = useState<AcquisitionEventRow[]>([]);
   const [claims, setClaims] = useState<AcquisitionClaimRow[]>([]);
   const [readinessProfile, setReadinessProfile] = useState<BuyerReadinessProfileRow | null>(null);
-  const [buyerEntity, setBuyerEntity] = useState<BuyerEntityRow | null>(null);
-  const [buyerEntityDocuments, setBuyerEntityDocuments] = useState<BuyerEntityDocumentRow[]>([]);
   const [readinessEvidence, setReadinessEvidence] = useState<BuyerReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<DocumentSharingGrantRow[]>([]);
   const [actionApprovals, setActionApprovals] = useState<ExternalActionApprovalRow[]>([]);
@@ -398,7 +376,7 @@ export default function WorkspaceCockpitPage() {
         supabase.from('documents').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
         supabase
           .from('buyer_readiness_profiles')
-          .select('id, buyer_entity_id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+          .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(1),
@@ -421,22 +399,7 @@ export default function WorkspaceCockpitPage() {
         .limit(12);
 
       if (currentReadinessProfile) {
-        const [entityResult, entityDocsResult, evidenceResult, grantsResult, approvalsResult] = await Promise.all([
-          currentReadinessProfile.buyer_entity_id
-            ? supabase
-                .from('buyer_entities')
-                .select('id, entity_type, display_name, legal_name, default_kyc_state, status')
-                .eq('id', currentReadinessProfile.buyer_entity_id)
-                .maybeSingle()
-            : Promise.resolve({ data: null }),
-          currentReadinessProfile.buyer_entity_id
-            ? supabase
-                .from('buyer_entity_documents')
-                .select('id, buyer_entity_id, document_id, document_role, sensitivity_level, status, expires_at')
-                .eq('buyer_entity_id', currentReadinessProfile.buyer_entity_id)
-                .order('created_at', { ascending: false })
-                .limit(12)
-            : Promise.resolve({ data: [] }),
+        const [evidenceResult, grantsResult, approvalsResult] = await Promise.all([
           supabase
             .from('buyer_readiness_evidence')
             .select('id, evidence_type, status, sensitivity_level, document_id, verified_at, expires_at')
@@ -451,15 +414,11 @@ export default function WorkspaceCockpitPage() {
             .limit(8),
           approvalsPromise,
         ]);
-        setBuyerEntity((entityResult.data as BuyerEntityRow | null) ?? null);
-        setBuyerEntityDocuments((entityDocsResult.data ?? []) as BuyerEntityDocumentRow[]);
         setReadinessEvidence((evidenceResult.data ?? []) as BuyerReadinessEvidenceRow[]);
         setSharingGrants((grantsResult.data ?? []) as DocumentSharingGrantRow[]);
         setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
       } else {
         const approvalsResult = await approvalsPromise;
-        setBuyerEntity(null);
-        setBuyerEntityDocuments([]);
         setReadinessEvidence([]);
         setSharingGrants([]);
         setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
@@ -655,36 +614,24 @@ export default function WorkspaceCockpitPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const { data: entityData, error: entityError } = await supabase
-        .from('buyer_entities')
-        .insert({
-          owner_user_id: user?.id ?? workspace?.owner_id ?? null,
-          organization_id: workspace?.org_id ?? null,
-          entity_type: 'individual',
-          display_name: mandateSummary || workspace?.name || 'Buyer',
-          default_kyc_state: 'not_started',
-          metadata_json: { source: 'web_acquisition_cockpit' },
-        })
-        .select('id, entity_type, display_name, legal_name, default_kyc_state, status')
-        .single();
-      if (entityError) throw entityError;
       const { data, error } = await supabase
         .from('buyer_readiness_profiles')
         .insert({
           workspace_id: workspaceId,
-          buyer_entity_id: entityData.id,
+          buyer_user_id: user?.id ?? workspace?.owner_id ?? null,
+          organization_id: workspace?.org_id ?? null,
+          buyer_type: 'individual',
           mandate_summary: mandateSummary,
           readiness_level: mandateSummary ? 1 : 0,
           evidence_status: 'self_declared',
           sharing_mode: 'private',
           brokerage_status: 'not_started',
           kyc_state: 'not_started',
+          metadata_json: { source: 'web_acquisition_cockpit' },
         })
-        .select('id, buyer_entity_id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+        .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
         .single();
       if (error) throw error;
-      setBuyerEntity(entityData as BuyerEntityRow);
-      setBuyerEntityDocuments([]);
       setReadinessProfile(data as BuyerReadinessProfileRow);
       openBuyerVault(true);
     } catch (error) {
@@ -934,8 +881,6 @@ export default function WorkspaceCockpitPage() {
                             primaryActionLabel={primaryAction.label}
                             primaryActionResult={primaryAction.result}
                             readinessProfile={readinessProfile}
-                            buyerEntity={buyerEntity}
-                            buyerEntityDocuments={buyerEntityDocuments}
                             readinessEvidence={readinessEvidence}
                             sharingGrants={sharingGrants}
                             actionApprovals={actionApprovals}
@@ -945,11 +890,6 @@ export default function WorkspaceCockpitPage() {
                             selectedOpportunity={selectedOpportunity}
                             brokerageActive={brokerageActive}
                             onPrimaryAction={() => void executePrimaryAction()}
-                            onStartReadiness={startReadiness}
-                            onAttachEvidence={() => openBuyerVault(true)}
-                            onShareReadiness={() => void requestExternalAction('share_readiness_signal')}
-                            onRequestItem={(item) => void requestExternalAction('send_outreach', { request_kind: 'missing_document', requested_item: item })}
-                            onRequestAction={requestExternalAction}
                           />
                         </>
                       )}
@@ -1055,87 +995,91 @@ function BuyBoxCard({
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const brief = workspace?.analysis_brief || workspace?.description || '';
   const briefParts = brief.split(';').map((part) => part.trim()).filter(Boolean);
+  const isOpen = expanded || hovered;
   const compactMandate = [
     briefParts[2] ? `${t('budgetRange')}: ${briefParts[2]}` : null,
     briefParts[1] ? `${t('targetLocations')}: ${briefParts[1]}` : null,
     briefParts[3] ? `${t('riskAppetite')}: ${briefParts[3]}` : null,
   ].filter((item): item is string => Boolean(item));
   return (
-    <Panel className="mb-5 p-4" data-testid="acquisition-buy-box">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <Panel
+      className={cn('mb-5 overflow-hidden p-3 transition-all duration-200', isOpen ? 'shadow-[var(--shadowMd)]' : 'shadow-[var(--shadowSm)]')}
+      data-testid="acquisition-buy-box"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setHovered(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHovered(false);
+      }}
+    >
+      <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
           className="min-w-0 flex-1 text-left"
-          aria-expanded={expanded}
+          aria-expanded={isOpen}
         >
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent/80">{t('buyBoxPinned')}</p>
-          <p className="mt-1 text-xs text-text-muted">{t('buyBoxSubtitle')}</p>
-          <p className="mt-2 truncate text-sm font-semibold text-text">{briefParts[0] || t('notSet')}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent/80">{t('buyBoxPinned')}</p>
+          <p className="mt-1 truncate text-sm font-semibold text-text">{briefParts[0] || t('notSet')}</p>
+          {!isOpen ? (
+            <p className="mt-1 truncate text-xs text-text-muted">
+              {(compactMandate.length ? compactMandate : [t('notSet')]).join(' · ')}
+            </p>
+          ) : null}
         </button>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setExpanded((open) => !open)}
-            className="grid h-9 w-9 place-items-center rounded-[10px] border border-border bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
-            aria-label={expanded ? t('collapseMandate') : t('expandMandate')}
-            aria-expanded={expanded}
+            className="grid h-8 w-8 place-items-center rounded-[10px] border border-border bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
+            aria-label={isOpen ? t('collapseMandate') : t('expandMandate')}
+            aria-expanded={isOpen}
           >
-            <ChevronDown className={cn('h-4 w-4 transition', expanded && 'rotate-180')} />
+            <ChevronDown className={cn('h-4 w-4 transition', isOpen && 'rotate-180')} />
           </button>
           <button
             type="button"
             onClick={onEdit}
-            className="grid h-9 w-9 place-items-center rounded-[10px] border border-accent/25 bg-accent/10 text-accent transition hover:bg-accent/15"
+            className="grid h-8 w-8 place-items-center rounded-[10px] border border-accent/25 bg-accent/10 text-accent transition hover:bg-accent/15"
             aria-label={t('editBuyBox')}
           >
             <Pencil className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div className={cn('space-y-2', !expanded && 'rounded-[12px] border border-border bg-surface-alt px-3 py-3')}>
-        {!expanded ? (
-          <div className="flex flex-wrap gap-2">
+      {isOpen ? (
+        <div className="mt-3 space-y-3">
+          <div className="rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm font-semibold leading-5 text-text">
+            {briefParts[0] || t('notSet')}
+          </div>
+          <div className="grid gap-1.5">
             {(compactMandate.length ? compactMandate : [t('notSet')]).map((item) => (
-              <span key={item} className="max-w-full truncate rounded-full border border-border bg-background/60 px-2.5 py-1 text-xs text-text-soft">
-                {item}
-              </span>
+              <p key={item} className="truncate text-xs text-text-soft">{item}</p>
             ))}
           </div>
-        ) : null}
-        {expanded ? (
-          <>
-        <div className="rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm font-semibold leading-5 text-text">
-          {briefParts[0] || t('notSet')}
+          <div className="grid gap-2">
+            <button
+              type="button"
+              onClick={onSource}
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent px-3 py-2 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_18px_var(--accent-soft)] transition hover:bg-accent-alt"
+            >
+              <Radar className="h-4 w-4" />
+              {t('sourceDeals')}
+            </button>
+            <button
+              type="button"
+              onClick={onOpenAgent}
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition hover:bg-surface-alt"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {t('openSourcingAgent')}
+            </button>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          {(compactMandate.length ? compactMandate : [t('notSet')]).map((item) => (
-            <p key={item} className="truncate text-xs text-text-soft">{item}</p>
-          ))}
-        </div>
-          </>
-        ) : null}
-      </div>
-      <div className="mt-4 grid gap-2">
-        <button
-          type="button"
-          onClick={onSource}
-          className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-accent px-3 py-2.5 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_18px_var(--accent-soft)] transition hover:bg-accent-alt"
-        >
-          <Radar className="h-4 w-4" />
-          {t('sourceDeals')}
-        </button>
-        <button
-          type="button"
-          onClick={onOpenAgent}
-          className="inline-flex items-center justify-center gap-2 rounded-[12px] border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-text transition hover:bg-surface-alt"
-        >
-          <MessageSquare className="h-4 w-4" />
-          {t('openSourcingAgent')}
-        </button>
-      </div>
+      ) : null}
     </Panel>
   );
 }
@@ -1696,8 +1640,6 @@ function ActionsWorkspace({
   primaryActionLabel,
   primaryActionResult,
   readinessProfile,
-  buyerEntity,
-  buyerEntityDocuments,
   readinessEvidence,
   sharingGrants,
   actionApprovals,
@@ -1707,19 +1649,12 @@ function ActionsWorkspace({
   selectedOpportunity,
   brokerageActive,
   onPrimaryAction,
-  onStartReadiness,
-  onAttachEvidence,
-  onShareReadiness,
-  onRequestItem,
-  onRequestAction,
 }: {
   currentBlocker: string;
   hasBlocker: boolean;
   primaryActionLabel: string;
   primaryActionResult: string;
   readinessProfile: BuyerReadinessProfileRow | null;
-  buyerEntity: BuyerEntityRow | null;
-  buyerEntityDocuments: BuyerEntityDocumentRow[];
   readinessEvidence: BuyerReadinessEvidenceRow[];
   sharingGrants: DocumentSharingGrantRow[];
   actionApprovals: ExternalActionApprovalRow[];
@@ -1729,11 +1664,6 @@ function ActionsWorkspace({
   selectedOpportunity: OpportunityRow | null;
   brokerageActive: boolean;
   onPrimaryAction: () => void;
-  onStartReadiness: () => void;
-  onAttachEvidence: () => void;
-  onShareReadiness: () => void;
-  onRequestItem: (item: string) => void;
-  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const readinessComplete = Boolean(readinessProfile && brokerageActive);
@@ -1761,15 +1691,9 @@ function ActionsWorkspace({
         >
           <BuyerReadinessPanel
             profile={readinessProfile}
-            buyerEntity={buyerEntity}
-            buyerEntityDocuments={buyerEntityDocuments}
             evidence={readinessEvidence}
             grants={sharingGrants}
             approvals={actionApprovals}
-            busy={readinessBusy}
-            onStart={onStartReadiness}
-            onAttachEvidence={onAttachEvidence}
-            onShareReadiness={onShareReadiness}
           />
         </ActionSection>
 
@@ -1780,18 +1704,14 @@ function ActionsWorkspace({
           defaultOpen={selectedMissing.length > 0}
         >
           {selectedMissing.length ? (
-            <OpenItemsModule items={selectedMissing} onRequestItem={onRequestItem} />
+            <OpenItemsModule items={selectedMissing} />
           ) : (
             <p className="rounded-[12px] border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">{t('actions.noOpenItems')}</p>
           )}
         </ActionSection>
 
         <ActionSection title={t('outreach.title')} status={t('actions.outreachReady')} tone="neutral" defaultOpen>
-          <OutreachModule
-            opportunity={selectedOpportunity}
-            approvalBusy={approvalBusy}
-            onRequestAction={onRequestAction}
-          />
+          <OutreachModule opportunity={selectedOpportunity} />
         </ActionSection>
       </section>
 
@@ -1800,9 +1720,7 @@ function ActionsWorkspace({
         <OfferModule
           opportunity={selectedOpportunity}
           brokerageActive={brokerageActive && !hasBlocker}
-          approvalBusy={approvalBusy}
           approvals={actionApprovals}
-          onRequestAction={onRequestAction}
         />
       </section>
     </div>
@@ -2053,7 +1971,7 @@ function RenovationTab({
   );
 }
 
-function OpenItemsModule({ items, onRequestItem }: { items: string[]; onRequestItem: (item: string) => void }) {
+function OpenItemsModule({ items }: { items: string[] }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
     <Panel className="p-5">
@@ -2064,10 +1982,9 @@ function OpenItemsModule({ items, onRequestItem }: { items: string[]; onRequestI
           <p className="bg-surface-alt p-4 text-sm text-text-soft">{t('openItemsEmpty')}</p>
         ) : (
           items.map((item, index) => (
-            <div key={`${item}-${index}`} className="grid gap-3 border-b border-border bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr_150px]">
+            <div key={`${item}-${index}`} className="grid gap-3 border-b border-border bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr]">
               <p className="font-mono text-xs text-text-muted">#{index + 1}</p>
               <p className="font-medium text-text">{item}</p>
-              <button type="button" onClick={() => onRequestItem(item)} className="rounded-full bg-accent/10 px-2.5 py-1 text-center text-xs font-semibold text-accent hover:bg-accent/15">{t('requestFromBroker')}</button>
             </div>
           ))
         )}
@@ -2092,12 +2009,8 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
 
 function OutreachModule({
   opportunity,
-  approvalBusy,
-  onRequestAction,
 }: {
   opportunity: OpportunityRow | null;
-  approvalBusy: string | null;
-  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const brokerNote = metadataString(opportunity, ['broker_note', 'counterparty_note', 'contact_access']);
@@ -2106,14 +2019,7 @@ function OutreachModule({
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('outreach.title')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('outreach.heading')}</h3>
         <p className="mt-3 text-sm leading-6 text-text-soft">{brokerNote || t('outreach.body')}</p>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          <button type="button" disabled={!opportunity || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_outreach', { request_kind: 'broker_questions' })} className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:opacity-60">
-            {t('outreach.requestQuestions')}
-          </button>
-          <button type="button" disabled={!opportunity || Boolean(approvalBusy)} onClick={() => void onRequestAction('share_readiness_signal')} className="rounded-[14px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight disabled:opacity-60">
-            {t('outreach.shareReadiness')}
-          </button>
-        </div>
+        <p className="mt-4 rounded-[12px] border border-border bg-surface px-4 py-3 text-sm text-text-soft">{t('actions.usePrimaryAction')}</p>
     </div>
   );
 }
@@ -2121,15 +2027,11 @@ function OutreachModule({
 function OfferModule({
   opportunity,
   brokerageActive,
-  approvalBusy,
   approvals,
-  onRequestAction,
 }: {
   opportunity: OpportunityRow | null;
   brokerageActive: boolean;
-  approvalBusy: string | null;
   approvals?: ExternalActionApprovalRow[];
-  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const latestApproval = approvals?.[0] ?? null;
@@ -2147,14 +2049,9 @@ function OfferModule({
         ) : null}
       </div>
       <p className="mt-3 text-sm leading-6 text-text-soft">{brokerageActive ? t('offer.readyBody') : t('brokerageGateHint')}</p>
-      <div className="mt-5 grid gap-2 sm:grid-cols-2">
-        <button type="button" disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_offer')} className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-55">
-          {t('offer.sendOffer')}
-        </button>
-        <button type="button" disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_negotiation_message')} className="rounded-[14px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
-          {t('proceedNegotiate')}
-        </button>
-      </div>
+      <p className="mt-4 rounded-[12px] border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">
+        {opportunity && brokerageActive ? t('actions.usePrimaryAction') : t('brokerageGateHint')}
+      </p>
     </Panel>
   );
 }
@@ -2761,26 +2658,14 @@ function RightPane({
 
 function BuyerReadinessPanel({
   profile,
-  buyerEntity,
-  buyerEntityDocuments,
   evidence,
   grants,
   approvals,
-  busy = false,
-  onStart,
-  onAttachEvidence,
-  onShareReadiness,
 }: {
   profile: BuyerReadinessProfileRow | null;
-  buyerEntity?: BuyerEntityRow | null;
-  buyerEntityDocuments?: BuyerEntityDocumentRow[];
   evidence: BuyerReadinessEvidenceRow[];
   grants: DocumentSharingGrantRow[];
   approvals: ExternalActionApprovalRow[];
-  busy?: boolean;
-  onStart?: () => void;
-  onAttachEvidence?: () => void;
-  onShareReadiness?: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   if (!profile) {
@@ -2794,22 +2679,14 @@ function BuyerReadinessPanel({
           <ShieldCheck className="h-5 w-5 text-highlight" />
         </div>
         <p className="text-sm leading-6 text-text-soft">{t('buyerReadiness.emptyBody')}</p>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          <button type="button" disabled={busy} onClick={onStart} className="rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60">
-            {busy ? t('buyerReadiness.starting') : t('buyerReadiness.start')}
-          </button>
-          <button type="button" onClick={onAttachEvidence} className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
-            {t('buyerReadiness.attachEvidence')}
-          </button>
-        </div>
+        <p className="mt-3 rounded-[12px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-warning">{t('buyerReadiness.usePrimaryAction')}</p>
       </Panel>
     );
   }
 
   const level = Math.max(0, Math.min(5, Math.round(profile.readiness_level ?? 0)));
   const activeGrants = activeGrantCount(grants);
-  const vaultDocuments = buyerEntityDocuments ?? [];
-  const evidenceChecklist = readinessChecklist(profile, evidence, vaultDocuments, {
+  const evidenceChecklist = readinessChecklist(profile, evidence, {
     mandate: t('buyerReadiness.checklistMandate'),
     identity: t('buyerReadiness.checklistIdentity'),
     funding: t('buyerReadiness.checklistFunding'),
@@ -2825,7 +2702,7 @@ function BuyerReadinessPanel({
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('buyerReadiness.title')}</p>
-          <h3 className="mt-1 text-xl font-semibold text-text">{buyerEntity?.display_name || t('buyerReadiness.level', { level })}</h3>
+          <h3 className="mt-1 text-xl font-semibold text-text">{t('buyerReadiness.level', { level })}</h3>
           <p className="mt-2 text-xs leading-5 text-text-muted">{profile.mandate_summary || t('buyerReadiness.noMandate')}</p>
         </div>
         <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[14px] border border-highlight/30 bg-highlight/10 font-mono text-lg font-bold text-highlight">
@@ -2834,7 +2711,7 @@ function BuyerReadinessPanel({
       </div>
 
       <div className="grid gap-2">
-        <RightPaneRow label={t('buyerReadiness.buyerType')} value={humanize(buyerEntity?.entity_type || profile.buyer_type) || t('notSet')} tone="neutral" />
+        <RightPaneRow label={t('buyerReadiness.buyerType')} value={humanize(profile.buyer_type) || t('notSet')} tone="neutral" />
         <RightPaneRow label={t('buyerReadiness.fundingPath')} value={humanize(profile.funding_path) || t('notSet')} tone={statusTone(profile.evidence_status)} />
         <RightPaneRow label={t('buyerReadiness.sharingMode')} value={humanize(profile.sharing_mode) || t('notSet')} tone={activeGrants > 0 ? 'lime' : 'neutral'} />
         <RightPaneRow label={t('buyerReadiness.visitReadiness')} value={profile.visit_readiness || t('notSet')} tone="cyan" />
@@ -2843,14 +2720,6 @@ function BuyerReadinessPanel({
       </div>
 
       <div className="mt-5 grid gap-3">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <button type="button" onClick={onAttachEvidence} className="rounded-[12px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight">
-            {t('buyerReadiness.attachEvidence')}
-          </button>
-          <button type="button" onClick={onShareReadiness} className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
-            {t('outreach.shareReadiness')}
-          </button>
-        </div>
         <ReadinessList
           title={t('buyerReadiness.checklistTitle')}
           empty={t('buyerReadiness.noChecklist')}
@@ -2946,7 +2815,6 @@ function ReadinessList({
 function readinessChecklist(
   profile: BuyerReadinessProfileRow,
   evidence: BuyerReadinessEvidenceRow[],
-  buyerDocs: BuyerEntityDocumentRow[],
   labels: {
     mandate: string;
     identity: string;
@@ -2960,8 +2828,7 @@ function readinessChecklist(
   }
 ) {
   const evidenceTypes = new Set(evidence.map((item) => item.evidence_type).filter(Boolean));
-  const documentRoles = new Set(buyerDocs.map((item) => item.document_role).filter(Boolean));
-  const hasAny = (...keys: string[]) => keys.some((key) => evidenceTypes.has(key) || documentRoles.has(key));
+  const hasAny = (...keys: string[]) => keys.some((key) => evidenceTypes.has(key));
   const buyerType = profile.buyer_type || 'individual';
   const isEntity = buyerType === 'company' || buyerType === 'family_office';
   const items = [
