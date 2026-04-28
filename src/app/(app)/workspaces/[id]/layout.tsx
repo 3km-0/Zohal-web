@@ -46,7 +46,7 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
-      <div className="border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#030509]/90">
+      <div className="relative z-[200] border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#030509]/90">
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(260px,0.9fr)_minmax(440px,1.4fr)_auto] xl:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Link
@@ -84,7 +84,7 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      <div className="relative z-0 min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 }

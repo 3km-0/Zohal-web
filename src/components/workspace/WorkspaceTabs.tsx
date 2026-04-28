@@ -135,7 +135,7 @@ export function WorkspaceTabs({
       {moreOpen ? (
         <div
           role="menu"
-          className="absolute end-0 top-[calc(100%+8px)] z-[80] min-w-64 overflow-hidden rounded-[14px] border border-slate-300 bg-white text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.34)] ring-1 ring-slate-950/10 dark:border-white/15 dark:bg-[#05070B] dark:text-white dark:shadow-[0_28px_80px_rgba(0,0,0,.86)] dark:ring-white/12"
+          className="absolute end-0 top-[calc(100%+8px)] z-[250] min-w-64 overflow-hidden rounded-[14px] border border-slate-300 bg-white text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.34)] ring-1 ring-slate-950/10 dark:border-white/15 dark:bg-[#05070B] dark:text-white dark:shadow-[0_28px_80px_rgba(0,0,0,.86)] dark:ring-white/12"
         >
           {tabs.map((tab) => {
             const Icon = tab.icon;
