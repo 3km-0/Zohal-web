@@ -126,7 +126,7 @@ export function WorkspaceTabs({
             return nextOpen;
           });
         }}
-        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-border bg-background px-3 text-sm font-semibold text-text shadow-[var(--shadowSm)] transition hover:bg-surface-alt dark:bg-[#07101A]"
+        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-950 shadow-[0_8px_26px_rgba(15,23,42,.16)] transition hover:bg-slate-50 dark:border-white/15 dark:bg-[#05070B] dark:text-white dark:shadow-black/60 dark:hover:bg-[#0B1118]"
       >
         <ActiveIcon className="h-4 w-4 text-accent" />
         <span>{t('workspaceMenu')}</span>
@@ -135,7 +135,7 @@ export function WorkspaceTabs({
       {moreOpen ? (
         <div
           role="menu"
-          className="absolute end-0 top-[calc(100%+8px)] z-50 min-w-64 overflow-hidden rounded-[14px] border border-border bg-background shadow-2xl shadow-black/30 ring-1 ring-black/5 dark:bg-[#07101A] dark:shadow-black/70 dark:ring-white/10"
+          className="absolute end-0 top-[calc(100%+8px)] z-[80] min-w-64 overflow-hidden rounded-[14px] border border-slate-300 bg-white text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.34)] ring-1 ring-slate-950/10 dark:border-white/15 dark:bg-[#05070B] dark:text-white dark:shadow-[0_28px_80px_rgba(0,0,0,.86)] dark:ring-white/12"
         >
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -148,8 +148,8 @@ export function WorkspaceTabs({
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => setMoreOpen(false)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition hover:bg-surface-alt hover:text-text',
-                  isActive ? 'bg-accent/10 text-accent' : 'text-text-soft'
+                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-white/10',
+                  isActive ? 'bg-lime-100 text-slate-950 dark:bg-lime-300/16 dark:text-lime-200' : 'text-slate-700 dark:text-slate-200'
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -157,13 +157,13 @@ export function WorkspaceTabs({
               </Link>
             );
           })}
-          <div className="border-t border-border py-1">
+          <div className="border-t border-slate-200 py-1 dark:border-white/12">
             {secondaryLinks.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 role="menuitem"
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-text-soft transition hover:bg-surface-alt hover:text-text"
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
                 onClick={() => setMoreOpen(false)}
               >
                 <MoreHorizontal className="h-4 w-4" />
