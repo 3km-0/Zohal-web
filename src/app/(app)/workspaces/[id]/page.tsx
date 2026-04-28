@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, HTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
@@ -53,6 +53,8 @@ type WorkspaceRow = {
   name: string;
   description?: string | null;
   analysis_brief?: string | null;
+  org_id?: string | null;
+  owner_id?: string | null;
 };
 
 type OpportunityRow = {
@@ -78,6 +80,7 @@ type AcquisitionEventRow = {
 
 type BuyerReadinessProfileRow = {
   id: string;
+  buyer_entity_id?: string | null;
   buyer_type?: string | null;
   mandate_summary?: string | null;
   funding_path?: string | null;
@@ -88,6 +91,25 @@ type BuyerReadinessProfileRow = {
   brokerage_status?: string | null;
   kyc_state?: string | null;
   updated_at?: string | null;
+};
+
+type BuyerEntityRow = {
+  id: string;
+  entity_type?: string | null;
+  display_name?: string | null;
+  legal_name?: string | null;
+  default_kyc_state?: string | null;
+  status?: string | null;
+};
+
+type BuyerEntityDocumentRow = {
+  id: string;
+  buyer_entity_id?: string | null;
+  document_id?: string | null;
+  document_role?: string | null;
+  sensitivity_level?: string | null;
+  status?: string | null;
+  expires_at?: string | null;
 };
 
 type BuyerReadinessEvidenceRow = {
@@ -318,6 +340,7 @@ function statusTone(value: string | null | undefined): 'neutral' | 'lime' | 'cya
 
 export default function WorkspaceCockpitPage() {
   const params = useParams();
+  const router = useRouter();
   const workspaceId = params.id as string;
   const t = useTranslations('workspaceCockpitPage');
   const supabase = useMemo(() => createClient(), []);
@@ -327,6 +350,8 @@ export default function WorkspaceCockpitPage() {
   const [events, setEvents] = useState<AcquisitionEventRow[]>([]);
   const [claims, setClaims] = useState<AcquisitionClaimRow[]>([]);
   const [readinessProfile, setReadinessProfile] = useState<BuyerReadinessProfileRow | null>(null);
+  const [buyerEntity, setBuyerEntity] = useState<BuyerEntityRow | null>(null);
+  const [buyerEntityDocuments, setBuyerEntityDocuments] = useState<BuyerEntityDocumentRow[]>([]);
   const [readinessEvidence, setReadinessEvidence] = useState<BuyerReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<DocumentSharingGrantRow[]>([]);
   const [actionApprovals, setActionApprovals] = useState<ExternalActionApprovalRow[]>([]);
@@ -353,7 +378,7 @@ export default function WorkspaceCockpitPage() {
     setLoading(true);
     try {
       const [workspaceResult, opportunitiesResult, documentsResult, profileResult] = await Promise.all([
-        supabase.from('workspaces').select('id, name, description, analysis_brief').eq('id', workspaceId).maybeSingle(),
+        supabase.from('workspaces').select('id, name, description, analysis_brief, org_id, owner_id').eq('id', workspaceId).maybeSingle(),
         supabase
           .from('acquisition_opportunities')
           .select('id, stage, title, acquisition_focus, area_summary, budget_band, metadata_json, summary, missing_info_json, screening_readiness, updated_at')
@@ -364,7 +389,7 @@ export default function WorkspaceCockpitPage() {
         supabase.from('documents').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
         supabase
           .from('buyer_readiness_profiles')
-          .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+          .select('id, buyer_entity_id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(1),
@@ -387,7 +412,22 @@ export default function WorkspaceCockpitPage() {
         .limit(12);
 
       if (currentReadinessProfile) {
-        const [evidenceResult, grantsResult, approvalsResult] = await Promise.all([
+        const [entityResult, entityDocsResult, evidenceResult, grantsResult, approvalsResult] = await Promise.all([
+          currentReadinessProfile.buyer_entity_id
+            ? supabase
+                .from('buyer_entities')
+                .select('id, entity_type, display_name, legal_name, default_kyc_state, status')
+                .eq('id', currentReadinessProfile.buyer_entity_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+          currentReadinessProfile.buyer_entity_id
+            ? supabase
+                .from('buyer_entity_documents')
+                .select('id, buyer_entity_id, document_id, document_role, sensitivity_level, status, expires_at')
+                .eq('buyer_entity_id', currentReadinessProfile.buyer_entity_id)
+                .order('created_at', { ascending: false })
+                .limit(12)
+            : Promise.resolve({ data: [] }),
           supabase
             .from('buyer_readiness_evidence')
             .select('id, evidence_type, status, sensitivity_level, document_id, verified_at, expires_at')
@@ -402,11 +442,15 @@ export default function WorkspaceCockpitPage() {
             .limit(8),
           approvalsPromise,
         ]);
+        setBuyerEntity((entityResult.data as BuyerEntityRow | null) ?? null);
+        setBuyerEntityDocuments((entityDocsResult.data ?? []) as BuyerEntityDocumentRow[]);
         setReadinessEvidence((evidenceResult.data ?? []) as BuyerReadinessEvidenceRow[]);
         setSharingGrants((grantsResult.data ?? []) as DocumentSharingGrantRow[]);
         setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
       } else {
         const approvalsResult = await approvalsPromise;
+        setBuyerEntity(null);
+        setBuyerEntityDocuments([]);
         setReadinessEvidence([]);
         setSharingGrants([]);
         setActionApprovals((approvalsResult.data ?? []) as ExternalActionApprovalRow[]);
@@ -481,6 +525,12 @@ export default function WorkspaceCockpitPage() {
     setDrawerOpen(true);
   }, []);
 
+  const openBuyerVault = useCallback((upload = false) => {
+    const sourceParams = new URLSearchParams({ view: 'buyer_vault', intent: 'readiness' });
+    if (upload) sourceParams.set('upload', '1');
+    router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
+  }, [router, workspaceId]);
+
   const openBuyBoxEditor = useCallback(() => {
     setBuyBoxDraft(workspace?.analysis_brief || workspace?.description || '');
     setBuyBoxEditorOpen(true);
@@ -539,10 +589,27 @@ export default function WorkspaceCockpitPage() {
     setApprovalError(null);
     try {
       const mandateSummary = workspace?.analysis_brief || workspace?.description || workspace?.name || null;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: entityData, error: entityError } = await supabase
+        .from('buyer_entities')
+        .insert({
+          owner_user_id: user?.id ?? workspace?.owner_id ?? null,
+          organization_id: workspace?.org_id ?? null,
+          entity_type: 'individual',
+          display_name: mandateSummary || workspace?.name || 'Buyer',
+          default_kyc_state: 'not_started',
+          metadata_json: { source: 'web_acquisition_cockpit' },
+        })
+        .select('id, entity_type, display_name, legal_name, default_kyc_state, status')
+        .single();
+      if (entityError) throw entityError;
       const { data, error } = await supabase
         .from('buyer_readiness_profiles')
         .insert({
           workspace_id: workspaceId,
+          buyer_entity_id: entityData.id,
           mandate_summary: mandateSummary,
           readiness_level: mandateSummary ? 1 : 0,
           evidence_status: 'self_declared',
@@ -550,17 +617,19 @@ export default function WorkspaceCockpitPage() {
           brokerage_status: 'not_started',
           kyc_state: 'not_started',
         })
-        .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+        .select('id, buyer_entity_id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
         .single();
       if (error) throw error;
+      setBuyerEntity(entityData as BuyerEntityRow);
+      setBuyerEntityDocuments([]);
       setReadinessProfile(data as BuyerReadinessProfileRow);
-      openDrawer('files');
+      openBuyerVault(true);
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : t('buyerReadiness.startError'));
     } finally {
       setReadinessBusy(false);
     }
-  }, [openDrawer, supabase, t, workspace, workspaceId]);
+  }, [openBuyerVault, supabase, t, workspace, workspaceId]);
 
   const saveScenarioAssumptions = useCallback(async (nextScenario: ScenarioState) => {
     if (!selectedOpportunity) return;
@@ -739,6 +808,8 @@ export default function WorkspaceCockpitPage() {
               missingItems={selectedMissing}
               claims={claims}
               readinessProfile={readinessProfile}
+              buyerEntity={buyerEntity}
+              buyerEntityDocuments={buyerEntityDocuments}
               readinessEvidence={readinessEvidence}
               sharingGrants={sharingGrants}
               actionApprovals={actionApprovals}
@@ -750,7 +821,7 @@ export default function WorkspaceCockpitPage() {
               onClose={() => setDrawerOpen(false)}
               onWidthChange={setDrawerWidth}
               onStartReadiness={startReadiness}
-              onAttachEvidence={() => openDrawer('files')}
+              onAttachEvidence={() => openBuyerVault(true)}
               onRequestAction={requestExternalAction}
               onPass={() => void updateSelectedStage('passed')}
             />
@@ -1674,6 +1745,8 @@ function WorkspaceCommandDrawer({
   missingItems,
   claims,
   readinessProfile,
+  buyerEntity,
+  buyerEntityDocuments,
   readinessEvidence,
   sharingGrants,
   actionApprovals,
@@ -1699,6 +1772,8 @@ function WorkspaceCommandDrawer({
   missingItems: string[];
   claims: AcquisitionClaimRow[];
   readinessProfile: BuyerReadinessProfileRow | null;
+  buyerEntity: BuyerEntityRow | null;
+  buyerEntityDocuments: BuyerEntityDocumentRow[];
   readinessEvidence: BuyerReadinessEvidenceRow[];
   sharingGrants: DocumentSharingGrantRow[];
   actionApprovals: ExternalActionApprovalRow[];
@@ -1787,6 +1862,8 @@ function WorkspaceCommandDrawer({
             <div className="space-y-4">
               <BuyerReadinessPanel
                 profile={readinessProfile}
+                buyerEntity={buyerEntity}
+                buyerEntityDocuments={buyerEntityDocuments}
                 evidence={readinessEvidence}
                 grants={sharingGrants}
                 approvals={actionApprovals}
@@ -2198,6 +2275,8 @@ function RightPane({
 
 function BuyerReadinessPanel({
   profile,
+  buyerEntity,
+  buyerEntityDocuments,
   evidence,
   grants,
   approvals,
@@ -2207,6 +2286,8 @@ function BuyerReadinessPanel({
   onShareReadiness,
 }: {
   profile: BuyerReadinessProfileRow | null;
+  buyerEntity?: BuyerEntityRow | null;
+  buyerEntityDocuments?: BuyerEntityDocumentRow[];
   evidence: BuyerReadinessEvidenceRow[];
   grants: DocumentSharingGrantRow[];
   approvals: ExternalActionApprovalRow[];
@@ -2241,12 +2322,24 @@ function BuyerReadinessPanel({
 
   const level = Math.max(0, Math.min(5, Math.round(profile.readiness_level ?? 0)));
   const activeGrants = activeGrantCount(grants);
+  const vaultDocuments = buyerEntityDocuments ?? [];
+  const evidenceChecklist = readinessChecklist(profile, evidence, vaultDocuments, {
+    mandate: t('buyerReadiness.checklistMandate'),
+    identity: t('buyerReadiness.checklistIdentity'),
+    funding: t('buyerReadiness.checklistFunding'),
+    commercialRegistration: t('buyerReadiness.checklistCommercialRegistration'),
+    authority: t('buyerReadiness.checklistAuthority'),
+    beneficialOwner: t('buyerReadiness.checklistBeneficialOwner'),
+    brokerage: t('buyerReadiness.checklistBrokerage'),
+    complete: t('buyerReadiness.checklistComplete'),
+    missing: t('buyerReadiness.checklistMissing'),
+  });
   return (
     <Panel className="p-5" data-testid="buyer-readiness-panel">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('buyerReadiness.title')}</p>
-          <h3 className="mt-1 text-xl font-semibold text-text">{t('buyerReadiness.level', { level })}</h3>
+          <h3 className="mt-1 text-xl font-semibold text-text">{buyerEntity?.display_name || t('buyerReadiness.level', { level })}</h3>
           <p className="mt-2 text-xs leading-5 text-text-muted">{profile.mandate_summary || t('buyerReadiness.noMandate')}</p>
         </div>
         <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[14px] border border-highlight/30 bg-highlight/10 font-mono text-lg font-bold text-highlight">
@@ -2255,7 +2348,7 @@ function BuyerReadinessPanel({
       </div>
 
       <div className="grid gap-2">
-        <RightPaneRow label={t('buyerReadiness.buyerType')} value={humanize(profile.buyer_type) || t('notSet')} tone="neutral" />
+        <RightPaneRow label={t('buyerReadiness.buyerType')} value={humanize(buyerEntity?.entity_type || profile.buyer_type) || t('notSet')} tone="neutral" />
         <RightPaneRow label={t('buyerReadiness.fundingPath')} value={humanize(profile.funding_path) || t('notSet')} tone={statusTone(profile.evidence_status)} />
         <RightPaneRow label={t('buyerReadiness.sharingMode')} value={humanize(profile.sharing_mode) || t('notSet')} tone={activeGrants > 0 ? 'lime' : 'neutral'} />
         <RightPaneRow label={t('buyerReadiness.visitReadiness')} value={profile.visit_readiness || t('notSet')} tone="cyan" />
@@ -2272,6 +2365,16 @@ function BuyerReadinessPanel({
             {t('outreach.shareReadiness')}
           </button>
         </div>
+        <ReadinessList
+          title={t('buyerReadiness.checklistTitle')}
+          empty={t('buyerReadiness.noChecklist')}
+          items={evidenceChecklist.map((item) => ({
+            id: item.id,
+            label: item.label,
+            meta: item.status,
+            tone: item.complete ? 'lime' : 'warn',
+          }))}
+        />
         <ReadinessList
           title={t('buyerReadiness.evidenceTitle')}
           empty={t('buyerReadiness.noEvidence')}
@@ -2352,6 +2455,52 @@ function ReadinessList({
       )}
     </div>
   );
+}
+
+function readinessChecklist(
+  profile: BuyerReadinessProfileRow,
+  evidence: BuyerReadinessEvidenceRow[],
+  buyerDocs: BuyerEntityDocumentRow[],
+  labels: {
+    mandate: string;
+    identity: string;
+    funding: string;
+    commercialRegistration: string;
+    authority: string;
+    beneficialOwner: string;
+    brokerage: string;
+    complete: string;
+    missing: string;
+  }
+) {
+  const evidenceTypes = new Set(evidence.map((item) => item.evidence_type).filter(Boolean));
+  const documentRoles = new Set(buyerDocs.map((item) => item.document_role).filter(Boolean));
+  const hasAny = (...keys: string[]) => keys.some((key) => evidenceTypes.has(key) || documentRoles.has(key));
+  const buyerType = profile.buyer_type || 'individual';
+  const isEntity = buyerType === 'company' || buyerType === 'family_office';
+  const items = [
+    { id: 'mandate', label: labels.mandate, complete: Boolean(profile.mandate_summary) },
+  ];
+
+  if (isEntity) {
+    items.push(
+      { id: 'commercial_registration', label: labels.commercialRegistration, complete: hasAny('commercial_registration') },
+      { id: 'authority', label: labels.authority, complete: hasAny('authority_letter') },
+      { id: 'beneficial_owner', label: labels.beneficialOwner, complete: hasAny('self_attestation') }
+    );
+  } else {
+    items.push({ id: 'identity', label: labels.identity, complete: hasAny('identity') });
+  }
+
+  items.push(
+    { id: 'funding', label: labels.funding, complete: Boolean(profile.funding_path) || hasAny('proof_of_funds', 'mortgage_preapproval') },
+    { id: 'brokerage', label: labels.brokerage, complete: profile.brokerage_status === 'signed' || profile.brokerage_status === 'active' || hasAny('brokerage_agreement') }
+  );
+
+  return items.map((item) => ({
+    ...item,
+    status: item.complete ? labels.complete : labels.missing,
+  }));
 }
 
 function RightPaneRow({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'lime' | 'cyan' | 'warn' }) {

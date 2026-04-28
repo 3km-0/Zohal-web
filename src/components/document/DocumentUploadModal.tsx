@@ -27,8 +27,11 @@ import {
 interface DocumentUploadModalProps {
   workspaceId: string;
   folderId?: string | null;
+  defaultDocumentTags?: string[];
+  defaultSourceMetadata?: Record<string, unknown>;
   onClose: () => void;
   onUploaded: (documentId?: string) => void;
+  onDocumentCreated?: (documentId: string) => Promise<void> | void;
 }
 
 interface FileWithPreview {
@@ -102,8 +105,11 @@ async function buildPdfFromImages(imageFiles: File[], outputBaseName: string): P
 export function DocumentUploadModal({
   workspaceId,
   folderId,
+  defaultDocumentTags,
+  defaultSourceMetadata,
   onClose,
   onUploaded,
+  onDocumentCreated,
 }: DocumentUploadModalProps) {
   const supabase = createClient();
   const t = useTranslations('documentUpload');
@@ -288,15 +294,18 @@ export function DocumentUploadModal({
       storage_bucket: 'local',
       file_size_bytes: pdfFile.size,
       document_type: 'other',
+      document_tags: defaultDocumentTags || [],
       processing_status: 'completed',
       privacy_mode: true,
       source_metadata: {
+        ...(defaultSourceMetadata || {}),
         origin: 'web_ephemeral',
         sanitization_report: report,
       },
     });
 
     if (insertError) throw insertError;
+    await onDocumentCreated?.(documentId);
     console.log('[Ephemeral] Document record created:', documentId);
 
     // 4. Send sanitized chunks to cloud
@@ -404,11 +413,16 @@ export function DocumentUploadModal({
       storage_bucket: 'gcs',
       file_size_bytes: pdfFile.size,
       document_type: 'other',
+      document_tags: defaultDocumentTags || [],
       processing_status: 'pending',
-      source_metadata: sourceMetadata,
+      source_metadata: {
+        ...(defaultSourceMetadata || {}),
+        ...(sourceMetadata || {}),
+      },
     });
 
     if (insertError) throw insertError;
+    await onDocumentCreated?.(documentId);
 
     const { error: enqueueError, response: enqueueResponse } = await supabase.functions.invoke(
       'enqueue-document-ingestion',
@@ -495,8 +509,10 @@ export function DocumentUploadModal({
       storage_bucket: 'gcs',
       file_size_bytes: sourceFile.size,
       document_type: 'other',
+      document_tags: defaultDocumentTags || [],
       processing_status: isTabular ? 'pending' : 'processing',
       source_metadata: {
+        ...(defaultSourceMetadata || {}),
         original_mime: contentType,
         original_extension: extension,
         source_format: sourceFormat || (isTabular ? extension : 'pdf'),
@@ -508,6 +524,7 @@ export function DocumentUploadModal({
     });
 
     if (insertError) throw insertError;
+    await onDocumentCreated?.(documentId);
 
     if (isTabular) {
       const { error: enqueueError, response: enqueueResponse } = await supabase.functions.invoke(
