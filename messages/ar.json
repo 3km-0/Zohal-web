@@ -2662,6 +2662,7 @@
     "openCommandDrawer": "فتح درج القيادة",
     "openEvidencePane": "فتح الأدلة",
     "dealTab": "الصفقة",
+    "renovationTab": "التجديد",
     "actionsTab": "الإجراءات",
     "currentBlocker": "العائق الحالي",
     "evidencePaneTitle": "الأدلة",
@@ -2897,6 +2898,8 @@
     "modelKnobsTitle": "حرّك الافتراضات وشاهد الصفقة تتغير.",
     "modelSensitivityNote": "الصفقة أكثر حساسية لتجاوز تكلفة التجديد والإيجار المحقق. أبقِ موقف التفاوض مشروطاً حتى تُحل العناصر المفتوحة.",
     "renovationScopeTitle": "نطاقات مدعومة بالمصادر",
+    "renovationModelTitle": "مدخل عوائد معدل بالتجديد",
+    "renovationModelBody": "تغيير هذه الميزانية يحدث نفس افتراضات السيناريو المستخدمة في ماليات الصفقة.",
     "openItemsModuleTitle": "عوائق القرار والمالكون والحقائق الناقصة",
     "openStatus": "مفتوح",
     "compsPressureTitle": "ضغط السعر لكل متر مربع مقابل سعر الطلب",
@@ -2912,6 +2915,16 @@
       "heading": "مسار عرض مقيد بالموافقة",
       "readyBody": "صلاحية تمثيل المشتري نشطة. حضّر أو أرسل إجراءات العرض عبر الموافقات.",
       "sendOffer": "إضافة العرض للموافقة"
+    },
+    "actions": {
+      "zoneNow": "الآن",
+      "zonePending": "قيد الانتظار",
+      "zoneReady": "عند الجاهزية",
+      "now": "الآن",
+      "allClear": "لا عوائق",
+      "readyToProceed": "لا عوائق — جاهز للمتابعة",
+      "noOpenItems": "لا توجد عناصر مفتوحة.",
+      "outreachReady": "أسئلة الوسيط وإشارات الجاهزية"
     },
     "rightPane": "اللوحة اليمنى",
     "rightPaneTitles": {

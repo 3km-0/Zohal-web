@@ -156,7 +156,7 @@ type AcquisitionClaimRow = {
 
 type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
-type PrimaryWorkspaceTab = 'deal' | 'actions';
+type PrimaryWorkspaceTab = 'deal' | 'renovation' | 'actions';
 type EvidencePaneTab = 'evidence' | 'activity' | 'files' | 'consent';
 
 type ScenarioState = {
@@ -498,6 +498,7 @@ export default function WorkspaceCockpitPage() {
       : !brokerageActive
         ? t('progress.nextBrokerage')
         : t('progress.nextOffer');
+  const hasActionBlocker = !readinessProfile || selectedMissing.length > 0 || !brokerageActive;
 
   useEffect(() => {
     const stored = window.localStorage.getItem('acquisition_workspace_drawer_width');
@@ -803,51 +804,44 @@ export default function WorkspaceCockpitPage() {
                           onScenarioChange={setScenario}
                           onSave={saveScenarioAssumptions}
                         />
-                          <RenovationModule
-                            opportunity={selectedOpportunity}
-                            onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
-                          />
                         </>
+                      ) : activePrimaryTab === 'renovation' ? (
+                        <RenovationTab
+                          opportunity={selectedOpportunity}
+                          scenario={scenario}
+                          saving={scenarioBusy}
+                          onScenarioChange={setScenario}
+                          onSave={saveScenarioAssumptions}
+                          onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
+                        />
                       ) : (
                         <>
-                          <CurrentBlockerBanner
-                            title={currentBlocker}
+                          <ActionsWorkspace
+                            currentBlocker={currentBlocker}
+                            hasBlocker={hasActionBlocker}
+                            readinessProfile={readinessProfile}
+                            buyerEntity={buyerEntity}
+                            buyerEntityDocuments={buyerEntityDocuments}
+                            readinessEvidence={readinessEvidence}
+                            sharingGrants={sharingGrants}
+                            actionApprovals={actionApprovals}
+                            readinessBusy={readinessBusy}
+                            approvalBusy={approvalBusy}
+                            selectedMissing={selectedMissing}
+                            selectedOpportunity={selectedOpportunity}
+                            brokerageActive={brokerageActive}
                             onPrimaryAction={() => {
                               if (!readinessProfile) void startReadiness();
                               else if (selectedMissing.length) setActivePrimaryTab('actions');
                               else if (!brokerageActive) void requestExternalAction('share_readiness_signal');
                               else void requestExternalAction('send_negotiation_message');
                             }}
-                            busy={Boolean(readinessBusy || approvalBusy)}
-                          />
-                          <BuyerReadinessPanel
-                            profile={readinessProfile}
-                            buyerEntity={buyerEntity}
-                            buyerEntityDocuments={buyerEntityDocuments}
-                            evidence={readinessEvidence}
-                            grants={sharingGrants}
-                            approvals={actionApprovals}
-                            busy={readinessBusy}
-                            onStart={startReadiness}
+                            onStartReadiness={startReadiness}
                             onAttachEvidence={() => openBuyerVault(true)}
                             onShareReadiness={() => void requestExternalAction('share_readiness_signal')}
+                            onRequestItem={(item) => void requestExternalAction('send_outreach', { request_kind: 'missing_document', requested_item: item })}
+                            onRequestAction={requestExternalAction}
                           />
-                          <OpenItemsModule
-                          items={selectedMissing}
-                          onRequestItem={(item) => void requestExternalAction('send_outreach', { request_kind: 'missing_document', requested_item: item })}
-                        />
-                          <OutreachModule
-                          opportunity={selectedOpportunity}
-                          approvals={actionApprovals}
-                          approvalBusy={approvalBusy}
-                          onRequestAction={requestExternalAction}
-                        />
-                          <OfferModule
-                          opportunity={selectedOpportunity}
-                          brokerageActive={brokerageActive}
-                          approvalBusy={approvalBusy}
-                          onRequestAction={requestExternalAction}
-                        />
                         </>
                       )}
 	                  </div>
@@ -1484,6 +1478,7 @@ function PrimaryWorkspaceTabs({
   const t = useTranslations('workspaceCockpitPage');
   const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = [
     { key: 'deal', label: t('dealTab'), icon: Building2 },
+    { key: 'renovation', label: t('renovationTab'), icon: Wrench },
     { key: 'actions', label: t('actionsTab'), icon: ClipboardList },
   ];
   return (
@@ -1516,31 +1511,40 @@ function PrimaryWorkspaceTabs({
 
 function CurrentBlockerBanner({
   title,
+  blocked,
   busy,
   onPrimaryAction,
 }: {
   title: string;
+  blocked: boolean;
   busy: boolean;
   onPrimaryAction: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
-    <Panel className="border-warning/35 bg-warning/10 p-5">
+    <div className={cn('rounded-[14px] border p-4 shadow-[var(--shadowSm)]', blocked ? 'border-warning/35 bg-warning/12' : 'border-success/30 bg-success/10')}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('currentBlocker')}</p>
-          <h3 className="mt-1 text-xl font-bold leading-tight text-text">{title}</h3>
+        <div className="flex items-center gap-3">
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#030509]' : 'bg-success text-[#030509]')}>
+            {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
+          </span>
+          <div>
+            <p className={cn('font-mono text-xs uppercase tracking-[0.22em]', blocked ? 'text-warning' : 'text-success')}>{blocked ? t('actions.now') : t('actions.allClear')}</p>
+            <h3 className="mt-1 text-lg font-bold leading-tight text-text">{blocked ? title : t('actions.readyToProceed')}</h3>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onPrimaryAction}
-          disabled={busy}
-          className="rounded-[12px] bg-warning px-4 py-3 text-sm font-bold text-[#030509] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {t('progress.primaryAction')}
-        </button>
+        {blocked ? (
+          <button
+            type="button"
+            onClick={onPrimaryAction}
+            disabled={busy}
+            className="rounded-[12px] bg-warning px-4 py-2.5 text-sm font-bold text-[#030509] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {t('progress.primaryAction')}
+          </button>
+        ) : null}
       </div>
-    </Panel>
+    </div>
   );
 }
 
@@ -1568,6 +1572,157 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
           );
         })}
     </div>
+  );
+}
+
+function ActionsWorkspace({
+  currentBlocker,
+  hasBlocker,
+  readinessProfile,
+  buyerEntity,
+  buyerEntityDocuments,
+  readinessEvidence,
+  sharingGrants,
+  actionApprovals,
+  readinessBusy,
+  approvalBusy,
+  selectedMissing,
+  selectedOpportunity,
+  brokerageActive,
+  onPrimaryAction,
+  onStartReadiness,
+  onAttachEvidence,
+  onShareReadiness,
+  onRequestItem,
+  onRequestAction,
+}: {
+  currentBlocker: string;
+  hasBlocker: boolean;
+  readinessProfile: BuyerReadinessProfileRow | null;
+  buyerEntity: BuyerEntityRow | null;
+  buyerEntityDocuments: BuyerEntityDocumentRow[];
+  readinessEvidence: BuyerReadinessEvidenceRow[];
+  sharingGrants: DocumentSharingGrantRow[];
+  actionApprovals: ExternalActionApprovalRow[];
+  readinessBusy: boolean;
+  approvalBusy: string | null;
+  selectedMissing: string[];
+  selectedOpportunity: OpportunityRow | null;
+  brokerageActive: boolean;
+  onPrimaryAction: () => void;
+  onStartReadiness: () => void;
+  onAttachEvidence: () => void;
+  onShareReadiness: () => void;
+  onRequestItem: (item: string) => void;
+  onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const readinessComplete = Boolean(readinessProfile && brokerageActive);
+  return (
+    <div className="space-y-5">
+      <section className="space-y-3">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('actions.zoneNow')}</p>
+        <CurrentBlockerBanner
+          title={currentBlocker}
+          blocked={hasBlocker}
+          busy={Boolean(readinessBusy || approvalBusy)}
+          onPrimaryAction={onPrimaryAction}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-muted">{t('actions.zonePending')}</p>
+        <ActionSection
+          title={t('buyerReadiness.title')}
+          status={readinessProfile ? t('buyerReadiness.level', { level: readinessProfile.readiness_level ?? 0 }) : t('buyerReadiness.emptyTitle')}
+          tone={readinessComplete ? 'success' : 'warning'}
+          defaultOpen={!readinessProfile}
+        >
+          <BuyerReadinessPanel
+            profile={readinessProfile}
+            buyerEntity={buyerEntity}
+            buyerEntityDocuments={buyerEntityDocuments}
+            evidence={readinessEvidence}
+            grants={sharingGrants}
+            approvals={actionApprovals}
+            busy={readinessBusy}
+            onStart={onStartReadiness}
+            onAttachEvidence={onAttachEvidence}
+            onShareReadiness={onShareReadiness}
+          />
+        </ActionSection>
+
+        <ActionSection
+          title={t('openItems')}
+          status={selectedMissing.length ? t('progress.blockerMissing', { count: selectedMissing.length }) : t('actions.noOpenItems')}
+          tone={selectedMissing.length ? 'warning' : 'success'}
+          defaultOpen={selectedMissing.length > 0}
+        >
+          {selectedMissing.length ? (
+            <OpenItemsModule items={selectedMissing} onRequestItem={onRequestItem} />
+          ) : (
+            <p className="rounded-[12px] border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">{t('actions.noOpenItems')}</p>
+          )}
+        </ActionSection>
+
+        <ActionSection title={t('outreach.title')} status={t('actions.outreachReady')} tone="neutral" defaultOpen>
+          <OutreachModule
+            opportunity={selectedOpportunity}
+            approvalBusy={approvalBusy}
+            onRequestAction={onRequestAction}
+          />
+        </ActionSection>
+      </section>
+
+      <section className={cn('space-y-3 transition', hasBlocker && 'opacity-65')}>
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-muted">{t('actions.zoneReady')}</p>
+        <OfferModule
+          opportunity={selectedOpportunity}
+          brokerageActive={brokerageActive && !hasBlocker}
+          approvalBusy={approvalBusy}
+          approvals={actionApprovals}
+          onRequestAction={onRequestAction}
+        />
+      </section>
+    </div>
+  );
+}
+
+function ActionSection({
+  title,
+  status,
+  tone,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  status: string;
+  tone: 'neutral' | 'success' | 'warning';
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const toneClass = {
+    neutral: 'text-text-muted bg-surface-alt border-border',
+    success: 'text-success bg-success/10 border-success/25',
+    warning: 'text-warning bg-warning/10 border-warning/25',
+  }[tone];
+  return (
+    <Panel className="overflow-hidden p-0">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-surface-alt"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-text">{title}</h3>
+          <p className="mt-1 truncate text-xs text-text-muted">{status}</p>
+        </div>
+        <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold', toneClass)}>{status}</span>
+      </button>
+      {open ? <div className="border-t border-border p-4">{children}</div> : null}
+    </Panel>
   );
 }
 
@@ -1728,6 +1883,55 @@ function RenovationModule({ opportunity, onRequestQuote }: { opportunity: Opport
   );
 }
 
+function RenovationTab({
+  opportunity,
+  scenario,
+  saving,
+  onScenarioChange,
+  onSave,
+  onRequestQuote,
+}: {
+  opportunity: OpportunityRow | null;
+  scenario: ScenarioState | null;
+  saving: boolean;
+  onScenarioChange: (next: ScenarioState) => void;
+  onSave: (next: ScenarioState) => Promise<void>;
+  onRequestQuote: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const seed = scenario ?? seedScenarioFromOpportunity(opportunity);
+  const setRenovation = (value: number) => onScenarioChange({ ...seed, renovation: value });
+  return (
+    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <Panel className="p-5">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('renovationTab')}</p>
+        <h3 className="mt-1 text-2xl font-semibold text-text">{t('renovationModelTitle')}</h3>
+        <p className="mt-2 text-sm leading-6 text-text-soft">{t('renovationModelBody')}</p>
+        <div className="mt-5">
+          <ScenarioSlider
+            label={t('renovationBudget')}
+            value={seed.renovation}
+            min={0}
+            max={Math.max(100000, seed.renovation * 2.2)}
+            step={10000}
+            format={(v) => formatSAR.format(v)}
+            onChange={setRenovation}
+          />
+        </div>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void onSave(seed)}
+          className="mt-4 w-full rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? t('savingAssumptions') : t('saveAssumptions')}
+        </button>
+      </Panel>
+      <RenovationModule opportunity={opportunity} onRequestQuote={onRequestQuote} />
+    </div>
+  );
+}
+
 function OpenItemsModule({ items, onRequestItem }: { items: string[]; onRequestItem: (item: string) => void }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
@@ -1767,20 +1971,17 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
 
 function OutreachModule({
   opportunity,
-  approvals,
   approvalBusy,
   onRequestAction,
 }: {
   opportunity: OpportunityRow | null;
-  approvals: ExternalActionApprovalRow[];
   approvalBusy: string | null;
   onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const brokerNote = metadataString(opportunity, ['broker_note', 'counterparty_note', 'contact_access']);
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-      <Panel className="p-5">
+    <div className="rounded-[14px] border border-border bg-surface-alt p-4">
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('outreach.title')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('outreach.heading')}</h3>
         <p className="mt-3 text-sm leading-6 text-text-soft">{brokerNote || t('outreach.body')}</p>
@@ -1792,17 +1993,6 @@ function OutreachModule({
             {t('outreach.shareReadiness')}
           </button>
         </div>
-      </Panel>
-      <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('buyerReadiness.approvalsTitle')}</p>
-        <div className="mt-4 space-y-3">
-          {approvals.length === 0 ? (
-            <p className="text-sm leading-6 text-text-soft">{t('buyerReadiness.noApprovals')}</p>
-          ) : approvals.slice(0, 5).map((item) => (
-            <RightPaneRow key={item.id} label={humanize(item.action_type) || t('buyerReadiness.actionFallback')} value={humanize(item.approval_status) || t('notSet')} tone={statusTone(item.approval_status)} />
-          ))}
-        </div>
-      </Panel>
     </div>
   );
 }
@@ -1811,18 +2001,30 @@ function OfferModule({
   opportunity,
   brokerageActive,
   approvalBusy,
+  approvals,
   onRequestAction,
 }: {
   opportunity: OpportunityRow | null;
   brokerageActive: boolean;
   approvalBusy: string | null;
+  approvals?: ExternalActionApprovalRow[];
   onRequestAction: (actionType: string, draftPayload?: Record<string, string>) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
+  const latestApproval = approvals?.[0] ?? null;
   return (
     <Panel className="p-5">
-      <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('offer.title')}</p>
-      <h3 className="mt-1 text-xl font-semibold text-text">{t('offer.heading')}</h3>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('offer.title')}</p>
+          <h3 className="mt-1 text-xl font-semibold text-text">{t('offer.heading')}</h3>
+        </div>
+        {latestApproval ? (
+          <span className="rounded-full border border-border bg-surface-alt px-3 py-1 text-xs font-semibold text-text-soft">
+            {humanize(latestApproval.approval_status) || t('notSet')}
+          </span>
+        ) : null}
+      </div>
       <p className="mt-3 text-sm leading-6 text-text-soft">{brokerageActive ? t('offer.readyBody') : t('brokerageGateHint')}</p>
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <button type="button" disabled={!opportunity || !brokerageActive || Boolean(approvalBusy)} onClick={() => void onRequestAction('send_offer')} className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-55">

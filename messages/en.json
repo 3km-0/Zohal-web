@@ -2661,6 +2661,7 @@
     "openCommandDrawer": "Open command drawer",
     "openEvidencePane": "Open evidence",
     "dealTab": "Deal",
+    "renovationTab": "Renovation",
     "actionsTab": "Actions",
     "currentBlocker": "Current blocker",
     "evidencePaneTitle": "Evidence",
@@ -2896,6 +2897,8 @@
     "modelKnobsTitle": "Turn the knobs. Watch the deal move.",
     "modelSensitivityNote": "The deal is most sensitive to renovation overrun and realized rent. Keep the negotiation posture conditional until open items are resolved.",
     "renovationScopeTitle": "Source-backed scope ranges",
+    "renovationModelTitle": "Renovation-adjusted return input",
+    "renovationModelBody": "Changing this budget updates the same scenario assumptions used by Deal financials.",
     "openItemsModuleTitle": "Decision blockers, owners, missing facts",
     "openStatus": "Open",
     "compsPressureTitle": "Per-m² pressure against asking",
@@ -2911,6 +2914,16 @@
       "heading": "Approval-gated offer workflow",
       "readyBody": "Buyer-side authority is active. Draft or send offer actions through approval.",
       "sendOffer": "Queue offer"
+    },
+    "actions": {
+      "zoneNow": "Now",
+      "zonePending": "Pending",
+      "zoneReady": "When ready",
+      "now": "Now",
+      "allClear": "All clear",
+      "readyToProceed": "All clear — ready to proceed",
+      "noOpenItems": "No open items.",
+      "outreachReady": "Broker questions and readiness signals"
     },
     "rightPane": "Right pane",
     "rightPaneTitles": {
