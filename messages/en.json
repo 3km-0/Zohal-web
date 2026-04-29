@@ -412,9 +412,9 @@
     "upgradeTo": "Upgrade to {plan}",
     "features": {
       "documents": "{count} documents",
-      "unlimitedDocuments": "Unlimited documents",
+      "unlimitedDocuments": "Document workspace tools",
       "aiExplanations": "AI explanations",
-      "unlimitedAI": "Unlimited AI usage",
+      "unlimitedAI": "All document tools",
       "workspaces": "{count} workspaces",
       "unlimitedWorkspaces": "Unlimited workspaces",
       "allPlugins": "All plugins included",
@@ -422,7 +422,7 @@
       "driveSync": "Google Drive sync",
       "prioritySupport": "Priority support",
       "teamWorkspaces": "Team workspaces",
-      "apiAccess": "API access"
+      "apiAccess": "Workspace integrations"
     }
   },
   "footer": {
@@ -1060,7 +1060,7 @@
       "documents100": "100 documents",
       "aiExplanations2PerDay": "2 AI explanations/day",
       "unlimitedAi": "Unlimited AI explanations",
-      "unlimitedAiUsage": "Unlimited AI usage",
+      "unlimitedAiUsage": "All document tools",
       "workspace1": "1 workspace",
       "workspaces3": "3 workspaces",
       "workspaces20": "20 workspaces",
@@ -1068,22 +1068,22 @@
       "user1": "1 user",
       "usersCount": "{count} users",
       "unlimitedWorkspaces": "Unlimited workspaces",
-      "unlimitedDocuments": "Unlimited documents",
-      "storage100gb": "100GB storage",
+      "unlimitedDocuments": "Document workspace tools",
+      "storage100gb": "Workspace evidence storage",
       "allPlugins": "All plugins (STEM, Legal, Finance)",
       "allPluginsIncluded": "All plugins included",
       "calendarSync": "Add to calendar",
       "driveSync": "Google Drive sync",
       "prioritySupport": "Priority support",
-      "customLimits": "Custom usage limits",
+      "customLimits": "Custom implementation scope",
       "teamManagement": "Team management",
       "slaSupport": "SLA & dedicated support",
       "dedicatedManager": "Dedicated account manager",
       "customIntegrations": "Custom integrations",
       "onboarding": "Onboarding & training",
-      "storageGiBStored": "Up to {count} GiB stored",
-      "meteredTokensMonthly": "{count} metered AI tokens / month",
-      "billableOpsMonthly": "{count} billable ops / month",
+      "storageGiBStored": "Workspace evidence storage",
+      "meteredTokensMonthly": "AI analysis included",
+      "billableOpsMonthly": "Workflow operations included",
       "allTools": "All document tools included",
       "importsIncluded": "Drive, OneDrive, and WhatsApp import",
       "sharedWorkspaces": "Shared workspaces for team rollout",
@@ -1182,7 +1182,7 @@
     "proPlan": "Core",
     "premiumPlan": "Investor Pro",
     "teamPlan": "Team Plan",
-    "freePlanDesc": "1 GiB storage, metered AI tokens, and monthly ops",
+    "freePlanDesc": "Starter workspace access with safety rails",
     "proPlanDesc": "1 workspace, 1 user, and all core document tools",
     "premiumPlanDesc": "3 workspaces, 2 users, broadcasts, and 2 vendor visits",
     "teamPlanDesc": "20 workspaces, 5 users, portfolio tracking, and 5 vendor visits",
@@ -2420,8 +2420,8 @@
           }
         ],
         "usageMeter": {
-          "title": "Simple metering",
-          "body": "Plans are measured by storage, AI usage, and completed workspace or export actions. If you are unsure which tier fits your workflow, book a demo and we will help map it."
+          "title": "Simple entitlements",
+          "body": "Plans are organized around workspaces, users, vendor visits, broadcasts, and portfolio operations. Safety limits run quietly in the background to protect reliability."
         }
       },
       "insights": {

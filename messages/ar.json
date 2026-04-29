@@ -413,9 +413,9 @@
     "upgradeTo": "ترقية إلى {plan}",
     "features": {
       "documents": "{count} مستند",
-      "unlimitedDocuments": "مستندات غير محدودة",
+      "unlimitedDocuments": "أدوات مساحة عمل المستندات",
       "aiExplanations": "شروحات الذكاء الاصطناعي",
-      "unlimitedAI": "استخدام غير محدود للذكاء الاصطناعي",
+      "unlimitedAI": "جميع أدوات المستندات",
       "workspaces": "{count} مساحة عمل",
       "unlimitedWorkspaces": "مساحات عمل غير محدودة",
       "allPlugins": "جميع الإضافات",
@@ -423,7 +423,7 @@
       "driveSync": "مزامنة Google Drive",
       "prioritySupport": "دعم مميز",
       "teamWorkspaces": "مساحات عمل الفريق",
-      "apiAccess": "الوصول للـ API"
+      "apiAccess": "تكاملات مساحة العمل"
     }
   },
   "footer": {
@@ -1061,7 +1061,7 @@
       "documents100": "100 مستند",
       "aiExplanations2PerDay": "شرحين بالذكاء الاصطناعي يومياً",
       "unlimitedAi": "شروحات ذكاء اصطناعي غير محدودة",
-      "unlimitedAiUsage": "استخدام غير محدود للذكاء الاصطناعي",
+      "unlimitedAiUsage": "جميع أدوات المستندات",
       "workspace1": "مساحة عمل واحد",
       "workspaces3": "3 مساحات عمل",
       "workspaces20": "20 مساحة عمل",
@@ -1069,22 +1069,22 @@
       "user1": "مستخدم واحد",
       "usersCount": "{count} مستخدمين",
       "unlimitedWorkspaces": "مساحات عمل غير محدودة",
-      "unlimitedDocuments": "مستندات غير محدودة",
-      "storage100gb": "تخزين 100 جيجابايت",
+      "unlimitedDocuments": "أدوات مساحة عمل المستندات",
+      "storage100gb": "تخزين أدلة مساحة العمل",
       "allPlugins": "جميع الإضافات (العلوم، القانون، المالية)",
       "allPluginsIncluded": "جميع الإضافات",
       "calendarSync": "إضافة إلى التقويم",
       "driveSync": "مزامنة Google Drive",
       "prioritySupport": "دعم مميز",
-      "customLimits": "حدود استخدام مخصصة",
+      "customLimits": "نطاق تشغيل مخصص",
       "teamManagement": "إدارة الفريق",
       "slaSupport": "اتفاقية مستوى الخدمة ودعم مخصص",
       "dedicatedManager": "مدير حساب مخصص",
       "customIntegrations": "تكاملات مخصصة",
       "onboarding": "تدريب وإعداد",
-      "storageGiBStored": "حتى {count} جيجابايت مخزنة",
-      "meteredTokensMonthly": "{count} رمز ذكاء اصطناعي محسوب شهرياً",
-      "billableOpsMonthly": "{count} عملية قابلة للفوترة شهرياً",
+      "storageGiBStored": "تخزين أدلة مساحة العمل",
+      "meteredTokensMonthly": "تحليل الذكاء الاصطناعي متاح",
+      "billableOpsMonthly": "عمليات سير العمل متاحة",
       "allTools": "جميع أدوات المستندات متاحة",
       "importsIncluded": "استيراد من Drive وOneDrive وWhatsApp",
       "sharedWorkspaces": "مساحات عمل مشتركة لانطلاقة الفريق",
@@ -1183,7 +1183,7 @@
     "proPlan": "Core",
     "premiumPlan": "Investor Pro",
     "teamPlan": "خطة Team",
-    "freePlanDesc": "1 جيجابايت تخزين مع رموز ذكاء اصطناعي وعمليات شهرية",
+    "freePlanDesc": "وصول ابتدائي لمساحة العمل مع حدود سلامة",
     "proPlanDesc": "مساحة عمل واحدة، مستخدم واحد، وجميع أدوات المستندات الأساسية",
     "premiumPlanDesc": "3 مساحات عمل، مستخدمان، بث التفويضات، وزيارتان للموردين",
     "teamPlanDesc": "20 مساحة عمل، 5 مستخدمين، تتبع المحفظة، و5 زيارات للموردين",
@@ -2421,8 +2421,8 @@
           }
         ],
         "usageMeter": {
-          "title": "قياس بسيط للاستخدام",
-          "body": "تعتمد الخطط على التخزين، واستخدام الذكاء الاصطناعي، وعدد عمليات إنشاء مساحة العمل أو التصدير المكتملة. وإذا لم تكن متأكداً من الخطة المناسبة، فاحجز عرضاً وسنساعدك على اختيارها وفق سير عملك."
+          "title": "استحقاقات واضحة",
+          "body": "تعتمد الخطط على مساحات العمل، وعدد المستخدمين، وزيارات الموردين، وبث التفويضات، وعمليات المحفظة. وتعمل حدود السلامة بهدوء في الخلفية لحماية الاعتمادية."
         }
       },
       "insights": {

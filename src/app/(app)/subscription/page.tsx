@@ -34,7 +34,6 @@ interface SubscriptionPlan {
   price_yearly_sar: number | null;
   limits: Record<string, number>;
   features: Record<string, boolean>;
-  meter_limits?: Record<string, number>;
   guardrails?: Record<string, number | Record<string, number>>;
   badge_text?: string | null;
   display_order?: number | null;
@@ -301,14 +300,6 @@ export default function SubscriptionPage() {
   const buildPlanBullets = useCallback(
     (plan: SubscriptionPlan) => {
       const bullets: string[] = [];
-      const storageGiB =
-        readNumericValue(plan.meter_limits, 'storage_gib') ?? readNumericValue(plan.limits, 'storage_gib');
-      const meteredTokens =
-        readNumericValue(plan.meter_limits, 'metered_tokens_monthly') ??
-        readNumericValue(plan.limits, 'metered_tokens_monthly');
-      const billableOps =
-        readNumericValue(plan.meter_limits, 'billable_ops_monthly') ??
-        readNumericValue(plan.limits, 'billable_ops_monthly');
       const maxWorkspaces =
         readNumericValue(plan.guardrails, 'max_workspaces') ?? readNumericValue(plan.limits, 'max_workspaces');
       const maxMembers =
@@ -317,16 +308,6 @@ export default function SubscriptionPage() {
       const vendorVisits =
         readNumericValue(plan.guardrails, 'renovation_vendor_visits_yearly') ??
         readNumericValue(plan.limits, 'renovation_vendor_visits_yearly');
-
-      if (storageGiB && storageGiB > 0) {
-        bullets.push(tFeatures('storageGiBStored', { count: compactNumber(storageGiB) }));
-      }
-      if (meteredTokens && meteredTokens > 0) {
-        bullets.push(tFeatures('meteredTokensMonthly', { count: compactNumber(meteredTokens) }));
-      }
-      if (billableOps && billableOps > 0) {
-        bullets.push(tFeatures('billableOpsMonthly', { count: compactNumber(billableOps) }));
-      }
 
       if (maxWorkspaces === 1) {
         bullets.push(tFeatures('workspace1'));
