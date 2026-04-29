@@ -202,8 +202,6 @@ export default function DocumentViewerShell({
   // Fetch document and workspace
   useEffect(() => {
     async function fetchData() {
-      setLoading(true);
-
       // Fetch document
       const { data: docData, error: docError } = await supabase
         .from('documents')
