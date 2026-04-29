@@ -4,7 +4,6 @@ import {
   buildCleanupVectorsEnvelope,
   buildDeleteEmbeddingsEnvelope,
   buildWorkflowLaunchKey,
-  groupVectorKeysByIndex,
   generatePgvectorKey,
   normalizeUuid,
   serializePgvector,
@@ -73,8 +72,7 @@ test("cleanup vectors response preserves legacy cleanup contract with GCP metada
     vectors_after: 3,
     missing_reembedded: 3,
     scope: "document",
-    note:
-      "Ensured current chunks are embedded. Orphan vector deletion is intentionally skipped (Vector Buckets alpha).",
+    note: "Ensured current chunks are embedded in document_chunks.embedding.",
     request_id: "req-cleanup",
     execution_plane: "gcp",
   });
@@ -98,21 +96,7 @@ test("delete embeddings response preserves legacy cleanup counters with GCP meta
   });
 });
 
-test("vector cleanup groups ready vector keys by index and skips missing keys", () => {
-  const grouped = groupVectorKeysByIndex([
-    { vector_key: "a", index_name: "chunks-v1" },
-    { vector_key: "b", index_name: "" },
-    { vector_key: "", index_name: "chunks-v2" },
-    { vector_key: "c", index_name: "chunks-v1" },
-  ]);
-
-  assert.deepEqual(Object.fromEntries(grouped), {
-    "chunks-v1": ["a", "b", "c"],
-  });
-  assert.equal(grouped.has("chunks-v2"), false);
-});
-
-test("pgvector helpers serialize embeddings without Vector Bucket config", () => {
+test("pgvector helpers serialize embeddings without a secondary vector project", () => {
   assert.equal(serializePgvector([0.1, -2, 3.25]), "[0.1,-2,3.25]");
   assert.equal(
     generatePgvectorKey(" CHUNK-1 ", "text-embedding-3-small", "v1"),

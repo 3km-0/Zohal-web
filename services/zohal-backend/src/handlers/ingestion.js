@@ -1,5 +1,4 @@
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { resolveDataPlane } from "../runtime/data-plane.js";
 import {
@@ -2517,8 +2516,7 @@ export function buildCleanupVectorsEnvelope({
     vectors_after: Number(embeddedCount || 0),
     missing_reembedded: Number(embeddedCount || 0),
     scope: "document",
-    note:
-      "Ensured current chunks are embedded. Orphan vector deletion is intentionally skipped (Vector Buckets alpha).",
+    note: "Ensured current chunks are embedded in document_chunks.embedding.",
   });
 }
 
@@ -2638,66 +2636,6 @@ export function buildDeleteEmbeddingsEnvelope({
   });
 }
 
-export function groupVectorKeysByIndex(rows) {
-  const byIndex = new Map();
-  for (const row of rows || []) {
-    const key = String(row?.vector_key || "").trim();
-    if (!key) continue;
-    const indexName = String(row?.index_name || "chunks-v1").trim() || "chunks-v1";
-    const keys = byIndex.get(indexName) || [];
-    keys.push(key);
-    byIndex.set(indexName, keys);
-  }
-  return byIndex;
-}
-
-async function deleteVectorsBestEffort({ supabase, chunkIds, log }) {
-  if (!chunkIds.length) return 0;
-  const vectorProjectUrl = String(process.env.VECTOR_PROJECT_URL || "").trim();
-  const vectorServiceKey = String(process.env.VECTOR_SERVICE_ROLE_KEY || "").trim();
-  if (!vectorProjectUrl || !vectorServiceKey) return 0;
-
-  try {
-    const { data: keyRows } = await supabase
-      .from("chunk_embeddings")
-      .select("vector_key,index_name")
-      .in("chunk_id", chunkIds)
-      .eq("status", "ready");
-    const byIndex = groupVectorKeysByIndex(keyRows || []);
-    if (!byIndex.size) return 0;
-
-    const vectorSupabase = createClient(vectorProjectUrl, vectorServiceKey, {
-      auth: { persistSession: false },
-    });
-    const vectorBucket = vectorSupabase.storage?.vectors?.from?.("asens-embeddings");
-    if (!vectorBucket?.index) return 0;
-
-    let deleted = 0;
-    for (const [indexName, keys] of byIndex.entries()) {
-      const vectorIndex = vectorBucket.index(indexName);
-      if (!vectorIndex?.deleteVectors) continue;
-      for (let i = 0; i < keys.length; i += 500) {
-        const batch = keys.slice(i, i + 500);
-        try {
-          await vectorIndex.deleteVectors({ keys: batch });
-          deleted += batch.length;
-        } catch (error) {
-          log?.warn?.("Vector batch delete failed", {
-            index_name: indexName,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    }
-    return deleted;
-  } catch (error) {
-    log?.warn?.("Vector cleanup skipped", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return 0;
-  }
-}
-
 async function runDeleteEmbeddingsNative({ supabase, payload, requestId, log }) {
   ensureRequiredFields(payload, ["document_id"]);
   const documentId = normalizeUuid(payload.document_id);
@@ -2711,10 +2649,9 @@ async function runDeleteEmbeddingsNative({ supabase, payload, requestId, log }) 
   }
 
   const chunkIds = (chunks || []).map((chunk) => chunk.id).filter(Boolean);
-  let vectorsDeleted = 0;
+  const vectorsDeleted = 0;
   let embeddingsDeleted = 0;
   if (chunkIds.length > 0) {
-    vectorsDeleted = await deleteVectorsBestEffort({ supabase, chunkIds, log });
     const { error: embeddingsError, count } = await supabase
       .from("chunk_embeddings")
       .delete({ count: "exact" })
