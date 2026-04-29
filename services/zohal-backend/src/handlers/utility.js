@@ -20,7 +20,12 @@ const VALID_TICKET_CATEGORIES = new Set([
 const VALID_TICKET_PRIORITIES = new Set(["low", "normal", "high", "urgent"]);
 
 function getAnonKey() {
-  const value = String(process.env.SUPABASE_ANON_KEY || "").trim();
+  const value = String(
+    process.env.SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ""
+  ).trim();
   if (!value) throw new Error("SUPABASE_ANON_KEY not configured");
   return value;
 }

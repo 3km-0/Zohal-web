@@ -420,16 +420,21 @@ export function DocumentUploadModal({
     if (insertError) throw insertError;
     await onDocumentCreated?.(documentId);
 
-    const { error: enqueueError, response: enqueueResponse } = await supabase.functions.invoke(
-      'enqueue-document-ingestion',
-      { body: { document_id: documentId } }
-    );
-    if (enqueueError) {
-      const json = enqueueResponse ? await enqueueResponse.json().catch(() => null) : null;
-      const uiErr = mapHttpError(enqueueResponse?.status ?? 500, json, 'enqueue-document-ingestion');
+    const enqueueResponse = await invokeZohalBackendJson(
+      supabase,
+      '/ingestion/start',
+      {
+        document_id: documentId,
+        workspace_id: workspaceId,
+        user_id: user.id,
+        source: 'web_upload',
+      }
+    ).catch((error) => {
+      const uiErr = mapHttpError(500, { message: error instanceof Error ? error.message : String(error) }, 'ingestion/start');
       toast.show(uiErr);
       throw new Error(uiErr.message);
-    }
+    });
+    if (!enqueueResponse) throw new Error('Failed to queue document ingestion.');
 
     setFiles((prev) =>
       prev.map((f) =>

@@ -22,6 +22,16 @@ function mandateQuery(mandate = {}) {
   ].filter(Boolean).join(" "));
 }
 
+function locationQuery(mandate = {}) {
+  const box = buyBox(mandate);
+  const locations = Array.isArray(mandate.target_locations_json) ? mandate.target_locations_json : [];
+  return normalizeText([
+    box.district,
+    locations[0],
+    box.city || mandate.target_city,
+  ].filter(Boolean).join(" "));
+}
+
 function buyBox(mandate = {}) {
   return mandate.buy_box_json && typeof mandate.buy_box_json === "object" ? mandate.buy_box_json : {};
 }
@@ -67,6 +77,12 @@ function bayutSearchPath(mandate = {}) {
   return ["/للبيع", property, city, district].filter(Boolean).join("/") + "/";
 }
 
+function isSpecificSearchUrl(url, mandate = {}) {
+  const decoded = decodeURIComponent(String(url || ""));
+  const expected = bayutSearchPath(mandate).split("/").filter(Boolean);
+  return expected.every((part) => decoded.includes(part));
+}
+
 export const BayutBrowsingAdapter = {
   source: "bayut",
   buildSearchUrl(mandate, limits = {}) {
@@ -77,31 +93,48 @@ export const BayutBrowsingAdapter = {
   async applySearchFilters(page, mandate, limits = {}) {
     const warnings = [];
     let mode = "ui_filter";
-    const query = mandateQuery(mandate) || "العارض الرياض";
+    const query = locationQuery(mandate) || "Al Arid Riyadh";
     await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: limits.per_source_timeout_ms });
     await page.waitForTimeout(900);
-    await page.getByRole("button", { name: /^للبيع$/ }).click({ timeout: 4_000 }).catch((error) => {
-      warnings.push(`bayut_sale_filter_not_clicked:${error.message}`);
+    await page.locator('button[aria-label="For sale"]').click({ timeout: 4_000 }).catch(async (error) => {
+      await page.locator("button").filter({ hasText: /^للبيع$/ }).first().click({ timeout: 2_000 }).catch(() => {
+        warnings.push(`bayut_sale_filter_not_clicked:${error.message}`);
+      });
     });
-    const input = page.getByPlaceholder("أدخل الموقع").first();
+    const input = page.locator('input[placeholder="أدخل الموقع"]').first();
     await input.fill(query, { timeout: 8_000 }).catch((error) => {
       throw new Error(`bayut_location_filter_failed:${error.message}`);
     });
     await page.waitForTimeout(1_000);
-    await page.getByRole("button", { name: /العارض|الرياض|جدة|الدمام|الخبر/ }).first().click({ timeout: 4_000 }).catch((error) => {
-      warnings.push(`bayut_location_suggestion_not_clicked:${error.message}`);
-    });
+    await page.locator("li button")
+      .filter({ hasText: /العارض|الرياض|جدة|الدمام|الخبر|Riyadh|Arid/i })
+      .first()
+      .click({ timeout: 4_000 })
+      .catch((error) => {
+        warnings.push(`bayut_location_suggestion_not_clicked:${error.message}`);
+      });
     await page.waitForTimeout(400);
-    await page.getByRole("link", { name: /^بحث$/ }).first().click({ timeout: 5_000 }).catch(async (error) => {
-      warnings.push(`bayut_search_button_not_clicked:${error.message}`);
+    await page.locator('[aria-label="Find button"]').click({ timeout: 5_000 }).catch(async (error) => {
+      await page.getByRole("button", { name: "Find button" }).click({ timeout: 2_000 }).catch(async () => {
+        warnings.push(`bayut_search_button_not_clicked:${error.message}`);
+        mode = "ui_filter_public_path_fallback";
+        await page.goto(new URL(bayutSearchPath(mandate), BASE_URL).toString(), {
+          waitUntil: "domcontentloaded",
+          timeout: limits.per_source_timeout_ms,
+        });
+      });
+    });
+    await page.waitForLoadState("domcontentloaded", { timeout: limits.per_source_timeout_ms }).catch(() => {});
+    await page.waitForTimeout(1_500);
+    if (!isSpecificSearchUrl(page.url(), mandate)) {
+      warnings.push(`bayut_ui_search_url_not_specific:${decodeURIComponent(page.url())}`);
       mode = "ui_filter_public_path_fallback";
       await page.goto(new URL(bayutSearchPath(mandate), BASE_URL).toString(), {
         waitUntil: "domcontentloaded",
         timeout: limits.per_source_timeout_ms,
       });
-    });
-    await page.waitForLoadState("domcontentloaded", { timeout: limits.per_source_timeout_ms }).catch(() => {});
-    await page.waitForTimeout(1_500);
+      await page.waitForTimeout(1_500);
+    }
     return {
       url: page.url(),
       html: await page.content(),

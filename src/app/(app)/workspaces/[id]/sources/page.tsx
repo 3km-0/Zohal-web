@@ -644,18 +644,21 @@ export default function WorkspaceDetailPage() {
                       </button>
                     );
                   })}
-                  {(activeVaultView === 'buyer_vault' || activeVaultView === 'property_sources') && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => void prepareUploadContext(activeVaultView)
-                        .catch((error) => showError(error, 'workspace_folders'))
-                        .finally(() => setShowUploadModal(true))}
-                    >
-                      <Upload className="h-4 w-4" />
-                      {activeVaultView === 'property_sources' ? 'Upload property file' : 'Upload evidence'}
-                    </Button>
-                  )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    data-tour="workspace-upload"
+                    onClick={() => void prepareUploadContext(activeVaultView)
+                      .catch((error) => showError(error, 'workspace_folders'))
+                      .finally(() => setShowUploadModal(true))}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {activeVaultView === 'property_sources'
+                      ? 'Upload property file'
+                      : activeVaultView === 'buyer_vault'
+                        ? 'Upload evidence'
+                        : t('upload')}
+                  </Button>
                 </div>
               </div>
 
