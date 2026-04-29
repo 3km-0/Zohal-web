@@ -1,7 +1,7 @@
 # zohal-backend GCP deploy
 
 Status: Active
-Last reviewed: 2026-04-26
+Last reviewed: 2026-04-29
 
 This folder is the deployment home for the Cloud Run execution service and its
 paired GCP resources.
@@ -12,6 +12,38 @@ Resources managed here:
 - Cloud Tasks queue: `document-ingestion-jobs`
 - Cloud Workflow: `document-analysis-v1`
 - Cloud Tasks queue: `document-analysis-jobs`
+
+## Current Production Shape
+
+As of 2026-04-29, live Cloud Run is intentionally small but now product-critical
+after the Supabase Deno cutover:
+
+- region: `me-central2`
+- runtime image: `node:22-slim`
+- CPU / memory: `1 CPU` / `1Gi`
+- timeout: `300s`
+- concurrency: `80`
+- max instances: `10`
+- min instances: `0`
+
+Recommended next hardening pass before heavier traffic:
+
+- use a dedicated runtime service account instead of the default Compute Engine
+  service account
+- set `min-instances=1` for production to avoid cold starts on chat/upload
+  flows
+- consider `2 CPU` / `2Gi` for the combined API + ingestion/analysis surface,
+  then tune from Cloud Run metrics
+- reduce request concurrency for provider-heavy routes if latency spikes under
+  mixed upload/chat traffic
+- keep Cloud Run in `me-central2` while Supabase is the DB/control plane; move
+  only with a measured latency and data-residency plan
+- keep Cloud Tasks/Workflows region explicit and revisit `ORCHESTRATION_REGION`
+  once all required services are available in the same target region
+- add Cloud Monitoring alerts for 5xx rate, p95 latency, task retry/dead-letter
+  growth, and memory/CPU saturation
+- keep secrets in Secret Manager and avoid adding new Supabase Edge Function
+  secrets for migrated workflows
 
 Deploy:
 
