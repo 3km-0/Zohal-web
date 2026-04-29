@@ -1,7 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+const PRODUCTION_ZOHAL_BACKEND_URL = 'https://zohal-backend-dgmvbnnmaa-wx.a.run.app';
+
 export function getZohalBackendBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_ZOHAL_BACKEND_URL || process.env.ZOHAL_BACKEND_URL || '';
+  const raw = process.env.NEXT_PUBLIC_ZOHAL_BACKEND_URL ||
+    process.env.ZOHAL_BACKEND_URL ||
+    PRODUCTION_ZOHAL_BACKEND_URL;
   const baseUrl = raw.trim().replace(/\/+$/, '');
   if (!baseUrl) {
     throw new Error('Zohal backend URL is not configured.');

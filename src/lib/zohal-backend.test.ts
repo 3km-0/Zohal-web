@@ -19,12 +19,22 @@ function mockSupabase(token = 'access-token') {
 describe('zohal backend client', () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_ZOHAL_BACKEND_URL = 'https://backend.example/';
+    delete process.env.ZOHAL_BACKEND_URL;
     vi.restoreAllMocks();
   });
 
   it('normalizes the configured backend URL and route paths', () => {
     expect(getZohalBackendBaseUrl()).toBe('https://backend.example');
     expect(zohalBackendUrl('/documents/upload-url')).toBe('https://backend.example/documents/upload-url');
+  });
+
+  it('falls back to the production backend when deployment env is missing', () => {
+    delete process.env.NEXT_PUBLIC_ZOHAL_BACKEND_URL;
+
+    expect(getZohalBackendBaseUrl()).toBe('https://zohal-backend-dgmvbnnmaa-wx.a.run.app');
+    expect(zohalBackendUrl('/ingestion/start')).toBe(
+      'https://zohal-backend-dgmvbnnmaa-wx.a.run.app/ingestion/start'
+    );
   });
 
   it('posts authenticated JSON to migrated backend routes', async () => {
