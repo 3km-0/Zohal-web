@@ -432,6 +432,13 @@ export function AIPanel({
 
             if (event.type === 'error') {
               setError(event.message);
+              setChatHistory((prev) =>
+                prev.map((item, index) =>
+                  index === pendingAssistantIndex && !item.content
+                    ? { ...item, content: event.message }
+                    : item
+                )
+              );
             }
           }
         }
@@ -756,6 +763,13 @@ export function AIPanel({
           }
           if (event.type === 'error') {
             setError(event.message);
+            setChatHistory((prev) =>
+              prev.map((item, index) =>
+                index === pendingAssistantIndex && !item.content
+                  ? { ...item, content: event.message }
+                  : item
+              )
+            );
           }
         }
       }

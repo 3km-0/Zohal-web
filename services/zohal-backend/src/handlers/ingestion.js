@@ -57,7 +57,8 @@ const INSIGHTS_DOC_TYPES = new Set([
 const EMBEDDING_DEFAULT_MODEL = "text-embedding-3-small";
 const EMBEDDING_DEFAULT_INDEX = "chunks-v1";
 const EMBEDDING_DEFAULT_VERSION = "v1";
-const VECTOR_BUCKET_NAME = "asens-embeddings";
+const PGVECTOR_INDEX_NAME = "document_chunks.embedding";
+const PGVECTOR_KEY_PREFIX = "pgvector";
 const RECONCILE_STUCK_THRESHOLD_MINUTES = 30;
 const VISION_OCR_MAX_PAGES = 50;
 const VISION_OCR_MAX_IMAGE_SIZE_MB = 10;
@@ -700,8 +701,19 @@ function safeModelShort(model) {
   return String(model || "").replace("text-embedding-3-", "te3");
 }
 
-function generateVectorKey(workspaceId, chunkId, model, version) {
-  return `ws:${normalizeUuid(workspaceId)}:c:${normalizeUuid(chunkId)}:m:${safeModelShort(model)}:v:${version}`;
+export function serializePgvector(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error("Invalid embedding vector");
+  }
+  return `[${values.map((value) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) throw new Error("Invalid embedding vector value");
+    return String(number);
+  }).join(",")}]`;
+}
+
+export function generatePgvectorKey(chunkId, model, version) {
+  return `${PGVECTOR_KEY_PREFIX}:${normalizeUuid(chunkId)}:${safeModelShort(model)}:${version}`;
 }
 
 async function getEmbeddingConfig(supabase, workspaceId) {
@@ -715,47 +727,14 @@ async function getEmbeddingConfig(supabase, workspaceId) {
   };
 }
 
-function getVectorClient() {
-  const vectorProjectUrl = String(process.env.VECTOR_PROJECT_URL || "").trim();
-  const vectorServiceKey = String(process.env.VECTOR_SERVICE_ROLE_KEY || "").trim();
-  if (!vectorProjectUrl || !vectorServiceKey) {
-    throw new Error("Vector Bucket project not configured. Set VECTOR_PROJECT_URL and VECTOR_SERVICE_ROLE_KEY.");
-  }
-  return createClient(vectorProjectUrl, vectorServiceKey, {
-    auth: { persistSession: false },
-  });
-}
-
 async function cleanupExistingEmbeddings({
   supabase,
-  vectorIndex,
   chunkIds,
-  workspaceId,
-  config,
   log,
 }) {
   if (!chunkIds.length) return;
   try {
-    const { data: existingKeys } = await supabase
-      .from("chunk_embeddings")
-      .select("vector_key")
-      .in("chunk_id", chunkIds)
-      .eq("status", "ready");
-    const recordedKeys = (existingKeys || [])
-      .map((row) => String(row?.vector_key || "").trim())
-      .filter(Boolean);
-    const conventionKeys = chunkIds.map((chunkId) =>
-      generateVectorKey(workspaceId, chunkId, config.model, config.version)
-    );
-    const vectorKeys = Array.from(new Set([...recordedKeys, ...conventionKeys]));
-    for (let index = 0; index < vectorKeys.length; index += 100) {
-      const batch = vectorKeys.slice(index, index + 100);
-      try {
-        await vectorIndex.deleteVectors({ keys: batch });
-      } catch {
-        // Best effort: stale vector keys may already be gone.
-      }
-    }
+    await supabase.from("document_chunks").update({ embedding: null }).in("id", chunkIds);
     await supabase.from("chunk_embeddings").delete().in("chunk_id", chunkIds);
   } catch (error) {
     log?.warn?.("Embedding cleanup skipped", {
@@ -779,7 +758,7 @@ async function runEmbedStep({ supabase, requestId, payload }) {
   const config = await getEmbeddingConfig(supabase, workspaceId);
   let chunksQuery = supabase
     .from("document_chunks")
-    .select("id, content_text, content_hash, workspace_id, user_id, document_id, page_number, language, metadata_json")
+    .select("id, content_text, content_hash, embedding, workspace_id, user_id, document_id, page_number, language, metadata_json")
     .eq("workspace_id", workspaceId);
   if (chunkIdsInput.length > 0) {
     chunksQuery = chunksQuery.in("id", chunkIdsInput);
@@ -804,18 +783,12 @@ async function runEmbedStep({ supabase, requestId, payload }) {
     });
   }
 
-  const vectorSupabase = getVectorClient();
-  const vectorBucket = vectorSupabase.storage.vectors.from(VECTOR_BUCKET_NAME);
-  const vectorIndex = vectorBucket.index(config.index_name);
   const chunkIds = rows.map((chunk) => chunk.id).filter(Boolean);
 
   if (force) {
     await cleanupExistingEmbeddings({
       supabase,
-      vectorIndex,
       chunkIds,
-      workspaceId,
-      config,
     });
   }
 
@@ -833,9 +806,14 @@ async function runEmbedStep({ supabase, requestId, payload }) {
     );
   }
 
-  const chunksToEmbed = rows.filter((chunk) => !existingHashes.has(chunk.content_hash));
+  const shouldSkipEmbedding = (chunk) => {
+    if (force) return false;
+    const hasPgvectorEmbedding = Boolean(String(chunk.embedding || "").trim());
+    return hasPgvectorEmbedding && existingHashes.has(chunk.content_hash);
+  };
+  const chunksToEmbed = rows.filter((chunk) => !shouldSkipEmbedding(chunk));
   const results = rows
-    .filter((chunk) => existingHashes.has(chunk.content_hash))
+    .filter(shouldSkipEmbedding)
     .map((chunk) => ({ chunk_id: chunk.id, status: "skipped" }));
   let embeddedCount = 0;
   let failedCount = 0;
@@ -861,39 +839,32 @@ async function runEmbedStep({ supabase, requestId, payload }) {
       const vectors = batch.map((chunk, batchIndex) => {
         const embedding = embeddingByIndex.get(batchIndex);
         if (!embedding) throw new Error(`Missing embedding for batch index ${batchIndex}`);
-        const key = generateVectorKey(
-          chunk.workspace_id,
-          chunk.id,
-          config.model,
-          config.version,
-        );
         return {
-          key,
-          data: { float32: embedding },
-          metadata: {
-            workspace_id: normalizeUuid(chunk.workspace_id),
-            doc_id: normalizeUuid(chunk.document_id),
-            document_id: normalizeUuid(chunk.document_id),
-            chunk_id: normalizeUuid(chunk.id),
-            user_id: normalizeUuid(chunk.user_id),
-            lang: chunk.language || "und",
-          },
+          chunk,
+          key: generatePgvectorKey(chunk.id, config.model, config.version),
+          embedding,
+          embeddingLiteral: serializePgvector(embedding),
         };
       });
 
       const storageStart = Date.now();
-      const { error: putError } = await vectorIndex.putVectors({ vectors });
-      if (putError) throw new Error(`Vector storage error: ${putError.message}`);
+      for (const vector of vectors) {
+        const { error: updateError } = await supabase
+          .from("document_chunks")
+          .update({ embedding: vector.embeddingLiteral })
+          .eq("id", vector.chunk.id);
+        if (updateError) throw new Error(`Embedding storage error: ${updateError.message}`);
+      }
       totalStorageTime += Date.now() - storageStart;
 
       const readyRecords = batch.map((chunk, batchIndex) => ({
         chunk_id: chunk.id,
         vector_key: vectors[batchIndex].key,
-        index_name: config.index_name,
+        index_name: PGVECTOR_INDEX_NAME,
         embedding_model: config.model,
         embedding_version: config.version,
-        dimension: Array.isArray(vectors[batchIndex].data.float32)
-          ? vectors[batchIndex].data.float32.length
+        dimension: Array.isArray(vectors[batchIndex].embedding)
+          ? vectors[batchIndex].embedding.length
           : 1536,
         content_hash: chunk.content_hash,
         status: "ready",
@@ -920,7 +891,7 @@ async function runEmbedStep({ supabase, requestId, payload }) {
         .upsert(batch.map((chunk) => ({
           chunk_id: chunk.id,
           vector_key: "",
-          index_name: config.index_name,
+          index_name: PGVECTOR_INDEX_NAME,
           embedding_model: config.model,
           embedding_version: config.version,
           dimension: 1536,

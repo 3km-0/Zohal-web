@@ -467,6 +467,12 @@ function ndjson(res, event) {
   res.write(`${JSON.stringify(event)}\n`);
 }
 
+export function streamErrorMessage(error) {
+  if (error?.response?.message) return error.response.message;
+  if (error?.response?.error) return error.response.error;
+  return error?.message || "Ask failed";
+}
+
 export async function handleWorkspaceAgent(req, res, { requestId, readJsonBody, supabase = createServiceClient() }) {
   function write(event) {
     ndjson(res, event);
@@ -577,12 +583,14 @@ export async function handleWorkspaceAgent(req, res, { requestId, readJsonBody, 
     });
     return res.end();
   } catch (error) {
-    res.writeHead(200, {
-      "content-type": "application/x-ndjson; charset=utf-8",
-      "cache-control": "no-cache",
-      "access-control-allow-origin": "*",
-    });
-    ndjson(res, { type: "error", message: error.message || "Ask failed" });
+    if (!res.headersSent) {
+      res.writeHead(200, {
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "cache-control": "no-cache",
+        "access-control-allow-origin": "*",
+      });
+    }
+    ndjson(res, { type: "error", message: streamErrorMessage(error) });
     ndjson(res, { type: "completed", conversation_id: randomUUID(), citations: [] });
     return res.end();
   }

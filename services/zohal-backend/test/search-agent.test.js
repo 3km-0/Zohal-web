@@ -6,6 +6,7 @@ import {
   buildChatMessageResponse,
   buildExplainResponse,
   normalizeUuid,
+  streamErrorMessage,
 } from "../src/handlers/search-agent.js";
 
 test("search-agent helpers normalize UUID-like values", () => {
@@ -130,4 +131,12 @@ test("explain response preserves iOS explanation envelope with GCP metadata", ()
     request_id: "req-exp",
     execution_plane: "gcp",
   });
+});
+
+test("workspace agent stream errors prefer user-facing limit messages", () => {
+  assert.equal(streamErrorMessage({
+    message: "limit_exceeded",
+    response: { message: "You have reached your included usage. Upgrade your plan for more." },
+  }), "You have reached your included usage. Upgrade your plan for more.");
+  assert.equal(streamErrorMessage(new Error("Ask failed")), "Ask failed");
 });

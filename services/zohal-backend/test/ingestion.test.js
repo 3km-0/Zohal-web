@@ -5,7 +5,9 @@ import {
   buildDeleteEmbeddingsEnvelope,
   buildWorkflowLaunchKey,
   groupVectorKeysByIndex,
+  generatePgvectorKey,
   normalizeUuid,
+  serializePgvector,
   shouldFallbackToOcr,
 } from "../src/handlers/ingestion.js";
 
@@ -108,4 +110,14 @@ test("vector cleanup groups ready vector keys by index and skips missing keys", 
     "chunks-v1": ["a", "b", "c"],
   });
   assert.equal(grouped.has("chunks-v2"), false);
+});
+
+test("pgvector helpers serialize embeddings without Vector Bucket config", () => {
+  assert.equal(serializePgvector([0.1, -2, 3.25]), "[0.1,-2,3.25]");
+  assert.equal(
+    generatePgvectorKey(" CHUNK-1 ", "text-embedding-3-small", "v1"),
+    "pgvector:chunk-1:te3small:v1",
+  );
+  assert.throws(() => serializePgvector([]), /Invalid embedding vector/);
+  assert.throws(() => serializePgvector([1, Number.NaN]), /Invalid embedding vector value/);
 });
