@@ -73,11 +73,11 @@ and prefer documented aliases over duplicate secrets.
 
 Start with:
 
-- `../zohal-core/Documentation/README.md`
-- `../zohal-core/Documentation/Architecture/architecture.md`
-- `../zohal-core/Documentation/Templates/Document-Templates.md`
-- `../zohal-core/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
-- `../zohal-platform/Documentation/Experiences/README.md`
+- `../zohal-platform/Documentation/README.md`
+- `../zohal-platform/Documentation/Architecture/architecture.md`
+- `../zohal-platform/Documentation/Templates/Document-Templates.md`
+- `../zohal-platform/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
+- `../zohal-platform/Documentation/Surface/README.md`
 - `docs/acquisition-playwright-runtime.md`
 
 For repo-local workflow rules, read `AGENTS.md`.

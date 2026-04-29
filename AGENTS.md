@@ -14,7 +14,7 @@ This file is the repo-local workflow guide for `Zohal-web`.
 ## Read first
 
 - Start with `README.md`.
-- Then use `../zohal-core/Documentation/README.md` for system docs and read only
+- Then use `../zohal-platform/Documentation/README.md` for system docs and read only
   the relevant topic docs.
 
 ## Product and architecture posture
