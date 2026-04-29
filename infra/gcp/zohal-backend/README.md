@@ -20,28 +20,33 @@ after the Supabase Deno cutover:
 
 - region: `me-central2`
 - runtime image: `node:22-slim`
-- CPU / memory: `1 CPU` / `1Gi`
+- CPU / memory: `2 CPU` / `2Gi`
 - timeout: `300s`
 - concurrency: `80`
 - max instances: `10`
-- min instances: `0`
+- min instances: `1`
+
+Production hardening applied 2026-04-29:
+
+- Cloud Run updated to `2 CPU`, `2Gi`, and `min-instances=1`.
+- Alert policies created for 5xx rate, p95 latency, CPU saturation, memory
+  saturation, and Cloud Tasks retry pressure.
+- No Monitoring notification channels exist in the project yet, so the policies
+  evaluate but do not notify until a channel is added.
 
 Recommended next hardening pass before heavier traffic:
 
 - use a dedicated runtime service account instead of the default Compute Engine
   service account
-- set `min-instances=1` for production to avoid cold starts on chat/upload
-  flows
-- consider `2 CPU` / `2Gi` for the combined API + ingestion/analysis surface,
-  then tune from Cloud Run metrics
 - reduce request concurrency for provider-heavy routes if latency spikes under
   mixed upload/chat traffic
 - keep Cloud Run in `me-central2` while Supabase is the DB/control plane; move
   only with a measured latency and data-residency plan
-- keep Cloud Tasks/Workflows region explicit and revisit `ORCHESTRATION_REGION`
-  once all required services are available in the same target region
-- add Cloud Monitoring alerts for 5xx rate, p95 latency, task retry/dead-letter
-  growth, and memory/CPU saturation
+- keep Cloud Tasks/Workflows region explicit. Cloud Tasks currently lists only
+  `us-central1` as available in this project, so orchestration remains there
+  until `me-central2` is available for the queue service.
+- add a Monitoring notification channel and attach it to the backend alert
+  policies
 - keep secrets in Secret Manager and avoid adding new Supabase Edge Function
   secrets for migrated workflows
 
