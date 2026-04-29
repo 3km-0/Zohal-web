@@ -8,6 +8,7 @@ const CONTACT_ROLES = new Set(["seller", "broker", "source", "lawyer", "contract
 const OUTBOX_STATUSES = new Set(["pending", "blocked_consent_required", "blocked_approval_required", "blocked_template_required", "ready", "sent", "failed", "cancelled"]);
 const GUEST_CANDIDATE_LIMIT = 2;
 const PRIVATE_SUBMISSION_HINTS = ["private", "off-market", "off market", "exclusive", "confidential", "seller direct", "صفقة خاصة", "خاص", "مباشر"];
+const BUYER_MANDATE_BROADCAST_KEY = "buyer_mandate_workspace_v1";
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -74,6 +75,32 @@ function detectLanguage(text, fallback = "en") {
   return fallback === "ar" || fallback === "en" ? fallback : "en";
 }
 
+function normalizeEntitlementTier(rawTier) {
+  const value = normalizeText(rawTier).toLowerCase();
+  if (["premium", "ultra"].includes(value)) return "premium";
+  if (["team", "institutional"].includes(value)) return "team";
+  if (["pro", "pro_plus", "student_monthly", "student_semester", "exam_prep", "educator"].includes(value)) return "pro";
+  return "free";
+}
+
+function parseIsoDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function profileAllowsMandateBroadcast(profile) {
+  const tier = normalizeEntitlementTier(profile?.subscription_tier);
+  if (tier !== "premium" && tier !== "team") return false;
+  const now = Date.now();
+  const graceEndsAt = parseIsoDate(profile?.grace_period_ends_at);
+  if (graceEndsAt && graceEndsAt.getTime() > now) return true;
+  const expiresAt = parseIsoDate(profile?.subscription_expires_at);
+  if (expiresAt && expiresAt.getTime() <= now) return false;
+  const status = normalizeText(profile?.subscription_status || "active").toLowerCase();
+  return new Set(["", "active", "past_due", "trialing", "canceled", "cancelled"]).has(status);
+}
+
 function chooseCopy(language, english, arabic) {
   return language === "ar" ? arabic : english;
 }
@@ -81,6 +108,34 @@ function chooseCopy(language, english, arabic) {
 function listIncludes(text, words) {
   const lower = normalizeText(text).toLowerCase();
   return words.some((word) => lower.includes(word.toLowerCase()));
+}
+
+function hasMandateBroadcastConsent(contactChannel) {
+  const metadata = contactChannel?.metadata_json && typeof contactChannel.metadata_json === "object"
+    ? contactChannel.metadata_json
+    : {};
+  const purposes = Array.isArray(metadata.consent_purposes) ? metadata.consent_purposes : [];
+  return metadata.broadcast_opt_in === true ||
+    metadata.buyer_mandate_broadcast_opt_in === true ||
+    purposes.includes("buyer_mandate_broadcast") ||
+    purposes.includes("buyer_mandate_broadcasts") ||
+    purposes.includes("acquisition_broadcast");
+}
+
+function buildMandateBroadcastBody({ mandate, workspace, language }) {
+  const title = normalizeText(mandate?.title) || normalizeText(workspace?.name) || "New buyer mandate";
+  const budget = mandate?.budget_range_json && typeof mandate.budget_range_json === "object"
+    ? mandate.budget_range_json
+    : {};
+  const budgetMax = Number(budget.max || budget.maximum || 0);
+  const budgetText = Number.isFinite(budgetMax) && budgetMax > 0
+    ? ` Budget up to SAR ${new Intl.NumberFormat("en").format(budgetMax)}.`
+    : "";
+  return chooseCopy(
+    language,
+    `New buyer mandate from Zohal: ${title}.${budgetText} Reply if you have a matching private opportunity or source lead.`,
+    `تفويض شراء جديد من زحل: ${title}.${budgetText} أرسل رداً إذا كان لديك فرصة خاصة أو مصدر مناسب.`,
+  );
 }
 
 function inferMode({ textBody, media, conversation }) {
@@ -540,6 +595,83 @@ async function prepareExternalAction(supabase, { body, workspace, contact, conta
   return { approval, outbox };
 }
 
+async function prepareMandateBroadcast(supabase, { workspace, mandate, language = "en" }) {
+  if (!workspace?.id || !workspace?.owner_id || !mandate?.id) {
+    return { blocked: true, reason: "mandate_broadcast_missing_context" };
+  }
+
+  const ownerProfile = await maybeSingle(
+    supabase.from("profiles").select("id, subscription_tier, subscription_status, subscription_expires_at, grace_period_ends_at").eq("id", workspace.owner_id).limit(1),
+  );
+  if (!profileAllowsMandateBroadcast(ownerProfile)) {
+    return { blocked: true, reason: "mandate_broadcast_not_entitled" };
+  }
+
+  const existing = await maybeSingle(
+    supabase
+      .from("agent_workspace_broadcasts")
+      .select("*")
+      .eq("workspace_id", workspace.id)
+      .eq("broadcast_key", BUYER_MANDATE_BROADCAST_KEY)
+      .limit(1),
+  );
+  if (existing?.id) {
+    return { skipped: true, reason: "mandate_broadcast_already_prepared", broadcast: existing };
+  }
+
+  const broadcast = await insertOne(supabase, "agent_workspace_broadcasts", {
+    workspace_id: workspace.id,
+    mandate_id: mandate.id,
+    broadcast_key: BUYER_MANDATE_BROADCAST_KEY,
+    status: "prepared",
+    outbox_count: 0,
+    metadata_json: { source: "agent_mandate_intake" },
+  });
+
+  const { data: channels, error } = await supabase
+    .from("acquisition_contact_channels")
+    .select("*")
+    .eq("channel", "whatsapp")
+    .eq("consent_status", "opted_in")
+    .eq("approved_for_outbound", true);
+  if (error) throw error;
+
+  const eligibleChannels = (channels || []).filter(hasMandateBroadcastConsent);
+  const messageBody = buildMandateBroadcastBody({ mandate, workspace, language });
+  const outboxes = [];
+
+  for (const contactChannel of eligibleChannels) {
+    const contact = contactChannel.contact_id
+      ? await maybeSingle(supabase.from("acquisition_contacts").select("*").eq("id", contactChannel.contact_id).limit(1))
+      : null;
+    if (!contact?.id) continue;
+    const action = await prepareExternalAction(supabase, {
+      body: {
+        channel: "whatsapp",
+        approval_status: "approved",
+        template_key: "buyer_mandate_broadcast",
+        template_payload_json: { language_code: language },
+      },
+      workspace,
+      contact,
+      contactChannel,
+      opportunityId: null,
+      actionType: "send_outreach",
+      messageIntent: "buyer_mandate_broadcast",
+      messageBody,
+    });
+    outboxes.push(action.outbox);
+  }
+
+  await supabase.from("agent_workspace_broadcasts").update({
+    status: outboxes.length ? "prepared" : "skipped",
+    outbox_count: outboxes.length,
+    metadata_json: { source: "agent_mandate_intake", eligible_contact_channels: eligibleChannels.length },
+  }).eq("id", broadcast.id);
+
+  return { broadcast, outboxes, outboxCount: outboxes.length };
+}
+
 function buildManualChannelUrl(channel, address, body) {
   if (channel === "whatsapp") {
     const digits = normalizeAddress(channel, address).replace(/[^\d]/g, "");
@@ -811,6 +943,19 @@ export async function orchestrateAgentEvent({ supabase, body }) {
     }, "workspace_id,title");
     sideEffects.push("mandate_saved");
     await upsertAgentConversation(supabase, { ...conversation, mandate_id: mandate.id, state_json: { ...(conversation.state_json || {}), active_mandate_id: mandate.id } }, "channel,external_thread_id");
+    if (!workspaceContext.isGuest) {
+      const broadcast = await prepareMandateBroadcast(supabase, { workspace, mandate, language });
+      if (broadcast.outboxCount > 0) {
+        sideEffects.push("mandate_broadcast_prepared");
+        crmUpdates = { mandate_id: mandate.id, broadcast_outbox_count: broadcast.outboxCount };
+      } else if (broadcast.skipped) {
+        sideEffects.push(broadcast.reason);
+      } else if (broadcast.blocked) {
+        sideEffects.push(broadcast.reason);
+      } else {
+        sideEffects.push("mandate_broadcast_no_recipients");
+      }
+    }
     outboundMessages.push({ type: "text", body: chooseCopy(language, "I captured this as an acquisition mandate.", "سجلت هذا كتفويض استحواذ.") });
   } else {
     const signals = extractSignals(textBody, message.media || []);
@@ -910,6 +1055,7 @@ export const __test = {
   extractSignals,
   inferMode,
   orchestrateAgentEvent,
+  prepareMandateBroadcast,
   prepareExternalAction,
   requestContractorEvaluation,
   resolveOrCreateGuestWorkspace,

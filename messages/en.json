@@ -53,6 +53,7 @@
     "trash": "Trash",
     "integrations": "Integrations",
     "organization": "Organization",
+    "portfolio": "Portfolio",
     "updates": "Updates"
   },
   "auth": {
@@ -985,7 +986,7 @@
     "subtitle": "Choose the plan that matches your workload",
     "currentPlan": "Current Plan",
     "currentTrial": "Current Trial",
-    "trialBadge": "14-day trial",
+    "trialBadge": "Trial",
     "managedByAppStore": "Managed via App Store",
     "renewsOn": "Renews on {date}",
     "trialEndsOn": "Trial ends on {date}",
@@ -998,13 +999,13 @@
     "businessTab": "Business",
     "free": "Free",
     "freePlan": "Free Plan",
-    "proPlan": "Pro Plan",
-    "premiumPlan": "Max Plan",
+    "proPlan": "Core",
+    "premiumPlan": "Investor Pro",
     "teamPlan": "Team Plan",
     "currentPlanBadge": "Current Plan",
     "upgrade": "Upgrade",
     "downgrade": "Downgrade",
-    "startTrial": "Start 14-day trial",
+    "startTrial": "Start trial",
     "upgradeTo": "Upgrade to {plan}",
     "perMonth": "per month",
     "perYear": "per year",
@@ -1015,17 +1016,17 @@
     "yearlySubscription": "Yearly subscription",
     "processingPayment": "Processing your payment...",
     "processingTrial": "Activating your trial...",
-    "teamTrialTitle": "Start your Team trial",
-    "teamTrialSubtitle": "Save a card now. Billing starts only after 14 days unless you cancel.",
+    "teamTrialTitle": "Contact us about Team",
+    "teamTrialSubtitle": "Tell us about your portfolio and operating model.",
     "hostedCheckoutNote": "You will be redirected to Moyasar's secure hosted checkout to complete your subscription.",
     "continueToCheckout": "Continue to Secure Checkout",
     "checkoutError": "Unable to start checkout.",
-    "trialError": "Unable to activate the Team trial.",
+    "trialError": "Unable to start the Team request.",
     "notAuthenticated": "Not authenticated",
-    "teamTrialFeature": "14-day trial with Pro-capped usage",
+    "teamTrialFeature": "Contact us for Team onboarding",
     "promoCodeLabel": "Promotional code",
     "promoCodePlaceholder": "Enter code",
-    "promoCheckoutHint": "If valid, the discount will be applied in Moyasar checkout for Max and Team web subscriptions.",
+    "promoCheckoutHint": "If valid, the discount will be applied in Moyasar checkout for Investor Pro web subscriptions.",
     "promoTrialHint": "If valid, the discount will be saved now and applied when Team billing starts after the trial.",
     "close": "Close",
     "promoErrors": {
@@ -1036,7 +1037,7 @@
       "periodMismatch": "That promotional code does not apply to this billing period."
     },
     "trial": {
-      "intro": "Set up a card with Moyasar to start the Team trial. Zohal will not charge the card until the trial ends.",
+      "intro": "Team is handled through a contact-us flow.",
       "holderName": "Cardholder name",
       "holderNamePlaceholder": "Name on card",
       "cardNumber": "Card number",
@@ -1044,15 +1045,15 @@
       "expiryMonth": "Month",
       "expiryYear": "Year",
       "cvc": "CVC",
-      "note": "Trial usage stays capped to Pro limits until billing begins. You can cancel before the trial ends from billing settings.",
+      "note": "Trial usage stays capped to Core limits until billing begins. You can cancel before the trial ends from billing settings.",
       "submit": "Save card and start trial",
       "configurationError": "Payment configuration error. Please contact support.",
       "genericError": "Unable to set up the payment method."
     },
     "planDescriptions": {
-      "pro": "For regular individual workloads with clear monthly meters.",
-      "premium": "For heavier individual use with sync and priority support.",
-      "team": "For shared rollouts with pooled monthly meters and trial onboarding."
+      "pro": "For one operator running evidence-grade document and acquisition work.",
+      "premium": "For active investors with three workspaces, broadcasts, and vendor visits.",
+      "team": "For portfolio teams that need governed acquisition operations."
     },
     "features": {
       "documents10": "10 documents",
@@ -1061,7 +1062,11 @@
       "unlimitedAi": "Unlimited AI explanations",
       "unlimitedAiUsage": "Unlimited AI usage",
       "workspace1": "1 workspace",
+      "workspaces3": "3 workspaces",
+      "workspaces20": "20 workspaces",
       "workspaces10": "10 workspaces",
+      "user1": "1 user",
+      "usersCount": "{count} users",
       "unlimitedWorkspaces": "Unlimited workspaces",
       "unlimitedDocuments": "Unlimited documents",
       "storage100gb": "100GB storage",
@@ -1081,15 +1086,19 @@
       "billableOpsMonthly": "{count} billable ops / month",
       "allTools": "All document tools included",
       "importsIncluded": "Drive, OneDrive, and WhatsApp import",
-      "sharedWorkspaces": "Shared workspaces for team rollout"
+      "sharedWorkspaces": "Shared workspaces for team rollout",
+      "mandateBroadcasts": "Buyer mandate broadcasts",
+      "portfolioTab": "Portfolio tab",
+      "vendorVisits": "{count} vendor renovation visits",
+      "teamAnnualContact": "Annual package starts at SAR 24,000"
     },
     "enterprise": {
-      "title": "Enterprise",
-      "description": "Custom solutions for teams and organizations",
+      "title": "Team",
+      "description": "Portfolio acquisition package for teams",
       "contactUs": "Contact Us",
-      "customPricing": "Custom Pricing",
+      "customPricing": "Contact Us",
       "modalTitle": "Contact Sales",
-      "modalSubtitle": "Tell us about your needs and we'll get back to you shortly",
+      "modalSubtitle": "Tell us about your Team needs and we'll get back to you shortly",
       "name": "Name",
       "namePlaceholder": "Your full name",
       "email": "Email",
@@ -1123,7 +1132,7 @@
     "welcome": "Welcome!",
     "welcomeTo": "Welcome to Zohal {tier}!",
     "subscriptionActive": "Your subscription is now active. Enjoy full access to {tier}.",
-    "trialActive": "Your Team trial is active. Billing starts only after the trial ends unless you cancel.",
+    "trialActive": "Your Team access is active.",
     "youNowHave": "You now have access to:",
     "unlimitedAi": "Unlimited AI explanations",
     "allPlugins": "All document plugins",
@@ -1136,20 +1145,48 @@
     "startUsing": "Start Using Zohal",
     "viewDetails": "View Subscription Details"
   },
+  "portfolioPage": {
+    "title": "Portfolio",
+    "subtitle": "Team portfolio tracking across acquisition workspaces",
+    "overviewTitle": "Real estate portfolio",
+    "overviewSubtitle": "A first Team workspace for portfolio value, renovation exposure, and deal progress.",
+    "teamBadge": "Team",
+    "metrics": {
+      "assets": {
+        "label": "Tracked assets",
+        "value": "Coming soon",
+        "hint": "Properties promoted from acquisition opportunities will appear here."
+      },
+      "equity": {
+        "label": "Portfolio value",
+        "value": "Pending",
+        "hint": "Valuation, cost basis, and ownership summaries will roll up here."
+      },
+      "renovation": {
+        "label": "Renovation exposure",
+        "value": "Pending",
+        "hint": "Vendor estimates and inspection visits will feed this view."
+      }
+    },
+    "timelineTitle": "Portfolio timeline",
+    "timelineSubtitle": "Milestones across acquisition, renovation, leasing, and exits.",
+    "placeholderTitle": "Portfolio intelligence is being wired in.",
+    "placeholderBody": "This skeleton keeps the Team navigation in place while the portfolio read model is connected to properties, opportunities, and renovation evidence."
+  },
   "settingsPage": {
     "email": "Email",
     "displayName": "Display Name",
     "displayNamePlaceholder": "Your name",
     "saveChanges": "Save Changes",
     "freePlan": "Free Plan",
-    "proPlan": "Pro Plan",
-    "premiumPlan": "Max Plan",
+    "proPlan": "Core",
+    "premiumPlan": "Investor Pro",
     "teamPlan": "Team Plan",
     "freePlanDesc": "1 GiB storage, metered AI tokens, and monthly ops",
-    "proPlanDesc": "10 GiB storage with larger monthly token and ops pools",
-    "premiumPlanDesc": "100 GiB storage with higher monthly token and ops pools",
-    "teamPlanDesc": "Pooled meters, shared workspaces, and collaboration controls",
-    "upgradeToPro": "Upgrade to Pro",
+    "proPlanDesc": "1 workspace, 1 user, and all core document tools",
+    "premiumPlanDesc": "3 workspaces, 2 users, broadcasts, and 2 vendor visits",
+    "teamPlanDesc": "20 workspaces, 5 users, portfolio tracking, and 5 vendor visits",
+    "upgradeToPro": "Upgrade to Core",
     "dataLocality": "Data Locality",
     "integrations": "Integrations",
     "integrationsDesc": "Connect your cloud accounts to import files and sync calendar events.",
@@ -2336,31 +2373,31 @@
         "professional": [
           {
             "id": "pro",
-            "name": "Pro",
-            "price": "SAR 149 / month",
+            "name": "Core",
+            "price": "SAR 299 / month",
             "bullets": [
-              "Best for one person turning recurring document sets into living workspaces",
-              "Core workspace builder, source-linked answers, and follow-up tracking",
+              "Best for one operator turning recurring document sets into living workspaces",
+              "1 workspace, 1 user, source-linked answers, and follow-up tracking",
               "Drive, OneDrive, and WhatsApp import included",
-              "10 GiB storage, 120M metered AI tokens, and 1,500 billable ops each month"
+              "SAR 2,999 annually"
             ],
             "cta": {
-              "label": "Start Pro",
+              "label": "Start Core",
               "href": "/auth/signup"
             }
           },
           {
             "id": "max",
-            "name": "Max",
-            "price": "SAR 599 / month",
+            "name": "Investor Pro",
+            "price": "SAR 749 / month",
             "bullets": [
-              "Best for heavier individual workflows and bilingual document operations",
-              "Advanced Arabic/English workspace building, localization, and verification tools",
-              "Priority support and Google Drive sync",
-              "100 GiB storage, 500M metered AI tokens, and 6,000 billable ops each month"
+              "Best for active real estate investors",
+              "3 workspaces and 2 users",
+              "Buyer mandate broadcasts to approved and consented contacts",
+              "2 physical vendor renovation estimates or visits yearly"
             ],
             "cta": {
-              "label": "Start Max",
+              "label": "Start Investor Pro",
               "href": "/auth/signup"
             }
           }
@@ -2369,30 +2406,15 @@
           {
             "id": "team",
             "name": "Team",
-            "price": "14-day trial",
+            "price": "Contact us",
             "bullets": [
-              "Best for a first live team rollout",
-              "Shared workspaces, permissions, and collaboration controls",
-              "14-day trial with card setup through Moyasar",
-              "250 GiB pooled storage, 1.5B metered tokens, and 20,000 pooled billable ops"
+              "Annual package starts at SAR 24,000",
+              "20 workspaces and 5 users",
+              "Portfolio tab across investments",
+              "5 physical vendor renovation estimates or visits yearly"
             ],
             "cta": {
-              "label": "Start 14-Day Trial",
-              "href": "/auth/signup"
-            }
-          },
-          {
-            "id": "enterprise",
-            "name": "Enterprise",
-            "price": "Custom",
-            "bullets": [
-              "For larger rollouts, governance controls, and procurement support",
-              "Data-locality planning and custom onboarding",
-              "Shared rollout planning across multiple teams",
-              "Custom pricing, support, and deployment scope"
-            ],
-            "cta": {
-              "label": "Talk to sales",
+              "label": "Contact Us",
               "href": "/support"
             }
           }

@@ -132,17 +132,19 @@ export default function SubscriptionSuccessPage() {
             {t('welcomeTo', {
               tier:
                 tier === 'premium'
-                  ? 'Max'
+                  ? 'Investor Pro'
                   : tier === 'team'
                     ? 'Team'
-                    : tier.charAt(0).toUpperCase() + tier.slice(1),
+                    : tier === 'pro'
+                      ? 'Core'
+                      : tier.charAt(0).toUpperCase() + tier.slice(1),
             })}
           </h2>
 
           <p className="text-text-soft mb-6">
             {status === 'trialing'
               ? t('trialActive')
-              : t('subscriptionActive', { tier: tier === 'premium' ? 'Max' : tier })}
+              : t('subscriptionActive', { tier: tier === 'premium' ? 'Investor Pro' : tier === 'pro' ? 'Core' : tier })}
           </p>
 
           <div className="p-4 bg-surface-alt rounded-zohal mb-6 text-left">

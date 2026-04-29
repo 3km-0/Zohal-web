@@ -9,6 +9,7 @@ import {
   House,
   Clock3,
   FolderOpen,
+  ChartPie,
   Search,
   Settings,
   LogOut,
@@ -38,6 +39,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const [collapsed, setCollapsed] = useState(false);
   const supabase = useMemo(() => createClient(), []);
   const [showOrgTab, setShowOrgTab] = useState(false);
+  const [showPortfolioTab, setShowPortfolioTab] = useState(false);
 
   useEffect(() => {
     onClose?.();
@@ -54,6 +56,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
       if (data) {
         const tier = getEffectiveSubscriptionTier(data);
         setShowOrgTab(tier === 'team' || tier === 'premium');
+        setShowPortfolioTab(tier === 'team');
       }
     }
     checkTier();
@@ -63,6 +66,9 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
     { href: '/updates', label: t('updates'), icon: Clock3 },
     { href: '/ask', label: t('search'), icon: Search },
+    ...(showPortfolioTab
+      ? [{ href: '/portfolio', label: t('portfolio'), icon: ChartPie }]
+      : []),
     { href: '/settings', label: t('settings'), icon: Settings },
     ...(showOrgTab
       ? [{ href: '/organization', label: t('organization'), icon: Building2 }]
@@ -80,6 +86,9 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
     }
     if (href === '/organization') {
       return pathname === '/organization' || pathname.startsWith('/organization/');
+    }
+    if (href === '/portfolio') {
+      return pathname === '/portfolio' || pathname.startsWith('/portfolio/');
     }
     return pathname.startsWith(href);
   };

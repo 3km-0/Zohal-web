@@ -98,16 +98,16 @@ export default function TermsPage() {
           </p>
           <ul className="list-disc pl-6 my-4 space-y-2">
             <li>
-              <strong className="text-text">Zohal Pro:</strong> Unlimited AI explanations, 100
-              documents, 5GB storage, all plugin tools
+              <strong className="text-text">Zohal Core:</strong> SAR 299/month or SAR 2,999/year
+              for 1 workspace, 1 user, and core document tools
             </li>
             <li>
-              <strong className="text-text">Zohal Max:</strong> Everything in Pro plus unlimited
-              documents, 50GB storage, two-way Google Drive sync
+              <strong className="text-text">Zohal Investor Pro:</strong> SAR 749/month or SAR
+              7,490/year for 3 workspaces, 2 users, mandate broadcasts, and 2 vendor visits
             </li>
             <li>
-              <strong className="text-text">Zohal Team:</strong> Shared workspaces, collaboration
-              controls, and business billing. Team may include a 14-day trial before billing starts.
+              <strong className="text-text">Zohal Team:</strong> SAR 24,000/year starting package,
+              with pricing hidden in-product behind a contact-us flow.
             </li>
           </ul>
           <p>

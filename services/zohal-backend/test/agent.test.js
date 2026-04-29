@@ -272,6 +272,70 @@ test("outbound messages require consent, approval, and WhatsApp template or open
   assert.equal(ready.outbox.status, "ready");
 });
 
+test("Investor Pro mandate intake broadcasts once per workspace to opted-in network", async () => {
+  const phone = "+966500000007";
+  const supabase = createMockSupabase({
+    profiles: [{
+      id: "owner_1",
+      subscription_tier: "premium",
+      subscription_status: "active",
+    }],
+    workspaces: [{ id: "ws_1", owner_id: "owner_1", workspace_type: "personal", name: "Investor Workspace" }],
+    acquisition_contacts: [
+      { id: "source_1", display_name: "Approved Source 1", status: "active" },
+      { id: "source_2", display_name: "Approved Source 2", status: "active" },
+    ],
+    acquisition_contact_channels: [
+      {
+        id: "source_channel_1",
+        contact_id: "source_1",
+        channel: "whatsapp",
+        address: "+966500010001",
+        normalized_address: "+966500010001",
+        consent_status: "opted_in",
+        approved_for_outbound: true,
+        metadata_json: { consent_purposes: ["buyer_mandate_broadcast"] },
+      },
+      {
+        id: "source_channel_2",
+        contact_id: "source_2",
+        channel: "whatsapp",
+        address: "+966500010002",
+        normalized_address: "+966500010002",
+        consent_status: "opted_in",
+        approved_for_outbound: true,
+        metadata_json: { buyer_mandate_broadcast_opt_in: true },
+      },
+    ],
+  });
+
+  const body = {
+    channel: "whatsapp",
+    external_thread_id: phone,
+    sender: { address: phone },
+    workspace_session_snapshot: { workspace_id: "ws_1", user_id: "owner_1" },
+    message: {
+      text_body: "New buy box mandate looking for villa in Riyadh budget 5m",
+    },
+  };
+
+  const first = await __test.orchestrateAgentEvent({ supabase, body });
+  const second = await __test.orchestrateAgentEvent({
+    supabase,
+    body: {
+      ...body,
+      message: { text_body: "Updated buy box mandate looking for villa in Riyadh budget 5.2m" },
+    },
+  });
+
+  assert.equal(first.side_effects.includes("mandate_broadcast_prepared"), true);
+  assert.equal(second.side_effects.includes("mandate_broadcast_already_prepared"), true);
+  assert.equal(supabase.db.agent_workspace_broadcasts.length, 1);
+  assert.equal(supabase.db.agent_workspace_broadcasts[0].outbox_count, 2);
+  assert.equal(supabase.db.agent_outbox_messages.length, 2);
+  assert(supabase.db.agent_outbox_messages.every((message) => message.message_intent === "buyer_mandate_broadcast"));
+});
+
 test("contractor evaluation creates participant, thread, diligence item, and outbox", async () => {
   const supabase = createMockSupabase({
     workspaces: [{ id: "ws_1", owner_id: "owner_1", workspace_type: "personal", name: "Owner Workspace" }],

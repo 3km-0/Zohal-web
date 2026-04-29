@@ -201,9 +201,9 @@ export function SupportPageClient() {
             question="How do subscriptions work?"
             answer={
               <>
-                Zohal offers free and paid tiers for individuals and teams, including Pro, Max, and
-                Team. Web billing is managed through Moyasar for eligible plans, while App Store
-                billing remains Apple-managed. See our{' '}
+                Zohal offers free and paid tiers for individuals and teams, including Core,
+                Investor Pro, and Team. Web billing is managed through Moyasar for eligible
+                plans, while App Store billing remains Apple-managed. See our{' '}
                 <Link href="/terms" className="text-accent hover:opacity-80">
                   Terms of Use
                 </Link>{' '}

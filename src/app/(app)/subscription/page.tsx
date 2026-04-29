@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ArrowRight,
-  Building2,
   Check,
   CheckCircle,
   CreditCard,
@@ -18,10 +17,6 @@ import {
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Badge, Spinner, Input } from '@/components/ui';
 import { MoyasarPaymentForm } from '@/components/payment/MoyasarPaymentForm';
-import {
-  MoyasarTrialSetupForm,
-  PENDING_TRIAL_SETUP_STORAGE_KEY,
-} from '@/components/payment/MoyasarTrialSetupForm';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -55,7 +50,6 @@ interface BillingProfile {
 }
 
 type BillingPeriod = 'monthly' | 'yearly';
-type Currency = 'SAR' | 'USD';
 type BillingSegment = 'individuals' | 'business';
 
 const TIER_RANK: Record<string, number> = {
@@ -94,15 +88,12 @@ export default function SubscriptionPage() {
   const [currentStatus, setCurrentStatus] = useState<string>('active');
   const [subscriptionExpires, setSubscriptionExpires] = useState<string | null>(null);
   const [paymentSource, setPaymentSource] = useState<string>('apple');
-  const [trialConsumedAt, setTrialConsumedAt] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
-  const [currency, setCurrency] = useState<Currency>('SAR');
   const [billingSegment, setBillingSegment] = useState<BillingSegment>('individuals');
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [handledTrialCallback, setHandledTrialCallback] = useState(false);
   const [promoCode, setPromoCode] = useState('');
 
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
@@ -148,7 +139,6 @@ export default function SubscriptionPage() {
       setSubscriptionExpires(profile.subscription_expires_at);
       setPaymentSource(profile.payment_source || 'apple');
       setCurrentStatus(profile.subscription_status || 'active');
-      setTrialConsumedAt(profile.subscription_trial_consumed_at || null);
       if (effectiveTier === 'team') {
         setBillingSegment('business');
       }
@@ -174,54 +164,6 @@ export default function SubscriptionPage() {
     },
     [t]
   );
-
-  const startTrial = useCallback(async (tokenId: string, period: BillingPeriod, promoCodeValue?: string) => {
-    if (!user) return;
-    setProcessingPayment(true);
-    setPaymentError(null);
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error(t('notAuthenticated'));
-      }
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/start-subscription-trial`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            tier: 'team',
-            period,
-            token_id: tokenId,
-            promo_code: promoCodeValue?.trim() || undefined,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok || !data?.success) {
-        throw new Error(mapCheckoutError(data?.code, data?.error || t('trialError')));
-      }
-
-      sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
-      await refreshProfile();
-      setShowPaymentModal(false);
-      setSelectedPlan(null);
-      router.replace('/subscription/success?trial=1');
-    } catch (error) {
-      setPaymentError(error instanceof Error ? error.message : t('trialError'));
-      router.replace('/subscription');
-    } finally {
-      setProcessingPayment(false);
-    }
-  }, [mapCheckoutError, refreshProfile, router, supabase, t, user]);
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
@@ -254,64 +196,20 @@ export default function SubscriptionPage() {
     fetchData();
   }, [refreshProfile, supabase, user]);
 
-  useEffect(() => {
-    const shouldResumeTrial =
-      user && !handledTrialCallback && searchParams.get('trial_callback') === '1';
-
-    if (!shouldResumeTrial) return;
-
-    const rawState =
-      typeof window !== 'undefined'
-        ? sessionStorage.getItem(PENDING_TRIAL_SETUP_STORAGE_KEY)
-        : null;
-    if (!rawState) {
-      setHandledTrialCallback(true);
-      return;
-    }
-
-    let parsedState:
-      | { tokenId?: string; tier?: string; period?: BillingPeriod; promoCode?: string }
-      | null = null;
-    try {
-      parsedState = JSON.parse(rawState) as {
-        tokenId?: string;
-        tier?: string;
-        period?: BillingPeriod;
-        promoCode?: string;
-      };
-    } catch {
-      sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
-      setHandledTrialCallback(true);
-      return;
-    }
-
-    if (!parsedState?.tokenId || parsedState.tier !== 'team') {
-      sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
-      setHandledTrialCallback(true);
-      return;
-    }
-
-    setHandledTrialCallback(true);
-    void startTrial(parsedState.tokenId, parsedState.period || billingPeriod, parsedState.promoCode);
-  }, [billingPeriod, handledTrialCallback, searchParams, startTrial, user]);
-
   const getPrice = (plan: SubscriptionPlan): number | null => {
-    if (currency === 'SAR') {
-      return billingPeriod === 'monthly' ? plan.price_monthly_sar : plan.price_yearly_sar;
-    }
-    return billingPeriod === 'monthly' ? plan.price_monthly_usd : plan.price_yearly_usd;
+    if (plan.tier === 'team') return null;
+    return billingPeriod === 'monthly' ? plan.price_monthly_sar : plan.price_yearly_sar;
   };
 
   const formatPrice = (price: number | null, tier: string): string => {
-    if (tier === 'enterprise') return tEnterprise('customPricing');
-    if (price === null) return tier === 'team' ? t('trialBadge') : t('free');
-    const symbol = currency === 'SAR' ? 'SAR' : '$';
-    return `${symbol}${price.toFixed(2)}`;
+    if (tier === 'team' || tier === 'enterprise') return tEnterprise('customPricing');
+    if (price === null) return t('free');
+    return `SAR ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(price)}`;
   };
 
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     if (plan.tier === 'free' || plan.tier === currentTier) return;
-    if (plan.tier === 'team' && getPrice(plan) === null && !isTrialEligible(plan)) {
+    if (plan.tier === 'team') {
       setShowEnterpriseModal(true);
       return;
     }
@@ -372,11 +270,9 @@ export default function SubscriptionPage() {
     router.push('/subscription/success');
   };
 
-  const isTrialEligible = (plan: SubscriptionPlan) =>
-    plan.tier === 'team' && currentTier === 'free' && !trialConsumedAt;
+  const isTrialEligible = (_plan: SubscriptionPlan) => false;
   const canApplyPromo = (plan: SubscriptionPlan) =>
-    ['premium', 'team'].includes(plan.tier) &&
-    (plan.tier === 'team' ? isTrialEligible(plan) || subscriptionFlags.v2Enabled : subscriptionFlags.v2Enabled);
+    plan.tier === 'premium' && subscriptionFlags.v2Enabled;
 
   const tierIcons: Record<string, typeof Crown> = {
     free: Zap,
@@ -415,6 +311,12 @@ export default function SubscriptionPage() {
         readNumericValue(plan.limits, 'billable_ops_monthly');
       const maxWorkspaces =
         readNumericValue(plan.guardrails, 'max_workspaces') ?? readNumericValue(plan.limits, 'max_workspaces');
+      const maxMembers =
+        readNumericValue(plan.guardrails, 'max_workspace_members') ??
+        readNumericValue(plan.limits, 'max_workspace_members');
+      const vendorVisits =
+        readNumericValue(plan.guardrails, 'renovation_vendor_visits_yearly') ??
+        readNumericValue(plan.limits, 'renovation_vendor_visits_yearly');
 
       if (storageGiB && storageGiB > 0) {
         bullets.push(tFeatures('storageGiBStored', { count: compactNumber(storageGiB) }));
@@ -428,12 +330,20 @@ export default function SubscriptionPage() {
 
       if (maxWorkspaces === 1) {
         bullets.push(tFeatures('workspace1'));
-      } else if (maxWorkspaces === 10) {
-        bullets.push(tFeatures('workspaces10'));
+      } else if (maxWorkspaces === 3) {
+        bullets.push(tFeatures('workspaces3'));
+      } else if (maxWorkspaces === 20) {
+        bullets.push(tFeatures('workspaces20'));
       } else if (maxWorkspaces && maxWorkspaces >= 999999) {
         bullets.push(tFeatures('unlimitedWorkspaces'));
       } else if (maxWorkspaces && maxWorkspaces >= 250) {
         bullets.push(tFeatures('sharedWorkspaces'));
+      }
+
+      if (maxMembers === 1) {
+        bullets.push(tFeatures('user1'));
+      } else if (maxMembers && maxMembers > 1) {
+        bullets.push(tFeatures('usersCount', { count: compactNumber(maxMembers) }));
       }
 
       const hasAllCoreTools =
@@ -456,13 +366,22 @@ export default function SubscriptionPage() {
       if (plan.features?.team_management) {
         bullets.push(tFeatures('teamManagement'));
       }
+      if (plan.features?.acquisition_broadcast) {
+        bullets.push(tFeatures('mandateBroadcasts'));
+      }
+      if (plan.features?.portfolio_tab) {
+        bullets.push(tFeatures('portfolioTab'));
+      }
+      if (vendorVisits && vendorVisits > 0) {
+        bullets.push(tFeatures('vendorVisits', { count: compactNumber(vendorVisits) }));
+      }
       if (plan.tier === 'team') {
-        bullets.push(t('teamTrialFeature'));
+        bullets.push(tFeatures('teamAnnualContact'));
       }
 
-      return bullets.slice(0, 7);
+      return bullets.slice(0, 8);
     },
-    [compactNumber, t, tFeatures]
+    [compactNumber, tFeatures]
   );
 
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
@@ -592,16 +511,9 @@ export default function SubscriptionPage() {
                 </button>
               ))}
             </div>
-
-            <button
-              onClick={() => setCurrency(currency === 'SAR' ? 'USD' : 'SAR')}
-              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-text-soft transition-colors hover:border-accent"
-            >
-              {currency}
-            </button>
           </div>
 
-          <div className={cn('grid gap-6', billingSegment === 'business' ? 'lg:grid-cols-2' : 'md:grid-cols-2')}>
+          <div className={cn('grid gap-6', billingSegment === 'business' ? 'mx-auto max-w-xl' : 'md:grid-cols-2')}>
             {visiblePlans.map((plan) => {
               const Icon = tierIcons[plan.tier] || Zap;
               const price = getPrice(plan);
@@ -634,7 +546,13 @@ export default function SubscriptionPage() {
                       <Icon className={cn('h-6 w-6', tierColors[plan.tier])} />
                     </div>
                     <h3 className="text-lg font-bold text-text">
-                      {plan.tier === 'premium' ? t('premiumPlan') : plan.name}
+                      {plan.tier === 'pro'
+                        ? t('proPlan')
+                        : plan.tier === 'premium'
+                          ? t('premiumPlan')
+                          : plan.tier === 'team'
+                            ? t('teamPlan')
+                            : plan.name}
                     </h3>
                     <p className="mt-1 text-sm text-text-soft">{planDescription(plan)}</p>
                   </div>
@@ -662,6 +580,11 @@ export default function SubscriptionPage() {
                   >
                     {isCurrentPlan ? (
                       currentStatus === 'trialing' ? t('currentTrial') : t('currentPlanBadge')
+                    ) : plan.tier === 'team' ? (
+                      <>
+                        {t('contactSales')}
+                        <ArrowRight className="ml-1 h-4 w-4" />
+                      </>
                     ) : isTrialEligible(plan) ? (
                       t('startTrial')
                     ) : isUpgrade ? (
@@ -677,41 +600,6 @@ export default function SubscriptionPage() {
               );
             })}
 
-            {billingSegment === 'business' ? (
-              <Card
-                className="relative flex h-full flex-col border-accent/50 bg-gradient-to-br from-surface to-accent/5 transition-all"
-                padding="lg"
-              >
-                <div className="mb-6 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-                    <Building2 className="h-6 w-6 text-accent" />
-                  </div>
-                  <h3 className="text-lg font-bold text-text">{tEnterprise('title')}</h3>
-                  <p className="mt-1 text-sm text-text-soft">{tEnterprise('description')}</p>
-                </div>
-
-                <div className="mb-6 text-center">
-                  <div className="text-3xl font-bold text-text">{tEnterprise('customPricing')}</div>
-                  <p className="text-sm text-text-soft">{tEnterprise('contactUs')}</p>
-                </div>
-
-                <ul className="mb-6 flex-1 space-y-3">
-                  <FeatureItem>{tFeatures('unlimitedDocuments')}</FeatureItem>
-                  <FeatureItem>{tFeatures('unlimitedAiUsage')}</FeatureItem>
-                  <FeatureItem>{tFeatures('customLimits')}</FeatureItem>
-                  <FeatureItem>{tFeatures('teamManagement')}</FeatureItem>
-                  <FeatureItem>{tFeatures('slaSupport')}</FeatureItem>
-                  <FeatureItem>{tFeatures('dedicatedManager')}</FeatureItem>
-                  <FeatureItem>{tFeatures('customIntegrations')}</FeatureItem>
-                  <FeatureItem>{tFeatures('onboarding')}</FeatureItem>
-                </ul>
-
-                <Button variant="primary" className="w-full" onClick={() => setShowEnterpriseModal(true)}>
-                  {tEnterprise('contactUs')}
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Card>
-            ) : null}
           </div>
 
           {paymentError ? (
@@ -742,18 +630,12 @@ export default function SubscriptionPage() {
             <div className="flex items-center justify-between border-b border-border p-5">
               <div>
                 <h2 className="text-lg font-semibold text-text">
-                  {selectedPlan.tier === 'team' && isTrialEligible(selectedPlan)
-                    ? t('teamTrialTitle')
-                    : t('upgradeTo', {
-                        plan: selectedPlan.tier === 'premium' ? t('premiumPlan') : selectedPlan.name,
-                      })}
+                  {t('upgradeTo', {
+                    plan: selectedPlan.tier === 'premium' ? t('premiumPlan') : selectedPlan.name,
+                  })}
                 </h2>
                 <p className="text-sm text-text-soft">
-                  {selectedPlan.tier === 'team' && isTrialEligible(selectedPlan)
-                    ? t('teamTrialSubtitle')
-                    : billingPeriod === 'monthly'
-                      ? t('monthlySubscription')
-                      : t('yearlySubscription')}
+                  {billingPeriod === 'monthly' ? t('monthlySubscription') : t('yearlySubscription')}
                 </p>
               </div>
               <button
@@ -769,37 +651,7 @@ export default function SubscriptionPage() {
               {processingPayment ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <Spinner size="lg" />
-                  <p className="mt-4 text-text-soft">
-                    {selectedPlan.tier === 'team' && isTrialEligible(selectedPlan)
-                      ? t('processingTrial')
-                      : t('processingPayment')}
-                  </p>
-                </div>
-              ) : selectedPlan.tier === 'team' && isTrialEligible(selectedPlan) ? (
-                <div className="space-y-4">
-                  {canApplyPromo(selectedPlan) ? (
-                    <div className="space-y-2">
-                      <Input
-                        label={t('promoCodeLabel')}
-                        placeholder={t('promoCodePlaceholder')}
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
-                        maxLength={32}
-                        autoCapitalize="characters"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        disabled={processingPayment}
-                      />
-                      <p className="text-xs text-text-soft">{t('promoTrialHint')}</p>
-                    </div>
-                  ) : null}
-                  <MoyasarTrialSetupForm
-                    tier="team"
-                    period={billingPeriod}
-                    callbackUrl={`${window.location.origin}/subscription?trial_callback=1`}
-                    promoCode={promoCode}
-                    onTokenReady={(tokenId) => startTrial(tokenId, billingPeriod, promoCode)}
-                  />
+                  <p className="mt-4 text-text-soft">{t('processingPayment')}</p>
                 </div>
               ) : subscriptionFlags.v2Enabled ? (
                 <div className="space-y-4">

@@ -62,21 +62,21 @@ export default async function HomePage() {
         offers: [
           {
             '@type': 'Offer',
-            price: '199',
+            price: '299',
             priceCurrency: 'SAR',
-            name: 'Zohal Pro',
+            name: 'Zohal Core',
             url: absoluteUrl('/subscription'),
           },
           {
             '@type': 'Offer',
-            price: '599',
+            price: '749',
             priceCurrency: 'SAR',
-            name: 'Zohal Max',
+            name: 'Zohal Investor Pro',
             url: absoluteUrl('/subscription'),
           },
           {
             '@type': 'Offer',
-            price: '1200',
+            price: '24000',
             priceCurrency: 'SAR',
             name: 'Zohal Team',
             url: absoluteUrl('/subscription?tab=business'),
