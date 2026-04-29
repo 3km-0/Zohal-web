@@ -1173,16 +1173,17 @@ async function runInsightsStep({ supabase, requestId, payload, documentType }) {
         label,
         value,
         importance: String(insight.importance || ""),
+        searchable_text: `${label}: ${value ?? ""} ${String(insight.importance || "")}`.trim(),
       },
       text_value: value == null ? null : String(value),
-      searchable_text: `${label}: ${value ?? ""} ${String(insight.importance || "")}`.trim(),
+      chunk_id: sourceChunk?.id || null,
       source_refs: [{
         chunk_id: sourceChunk?.id || null,
         page: Number(sourceChunk?.page_number || 0),
         quote: sourceQuote,
       }],
       confidence: Math.max(0, Math.min(1, Number(insight.confidence || 0.6))),
-      extraction_run_id: run.id,
+      run_id: run.id,
     };
   });
 
