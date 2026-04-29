@@ -33,6 +33,12 @@ This file is the repo-local workflow guide for `Zohal-web`.
 - Use `Surface` as the default internal/product-architecture noun.
 - Treat `Portal` and `Experience` as legacy compatibility terms unless a
   storage/runtime identifier or old operator/debug surface requires them.
+- For backend route ownership, read
+  `../zohal-platform/Documentation/Infrastructure/Backend_Runtime_Boundary.md`.
+  `services/zohal-backend/` is the default home for new server-side execution,
+  orchestration, AI/OCR/embedding/search/chat/import/export, and pipeline API
+  routes. Do not create new Supabase Edge Function dependencies from web code
+  unless the boundary doc allows the category.
 
 ## Hosting and deploy posture
 

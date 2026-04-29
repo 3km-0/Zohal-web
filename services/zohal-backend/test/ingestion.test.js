@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildCleanupVectorsEnvelope,
+  buildDeleteEmbeddingsEnvelope,
   buildWorkflowLaunchKey,
+  groupVectorKeysByIndex,
   normalizeUuid,
   shouldFallbackToOcr,
 } from "../src/handlers/ingestion.js";
@@ -49,4 +52,60 @@ test("shouldFallbackToOcr skips OCR for CloudConvert-derived documents", () => {
   });
 
   assert.equal(result.shouldFallback, false);
+});
+
+test("cleanup vectors response preserves legacy cleanup contract with GCP metadata", () => {
+  assert.deepEqual(buildCleanupVectorsEnvelope({
+    requestId: "req-cleanup",
+    documentId: "DOC-1",
+    workspaceId: "WORKSPACE-1",
+    validChunks: 4,
+    embeddedCount: 3,
+  }), {
+    success: true,
+    document_id: "doc-1",
+    workspace_id: "workspace-1",
+    valid_chunks: 4,
+    vectors_before: null,
+    orphaned_deleted: 0,
+    vectors_after: 3,
+    missing_reembedded: 3,
+    scope: "document",
+    note:
+      "Ensured current chunks are embedded. Orphan vector deletion is intentionally skipped (Vector Buckets alpha).",
+    request_id: "req-cleanup",
+    execution_plane: "gcp",
+  });
+});
+
+test("delete embeddings response preserves legacy cleanup counters with GCP metadata", () => {
+  assert.deepEqual(buildDeleteEmbeddingsEnvelope({
+    requestId: "req-delete",
+    documentId: "DOC-1",
+    chunksDeleted: 2,
+    embeddingsDeleted: 3,
+    vectorsDeleted: 4,
+  }), {
+    success: true,
+    document_id: "doc-1",
+    chunks_deleted: 2,
+    embeddings_deleted: 3,
+    vectors_deleted: 4,
+    request_id: "req-delete",
+    execution_plane: "gcp",
+  });
+});
+
+test("vector cleanup groups ready vector keys by index and skips missing keys", () => {
+  const grouped = groupVectorKeysByIndex([
+    { vector_key: "a", index_name: "chunks-v1" },
+    { vector_key: "b", index_name: "" },
+    { vector_key: "", index_name: "chunks-v2" },
+    { vector_key: "c", index_name: "chunks-v1" },
+  ]);
+
+  assert.deepEqual(Object.fromEntries(grouped), {
+    "chunks-v1": ["a", "b", "c"],
+  });
+  assert.equal(grouped.has("chunks-v2"), false);
 });

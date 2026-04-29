@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/Toast';
 import { DocumentUploadModal } from '@/components/document/DocumentUploadModal';
 import { ShareDocumentModal } from '@/components/document/ShareDocumentModal';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { cn, formatFileSize, formatRelativeTime } from '@/lib/utils';
 import type { Document, ProcessingStatus, Workspace, WorkspaceSavedView } from '@/types/database';
 
@@ -938,8 +939,11 @@ function DocumentCard({
 
   const handleRetryIndexing = async () => {
     try {
-      await supabase.functions.invoke('enqueue-document-ingestion', {
-        body: { document_id: doc.id },
+      await invokeZohalBackendJson(supabase, '/ingestion/start', {
+        document_id: doc.id,
+        workspace_id: doc.workspace_id,
+        user_id: doc.user_id,
+        source: 'manual_retry',
       });
       showSuccess('Queued for indexing', 'We will retry processing in the background.');
     } catch (error) {

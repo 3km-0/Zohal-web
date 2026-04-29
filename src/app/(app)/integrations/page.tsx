@@ -24,6 +24,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, ZohalToggle, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import type {
   ApiConnectionAuthMode,
   ApiConnectionMappingStatus,
@@ -1189,12 +1190,10 @@ export default function IntegrationsPage() {
   async function loadApiSources() {
     setLoadingApiSources(true);
     try {
-      const { data, error } = await supabase.functions.invoke('workspace-api-connections', {
-        body: { action: 'list-library' },
+      const data = await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+        action: 'list-library',
       });
-      if (!error) {
-        setApiSources(data?.data?.connections || data?.connections || []);
-      }
+      setApiSources(data?.data?.connections || data?.connections || []);
     } finally {
       setLoadingApiSources(false);
     }
@@ -1358,8 +1357,7 @@ export default function IntegrationsPage() {
       if (secretBundle) payload.secret_bundle = secretBundle;
 
       const wasCreate = !apiDraft.id;
-      const { data, error } = await supabase.functions.invoke('workspace-api-connections', { body: payload });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', payload);
 
       const connection = (data?.data?.connection || data?.connection || null) as WorkspaceApiConnection | null;
       setShowApiModal(false);
@@ -1397,19 +1395,16 @@ export default function IntegrationsPage() {
       const secretBundle = buildSecretBundle(apiDraft);
       if (secretBundle) payload.secret_bundle = secretBundle;
 
-      const { data, error } = await supabase.functions.invoke('workspace-api-connections', { body: payload });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', payload);
       const result = data?.data?.test_result || data?.test_result || { ok: false, status: 0, error: 'No result' };
       setApiTestResult(result);
       if (result?.response_body !== undefined || result?.response_preview !== undefined) {
-        const generated = await supabase.functions.invoke('workspace-api-connections', {
-          body: {
+        const generated = await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
             action: 'generate-mapping',
             source_kind: apiDraft.source_kind,
             sample_payload: result.response_body ?? result.response_preview,
-          },
         });
-        const proposal = generated.data?.data?.proposal || generated.data?.proposal || null;
+        const proposal = generated?.data?.proposal || generated?.proposal || null;
         if (proposal) {
           setApiDraft((current) => ({
             ...current,
@@ -1440,13 +1435,11 @@ export default function IntegrationsPage() {
     setSavingAttachments(true);
     try {
       for (const selection of selections) {
-        await supabase.functions.invoke('workspace-api-connections', {
-          body: {
-            action: 'attach',
-            workspace_id: selection.workspaceId,
-            connection_id: attachSource.id,
-            enabled_by_default: selection.enabledByDefault,
-          },
+        await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+          action: 'attach',
+          workspace_id: selection.workspaceId,
+          connection_id: attachSource.id,
+          enabled_by_default: selection.enabledByDefault,
         });
       }
       closeAttachModal();
@@ -1456,12 +1449,11 @@ export default function IntegrationsPage() {
   };
 
   const deleteApiSource = async (connectionId: string) => {
-    const { error } = await supabase.functions.invoke('workspace-api-connections', {
-      body: { action: 'delete', connection_id: connectionId },
+    await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+      action: 'delete',
+      connection_id: connectionId,
     });
-    if (!error) {
-      setApiSources((prev) => prev.filter((connection) => connection.id !== connectionId));
-    }
+    setApiSources((prev) => prev.filter((connection) => connection.id !== connectionId));
   };
 
   if (loading) {

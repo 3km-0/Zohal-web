@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { IconBox, Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 export function SupportPageClient() {
   const supabase = useMemo(() => createClient(), []);
@@ -28,17 +29,15 @@ export function SupportPageClient() {
 
     setIsSubmitting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('support-ticket-create', {
-        body: {
-          category,
-          priority,
-          subject: subject.trim(),
-          message: message.trim(),
-          email: email.trim() || undefined,
-          source: 'web_support_tab',
-        },
+      const data = await invokeZohalBackendJson<{ ticket?: { id?: string }; message?: string }>(supabase, 'support/tickets', {
+        category,
+        priority,
+        subject: subject.trim(),
+        message: message.trim(),
+        email: email.trim() || undefined,
+        source: 'web_support_tab',
       });
-      if (error || !data?.ticket?.id) {
+      if (!data?.ticket?.id) {
         throw new Error(data?.message || 'Failed to create support ticket');
       }
       setTicketId(String(data.ticket.id));

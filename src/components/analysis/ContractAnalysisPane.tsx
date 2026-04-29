@@ -51,6 +51,7 @@ import {
   PolicyConformanceTab,
 } from '@/components/analysis/TemplateRunTabs';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import type { Document, LegalClause, LegalContract, LegalObligation, LegalRiskFlag } from '@/types/database';
 import type { EvidenceGradeSnapshot } from '@/types/evidence-grade';
 import { parseSnapshot } from '@/types/evidence-grade';
@@ -265,8 +266,9 @@ export function ContractAnalysisPane({
     const loadApiConnections = async () => {
       try {
         const sb = createClient();
-        const { data } = await sb.functions.invoke('workspace-api-connections', {
-          body: { action: 'list', workspace_id: workspaceId },
+        const data = await invokeZohalBackendJson<any>(sb, 'integrations/api-connections', {
+          action: 'list',
+          workspace_id: workspaceId,
         });
         const conns = data?.data?.connections || data?.connections || [];
         const activeConnections = conns.filter((c: { status: string }) => c.status === 'active');
@@ -313,8 +315,6 @@ export function ContractAnalysisPane({
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
   const [documentRow, setDocumentRow] = useState<Pick<Document, 'privacy_mode' | 'source_metadata' | 'title' | 'original_filename' | 'document_type'> | null>(null);
   const [bundleDocuments, setBundleDocuments] = useState<Array<{ id: string; title: string; role?: string }>>([]);
-  const [isRunningCompliance, setIsRunningCompliance] = useState(false);
-  const [isGeneratingKnowledgePack, setIsGeneratingKnowledgePack] = useState(false);
   const [isPatchingSnapshot, setIsPatchingSnapshot] = useState(false);
   const [runs, setRuns] = useState<AnalysisRunSummary[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
@@ -1574,10 +1574,11 @@ export function ContractAnalysisPane({
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase.functions.invoke('templates-list', {
-        body: { workspace_id: workspaceId, kind: 'document' },
-      });
-      if (error) return;
+      const data = await invokeZohalBackendJson<{ ok?: boolean; templates?: unknown[] }>(
+        supabase,
+        'templates/list',
+        { workspace_id: workspaceId, kind: 'document' },
+      );
       if (data?.ok && Array.isArray(data.templates)) {
         const pbs = data.templates as PlaybookRecord[];
         setPlaybooks(pbs);
@@ -1964,53 +1965,6 @@ export function ContractAnalysisPane({
     }
   }
 
-  async function generateKnowledgePackForThisDocument() {
-    const kind = (window.prompt(t('prompts.knowledgePackKind'), 'policy') || 'policy') as any;
-    setIsGeneratingKnowledgePack(true);
-    setError(null);
-    try {
-      const { data, error, response } = await supabase.functions.invoke('analyze-knowledge-pack', {
-        body: { workspace_id: workspaceId, document_id: documentId, kind },
-      });
-      if (error) {
-        const json = await response?.json().catch(() => null);
-        const uiErr = mapHttpError(response?.status ?? 500, json, 'analyze-knowledge-pack');
-        toast.show(uiErr);
-        throw new Error(uiErr.message);
-      }
-      if (!data?.ok) throw new Error(data?.message || t('errors.generateKnowledgePackFailed'));
-      await load();
-      await loadRuns({ keepSelection: true });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('errors.generateKnowledgePackFailed'));
-    } finally {
-      setIsGeneratingKnowledgePack(false);
-    }
-  }
-
-  async function runComplianceChecks() {
-    setIsRunningCompliance(true);
-    setError(null);
-    try {
-      const { data, error, response } = await supabase.functions.invoke('analyze-compliance', {
-        body: { workspace_id: workspaceId, document_id: documentId },
-      });
-      if (error) {
-        const json = await response?.json().catch(() => null);
-        const uiErr = mapHttpError(response?.status ?? 500, json, 'analyze-compliance');
-        toast.show(uiErr);
-        throw new Error(uiErr.message);
-      }
-      if (!data?.ok) throw new Error(data?.message || t('errors.complianceCheckFailed'));
-      await load();
-      await loadRuns({ keepSelection: true });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('errors.complianceCheckFailed'));
-    } finally {
-      setIsRunningCompliance(false);
-    }
-  }
-
   async function analyzeOnce() {
     setIsAnalyzing(true);
     setError(null);
@@ -2068,13 +2022,9 @@ export function ContractAnalysisPane({
         ? Array.from(new Set(normalizedDocsetMembers.map((m) => m.document_id)))
         : [];
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-document`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
+      let json: any = null;
+      try {
+        json = await invokeZohalBackendJson(supabase, '/analysis/start', {
           ...(includeDocumentSource ? { document_id: documentId } : {}),
           workspace_id: workspaceId,
           user_id: userId,
@@ -2105,22 +2055,16 @@ export function ContractAnalysisPane({
           ...(selectedApiConnectionIds.length > 0
             ? { api_connection_ids: selectedApiConnectionIds }
             : {}),
-        }),
-      });
-
-      const json = await res.json().catch(() => null);
-
-      // Handle 4xx/5xx errors (except 202)
-      if (!res.ok && res.status !== 202) {
-        const uiErr = mapHttpError(res.status, json, 'analyze-document');
+        });
+      } catch (error) {
+        const uiErr = mapHttpError(500, { message: error instanceof Error ? error.message : String(error) }, 'analysis/start');
         toast.show(uiErr);
         setError(uiErr.message);
         setIsAnalyzing(false);
         return;
       }
 
-      // 202 = Queued for batch processing. Poll for completion.
-      if (res.status === 202 && json?.accepted && json?.action_id) {
+      if (json?.accepted && json?.action_id) {
         const actionId = json.action_id;
         
         // Poll the action for progress
@@ -2210,8 +2154,8 @@ export function ContractAnalysisPane({
         return; // Exit early - polling handles the rest
       }
 
-      // 202 without accepted: document not ready / fast-return informational responses.
-      if (res.status === 202 && json?.error === 'document_not_ready') {
+      // Document not ready / fast-return informational responses.
+      if (json?.error === 'document_not_ready') {
         setError(json?.message || 'Document is still being processed. Please wait a few seconds and try again.');
         setIsAnalyzing(false);
         return;
@@ -2303,15 +2247,16 @@ export function ContractAnalysisPane({
       const reportLanguage = runLanguage === 'ar' ? 'ar' : 'en';
 
       // 1) Generate HTML via the existing exporter (same as iOS).
-      const { data: reportData, error: reportErr } = await supabase.functions.invoke('export-contract-report', {
-        body: {
+      const reportData = await invokeZohalBackendJson<{ html?: string }>(
+        supabase,
+        'exports/contract-report',
+        {
           document_id: documentId,
           template: 'decision_pack',
           language: reportLanguage,
           // The exporter accepts an optional title, but this page doesn't load full document metadata.
         },
-      });
-      if (reportErr) throw reportErr;
+      );
       const html = String(reportData?.html || '').trim();
       if (!html) throw new Error('Report generation returned empty content');
 
@@ -2415,16 +2360,17 @@ export function ContractAnalysisPane({
     setError(null);
     setIsExportingAuditPack(true);
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke('export-audit-pack', {
-        body: {
+      const data = await invokeZohalBackendJson<{ ok?: boolean; audit_pack?: unknown }>(
+        supabase,
+        'exports/audit-pack',
+        {
           version_id: currentVersionId || undefined,
           verification_object_id: currentVersionId ? undefined : verificationObjectId || undefined,
           include_actions: true,
           include_runs: true,
           mirror_to_enterprise_exports: false,
         },
-      });
-      if (fnErr) throw fnErr;
+      );
       if (!data?.ok || !data?.audit_pack) throw new Error('Audit Pack export failed');
 
       const blob = new Blob([JSON.stringify(data.audit_pack, null, 2)], { type: 'application/json' });
@@ -3908,10 +3854,6 @@ export function ContractAnalysisPane({
                   bundleDocuments={bundleDocuments}
                   verificationObjectState={verificationObjectState}
                   onCreatePinnedContext={createPinnedContextSetFromThisDocument}
-                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
-                  onRunCompliance={runComplianceChecks}
-                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
-                  isRunningCompliance={isRunningCompliance}
                   proofHref={proofHref}
                 />
               ) : summaryRenderer === 'renewal' ? (
@@ -3922,10 +3864,6 @@ export function ContractAnalysisPane({
                   sections={summarySections}
                   nextAction={renewalNextAction}
                   onCreatePinnedContext={createPinnedContextSetFromThisDocument}
-                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
-                  onRunCompliance={runComplianceChecks}
-                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
-                  isRunningCompliance={isRunningCompliance}
                 />
               ) : summaryRenderer === 'invoice' ? (
                 <InvoiceSummaryTab
@@ -3934,10 +3872,6 @@ export function ContractAnalysisPane({
                   metrics={invoiceSummaryMetrics}
                   sections={summarySections}
                   onCreatePinnedContext={createPinnedContextSetFromThisDocument}
-                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
-                  onRunCompliance={runComplianceChecks}
-                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
-                  isRunningCompliance={isRunningCompliance}
                 />
               ) : (
                 <GenericSummaryTab
@@ -3946,10 +3880,6 @@ export function ContractAnalysisPane({
                   metrics={genericSummaryMetrics}
                   sections={summarySections}
                   onCreatePinnedContext={createPinnedContextSetFromThisDocument}
-                  onGenerateKnowledgePack={generateKnowledgePackForThisDocument}
-                  onRunCompliance={runComplianceChecks}
-                  isGeneratingKnowledgePack={isGeneratingKnowledgePack}
-                  isRunningCompliance={isRunningCompliance}
                 />
               )
             )}

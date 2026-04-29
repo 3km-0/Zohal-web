@@ -29,6 +29,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { mapHttpError } from '@/lib/errors';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 interface OneDrivePickerProps {
   workspaceId: string;
@@ -138,25 +139,19 @@ export function OneDrivePicker({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error: importError, response } = await supabase.functions.invoke('onedrive-import', {
-        body: {
-          item_id: selectedFile.id,
-          file_name: selectedFile.name,
-          file_size: selectedFile.size || 0,
-          workspace_id: workspaceId,
-          folder_id: targetFolderId || null,
-          user_id: user.id,
-          access_token: accessToken,
-        },
-      });
-
-      if (importError) {
-        const json = response ? await response.json().catch(() => null) : null;
-        const status = response?.status ?? (importError as any)?.status ?? 500;
-        const uiErr = mapHttpError(status, json, 'onedrive-import');
+      const data = await invokeZohalBackendJson<any>(supabase, 'integrations/onedrive/import', {
+        item_id: selectedFile.id,
+        file_name: selectedFile.name,
+        file_size: selectedFile.size || 0,
+        workspace_id: workspaceId,
+        folder_id: targetFolderId || null,
+        user_id: user.id,
+        access_token: accessToken,
+      }).catch((error) => {
+        const uiErr = mapHttpError(500, { error: error instanceof Error ? error.message : 'Import failed' }, 'integrations/onedrive/import');
         toast.show(uiErr);
         throw new Error(uiErr.message);
-      }
+      });
       if (!data?.success) throw new Error(data?.error || 'Import failed');
 
       onImported(data.document_id);

@@ -1,5 +1,12 @@
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { createClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
 import { resolveDataPlane } from "../runtime/data-plane.js";
+import {
+  createChatCompletion,
+  createEmbedding,
+  resolveAIProvider,
+} from "../runtime/ai-provider.js";
 import {
   createHttpTask,
   buildDeterministicKey,
@@ -9,13 +16,13 @@ import {
 import {
   generateSignedDownloadUrl,
   joinObjectPath,
+  uploadBufferToGCS,
 } from "../runtime/gcs.js";
 import {
   getExpectedInternalToken,
   requireInternalCaller,
 } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
-import { invokeSupabaseFunction } from "../runtime/supabase-functions.js";
 import { createServiceClient } from "../runtime/supabase.js";
 
 const DOCUMENT_INGESTION_QUEUE_NAME = String(
@@ -47,6 +54,13 @@ const INSIGHTS_DOC_TYPES = new Set([
   "meeting_notes",
   "other",
 ]);
+const EMBEDDING_DEFAULT_MODEL = "text-embedding-3-small";
+const EMBEDDING_DEFAULT_INDEX = "chunks-v1";
+const EMBEDDING_DEFAULT_VERSION = "v1";
+const VECTOR_BUCKET_NAME = "asens-embeddings";
+const RECONCILE_STUCK_THRESHOLD_MINUTES = 30;
+const VISION_OCR_MAX_PAGES = 50;
+const VISION_OCR_MAX_IMAGE_SIZE_MB = 10;
 
 function getIngestionServiceBaseUrl(req) {
   const configured = String(process.env.INGESTION_SERVICE_BASE_URL || "").trim();
@@ -62,6 +76,11 @@ function getIngestionServiceBaseUrl(req) {
 
 export function normalizeUuid(id) {
   return String(id || "").trim().toLowerCase();
+}
+
+function stripBearer(value) {
+  const raw = String(value || "").trim();
+  return raw.toLowerCase().startsWith("bearer ") ? raw.slice("bearer ".length).trim() : raw;
 }
 
 function buildGcpEnvelope(requestId, body = {}) {
@@ -350,6 +369,110 @@ async function fetchDocumentOrThrow(supabase, documentId) {
   return data;
 }
 
+async function requireDocumentCleanupAccess({ supabase, req, document }) {
+  const token = stripBearer(req.headers.authorization || req.headers.Authorization || "");
+  if (!token) {
+    const error = new Error("Missing authorization token");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  const userId = normalizeUuid(data?.user?.id);
+  if (error || !userId) {
+    const authError = new Error("Invalid authorization token");
+    authError.statusCode = 401;
+    throw authError;
+  }
+
+  if (normalizeUuid(document.user_id) === userId) return userId;
+  const workspaceId = normalizeUuid(document.workspace_id);
+  if (!workspaceId) {
+    const forbidden = new Error("forbidden");
+    forbidden.statusCode = 403;
+    throw forbidden;
+  }
+
+  const [{ data: workspace }, { data: member }] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("id")
+      .eq("id", workspaceId)
+      .eq("owner_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("workspace_members")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+
+  if (!workspace?.id && !member?.id) {
+    const forbidden = new Error("forbidden");
+    forbidden.statusCode = 403;
+    throw forbidden;
+  }
+  return userId;
+}
+
+async function requireIngestionCaller({ supabase, req, payload }) {
+  try {
+    requireInternalCaller(req.headers);
+    return { kind: "internal", userId: null };
+  } catch {
+    // Fall through to user auth for direct client calls.
+  }
+
+  const token = stripBearer(req.headers.authorization || req.headers.Authorization || "");
+  if (!token) {
+    const error = new Error("Missing authorization token");
+    error.statusCode = 401;
+    throw error;
+  }
+  const { data, error } = await supabase.auth.getUser(token);
+  const userId = normalizeUuid(data?.user?.id);
+  if (error || !userId) {
+    const authError = new Error("Invalid authorization token");
+    authError.statusCode = 401;
+    throw authError;
+  }
+
+  if (payload.user_id && normalizeUuid(payload.user_id) !== userId) {
+    const forbidden = new Error("forbidden");
+    forbidden.statusCode = 403;
+    throw forbidden;
+  }
+
+  if (payload.document_id) {
+    const document = await fetchDocumentOrThrow(supabase, payload.document_id);
+    if (normalizeUuid(document.user_id) === userId) {
+      return { kind: "user", userId };
+    }
+    const workspaceId = normalizeUuid(document.workspace_id || payload.workspace_id);
+    if (workspaceId) {
+      const [{ data: owned }, { data: member }] = await Promise.all([
+        supabase.from("workspaces").select("id").eq("id", workspaceId).eq("owner_id", userId).maybeSingle(),
+        supabase.from("workspace_members").select("id").eq("workspace_id", workspaceId).eq("user_id", userId).maybeSingle(),
+      ]);
+      if (owned?.id || member?.id) return { kind: "user", userId };
+    }
+  }
+
+  if (!payload.document_id && payload.workspace_id) {
+    const workspaceId = normalizeUuid(payload.workspace_id);
+    const [{ data: owned }, { data: member }] = await Promise.all([
+      supabase.from("workspaces").select("id").eq("id", workspaceId).eq("owner_id", userId).maybeSingle(),
+      supabase.from("workspace_members").select("id").eq("workspace_id", workspaceId).eq("user_id", userId).maybeSingle(),
+    ]);
+    if (owned?.id || member?.id) return { kind: "user", userId };
+  }
+
+  const forbidden = new Error("forbidden");
+  forbidden.statusCode = 403;
+  throw forbidden;
+}
+
 async function updateDocumentState(supabase, documentId, mutator) {
   const document = await fetchDocumentOrThrow(supabase, documentId);
   const existing = getSourceMetadata(document);
@@ -488,20 +611,6 @@ async function getDocumentDownloadUrl({ supabase, document }) {
   ).url;
 }
 
-async function invokeSupabaseStep({
-  functionName,
-  requestId,
-  body,
-  allowStatuses,
-}) {
-  return await invokeSupabaseFunction({
-    functionName,
-    requestId,
-    body,
-    allowStatuses,
-  });
-}
-
 async function loadProcessingContext(supabase, payload) {
   const document = await fetchDocumentOrThrow(supabase, payload.document_id);
   const sourceMetadata = getSourceMetadata(document);
@@ -575,43 +684,427 @@ async function runChunkStep({ supabase, requestId, payload, pages }) {
     document_id: normalizeUuid(payload.document_id),
     chunks_created: batches.length,
     chunks_skipped: Math.max(0, (pages || []).length - batches.length),
+    chunks: batches.map((chunk) => ({
+      id: chunk.content_hash,
+      page_number: chunk.page_number,
+      chunk_index: chunk.chunk_index,
+      content_hash: chunk.content_hash,
+      content_preview: String(chunk.content_text || "").slice(0, 120),
+    })),
     request_id: requestId,
     execution_plane: "gcp",
   };
 }
 
+function safeModelShort(model) {
+  return String(model || "").replace("text-embedding-3-", "te3");
+}
+
+function generateVectorKey(workspaceId, chunkId, model, version) {
+  return `ws:${normalizeUuid(workspaceId)}:c:${normalizeUuid(chunkId)}:m:${safeModelShort(model)}:v:${version}`;
+}
+
+async function getEmbeddingConfig(supabase, workspaceId) {
+  const { data } = await supabase.rpc("get_active_embedding_config", {
+    p_workspace_id: normalizeUuid(workspaceId),
+  });
+  return data?.[0] || {
+    index_name: EMBEDDING_DEFAULT_INDEX,
+    model: EMBEDDING_DEFAULT_MODEL,
+    version: EMBEDDING_DEFAULT_VERSION,
+  };
+}
+
+function getVectorClient() {
+  const vectorProjectUrl = String(process.env.VECTOR_PROJECT_URL || "").trim();
+  const vectorServiceKey = String(process.env.VECTOR_SERVICE_ROLE_KEY || "").trim();
+  if (!vectorProjectUrl || !vectorServiceKey) {
+    throw new Error("Vector Bucket project not configured. Set VECTOR_PROJECT_URL and VECTOR_SERVICE_ROLE_KEY.");
+  }
+  return createClient(vectorProjectUrl, vectorServiceKey, {
+    auth: { persistSession: false },
+  });
+}
+
+async function cleanupExistingEmbeddings({
+  supabase,
+  vectorIndex,
+  chunkIds,
+  workspaceId,
+  config,
+  log,
+}) {
+  if (!chunkIds.length) return;
+  try {
+    const { data: existingKeys } = await supabase
+      .from("chunk_embeddings")
+      .select("vector_key")
+      .in("chunk_id", chunkIds)
+      .eq("status", "ready");
+    const recordedKeys = (existingKeys || [])
+      .map((row) => String(row?.vector_key || "").trim())
+      .filter(Boolean);
+    const conventionKeys = chunkIds.map((chunkId) =>
+      generateVectorKey(workspaceId, chunkId, config.model, config.version)
+    );
+    const vectorKeys = Array.from(new Set([...recordedKeys, ...conventionKeys]));
+    for (let index = 0; index < vectorKeys.length; index += 100) {
+      const batch = vectorKeys.slice(index, index + 100);
+      try {
+        await vectorIndex.deleteVectors({ keys: batch });
+      } catch {
+        // Best effort: stale vector keys may already be gone.
+      }
+    }
+    await supabase.from("chunk_embeddings").delete().in("chunk_id", chunkIds);
+  } catch (error) {
+    log?.warn?.("Embedding cleanup skipped", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function runEmbedStep({ supabase, requestId, payload }) {
-  const response = await invokeSupabaseStep({
-    functionName: "embed-and-store",
-    requestId,
-    body: {
-      document_id: normalizeUuid(payload.document_id),
-      workspace_id: normalizeUuid(payload.workspace_id),
-      force: false,
-    },
-  });
+  const documentId = normalizeUuid(payload.document_id);
+  const workspaceId = normalizeUuid(payload.workspace_id);
+  const chunkIdsInput = Array.isArray(payload.chunk_ids) ? payload.chunk_ids : [];
+  const force = payload.force === true;
+  if (!workspaceId || (!documentId && chunkIdsInput.length === 0)) {
+    const error = new Error("Missing workspace_id and document_id or chunk_ids");
+    error.statusCode = 400;
+    throw error;
+  }
 
-  await appendIngestionRuntime(supabase, payload.document_id, {
-    current_step: "embed",
-  });
+  const document = documentId ? await fetchDocumentOrThrow(supabase, documentId) : null;
+  const config = await getEmbeddingConfig(supabase, workspaceId);
+  let chunksQuery = supabase
+    .from("document_chunks")
+    .select("id, content_text, content_hash, workspace_id, user_id, document_id, page_number, language, metadata_json")
+    .eq("workspace_id", workspaceId);
+  if (chunkIdsInput.length > 0) {
+    chunksQuery = chunksQuery.in("id", chunkIdsInput);
+  } else {
+    chunksQuery = chunksQuery.eq("document_id", documentId);
+  }
+  const { data: chunks, error: chunksError } = await chunksQuery;
+  if (chunksError) {
+    throw new Error(`Failed to fetch chunks: ${chunksError.message}`);
+  }
 
-  return buildGcpEnvelope(requestId, response.json || { success: true });
+  const rows = (chunks || []).filter((chunk) => String(chunk?.content_text || "").trim());
+  if (rows.length === 0) {
+    return buildGcpEnvelope(requestId, {
+      success: true,
+      embedded_count: 0,
+      skipped_count: 0,
+      failed_count: 0,
+      results: [],
+      embedding_time_ms: 0,
+      storage_time_ms: 0,
+    });
+  }
+
+  const vectorSupabase = getVectorClient();
+  const vectorBucket = vectorSupabase.storage.vectors.from(VECTOR_BUCKET_NAME);
+  const vectorIndex = vectorBucket.index(config.index_name);
+  const chunkIds = rows.map((chunk) => chunk.id).filter(Boolean);
+
+  if (force) {
+    await cleanupExistingEmbeddings({
+      supabase,
+      vectorIndex,
+      chunkIds,
+      workspaceId,
+      config,
+    });
+  }
+
+  let existingHashes = new Set();
+  if (!force && chunkIds.length > 0) {
+    const { data: existingEmbeddings } = await supabase
+      .from("chunk_embeddings")
+      .select("content_hash")
+      .in("chunk_id", chunkIds)
+      .eq("embedding_model", config.model)
+      .eq("embedding_version", config.version)
+      .eq("status", "ready");
+    existingHashes = new Set(
+      (existingEmbeddings || []).map((row) => row.content_hash).filter(Boolean),
+    );
+  }
+
+  const chunksToEmbed = rows.filter((chunk) => !existingHashes.has(chunk.content_hash));
+  const results = rows
+    .filter((chunk) => existingHashes.has(chunk.content_hash))
+    .map((chunk) => ({ chunk_id: chunk.id, status: "skipped" }));
+  let embeddedCount = 0;
+  let failedCount = 0;
+  let totalEmbeddingTime = 0;
+  let totalStorageTime = 0;
+
+  for (let index = 0; index < chunksToEmbed.length; index += 50) {
+    const batch = chunksToEmbed.slice(index, index + 50);
+    try {
+      const embeddingStart = Date.now();
+      const embeddingData = await createEmbedding({
+        model: config.model,
+        input: batch.map((chunk) => String(chunk.content_text || "")),
+      }, {
+        workspaceId,
+        requestId,
+      });
+      totalEmbeddingTime += Date.now() - embeddingStart;
+
+      const embeddingByIndex = new Map(
+        (embeddingData?.data || []).map((item) => [Number(item.index), item.embedding]),
+      );
+      const vectors = batch.map((chunk, batchIndex) => {
+        const embedding = embeddingByIndex.get(batchIndex);
+        if (!embedding) throw new Error(`Missing embedding for batch index ${batchIndex}`);
+        const key = generateVectorKey(
+          chunk.workspace_id,
+          chunk.id,
+          config.model,
+          config.version,
+        );
+        return {
+          key,
+          data: { float32: embedding },
+          metadata: {
+            workspace_id: normalizeUuid(chunk.workspace_id),
+            doc_id: normalizeUuid(chunk.document_id),
+            document_id: normalizeUuid(chunk.document_id),
+            chunk_id: normalizeUuid(chunk.id),
+            user_id: normalizeUuid(chunk.user_id),
+            lang: chunk.language || "und",
+          },
+        };
+      });
+
+      const storageStart = Date.now();
+      const { error: putError } = await vectorIndex.putVectors({ vectors });
+      if (putError) throw new Error(`Vector storage error: ${putError.message}`);
+      totalStorageTime += Date.now() - storageStart;
+
+      const readyRecords = batch.map((chunk, batchIndex) => ({
+        chunk_id: chunk.id,
+        vector_key: vectors[batchIndex].key,
+        index_name: config.index_name,
+        embedding_model: config.model,
+        embedding_version: config.version,
+        dimension: Array.isArray(vectors[batchIndex].data.float32)
+          ? vectors[batchIndex].data.float32.length
+          : 1536,
+        content_hash: chunk.content_hash,
+        status: "ready",
+      }));
+      const { error: upsertError } = await supabase
+        .from("chunk_embeddings")
+        .upsert(readyRecords, { onConflict: "chunk_id,embedding_model,embedding_version" });
+      if (upsertError) throw new Error(`Embedding record upsert failed: ${upsertError.message}`);
+
+      for (const chunk of batch) {
+        results.push({ chunk_id: chunk.id, status: "embedded" });
+        embeddedCount += 1;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failedCount += batch.length;
+      results.push(...batch.map((chunk) => ({
+        chunk_id: chunk.id,
+        status: "failed",
+        error: message,
+      })));
+      await supabase
+        .from("chunk_embeddings")
+        .upsert(batch.map((chunk) => ({
+          chunk_id: chunk.id,
+          vector_key: "",
+          index_name: config.index_name,
+          embedding_model: config.model,
+          embedding_version: config.version,
+          dimension: 1536,
+          content_hash: chunk.content_hash,
+          status: "failed",
+          error: message,
+        })), { onConflict: "chunk_id,embedding_model,embedding_version" });
+    }
+  }
+
+  if (documentId && failedCount === 0) {
+    await updateDocumentState(supabase, documentId, ({ runtimeMetadata }) => ({
+      embedding_completed: true,
+      processing_status: document?.processing_status === "failed" ? "processing" : document?.processing_status,
+      ingestionRuntimePatch: {
+        ...runtimeMetadata,
+        current_step: "embed",
+      },
+    }));
+  }
+
+  if (documentId) {
+    await appendIngestionRuntime(supabase, payload.document_id, {
+      current_step: "embed",
+    });
+  }
+
+  return buildGcpEnvelope(requestId, {
+    success: failedCount === 0,
+    embedded_count: embeddedCount,
+    skipped_count: rows.length - chunksToEmbed.length,
+    failed_count: failedCount,
+    results,
+    embedding_time_ms: totalEmbeddingTime,
+    storage_time_ms: totalStorageTime,
+  });
 }
 
 async function runClassifyStep({ supabase, requestId, payload }) {
-  const response = await invokeSupabaseStep({
-    functionName: "classify-document",
-    requestId,
-    body: {
-      document_id: normalizeUuid(payload.document_id),
-    },
-  });
+  const documentId = normalizeUuid(payload.document_id);
+  const { data: docInfo } = await supabase
+    .from("documents")
+    .select("original_filename, title, document_type, source_metadata")
+    .eq("id", documentId)
+    .maybeSingle();
+  const effectiveFilename = String(payload.filename || docInfo?.original_filename || docInfo?.title || "");
+  let textContent = "";
+
+  if (Array.isArray(payload.page_texts) && payload.page_texts.length > 0) {
+    textContent = payload.page_texts.slice(0, 5).join("\n\n--- Page Break ---\n\n");
+  } else {
+    const { data: chunks } = await supabase
+      .from("document_chunks")
+      .select("content_text")
+      .eq("document_id", documentId)
+      .order("page_number")
+      .limit(20);
+    textContent = (chunks || []).map((chunk) => String(chunk.content_text || "")).filter(Boolean).join("\n\n");
+  }
+
+  const rawText = textContent.toLowerCase();
+  const looksContract = [
+    "agreement",
+    "contract",
+    "governing law",
+    "termination",
+    "indemnif",
+    "warrant",
+    "party",
+    "الشروط",
+    "عقد",
+    "اتفاقية",
+  ].some((signal) => rawText.includes(signal));
+  const looksGovernmentRegistry = [
+    "ministry",
+    "authority",
+    "commercial register",
+    "certificate",
+    "license",
+    "وزارة",
+    "السجل التجاري",
+    "رخصة",
+    "شهادة",
+  ].filter((signal) => rawText.includes(signal)).length >= 2;
+
+  let result = {
+    document_type: looksGovernmentRegistry ? "legal_filing" : looksContract ? "contract" : "other",
+    confidence: looksGovernmentRegistry || looksContract ? 0.82 : 0.55,
+    confidence_level: looksGovernmentRegistry || looksContract ? "medium" : "low",
+    recommended_analysis_kinds: [],
+    recommended_template_ids: ["acquisition_workspace"],
+    suggested_tools: ["summarize", "extract_entities", "ask"],
+    tool_category: looksGovernmentRegistry || looksContract ? "legal" : "general",
+    reasoning: "Heuristic backend classification.",
+  };
+
+  if (textContent.trim().length > 200) {
+    try {
+      resolveAIProvider({ workspaceId: normalizeUuid(payload.workspace_id) || null });
+      const completion = await createChatCompletion({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Classify the document. Return JSON only with document_type, confidence, suggested_tools, tool_category, reasoning. Allowed document_type values: textbook, lecture_notes, problem_set, paper, personal_notes, contract, financial_report, meeting_notes, invoice, legal_filing, research, other.",
+          },
+          {
+            role: "user",
+            content: `Filename: ${effectiveFilename}\n\nDocument text excerpt:\n${textContent.slice(0, 12000)}`,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 500,
+        response_format: { type: "json_object" },
+      }, {
+        workspaceId: normalizeUuid(payload.workspace_id) || null,
+        requestId,
+      });
+      const parsed = JSON.parse(String(completion?.choices?.[0]?.message?.content || "{}"));
+      if (parsed && typeof parsed === "object") {
+        const allowedTypes = new Set([
+          "textbook",
+          "lecture_notes",
+          "problem_set",
+          "paper",
+          "personal_notes",
+          "contract",
+          "financial_report",
+          "meeting_notes",
+          "invoice",
+          "legal_filing",
+          "research",
+          "other",
+        ]);
+        const docType = allowedTypes.has(String(parsed.document_type || ""))
+          ? String(parsed.document_type)
+          : result.document_type;
+        result = {
+          ...result,
+          ...parsed,
+          document_type: docType,
+          confidence: Math.max(0, Math.min(1, Number(parsed.confidence || result.confidence))),
+          confidence_level: Number(parsed.confidence || result.confidence) >= 0.85
+            ? "high"
+            : Number(parsed.confidence || result.confidence) >= 0.6
+            ? "medium"
+            : "low",
+          recommended_template_ids: ["acquisition_workspace"],
+        };
+      }
+    } catch {
+      // Keep deterministic heuristic result when the AI provider is unavailable.
+    }
+  }
+
+  const sourceMetadata = docInfo?.source_metadata && typeof docInfo.source_metadata === "object"
+    ? docInfo.source_metadata
+    : {};
+  await supabase
+    .from("documents")
+    .update({
+      document_type: result.document_type,
+      source_metadata: {
+        ...sourceMetadata,
+        classification: {
+          document_type: result.document_type,
+          confidence: result.confidence,
+          confidence_level: result.confidence_level,
+          recommended_template_ids: result.recommended_template_ids,
+          reasoning: result.reasoning,
+          classified_at: new Date().toISOString(),
+          execution_plane: "gcp",
+        },
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", documentId);
 
   await appendIngestionRuntime(supabase, payload.document_id, {
     current_step: "classify",
   });
 
-  return buildGcpEnvelope(requestId, response.json || { success: true });
+  return buildGcpEnvelope(requestId, result);
 }
 
 async function runInsightsStep({ supabase, requestId, payload, documentType }) {
@@ -624,34 +1117,388 @@ async function runInsightsStep({ supabase, requestId, payload, documentType }) {
     });
   }
 
-  const response = await invokeSupabaseStep({
-    functionName: "extract-insights",
-    requestId,
-    body: {
-      document_id: normalizeUuid(payload.document_id),
-      workspace_id: normalizeUuid(payload.workspace_id),
-      user_id: normalizeUuid(payload.user_id),
-      document_type: effectiveType || undefined,
-    },
+  const startedAt = Date.now();
+  const documentId = normalizeUuid(payload.document_id);
+  const workspaceId = normalizeUuid(payload.workspace_id);
+  const userId = normalizeUuid(payload.user_id);
+  const { data: run, error: runError } = await supabase
+    .from("extraction_runs")
+    .insert({
+      document_id: documentId,
+      workspace_id: workspaceId,
+      user_id: userId,
+      extraction_type: "insights",
+      model: "gpt-4o",
+      prompt_version: "gcp_dynamic_v1",
+      status: "running",
+      input_config: { mode: "dynamic", execution_plane: "gcp" },
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (runError) {
+    throw new Error(`Failed to create extraction run: ${runError.message}`);
+  }
+
+  const { data: chunks, error: chunksError } = await supabase
+    .from("document_chunks")
+    .select("id, content_text, page_number")
+    .eq("document_id", documentId)
+    .order("chunk_index", { ascending: true });
+  if (chunksError) {
+    throw new Error(`Failed to fetch chunks: ${chunksError.message}`);
+  }
+
+  const sourceChunks = (chunks || []).slice(0, 120);
+  const context = sourceChunks
+    .map((chunk, index) => `[Chunk ${index + 1}, Page ${chunk.page_number}]\n${String(chunk.content_text || "").slice(0, 2500)}`)
+    .join("\n\n---\n\n")
+    .slice(0, 50000);
+  let insights = [];
+
+  if (context.trim()) {
+    try {
+      const completion = await createChatCompletion({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Extract important document facts. Return JSON only as {\"insights\":[{\"kind\":\"amount|deadline|date|entity|identifier|obligation|term|contact|location|key_fact\",\"label\":\"English label\",\"value\":\"original value\",\"importance\":\"why it matters\",\"confidence\":0.0,\"source_quote\":\"short exact quote\"}]}",
+          },
+          {
+            role: "user",
+            content: `Document type: ${effectiveType}\n\n${context}`,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+      }, {
+        workspaceId,
+        requestId,
+      });
+      const parsed = JSON.parse(String(completion?.choices?.[0]?.message?.content || "{}"));
+      insights = Array.isArray(parsed?.insights) ? parsed.insights.slice(0, 200) : [];
+    } catch {
+      insights = [];
+    }
+  }
+
+  const rows = insights.map((insight, index) => {
+    const sourceQuote = String(insight.source_quote || "").slice(0, 300);
+    const sourceChunk = sourceQuote
+      ? sourceChunks.find((chunk) => String(chunk.content_text || "").toLowerCase().includes(sourceQuote.toLowerCase().slice(0, 40))) || sourceChunks[0]
+      : sourceChunks[0];
+    const label = String(insight.label || `Insight ${index + 1}`).trim();
+    const value = insight.value ?? null;
+    const kind = String(insight.kind || "key_fact").trim().toLowerCase() || "key_fact";
+    return {
+      document_id: documentId,
+      workspace_id: workspaceId,
+      user_id: userId,
+      kind,
+      payload: {
+        label,
+        value,
+        importance: String(insight.importance || ""),
+      },
+      text_value: value == null ? null : String(value),
+      searchable_text: `${label}: ${value ?? ""} ${String(insight.importance || "")}`.trim(),
+      source_refs: [{
+        chunk_id: sourceChunk?.id || null,
+        page: Number(sourceChunk?.page_number || 0),
+        quote: sourceQuote,
+      }],
+      confidence: Math.max(0, Math.min(1, Number(insight.confidence || 0.6))),
+      extraction_run_id: run.id,
+    };
   });
+
+  if (rows.length > 0) {
+    await supabase.from("insights").delete().eq("document_id", documentId);
+    for (let index = 0; index < rows.length; index += 100) {
+      const { error } = await supabase.from("insights").insert(rows.slice(index, index + 100));
+      if (error) {
+        throw new Error(`insights_insert_failed: ${error.message}`);
+      }
+    }
+  }
+
+  await supabase
+    .from("extraction_runs")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      output_summary: {
+        insights_count: rows.length,
+        execution_plane: "gcp",
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", run.id);
 
   await appendIngestionRuntime(supabase, payload.document_id, {
     current_step: "extract_insights",
   });
 
-  return buildGcpEnvelope(requestId, response.json || { success: true });
+  return buildGcpEnvelope(requestId, {
+    success: true,
+    document_id: documentId,
+    run_id: run.id,
+    insights_count: rows.length,
+    insights: rows,
+    embedded_count: 0,
+    processing_time_ms: Date.now() - startedAt,
+  });
+}
+
+function columnKey(columnIndex) {
+  let index = columnIndex;
+  let label = "";
+  while (index >= 0) {
+    label = String.fromCharCode(65 + (index % 26)) + label;
+    index = Math.floor(index / 26) - 1;
+  }
+  return label || "A";
+}
+
+function normalizeHeader(rawHeaders, width) {
+  const seen = new Map();
+  return Array.from({ length: width }, (_, index) => {
+    const raw = String(rawHeaders[index] ?? "").trim();
+    const base = raw || columnKey(index);
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    return count === 0 ? base : `${base}_${count + 1}`;
+  });
+}
+
+function detectHeaderIndex(rows) {
+  const scanLimit = Math.min(rows.length, 5);
+  let bestIndex = 0;
+  let bestScore = -1;
+  for (let index = 0; index < scanLimit; index += 1) {
+    const row = rows[index] || [];
+    const populated = row.filter((cell) => String(cell ?? "").trim().length > 0);
+    if (populated.length === 0) continue;
+    let score = populated.length;
+    score += populated.filter((cell) => typeof cell === "string").length * 0.5;
+    score -= populated.filter((cell) => typeof cell === "number").length * 0.25;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  }
+  return bestIndex;
+}
+
+function inferPrimitiveType(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") return Number.isInteger(value) ? "integer" : "number";
+  if (typeof value === "boolean") return "boolean";
+  const stringValue = String(value).trim();
+  if (!stringValue) return null;
+  if (/^-?\d+(?:\.\d+)?$/.test(stringValue)) return "number";
+  if (/^\d{4}-\d{2}-\d{2}/.test(stringValue)) return "date";
+  return "string";
+}
+
+function parseTabularDocument(fileBytes, format, workbookName = "") {
+  const workbook = XLSX.read(fileBytes, {
+    type: "array",
+    raw: false,
+    cellFormula: true,
+    cellNF: false,
+    cellStyles: false,
+  });
+  const sheets = (workbook.SheetNames || []).map((sheetName, sheetIndex) => {
+    const sheet = workbook.Sheets[sheetName];
+    const rangeRef = sheet?.["!ref"] || "A1:A1";
+    const range = XLSX.utils.decode_range(rangeRef);
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: "",
+      raw: false,
+      blankrows: false,
+    });
+    const width = Math.max(
+      range.e.c - range.s.c + 1,
+      rows.reduce((max, row) => Math.max(max, row.length), 0),
+    );
+    const headerIndex = detectHeaderIndex(rows);
+    const inferredHeader = normalizeHeader(rows[headerIndex] || [], width);
+    const manifestRows = [];
+    for (let rowOffset = headerIndex + 1; rowOffset < rows.length; rowOffset += 1) {
+      const rawRow = rows[rowOffset] || [];
+      const values = {};
+      const cells = [];
+      let hasMeaningfulValue = false;
+      for (let columnIndex = 0; columnIndex < width; columnIndex += 1) {
+        const absoluteRow = range.s.r + rowOffset;
+        const absoluteColumn = range.s.c + columnIndex;
+        const ref = XLSX.utils.encode_cell({ r: absoluteRow, c: absoluteColumn });
+        const header = inferredHeader[columnIndex] || columnKey(columnIndex);
+        const worksheetCell = sheet?.[ref];
+        const rawValue = worksheetCell?.v ?? rawRow[columnIndex] ?? null;
+        const formattedValue = String(worksheetCell?.w ?? rawValue ?? "").trim();
+        if (formattedValue) hasMeaningfulValue = true;
+        values[header] = formattedValue;
+        cells.push({
+          row_index: absoluteRow + 1,
+          column_index: absoluteColumn + 1,
+          column_key: header,
+          cell_ref: ref,
+          formatted_value: formattedValue,
+          raw_value: rawValue,
+          formula: typeof worksheetCell?.f === "string" ? worksheetCell.f : null,
+          inferred_type: inferPrimitiveType(worksheetCell?.v ?? rawRow[columnIndex] ?? null),
+        });
+      }
+      if (!hasMeaningfulValue) continue;
+      const startRef = XLSX.utils.encode_cell({ r: range.s.r + rowOffset, c: range.s.c });
+      const endRef = XLSX.utils.encode_cell({
+        r: range.s.r + rowOffset,
+        c: range.s.c + Math.max(width - 1, 0),
+      });
+      manifestRows.push({
+        row_index: range.s.r + rowOffset + 1,
+        range_ref: `${startRef}:${endRef}`,
+        values,
+        cells,
+      });
+    }
+    return {
+      sheet_name: sheetName,
+      sheet_index: sheetIndex,
+      visibility: "visible",
+      used_range: rangeRef,
+      inferred_header: inferredHeader,
+      rows: manifestRows,
+    };
+  });
+  return {
+    schema_version: "tabular_manifest_v1",
+    source_format: format,
+    workbook_name: workbookName,
+    sheet_order: workbook.SheetNames || [],
+    sheets,
+    stats: {
+      sheet_count: sheets.length,
+      row_count: sheets.reduce((sum, sheet) => sum + sheet.rows.length, 0),
+      cell_count: sheets.reduce(
+        (sum, sheet) => sum + sheet.rows.reduce((rowSum, row) => rowSum + row.cells.length, 0),
+        0,
+      ),
+    },
+  };
+}
+
+function buildTabularSnippet(sheetName, rangeRef, values) {
+  const compact = Object.entries(values || {})
+    .map(([key, value]) => [key, String(value || "").trim()])
+    .filter(([, value]) => value.length > 0);
+  return [`Sheet: ${sheetName}`, `Range: ${rangeRef}`, ...compact.map(([key, value]) => `${key}: ${value}`)].join("\n");
+}
+
+async function buildTabularChunks({ documentId, workspaceId, userId, manifest }) {
+  const chunks = [];
+  let chunkIndex = 0;
+  for (const sheet of manifest.sheets || []) {
+    for (const row of sheet.rows || []) {
+      const contentText = buildTabularSnippet(sheet.sheet_name, row.range_ref, row.values);
+      chunks.push({
+        document_id: normalizeUuid(documentId),
+        workspace_id: normalizeUuid(workspaceId),
+        user_id: normalizeUuid(userId),
+        page_number: 0,
+        chunk_index: chunkIndex++,
+        chunk_type: row.cells?.some((cell) => cell.formula) ? "tabular_formula" : "tabular_row",
+        content_text: contentText,
+        content_hash: await computeHash(contentText),
+        language: detectLanguage(contentText),
+        metadata_json: {
+          source_type: "tabular",
+          tabular_source: {
+            sheet_name: sheet.sheet_name,
+            range_ref: row.range_ref,
+            row_index: row.row_index,
+            columns: row.cells,
+          },
+        },
+      });
+    }
+  }
+  return chunks;
 }
 
 async function runTabularPipeline({ supabase, requestId, payload, document }) {
-  const extractResult = await invokeSupabaseStep({
-    functionName: "extract-tabular-document",
-    requestId,
-    body: {
-      document_id: normalizeUuid(payload.document_id),
-      workspace_id: normalizeUuid(payload.workspace_id),
-      user_id: normalizeUuid(payload.user_id),
-    },
+  const sourceMetadata = getSourceMetadata(document);
+  const sourceFormat = getDocumentSourceFormat(document);
+  if (!isTabularSourceFormat(sourceFormat)) {
+    const error = new Error(`Document ${payload.document_id} is not a supported tabular format`);
+    error.statusCode = 400;
+    throw error;
+  }
+  const sourceStoragePath = String(sourceMetadata.source_storage_path || document.storage_path || "").trim();
+  if (!sourceStoragePath) {
+    throw new Error("Missing source storage path for tabular document");
+  }
+  const fileResponse = await fetch(
+    generateSignedDownloadUrl(sourceStoragePath, { expiresInSeconds: 15 * 60 }).url,
+    { cache: "no-store" },
+  );
+  if (!fileResponse.ok) {
+    throw new Error(`Failed to fetch source file: ${fileResponse.status}`);
+  }
+  const manifest = parseTabularDocument(
+    new Uint8Array(await fileResponse.arrayBuffer()),
+    sourceFormat,
+    String(document.title || ""),
+  );
+  const manifestStoragePath = `${normalizeUuid(payload.user_id)}/${normalizeUuid(payload.document_id)}.tabular.json`;
+  await uploadBufferToGCS(
+    manifestStoragePath,
+    Buffer.from(JSON.stringify(manifest)),
+    "application/json",
+  );
+  const chunks = await buildTabularChunks({
+    documentId: payload.document_id,
+    workspaceId: payload.workspace_id,
+    userId: payload.user_id,
+    manifest,
   });
+  await supabase.from("document_chunks").delete().eq("document_id", normalizeUuid(payload.document_id));
+  for (let index = 0; index < chunks.length; index += 100) {
+    const { error } = await supabase.from("document_chunks").insert(chunks.slice(index, index + 100));
+    if (error) throw new Error(`tabular_chunk_insert_failed: ${error.message}`);
+  }
+  const extractResult = {
+    success: true,
+    document_id: normalizeUuid(payload.document_id),
+    chunks_created: chunks.length,
+    manifest_storage_path: manifestStoragePath,
+    source_format: sourceFormat,
+    sheet_count: manifest.stats.sheet_count,
+  };
+  await updateDocumentState(supabase, payload.document_id, () => ({
+    text_extraction_completed: true,
+    embedding_completed: false,
+    processing_status: "processing",
+    sourceMetadataPatch: {
+      source_format: sourceFormat,
+      conversion_method: "none",
+      conversion_status: "completed",
+      tabular_manifest_storage_path: manifestStoragePath,
+      tabular_manifest_version: manifest.schema_version,
+      tabular_sheet_count: manifest.stats.sheet_count,
+      tabular_row_count: manifest.stats.row_count,
+      tabular_cell_count: manifest.stats.cell_count,
+    },
+    ingestionRuntimePatch: {
+      current_step: "extract_tabular",
+    },
+  }));
 
   await appendIngestionRuntime(supabase, payload.document_id, {
     current_step: "extract_tabular",
@@ -676,7 +1523,7 @@ async function runTabularPipeline({ supabase, requestId, payload, document }) {
     document_id: normalizeUuid(payload.document_id),
     source_format: getDocumentSourceFormat(document),
     tabular: true,
-    extract: extractResult.json || { success: true },
+    extract: extractResult,
     embed: embedResult,
     classify: classifyResult,
     insights: insightsResult,
@@ -948,6 +1795,159 @@ async function performStartOcr({ supabase, payload }) {
     job_id: job?.id || null,
     mathpix_pdf_id: mathpixPdfId,
   };
+}
+
+async function performVisionOcr({ supabase, payload, pageImages, requestId, log }) {
+  const documentId = normalizeUuid(payload.document_id);
+  const document = await fetchDocumentOrThrow(supabase, documentId);
+  if (!Array.isArray(pageImages) || pageImages.length === 0) {
+    const error = new Error("Missing page_images");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (pageImages.length > VISION_OCR_MAX_PAGES) {
+    return buildGcpEnvelope(requestId, {
+      success: false,
+      error: `Document has ${pageImages.length} pages. OCR is limited to ${VISION_OCR_MAX_PAGES} pages.`,
+      pages_processed: 0,
+      total_text_length: 0,
+      embedding_triggered: false,
+    });
+  }
+  if (String(document.document_type || "").toLowerCase() === "textbook") {
+    return buildGcpEnvelope(requestId, {
+      success: false,
+      error: "OCR skipped for textbooks",
+      pages_processed: 0,
+      total_text_length: 0,
+      embedding_triggered: false,
+    });
+  }
+  if (Number(document.page_count || 0) > VISION_OCR_MAX_PAGES) {
+    return buildGcpEnvelope(requestId, {
+      success: false,
+      error: `Document has ${document.page_count} pages. OCR is limited to ${VISION_OCR_MAX_PAGES} pages.`,
+      pages_processed: 0,
+      total_text_length: 0,
+      embedding_triggered: false,
+    });
+  }
+
+  const usage = await checkAndIncrementHourlyUsage(
+    supabase,
+    document.user_id,
+    "ocr_pages",
+    Math.min(pageImages.length, VISION_OCR_MAX_PAGES),
+  );
+  if (!usage.allowed) {
+    const error = new Error(`Hourly OCR limit reached: ${usage.current}/${usage.limit} pages this hour.`);
+    error.statusCode = 429;
+    throw error;
+  }
+
+  await supabase
+    .from("documents")
+    .update({
+      ocr_status: "processing",
+      text_extraction_completed: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", documentId);
+
+  const extractedPages = [];
+  let totalTextLength = 0;
+
+  for (const pageImage of pageImages) {
+    const pageNumber = Number(pageImage?.page_number || pageImage?.pageNumber || 0);
+    const imageBase64 = String(pageImage?.image_base64 || pageImage?.imageBase64 || "").trim();
+    if (!pageNumber || !imageBase64) continue;
+    const estimatedSizeMb = (imageBase64.length * 0.75) / (1024 * 1024);
+    if (estimatedSizeMb > VISION_OCR_MAX_IMAGE_SIZE_MB) {
+      log?.warn?.("Vision OCR page skipped because image is too large", {
+        document_id: documentId,
+        page_number: pageNumber,
+        estimated_size_mb: Number(estimatedSizeMb.toFixed(2)),
+      });
+      continue;
+    }
+
+    try {
+      const completion = await createChatCompletion({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an OCR assistant. Extract all text from the image exactly as it appears. Preserve the original language, numbers, dates, and formatting. Output only the extracted text.",
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/png;base64,${imageBase64}`,
+                  detail: "high",
+                },
+              },
+              {
+                type: "text",
+                text: "Extract all text from this document image.",
+              },
+            ],
+          },
+        ],
+        max_tokens: 4096,
+        temperature: 0,
+      }, {
+        requestId,
+      });
+      const text = String(completion?.choices?.[0]?.message?.content || "").trim();
+      if (text) {
+        extractedPages.push({ page_number: pageNumber, text });
+        totalTextLength += text.length;
+      }
+    } catch (error) {
+      log?.warn?.("Vision OCR page failed", {
+        document_id: documentId,
+        page_number: pageNumber,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  let embeddingTriggered = false;
+  if (extractedPages.length > 0 && totalTextLength > 50) {
+    await runDeleteEmbeddingsNative({ supabase, payload, requestId, log });
+    const pages = extractedPages.sort((a, b) => a.page_number - b.page_number);
+    await runChunkStep({ supabase, requestId, payload, pages });
+    const embedResult = await runEmbedStep({
+      supabase,
+      requestId,
+      payload: { ...payload, force: false },
+      log,
+    });
+    embeddingTriggered = embedResult?.success !== false;
+  }
+
+  const finalStatus = extractedPages.length > 0 ? "completed" : "failed";
+  await supabase
+    .from("documents")
+    .update({
+      ocr_status: finalStatus,
+      text_extraction_completed: finalStatus === "completed",
+      embedding_completed: embeddingTriggered,
+      has_text_layer: extractedPages.length > 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", documentId);
+
+  return buildGcpEnvelope(requestId, {
+    success: extractedPages.length > 0,
+    pages_processed: extractedPages.length,
+    total_text_length: totalTextLength,
+    embedding_triggered: embeddingTriggered,
+  });
 }
 
 async function performFetchOcr({ supabase, payload }) {
@@ -1239,6 +2239,13 @@ function parsePayload(body) {
     request_id: String(body.request_id || "").trim(),
     workflow_execution_id: String(body.workflow_execution_id || "").trim(),
     kind: String(body.kind || "").trim(),
+    filename: String(body.filename || "").trim(),
+    page_texts: Array.isArray(body.page_texts) ? body.page_texts.map((text) => String(text || "")) : [],
+    all_page_texts: Array.isArray(body.all_page_texts) ? body.all_page_texts.map((text) => String(text || "")) : [],
+    trigger_embedding: body.trigger_embedding !== false,
+    chunk_ids: Array.isArray(body.chunk_ids)
+      ? body.chunk_ids.map((id) => normalizeUuid(id)).filter(Boolean)
+      : [],
   };
 }
 
@@ -1254,10 +2261,16 @@ function ensureRequiredFields(payload, fields) {
 
 async function handleWrappedStep(req, res, handler, { requestId, log }) {
   try {
-    requireInternalCaller(req.headers);
     const supabase = createServiceClient();
     const body = await handler.readJsonBody(req);
     const payload = parsePayload(body);
+    const caller = await requireIngestionCaller({ supabase, req, payload });
+    if (!payload.user_id && caller.userId) payload.user_id = caller.userId;
+    if (payload.document_id && (!payload.workspace_id || !payload.user_id)) {
+      const document = await fetchDocumentOrThrow(supabase, payload.document_id);
+      if (!payload.workspace_id) payload.workspace_id = normalizeUuid(document.workspace_id);
+      if (!payload.user_id) payload.user_id = normalizeUuid(document.user_id);
+    }
     const result = await handler.execute({
       req,
       res,
@@ -1412,7 +2425,17 @@ export async function handleIngestionRunTextPipeline(req, res, { requestId, log,
 export async function handleIngestionStartOcr(req, res, { requestId, log, readJsonBody }) {
   return await handleWrappedStep(req, res, {
     readJsonBody,
-    execute: async ({ supabase, payload, requestId }) => {
+    execute: async ({ supabase, body, payload, requestId, log }) => {
+      if (Array.isArray(body.page_images) && body.page_images.length > 0) {
+        ensureRequiredFields(payload, ["document_id"]);
+        return await performVisionOcr({
+          supabase,
+          payload,
+          pageImages: body.page_images,
+          requestId,
+          log,
+        });
+      }
       ensureRequiredFields(payload, [
         "document_id",
         "workspace_id",
@@ -1463,7 +2486,12 @@ export async function handleIngestionEmbed(req, res, { requestId, log, readJsonB
   return await handleWrappedStep(req, res, {
     readJsonBody,
     execute: async ({ supabase, payload, requestId }) => {
-      ensureRequiredFields(payload, ["document_id", "workspace_id"]);
+      ensureRequiredFields(payload, ["workspace_id"]);
+      if (!payload.document_id && (!Array.isArray(payload.chunk_ids) || payload.chunk_ids.length === 0)) {
+        const error = new Error("Missing document_id or chunk_ids");
+        error.statusCode = 400;
+        throw error;
+      }
       return await runEmbedStep({ supabase, requestId, payload });
     },
   }, { requestId, log });
@@ -1498,48 +2526,337 @@ export async function handleIngestionExtractInsights(req, res, { requestId, log,
   }, { requestId, log });
 }
 
-async function runPassthroughHandler({ requestId, functionName, body }) {
-  const result = await invokeSupabaseStep({
-    functionName,
-    requestId,
-    body,
+export function buildCleanupVectorsEnvelope({
+  requestId,
+  documentId,
+  workspaceId,
+  validChunks,
+  embeddedCount,
+  kind,
+}) {
+  return buildGcpEnvelope(requestId, {
+    ...(kind ? { kind } : {}),
+    success: true,
+    document_id: normalizeUuid(documentId),
+    workspace_id: normalizeUuid(workspaceId),
+    valid_chunks: Number(validChunks || 0),
+    vectors_before: null,
+    orphaned_deleted: 0,
+    vectors_after: Number(embeddedCount || 0),
+    missing_reembedded: Number(embeddedCount || 0),
+    scope: "document",
+    note:
+      "Ensured current chunks are embedded. Orphan vector deletion is intentionally skipped (Vector Buckets alpha).",
   });
-  return buildGcpEnvelope(requestId, result.json || { success: true });
+}
+
+async function runReconcileDocumentStatusNative({ supabase, requestId, body }) {
+  const dryRun = body?.dry_run === true;
+  const threshold = new Date(Date.now() - RECONCILE_STUCK_THRESHOLD_MINUTES * 60 * 1000).toISOString();
+  const result = {
+    success: true,
+    request_id: requestId,
+    dry_run: dryRun,
+    processing_status_fixed: 0,
+    ocr_status_fixed: 0,
+    embedding_status_fixed: 0,
+    details: {
+      processing_stuck: [],
+      ocr_stuck: [],
+      embedding_incomplete: [],
+    },
+    timestamp: new Date().toISOString(),
+    execution_plane: "gcp",
+  };
+
+  const { data: stuckProcessing } = await supabase
+    .from("documents")
+    .select("id, title, processing_status, updated_at")
+    .eq("processing_status", "processing")
+    .lt("updated_at", threshold)
+    .is("deleted_at", null);
+  for (const doc of stuckProcessing || []) {
+    result.details.processing_stuck.push(doc.id);
+    const [{ data: chunks }, { data: toc }] = await Promise.all([
+      supabase.from("document_chunks").select("id").eq("document_id", doc.id).limit(1),
+      supabase.from("document_toc").select("id").eq("document_id", doc.id).limit(1),
+    ]);
+    const hasArtifacts = (chunks || []).length > 0 || (toc || []).length > 0;
+    if (!dryRun) {
+      await supabase
+        .from("documents")
+        .update({
+          processing_status: hasArtifacts ? "completed" : "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", doc.id);
+    }
+    result.processing_status_fixed += 1;
+  }
+
+  const { data: stuckOcr } = await supabase
+    .from("documents")
+    .select("id, title, ocr_status, storage_path, updated_at")
+    .in("ocr_status", ["processing", "pending"])
+    .lt("updated_at", threshold)
+    .is("deleted_at", null);
+  for (const doc of stuckOcr || []) {
+    result.details.ocr_stuck.push(doc.id);
+    let newStatus = !doc.storage_path || doc.storage_path === "local" ? "not_needed" : null;
+    if (!newStatus) {
+      const { data: job } = await supabase
+        .from("mathpix_pdf_jobs")
+        .select("status, mathpix_pdf_id")
+        .eq("document_id", doc.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (job?.status === "completed") newStatus = "completed";
+      else if (job?.status === "error" || job?.status === "failed") newStatus = "failed";
+      else newStatus = doc.ocr_status === "pending" && !job ? "not_needed" : "failed";
+    }
+    if (!dryRun) {
+      await supabase
+        .from("documents")
+        .update({ ocr_status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", doc.id);
+    }
+    result.ocr_status_fixed += 1;
+  }
+
+  const { data: incompleteEmbedding } = await supabase
+    .from("documents")
+    .select("id, title")
+    .eq("embedding_completed", false)
+    .eq("processing_status", "completed")
+    .is("deleted_at", null)
+    .limit(100);
+  for (const doc of incompleteEmbedding || []) {
+    const { count } = await supabase
+      .from("document_chunks")
+      .select("id", { count: "exact", head: true })
+      .eq("document_id", doc.id);
+    if ((count || 0) <= 0) continue;
+    result.details.embedding_incomplete.push(doc.id);
+    if (!dryRun) {
+      await supabase
+        .from("documents")
+        .update({ embedding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", doc.id);
+    }
+    result.embedding_status_fixed += 1;
+  }
+
+  return result;
+}
+
+export function buildDeleteEmbeddingsEnvelope({
+  requestId,
+  documentId,
+  chunksDeleted,
+  embeddingsDeleted,
+  vectorsDeleted,
+}) {
+  return buildGcpEnvelope(requestId, {
+    success: true,
+    document_id: normalizeUuid(documentId),
+    chunks_deleted: Number(chunksDeleted || 0),
+    embeddings_deleted: Number(embeddingsDeleted || 0),
+    vectors_deleted: Number(vectorsDeleted || 0),
+  });
+}
+
+export function groupVectorKeysByIndex(rows) {
+  const byIndex = new Map();
+  for (const row of rows || []) {
+    const key = String(row?.vector_key || "").trim();
+    if (!key) continue;
+    const indexName = String(row?.index_name || "chunks-v1").trim() || "chunks-v1";
+    const keys = byIndex.get(indexName) || [];
+    keys.push(key);
+    byIndex.set(indexName, keys);
+  }
+  return byIndex;
+}
+
+async function deleteVectorsBestEffort({ supabase, chunkIds, log }) {
+  if (!chunkIds.length) return 0;
+  const vectorProjectUrl = String(process.env.VECTOR_PROJECT_URL || "").trim();
+  const vectorServiceKey = String(process.env.VECTOR_SERVICE_ROLE_KEY || "").trim();
+  if (!vectorProjectUrl || !vectorServiceKey) return 0;
+
+  try {
+    const { data: keyRows } = await supabase
+      .from("chunk_embeddings")
+      .select("vector_key,index_name")
+      .in("chunk_id", chunkIds)
+      .eq("status", "ready");
+    const byIndex = groupVectorKeysByIndex(keyRows || []);
+    if (!byIndex.size) return 0;
+
+    const vectorSupabase = createClient(vectorProjectUrl, vectorServiceKey, {
+      auth: { persistSession: false },
+    });
+    const vectorBucket = vectorSupabase.storage?.vectors?.from?.("asens-embeddings");
+    if (!vectorBucket?.index) return 0;
+
+    let deleted = 0;
+    for (const [indexName, keys] of byIndex.entries()) {
+      const vectorIndex = vectorBucket.index(indexName);
+      if (!vectorIndex?.deleteVectors) continue;
+      for (let i = 0; i < keys.length; i += 500) {
+        const batch = keys.slice(i, i + 500);
+        try {
+          await vectorIndex.deleteVectors({ keys: batch });
+          deleted += batch.length;
+        } catch (error) {
+          log?.warn?.("Vector batch delete failed", {
+            index_name: indexName,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
+    return deleted;
+  } catch (error) {
+    log?.warn?.("Vector cleanup skipped", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return 0;
+  }
+}
+
+async function runDeleteEmbeddingsNative({ supabase, payload, requestId, log }) {
+  ensureRequiredFields(payload, ["document_id"]);
+  const documentId = normalizeUuid(payload.document_id);
+
+  const { data: chunks, error: chunksError } = await supabase
+    .from("document_chunks")
+    .select("id")
+    .eq("document_id", documentId);
+  if (chunksError) {
+    throw new Error(`Failed to fetch chunks: ${chunksError.message}`);
+  }
+
+  const chunkIds = (chunks || []).map((chunk) => chunk.id).filter(Boolean);
+  let vectorsDeleted = 0;
+  let embeddingsDeleted = 0;
+  if (chunkIds.length > 0) {
+    vectorsDeleted = await deleteVectorsBestEffort({ supabase, chunkIds, log });
+    const { error: embeddingsError, count } = await supabase
+      .from("chunk_embeddings")
+      .delete({ count: "exact" })
+      .in("chunk_id", chunkIds);
+    if (embeddingsError) {
+      log?.warn?.("Could not delete chunk embeddings", { error: embeddingsError.message });
+    } else {
+      embeddingsDeleted = count || 0;
+    }
+  }
+
+  const { error: deleteChunksError, count: chunksDeletedCount } = await supabase
+    .from("document_chunks")
+    .delete({ count: "exact" })
+    .eq("document_id", documentId);
+  if (deleteChunksError) {
+    throw new Error(`Failed to delete chunks: ${deleteChunksError.message}`);
+  }
+
+  for (const table of ["insights", "selections"]) {
+    try {
+      await supabase.from(table).delete({ count: "exact" }).eq("document_id", documentId);
+    } catch (error) {
+      log?.warn?.(`Could not delete ${table}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return buildDeleteEmbeddingsEnvelope({
+    requestId,
+    documentId,
+    chunksDeleted: chunksDeletedCount || 0,
+    embeddingsDeleted,
+    vectorsDeleted,
+  });
 }
 
 export async function handleIngestionReconcileStatus(req, res, { requestId, log, readJsonBody }) {
   return await handleWrappedStep(req, res, {
     readJsonBody,
-    execute: async ({ body, requestId }) =>
-      await runPassthroughHandler({
-        requestId,
-        functionName: "reconcile-document-status",
-        body,
-      }),
+    execute: async ({ supabase, body, requestId }) =>
+      await runReconcileDocumentStatusNative({ supabase, requestId, body }),
   }, { requestId, log });
 }
 
 export async function handleIngestionDeleteEmbeddings(req, res, { requestId, log, readJsonBody }) {
   return await handleWrappedStep(req, res, {
     readJsonBody,
-    execute: async ({ body, requestId }) =>
-      await runPassthroughHandler({
-        requestId,
-        functionName: "delete-document-embeddings",
-        body,
-      }),
+    execute: async ({ supabase, payload, requestId, log }) =>
+      await runDeleteEmbeddingsNative({ supabase, payload, requestId, log }),
   }, { requestId, log });
+}
+
+export async function handleDocumentDeleteEmbeddings(req, res, { requestId, log, readJsonBody }) {
+  try {
+    const supabase = createServiceClient();
+    const body = await readJsonBody(req);
+    const payload = parsePayload(body);
+    ensureRequiredFields(payload, ["document_id"]);
+    const document = await fetchDocumentOrThrow(supabase, payload.document_id);
+    await requireDocumentCleanupAccess({ supabase, req, document });
+    const result = await runDeleteEmbeddingsNative({ supabase, payload, requestId, log });
+    return sendJson(res, 200, result);
+  } catch (error) {
+    const status = Number(error?.statusCode || 500);
+    log.error("Document embeddings delete failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return sendJson(res, status, buildGcpEnvelope(requestId, {
+      error: error instanceof Error ? error.message : "Internal server error",
+    }));
+  }
 }
 
 export async function handleIngestionCleanupVectors(req, res, { requestId, log, readJsonBody }) {
   return await handleWrappedStep(req, res, {
     readJsonBody,
-    execute: async ({ body, requestId }) =>
-      await runPassthroughHandler({
+    execute: async ({ supabase, body, payload, requestId }) => {
+      const cleanupScope = body.scope === "workspace" ? "workspace" : "document";
+      ensureRequiredFields(payload, ["workspace_id"]);
+      if (cleanupScope === "workspace") {
+        const error = new Error("workspace-scoped cleanup is not supported; run cleanup per document.");
+        error.statusCode = 400;
+        throw error;
+      }
+      ensureRequiredFields(payload, ["document_id"]);
+
+      const { data: validChunks, error: chunksError } = await supabase
+        .from("document_chunks")
+        .select("id")
+        .eq("document_id", payload.document_id);
+      if (chunksError) {
+        throw new Error(`cleanup_valid_chunks_query_failed: ${chunksError.message}`);
+      }
+
+      const embedResponse = await runEmbedStep({
+        supabase,
         requestId,
-        functionName: "cleanup-document-vectors",
-        body,
-      }),
+        payload: {
+          ...payload,
+          force: true,
+        },
+      });
+      const embeddedCount = Number(embedResponse.embedded_count || 0);
+
+      return buildCleanupVectorsEnvelope({
+        requestId,
+        documentId: payload.document_id,
+        workspaceId: payload.workspace_id,
+        validChunks: (validChunks || []).length,
+        embeddedCount,
+      });
+    },
   }, { requestId, log });
 }
 
@@ -1598,26 +2915,38 @@ export async function handleIngestionTask(req, res, { requestId, log, readJsonBo
       }
 
       if (payload.kind === "reconcile_document") {
-        return await runPassthroughHandler({
-          requestId,
-          functionName: "reconcile-document-status",
-          body,
-        });
+        return await runReconcileDocumentStatusNative({ supabase, requestId, body });
       }
 
       if (payload.kind === "delete_embeddings") {
-        return await runPassthroughHandler({
-          requestId,
-          functionName: "delete-document-embeddings",
-          body,
-        });
+        return await runDeleteEmbeddingsNative({ supabase, payload, requestId, log });
       }
 
       if (payload.kind === "cleanup_vectors") {
-        return await runPassthroughHandler({
+        ensureRequiredFields(payload, ["workspace_id"]);
+        const { data: validChunks, error: chunksError } = await supabase
+          .from("document_chunks")
+          .select("id")
+          .eq("document_id", payload.document_id);
+        if (chunksError) {
+          throw new Error(`cleanup_valid_chunks_query_failed: ${chunksError.message}`);
+        }
+        const embedResponse = await runEmbedStep({
+          supabase,
           requestId,
-          functionName: "cleanup-document-vectors",
-          body,
+          payload: {
+            ...payload,
+            force: true,
+          },
+        });
+        const embeddedCount = Number(embedResponse.embedded_count || 0);
+        return buildCleanupVectorsEnvelope({
+          requestId,
+          documentId: payload.document_id,
+          workspaceId: payload.workspace_id,
+          validChunks: (validChunks || []).length,
+          embeddedCount,
+          kind: payload.kind,
         });
       }
 

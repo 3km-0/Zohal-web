@@ -7,6 +7,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, Card, Input, Spinner, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 
 type WorkspaceRole = 'owner' | 'editor' | 'viewer' | 'guest';
@@ -56,17 +57,19 @@ export default function WorkspaceMembersPage() {
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke('workspace-members-list', {
-      body: { workspace_id: workspaceId },
-    });
-    if (error) {
+    try {
+      const data = await invokeZohalBackendJson<{ members?: MemberRow[] }>(
+        supabase,
+        'workspace/members/list',
+        { workspace_id: workspaceId },
+      );
+      setMembers(data?.members ?? []);
+    } catch (error) {
       showError(error, 'members');
       setMembers([]);
+    } finally {
       setLoading(false);
-      return;
     }
-    setMembers((data?.members as MemberRow[]) ?? []);
-    setLoading(false);
   }, [supabase, workspaceId, showError]);
 
   useEffect(() => {
@@ -78,10 +81,11 @@ export default function WorkspaceMembersPage() {
     setSubmitting(true);
     setNeedsOrgInvite(false);
     try {
-      const { data, error } = await supabase.functions.invoke('workspace-member-add', {
-        body: { workspace_id: workspaceId, email, role },
-      });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<{ ok?: boolean; message?: string }>(
+        supabase,
+        'workspace/members/add',
+        { workspace_id: workspaceId, email, role },
+      );
       if (!data?.ok) throw new Error(data?.message || 'Failed to add member');
       showSuccess('Member added');
       setEmail('');
@@ -102,10 +106,11 @@ export default function WorkspaceMembersPage() {
     if (!orgId) return;
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('org-invite-create', {
-        body: { org_id: orgId, email, role: 'member' },
-      });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<{ ok?: boolean; message?: string }>(
+        supabase,
+        'org/invites/create',
+        { org_id: orgId, email, role: 'member' },
+      );
       if (!data?.ok) throw new Error(data?.message || 'Failed to invite');
       showSuccess('Invite created', 'Share the invite link if email delivery is not configured.');
       setNeedsOrgInvite(false);
@@ -118,10 +123,11 @@ export default function WorkspaceMembersPage() {
 
   const handleUpdateRole = async (memberId: string, nextRole: WorkspaceRole) => {
     try {
-      const { data, error } = await supabase.functions.invoke('workspace-member-update-role', {
-        body: { member_id: memberId, role: nextRole },
-      });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<{ ok?: boolean; message?: string }>(
+        supabase,
+        'workspace/members/update-role',
+        { member_id: memberId, role: nextRole },
+      );
       if (!data?.ok) throw new Error(data?.message || 'Failed to update role');
       showSuccess('Role updated');
       await fetchMembers();
@@ -133,10 +139,11 @@ export default function WorkspaceMembersPage() {
   const handleRemove = async (memberId: string) => {
     if (!confirm('Remove this member from the workspace?')) return;
     try {
-      const { data, error } = await supabase.functions.invoke('workspace-member-remove', {
-        body: { member_id: memberId },
-      });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<{ ok?: boolean; message?: string }>(
+        supabase,
+        'workspace/members/remove',
+        { member_id: memberId },
+      );
       if (!data?.ok) throw new Error(data?.message || 'Failed to remove member');
       showSuccess('Member removed');
       await fetchMembers();
@@ -251,4 +258,3 @@ export default function WorkspaceMembersPage() {
     </div>
   );
 }
-

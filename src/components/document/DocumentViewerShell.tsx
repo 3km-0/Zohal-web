@@ -10,6 +10,7 @@ import { PDFViewer } from '@/components/pdf-viewer';
 import { SpreadsheetViewer } from '@/components/document/SpreadsheetViewer';
 import { DocumentRightPane } from '@/components/document/DocumentRightPane';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import type { Document, Workspace } from '@/types/database';
 import type { RightPaneMode } from '@/types/analysis-runs';
 import { cn } from '@/lib/utils';
@@ -290,6 +291,7 @@ export default function DocumentViewerShell({
   }, [setPaneState]);
 
   const retryIndexing = useCallback(async () => {
+    if (!document) return;
     setRetrying(true);
     try {
       const sourceMeta = (document as any)?.source_metadata as Record<string, unknown> | undefined;
@@ -297,22 +299,25 @@ export default function DocumentViewerShell({
         (sourceMeta.conversion_method as string).includes('cloudconvert');
 
       if (isDocxConversion) {
-        const { error, response } = await supabase.functions.invoke('convert-to-pdf', {
-          body: { document_id: documentId },
-        });
-        if (error) {
-          const json = response ? await response.json().catch(() => null) : null;
-          show(mapHttpError(response?.status ?? 500, json, 'convert-to-pdf'));
+        try {
+          await invokeZohalBackendJson(supabase, '/convert-to-pdf', {
+            document_id: documentId,
+          });
+        } catch (error) {
+          show(mapHttpError(500, { message: error instanceof Error ? error.message : String(error) }, 'convert-to-pdf'));
           return;
         }
         showSuccess('Conversion started', 'Your document is being converted. This usually takes under a minute.');
       } else {
-        const { error, response } = await supabase.functions.invoke('enqueue-document-ingestion', {
-          body: { document_id: documentId },
-        });
-        if (error) {
-          const json = response ? await response.json().catch(() => null) : null;
-          show(mapHttpError(response?.status ?? 500, json, 'enqueue-document-ingestion'));
+        try {
+          await invokeZohalBackendJson(supabase, '/ingestion/start', {
+            document_id: documentId,
+            workspace_id: document.workspace_id,
+            user_id: document.user_id,
+            source: 'manual_retry',
+          });
+        } catch (error) {
+          show(mapHttpError(500, { message: error instanceof Error ? error.message : String(error) }, 'ingestion/start'));
           return;
         }
         showSuccess('Queued for indexing', 'We’ll retry processing in the background.');

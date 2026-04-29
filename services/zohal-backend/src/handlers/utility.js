@@ -196,6 +196,61 @@ export function buildSupportTicketCreateResponse({ ticketId, category, priority,
   };
 }
 
+export function buildMathpixTokenResponse({ appToken, expiresAt, strokesSessionId, requestId }) {
+  return {
+    app_token: appToken,
+    expires_at: expiresAt,
+    ...(strokesSessionId ? { strokes_session_id: strokesSessionId } : {}),
+    request_id: requestId,
+    execution_plane: "gcp",
+  };
+}
+
+export async function handleMathpixToken(req, res, { requestId, readJsonBody }) {
+  try {
+    await getUser(req);
+    const body = await readJsonBody(req).catch(() => ({}));
+    const mathpixAppId = String(process.env.MATHPIX_APP_ID || "").trim();
+    const mathpixAppKey = String(process.env.MATHPIX_APP_KEY || "").trim();
+    if (!mathpixAppId || !mathpixAppKey) {
+      return sendJson(res, 500, {
+        error: "OCR service not configured",
+        request_id: requestId,
+        execution_plane: "gcp",
+      });
+    }
+
+    const mathpixResponse = await fetch("https://api.mathpix.com/v3/app-tokens", {
+      method: "POST",
+      headers: {
+        app_id: mathpixAppId,
+        app_key: mathpixAppKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        include_strokes_session_id: body.include_strokes_session === true,
+      }),
+    });
+    if (!mathpixResponse.ok) {
+      return sendJson(res, 502, {
+        error: "Failed to obtain OCR token",
+        request_id: requestId,
+        execution_plane: "gcp",
+      });
+    }
+
+    const mathpixData = await mathpixResponse.json();
+    return sendJson(res, 200, buildMathpixTokenResponse({
+      appToken: mathpixData.app_token,
+      expiresAt: mathpixData.app_token_expires_at,
+      strokesSessionId: mathpixData.strokes_session_id,
+      requestId,
+    }));
+  } catch (error) {
+    return safeError(res, requestId, error);
+  }
+}
+
 export async function handleDocumentDownloadUrl(req, res, { requestId, readJsonBody, log }) {
   try {
     const { client } = await getUser(req);

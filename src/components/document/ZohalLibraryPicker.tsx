@@ -7,6 +7,7 @@ import { Button, Card, Spinner, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { deriveLibraryObjectPathFromUrl, downloadLibraryPdf, normalizeLibraryObjectPath } from '@/lib/zohal-library';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 type LibraryItem = {
   id: string;
@@ -46,8 +47,7 @@ export function ZohalLibraryPicker({ onClose, onSelectFile }: ZohalLibraryPicker
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('zohal-library-list', { body: {} });
-      if (error) throw error;
+      const data = await invokeZohalBackendJson<{ items?: unknown[] }>(supabase, 'library/list', {});
 
       const list = Array.isArray((data as any)?.items) ? ((data as any).items as any[]) : [];
       const normalized: LibraryItem[] = list

@@ -123,3 +123,21 @@ export function generateSignedUploadUrl(storagePath, options = {}) {
 export function generateSignedDownloadUrl(storagePath, options = {}) {
   return buildSignedUrl("GET", storagePath, options);
 }
+
+export async function uploadBufferToGCS(storagePath, data, contentType = "application/octet-stream", options = {}) {
+  const { url } = generateSignedUploadUrl(storagePath, {
+    ...options,
+    contentType,
+  });
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "content-type": contentType,
+    },
+    body: Buffer.isBuffer(data) ? data : Buffer.from(data),
+  });
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(`GCS upload failed (${response.status}): ${details.slice(0, 240)}`);
+  }
+}

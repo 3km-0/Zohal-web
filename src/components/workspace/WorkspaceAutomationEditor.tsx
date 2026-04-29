@@ -7,6 +7,7 @@ import { Badge, Button, EmptyState, Input, ZohalToggle, Spinner } from '@/compon
 import { useToast } from '@/components/ui/Toast';
 import { automationStatusVariant, normalizeAutomationActivity, summarizeAutomationRun } from '@/lib/automations';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 type AutomationRow = {
   id: string;
@@ -80,31 +81,34 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
   const loadAutomation = useCallback(async () => {
     if (!workspaceId) return;
     setLoadingAutomation(true);
-    const { data, error } = await supabase.functions.invoke('workspace-automations', {
-      body: {
-        workspace_id: workspaceId,
-        action: 'get',
-        limit: 20,
-      },
-    });
-    if (error || !data?.ok) {
-      showError(error || new Error('Failed to load automations'), 'workspace-automations');
+    try {
+      const data = await invokeZohalBackendJson<{ ok?: boolean; automation?: AutomationRow; runs?: AutomationRun[] }>(
+        supabase,
+        'workspace/automations',
+        {
+          workspace_id: workspaceId,
+          action: 'get',
+          limit: 20,
+        },
+      );
+      if (!data?.ok) throw new Error('Failed to load automations');
+      const nextAutomation = data.automation as AutomationRow;
+      const nextRuns = Array.isArray(data.runs) ? (data.runs as AutomationRun[]) : [];
+      setAutomation(nextAutomation);
+      setRuns(nextRuns);
+      setEnabled(nextAutomation.enabled !== false);
+      setTriggerOnIngestion(nextAutomation.trigger_document_ingestion_completed !== false);
+      setDailyRefresh(nextAutomation.daily_schedule_enabled === true);
+      setScheduleTime(nextAutomation.daily_schedule_local_time || '09:00:00');
+      setTimezone(nextAutomation.timezone || 'UTC');
+      setPrivateLiveEnabled(nextAutomation.private_live_enabled !== false);
+      setAutoRefreshPrivateLive(nextAutomation.auto_refresh_private_live !== false);
+      setManualRunEnabled(nextAutomation.manual_run_enabled !== false);
+    } catch (error) {
+      showError(error, 'workspace/automations');
+    } finally {
       setLoadingAutomation(false);
-      return;
     }
-    const nextAutomation = data.automation as AutomationRow;
-    const nextRuns = Array.isArray(data.runs) ? (data.runs as AutomationRun[]) : [];
-    setAutomation(nextAutomation);
-    setRuns(nextRuns);
-    setEnabled(nextAutomation.enabled !== false);
-    setTriggerOnIngestion(nextAutomation.trigger_document_ingestion_completed !== false);
-    setDailyRefresh(nextAutomation.daily_schedule_enabled === true);
-    setScheduleTime(nextAutomation.daily_schedule_local_time || '09:00:00');
-    setTimezone(nextAutomation.timezone || 'UTC');
-    setPrivateLiveEnabled(nextAutomation.private_live_enabled !== false);
-    setAutoRefreshPrivateLive(nextAutomation.auto_refresh_private_live !== false);
-    setManualRunEnabled(nextAutomation.manual_run_enabled !== false);
-    setLoadingAutomation(false);
   }, [showError, supabase, workspaceId]);
 
   useEffect(() => {
@@ -122,29 +126,33 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
   const handleSave = useCallback(async () => {
     if (!workspaceId) return;
     setSaving(true);
-    const { data, error } = await supabase.functions.invoke('workspace-automations', {
-      body: {
-        workspace_id: workspaceId,
-        action: 'update',
-        enabled,
-        trigger_document_ingestion_completed: triggerOnIngestion,
-        daily_schedule_enabled: dailyRefresh,
-        daily_schedule_local_time: scheduleTime,
-        timezone,
-        private_live_enabled: privateLiveEnabled,
-        auto_refresh_private_live: autoRefreshPrivateLive,
-        manual_run_enabled: manualRunEnabled,
-      },
-    });
-    setSaving(false);
-    if (error || !data?.ok) {
-      showError(error || new Error(t('saveFailed')), 'workspace-automations');
-      return;
+    try {
+      const data = await invokeZohalBackendJson<{ ok?: boolean; automation?: AutomationRow; runs?: AutomationRun[] }>(
+        supabase,
+        'workspace/automations',
+        {
+          workspace_id: workspaceId,
+          action: 'update',
+          enabled,
+          trigger_document_ingestion_completed: triggerOnIngestion,
+          daily_schedule_enabled: dailyRefresh,
+          daily_schedule_local_time: scheduleTime,
+          timezone,
+          private_live_enabled: privateLiveEnabled,
+          auto_refresh_private_live: autoRefreshPrivateLive,
+          manual_run_enabled: manualRunEnabled,
+        },
+      );
+      if (!data?.ok) throw new Error(t('saveFailed'));
+      showSuccess(t('saved'));
+      const nextAutomation = data.automation as AutomationRow;
+      setAutomation(nextAutomation);
+      setRuns(Array.isArray(data.runs) ? (data.runs as AutomationRun[]) : []);
+    } catch (error) {
+      showError(error, 'workspace/automations');
+    } finally {
+      setSaving(false);
     }
-    showSuccess(t('saved'));
-    const nextAutomation = data.automation as AutomationRow;
-    setAutomation(nextAutomation);
-    setRuns(Array.isArray(data.runs) ? (data.runs as AutomationRun[]) : []);
   }, [
     autoRefreshPrivateLive,
     dailyRefresh,
@@ -164,18 +172,22 @@ export function WorkspaceAutomationEditor({ workspaceId }: { workspaceId: string
   const handleRunNow = useCallback(async () => {
     if (!workspaceId) return;
     setRunningNow(true);
-    const { data, error } = await supabase.functions.invoke('workspace-automation-run-now', {
-      body: {
-        workspace_id: workspaceId,
-      },
-    });
-    setRunningNow(false);
-    if (error || !data?.ok) {
-      showError(error || new Error(t('runFailed')), 'workspace-automation-run-now');
-      return;
+    try {
+      const data = await invokeZohalBackendJson<{ ok?: boolean }>(
+        supabase,
+        'workspace/automations/run-now',
+        {
+          workspace_id: workspaceId,
+        },
+      );
+      if (!data?.ok) throw new Error(t('runFailed'));
+      showSuccess(t('running'));
+      await loadAutomation();
+    } catch (error) {
+      showError(error, 'workspace/automations/run-now');
+    } finally {
+      setRunningNow(false);
     }
-    showSuccess(t('running'));
-    await loadAutomation();
   }, [loadAutomation, showError, showSuccess, supabase, t, workspaceId]);
 
   if (loadingAutomation || !automation) {

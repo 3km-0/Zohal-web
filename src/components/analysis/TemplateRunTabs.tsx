@@ -9,10 +9,6 @@ import { cn } from '@/lib/utils';
 
 type SharedSummaryActions = {
   onCreatePinnedContext: () => void;
-  onGenerateKnowledgePack: () => void;
-  onRunCompliance: () => void;
-  isGeneratingKnowledgePack: boolean;
-  isRunningCompliance: boolean;
 };
 
 export interface GenericSummaryTabProps extends SharedSummaryActions {
@@ -24,10 +20,6 @@ export interface GenericSummaryTabProps extends SharedSummaryActions {
 
 function SummaryActions({
   onCreatePinnedContext,
-  onGenerateKnowledgePack,
-  onRunCompliance,
-  isGeneratingKnowledgePack,
-  isRunningCompliance,
 }: SharedSummaryActions) {
   return (
     <Card>
@@ -37,12 +29,6 @@ function SummaryActions({
       <CardContent className="flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" onClick={onCreatePinnedContext}>
           Pin this run
-        </Button>
-        <Button size="sm" variant="secondary" onClick={onGenerateKnowledgePack} disabled={isGeneratingKnowledgePack}>
-          {isGeneratingKnowledgePack ? 'Generating...' : 'Generate pack'}
-        </Button>
-        <Button size="sm" onClick={onRunCompliance} disabled={isRunningCompliance}>
-          {isRunningCompliance ? 'Checking...' : 'Run compliance'}
         </Button>
       </CardContent>
     </Card>
@@ -55,10 +41,6 @@ export function GenericSummaryTab({
   metrics,
   sections,
   onCreatePinnedContext,
-  onGenerateKnowledgePack,
-  onRunCompliance,
-  isGeneratingKnowledgePack,
-  isRunningCompliance,
 }: GenericSummaryTabProps) {
   return (
     <div className="space-y-4 animate-fadeInUp">
@@ -131,10 +113,6 @@ export function GenericSummaryTab({
 
       <SummaryActions
         onCreatePinnedContext={onCreatePinnedContext}
-        onGenerateKnowledgePack={onGenerateKnowledgePack}
-        onRunCompliance={onRunCompliance}
-        isGeneratingKnowledgePack={isGeneratingKnowledgePack}
-        isRunningCompliance={isRunningCompliance}
       />
     </div>
   );

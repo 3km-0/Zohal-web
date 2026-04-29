@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { downloadLibraryPdf } from '@/lib/zohal-library';
+import { zohalBackendUrl } from '@/lib/zohal-backend';
 import { mapHttpError } from '@/lib/errors';
 import {
   describeLiveExperienceLink,
@@ -131,7 +132,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
   const loadConversations = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-conversations`, {
+    const response = await fetch(zohalBackendUrl('ask/conversations'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ action: 'list', workspace_id: workspaceId ?? undefined }),
@@ -146,7 +147,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
       setError(null);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setLoadingHistory(false); return; }
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ask-conversations`, {
+      const response = await fetch(zohalBackendUrl('ask/conversations'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ action: 'history', conversation_id: conversationId, workspace_id: workspaceId ?? undefined }),
@@ -342,7 +343,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setError(t('errors.auth')); setLoading(false); return; }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`, {
+    const response = await fetch(zohalBackendUrl('workspace/agent'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({
@@ -391,7 +392,7 @@ export function AskAgentView({ workspaceId = null, workspaceName = null }: AskAg
       ? { included_document_ids: selectedSourceIds }
       : action.payload;
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`, {
+    const response = await fetch(zohalBackendUrl('workspace/agent'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({

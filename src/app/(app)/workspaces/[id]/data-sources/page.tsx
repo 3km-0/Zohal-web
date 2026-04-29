@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { WorkspaceTabs } from '@/components/workspace/WorkspaceTabs';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ZohalToggle } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -45,16 +46,17 @@ export default function DataSourcesPage() {
     setLoading(true);
     try {
       const [attachedResult, libraryResult] = await Promise.all([
-        supabase.functions.invoke('workspace-api-connections', {
-          body: { action: 'list', workspace_id: workspaceId },
+        invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+          action: 'list',
+          workspace_id: workspaceId,
         }),
-        supabase.functions.invoke('workspace-api-connections', {
-          body: { action: 'list-library' },
+        invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+          action: 'list-library',
         }),
       ]);
 
-      const attached = attachedResult.data?.data?.connections || attachedResult.data?.connections || [];
-      const library = libraryResult.data?.data?.connections || libraryResult.data?.connections || [];
+      const attached = attachedResult?.data?.connections || attachedResult?.connections || [];
+      const library = libraryResult?.data?.connections || libraryResult?.connections || [];
 
       setAttachedSources(attached);
       setLibrarySources(library);
@@ -76,13 +78,11 @@ export default function DataSourcesPage() {
   const attachSource = async (connectionId: string) => {
     setBusySourceId(connectionId);
     try {
-      await supabase.functions.invoke('workspace-api-connections', {
-        body: {
-          action: 'attach',
-          workspace_id: workspaceId,
-          connection_id: connectionId,
-          enabled_by_default: true,
-        },
+      await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+        action: 'attach',
+        workspace_id: workspaceId,
+        connection_id: connectionId,
+        enabled_by_default: true,
       });
       await loadData();
     } finally {
@@ -93,12 +93,10 @@ export default function DataSourcesPage() {
   const detachSource = async (connectionId: string) => {
     setBusySourceId(connectionId);
     try {
-      await supabase.functions.invoke('workspace-api-connections', {
-        body: {
-          action: 'detach',
-          workspace_id: workspaceId,
-          connection_id: connectionId,
-        },
+      await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+        action: 'detach',
+        workspace_id: workspaceId,
+        connection_id: connectionId,
       });
       await loadData();
     } finally {
@@ -110,13 +108,11 @@ export default function DataSourcesPage() {
     if (!connection.attachment_id) return;
     setBusySourceId(connection.id);
     try {
-      await supabase.functions.invoke('workspace-api-connections', {
-        body: {
-          action: 'update-attachment',
-          workspace_id: workspaceId,
-          attachment_id: connection.attachment_id,
-          enabled_by_default: enabled,
-        },
+      await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
+        action: 'update-attachment',
+        workspace_id: workspaceId,
+        attachment_id: connection.attachment_id,
+        enabled_by_default: enabled,
       });
       setAttachedSources((current) =>
         current.map((source) =>

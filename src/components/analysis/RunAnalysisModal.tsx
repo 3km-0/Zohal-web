@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { X, Play, Layers, FileText, CheckCircle, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Spinner, Badge } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { cn } from '@/lib/utils';
 import { resolveRecommendedPlaybook, supportsStructuredAnalysis } from '@/lib/document-analysis';
 import { selectRememberedRelatedDocuments, toAnalysisRunSummary } from '@/lib/analysis/runs';
@@ -64,10 +65,11 @@ export function RunAnalysisModal(props: {
 
   const loadPlaybooks = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('templates-list', {
-        body: { workspace_id: workspaceId, kind: 'document' },
-      });
-      if (error) return;
+      const data = await invokeZohalBackendJson<{ ok?: boolean; templates?: unknown[] }>(
+        supabase,
+        'templates/list',
+        { workspace_id: workspaceId, kind: 'document' },
+      );
       if (data?.ok && Array.isArray(data.templates)) {
         setPlaybooks(data.templates as PlaybookRecord[]);
       }
@@ -519,38 +521,26 @@ export function RunAnalysisModal(props: {
           }))
         : [];
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-document`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          document_id: documentId,
-          workspace_id: workspaceId,
-          user_id: userId,
-          ...(selectedPlaybookId
-            ? {
-                playbook_id: selectedPlaybookId,
-                playbook_version_id: selectedPlaybookVersionId || undefined,
-              }
-            : {}),
-          ...(effectiveScope === 'bundle'
-            ? {
-                document_ids: normalizedMembers.map((member) => member.document_id),
-                member_roles: normalizedMembers,
-                primary_document_id: docsetPrimaryDocumentId,
-                precedence_policy: docsetPrecedencePolicy,
-                docset_mode: 'ephemeral',
-              }
-            : {}),
-        }),
+      await invokeZohalBackendJson(supabase, '/analysis/start', {
+        document_id: documentId,
+        workspace_id: workspaceId,
+        user_id: userId,
+        ...(selectedPlaybookId
+          ? {
+              playbook_id: selectedPlaybookId,
+              playbook_version_id: selectedPlaybookVersionId || undefined,
+            }
+          : {}),
+        ...(effectiveScope === 'bundle'
+          ? {
+              document_ids: normalizedMembers.map((member) => member.document_id),
+              member_roles: normalizedMembers,
+              primary_document_id: docsetPrimaryDocumentId,
+              precedence_policy: docsetPrecedencePolicy,
+              docset_mode: 'ephemeral',
+            }
+          : {}),
       });
-
-      const json = await response.json().catch(() => null);
-      if (!response.ok && response.status !== 202) {
-        throw new Error(json?.message || t('runFailed'));
-      }
 
       onClose();
       router.push(`/workspaces/${workspaceId}/documents/${documentId}/contract-analysis`);

@@ -6,7 +6,7 @@ import {
   generateSignedUploadUrl,
   getDocumentStoragePath,
 } from "../runtime/gcs.js";
-import { requireInternalCaller } from "../runtime/internal-auth.js";
+import { getExpectedInternalToken, requireInternalCaller } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 
 function createServiceClient() {
@@ -26,6 +26,66 @@ function getHeaderValue(headers, name) {
   const value = headers[name.toLowerCase()];
   if (Array.isArray(value)) return String(value[0] || "").trim();
   return String(value || "").trim();
+}
+
+function stripBearer(value) {
+  const raw = String(value || "").trim();
+  return raw.toLowerCase().startsWith("bearer ") ? raw.slice("bearer ".length).trim() : raw;
+}
+
+async function requireConvertCaller({ supabase, req, document }) {
+  try {
+    requireInternalCaller(req.headers);
+    return;
+  } catch {
+    // Direct client calls are allowed after verifying the Supabase user token.
+  }
+  const token = stripBearer(req.headers.authorization || req.headers.Authorization || "");
+  if (!token) {
+    const error = new Error("Missing authorization token");
+    error.statusCode = 401;
+    throw error;
+  }
+  const { data, error } = await supabase.auth.getUser(token);
+  const userId = String(data?.user?.id || "").trim().toLowerCase();
+  if (error || !userId) {
+    const authError = new Error("Invalid authorization token");
+    authError.statusCode = 401;
+    throw authError;
+  }
+  if (String(document.user_id || "").trim().toLowerCase() === userId) return;
+  const workspaceId = String(document.workspace_id || "").trim().toLowerCase();
+  if (workspaceId) {
+    const [{ data: owned }, { data: member }] = await Promise.all([
+      supabase.from("workspaces").select("id").eq("id", workspaceId).eq("owner_id", userId).maybeSingle(),
+      supabase.from("workspace_members").select("id").eq("workspace_id", workspaceId).eq("user_id", userId).maybeSingle(),
+    ]);
+    if (owned?.id || member?.id) return;
+  }
+  const forbidden = new Error("forbidden");
+  forbidden.statusCode = 403;
+  throw forbidden;
+}
+
+function backendBaseUrl(req) {
+  const configured = String(process.env.INGESTION_SERVICE_BASE_URL || process.env.ZOHAL_BACKEND_URL || "").trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  const host = String(req.headers.host || "").trim();
+  if (!host) throw new Error("INGESTION_SERVICE_BASE_URL not configured");
+  const proto = String(req.headers["x-forwarded-proto"] || "").trim() || "https";
+  return `${proto}://${host}`;
+}
+
+function internalBackendHeaders(requestId) {
+  const token = getExpectedInternalToken();
+  if (!token) throw new Error("Missing internal token for backend ingestion dispatch");
+  return {
+    "content-type": "application/json",
+    authorization: `Bearer ${token}`,
+    apikey: token,
+    "x-internal-function-jwt": token,
+    "x-request-id": requestId,
+  };
 }
 
 export function getProxyConversionInputs(headers) {
@@ -138,8 +198,6 @@ async function resolveStorageRouting({ supabase, workspaceId, storagePath }) {
 }
 
 export async function handleConvertToPdf(req, res, { requestId, log, readJsonBody }) {
-  requireInternalCaller(req.headers);
-
   let documentId = null;
   const supabase = createServiceClient();
 
@@ -176,6 +234,7 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
         requestId,
       }));
     }
+    await requireConvertCaller({ supabase, req, document });
 
     const currentMeta = document.source_metadata || {};
     const sourcePath = sourceStoragePath ||
@@ -379,21 +438,17 @@ export async function handleConvertToPdf(req, res, { requestId, log, readJsonBod
 
     let queuedForIngestion = false;
     try {
-      const queueName = String(
-        process.env.DOCUMENT_INGESTION_QUEUE_NAME || "document_ingestion_jobs",
-      ).trim();
-      await supabase.rpc("pgmq_send", {
-        queue_name: queueName,
-        message: {
-          kind: "ingest_document",
+      const response = await fetch(`${backendBaseUrl(req)}/ingestion/start`, {
+        method: "POST",
+        headers: internalBackendHeaders(requestId),
+        body: JSON.stringify({
           document_id: docId,
           workspace_id: workspaceId,
           user_id: userId,
           source: "convert_to_pdf",
-        },
-        sleep_seconds: 0,
+        }),
       });
-      queuedForIngestion = true;
+      queuedForIngestion = response.ok || response.status === 202;
     } catch (queueError) {
       log.warn("Failed to enqueue ingestion job", {
         error: queueError instanceof Error ? queueError.message : String(queueError),

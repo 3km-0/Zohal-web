@@ -5,6 +5,7 @@ import { X, MessageCircle, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Card, Button, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 interface WhatsAppPickerProps {
   workspaceId: string;
@@ -74,9 +75,9 @@ export function WhatsAppPicker({ workspaceId, initialAction = 'ingestion', onClo
       workspaceResult,
       bindingResult,
     ] = await Promise.all([
-      supabase.functions.invoke('whatsapp-channel-status', {
-        body: { workspace_id: workspaceId },
-      }),
+      invokeZohalBackendJson<ChannelStatusResponse>(supabase, 'integrations/whatsapp/channel-status', {
+        workspace_id: workspaceId,
+      }).then((data) => ({ data, error: null })).catch((error) => ({ data: null, error })),
       supabase
         .from('profiles')
         .select('whatsapp_phone_number')

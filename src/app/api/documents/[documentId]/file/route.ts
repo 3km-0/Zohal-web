@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { zohalBackendUrl } from '@/lib/zohal-backend';
 import { NextResponse } from 'next/server';
 
 type RouteContext = {
@@ -33,7 +34,7 @@ export async function GET(_: Request, { params }: RouteContext) {
   }
 
   const signedUrlResponse = await fetch(
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/document-download-url`,
+    zohalBackendUrl('documents/download-url'),
     {
       method: 'POST',
       headers: {

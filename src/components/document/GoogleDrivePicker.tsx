@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/Toast';
 import { cn, formatFileSize } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { mapHttpError } from '@/lib/errors';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 interface GoogleDrivePickerProps {
   workspaceId: string;
@@ -275,26 +276,20 @@ export function GoogleDrivePicker({
         const f = selectedFiles[i]!;
         setImportProgress({ current: i + 1, total: selectedFiles.length });
 
-        const { data, error: importError, response } = await supabase.functions.invoke('gdrive-import', {
-          body: {
-            file_id: f.id,
-            file_name: f.name,
-            file_size: f.sizeBytes || 0,
-            resource_key: f.resourceKey || null,
-            workspace_id: workspaceId,
-            folder_id: targetFolderId || null,
-            user_id: user.id,
-            access_token: accessToken,
-          },
-        });
-
-        if (importError) {
-          const json = response ? await response.json().catch(() => null) : null;
-          const status = response?.status ?? (importError as any)?.status ?? 500;
-          const uiErr = mapHttpError(status, json, 'gdrive-import');
+        const data = await invokeZohalBackendJson<any>(supabase, 'integrations/google-drive/import', {
+          file_id: f.id,
+          file_name: f.name,
+          file_size: f.sizeBytes || 0,
+          resource_key: f.resourceKey || null,
+          workspace_id: workspaceId,
+          folder_id: targetFolderId || null,
+          user_id: user.id,
+          access_token: accessToken,
+        }).catch((error) => {
+          const uiErr = mapHttpError(500, { error: error instanceof Error ? error.message : 'Import failed' }, 'integrations/google-drive/import');
           toast.show(uiErr);
           throw new Error(uiErr.message);
-        }
+        });
         if (!data?.success) throw new Error(data?.error || 'Import failed');
 
         lastImportedId = data.document_id;

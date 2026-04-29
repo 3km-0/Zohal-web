@@ -17,10 +17,6 @@ export interface OverviewTabProps {
   verificationObjectState: string | null;
   // Actions
   onCreatePinnedContext: () => void;
-  onGenerateKnowledgePack: () => void;
-  onRunCompliance: () => void;
-  isGeneratingKnowledgePack: boolean;
-  isRunningCompliance: boolean;
   // Discrepancy / proof helpers
   proofHref: (evidence: any) => string | null;
 }
@@ -33,10 +29,6 @@ export function OverviewTab({
   bundleDocuments,
   verificationObjectState,
   onCreatePinnedContext,
-  onGenerateKnowledgePack,
-  onRunCompliance,
-  isGeneratingKnowledgePack,
-  isRunningCompliance,
   proofHref,
 }: OverviewTabProps) {
   const noticeDeadline = computeNoticeDeadline(contract.end_date, contract.notice_period_days);
@@ -233,12 +225,6 @@ export function OverviewTab({
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" variant="secondary" onClick={onCreatePinnedContext}>
               Pin this document
-            </Button>
-            <Button size="sm" variant="secondary" onClick={onGenerateKnowledgePack} disabled={isGeneratingKnowledgePack}>
-              {isGeneratingKnowledgePack ? 'Generating...' : 'Generate pack'}
-            </Button>
-            <Button size="sm" onClick={onRunCompliance} disabled={isRunningCompliance}>
-              {isRunningCompliance ? 'Checking...' : 'Run compliance'}
             </Button>
           </div>
           {snapshot?.pack?.context ? (

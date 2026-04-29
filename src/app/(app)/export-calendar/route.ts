@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { zohalBackendUrl } from '@/lib/zohal-backend';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   const upstream = await fetch(
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/export-calendar`,
+    zohalBackendUrl('exports/calendar'),
     {
       method: 'POST',
       headers: {
@@ -58,4 +59,3 @@ export async function GET(request: NextRequest) {
 
   return new NextResponse(arrayBuffer, { status: 200, headers });
 }
-

@@ -97,6 +97,84 @@ function buildAnalysisServiceBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+function stripBearer(value) {
+  const raw = String(value || "").trim();
+  return raw.toLowerCase().startsWith("bearer ") ? raw.slice("bearer ".length).trim() : raw;
+}
+
+async function requireAnalysisUser({ supabase, req, workspaceId, userId }) {
+  try {
+    requireInternalCaller(req.headers);
+    return { kind: "internal", userId: normalizeUuid(userId) };
+  } catch {
+    // Direct client calls are allowed after Supabase Auth verification.
+  }
+  const token = stripBearer(req.headers.authorization || req.headers.Authorization || "");
+  if (!token) {
+    const error = new Error("Missing authorization token");
+    error.statusCode = 401;
+    throw error;
+  }
+  const { data, error } = await supabase.auth.getUser(token);
+  const callerId = normalizeUuid(data?.user?.id);
+  if (error || !callerId) {
+    const authError = new Error("Invalid authorization token");
+    authError.statusCode = 401;
+    throw authError;
+  }
+  if (userId && normalizeUuid(userId) !== callerId) {
+    const forbidden = new Error("forbidden");
+    forbidden.statusCode = 403;
+    throw forbidden;
+  }
+  const normalizedWorkspaceId = normalizeUuid(workspaceId);
+  if (normalizedWorkspaceId) {
+    const [{ data: owned }, { data: member }] = await Promise.all([
+      supabase.from("workspaces").select("id").eq("id", normalizedWorkspaceId).eq("owner_id", callerId).maybeSingle(),
+      supabase.from("workspace_members").select("id").eq("workspace_id", normalizedWorkspaceId).eq("user_id", callerId).maybeSingle(),
+    ]);
+    if (owned?.id || member?.id) return { kind: "user", userId: callerId };
+  }
+  const forbidden = new Error("forbidden");
+  forbidden.statusCode = 403;
+  throw forbidden;
+}
+
+function groupChunksByPage(chunks) {
+  const byPage = new Map();
+  for (const chunk of chunks || []) {
+    const page = Number(chunk?.page_number || 0);
+    if (!byPage.has(page)) byPage.set(page, []);
+    const text = String(chunk?.content_text || "");
+    if (text.trim()) byPage.get(page).push(text);
+  }
+  return Array.from(byPage.keys()).sort((a, b) => a - b).map((page) => ({
+    page_number: page,
+    text: byPage.get(page).join("\n"),
+  }));
+}
+
+function makePageBatches(pages, pagesPerBatch, maxCharsPerBatch) {
+  const batches = [];
+  let index = 0;
+  while (index < pages.length) {
+    const slice = [];
+    let chars = 0;
+    while (index < pages.length && slice.length < pagesPerBatch) {
+      const page = pages[index];
+      const addition = `\n\n[Page ${page.page_number}]\n${page.text}`;
+      if (slice.length > 0 && chars + addition.length > maxCharsPerBatch) break;
+      slice.push(page);
+      chars += addition.length;
+      index += 1;
+    }
+    const startPage = slice[0]?.page_number ?? 0;
+    const endPage = slice[slice.length - 1]?.page_number ?? startPage;
+    batches.push({ startPage, endPage });
+  }
+  return batches;
+}
+
 function getInternalTaskHeaders(requestId) {
   const token = getExpectedInternalToken();
   if (!token) {
@@ -391,6 +469,266 @@ async function markAnalysisFailed({
   }).catch(() => null);
 }
 
+async function handleClientStart(req, res, { requestId, log, body }) {
+  const supabase = createServiceClient();
+  const workspaceId = normalizeUuid(body.workspace_id);
+  const requestedUserId = normalizeUuid(body.user_id);
+  const caller = await requireAnalysisUser({
+    supabase,
+    req,
+    workspaceId,
+    userId: requestedUserId,
+  });
+  const userId = requestedUserId || caller.userId;
+  const primaryDocumentId = normalizeUuid(body.document_id || body.primary_document_id);
+  const documentIds = Array.isArray(body.document_ids)
+    ? Array.from(new Set(body.document_ids.map(normalizeUuid).filter(Boolean))).slice(0, 8)
+    : primaryDocumentId
+    ? [primaryDocumentId]
+    : [];
+  const templateId = String(body.template_id || body.playbook_id || "document_analysis").trim();
+
+  ensureFields({
+    workspace_id: workspaceId,
+    user_id: userId,
+    document_ids: documentIds,
+  }, ["workspace_id", "user_id", "document_ids"]);
+
+  const { data: docs, error: docsError } = await supabase
+    .from("documents")
+    .select("id, workspace_id, user_id, processing_status, ocr_status, text_extraction_completed, embedding_completed, updated_at")
+    .in("id", documentIds);
+  if (docsError) {
+    throw new Error(`Failed to load documents: ${docsError.message}`);
+  }
+  const found = new Set((docs || []).map((doc) => normalizeUuid(doc.id)));
+  const missing = documentIds.filter((id) => !found.has(id));
+  if (missing.length > 0) {
+    const error = new Error(`Missing documents: ${missing.join(", ")}`);
+    error.statusCode = 404;
+    throw error;
+  }
+  if ((docs || []).some((doc) => normalizeUuid(doc.workspace_id) !== workspaceId)) {
+    const error = new Error("One or more documents are outside this workspace");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let actionId = normalizeUuid(body.action_id);
+  const now = new Date().toISOString();
+  const corpus = {
+    corpus_id: null,
+    corpus_kind: documentIds.length > 1 ? "related_documents" : "single_document",
+    included_document_count: documentIds.length,
+    included_library_source_count: Array.isArray(body.library_sources) ? body.library_sources.length : 0,
+    included_api_source_count: Array.isArray(body.api_connection_ids) ? body.api_connection_ids.length : 0,
+  };
+
+  if (actionId) {
+    await supabase
+      .from("actions")
+      .update({
+        status: "running",
+        updated_at: now,
+        target_document_ids: documentIds,
+        output_json: {
+          stage: "starting",
+          message: "Starting document analysis",
+          corpus,
+        },
+      })
+      .eq("id", actionId);
+  } else {
+    const { data: actionRow } = await supabase
+      .from("actions")
+      .insert({
+        org_id: null,
+        workspace_id: workspaceId,
+        triggered_by_user_id: userId,
+        plugin_family: "legal",
+        action_type: "document_analysis",
+        status: "running",
+        target_document_ids: documentIds,
+        output_json: {
+          stage: "starting",
+          message: "Starting document analysis",
+          corpus,
+        },
+      })
+      .select("id")
+      .maybeSingle();
+    actionId = normalizeUuid(actionRow?.id);
+  }
+
+  const pagesPerBatch = 7;
+  const maxCharsPerBatch = 32000;
+  const batchPlans = [];
+  for (const docId of documentIds) {
+    const { data: chunkRows, error: chunkError } = await supabase
+      .from("document_chunks")
+      .select("id, document_id, page_number, chunk_index, content_text, bounding_box")
+      .eq("document_id", docId)
+      .order("page_number", { ascending: true })
+      .order("chunk_index", { ascending: true });
+    if (chunkError) {
+      throw new Error(`Failed to load document chunks for ${docId}: ${chunkError.message}`);
+    }
+    const pages = groupChunksByPage(chunkRows || []);
+    if (pages.length === 0) {
+      if (actionId) {
+        await supabase
+          .from("actions")
+          .update({
+            status: "running",
+            updated_at: new Date().toISOString(),
+            output_text: "Document is still being processed. Please try again shortly.",
+            output_json: {
+              stage: "waiting_for_chunks",
+              message: "Document is still being processed.",
+              document_id: docId,
+            },
+          })
+          .eq("id", actionId);
+      }
+      return sendJson(res, 202, buildEnvelope(requestId, {
+        error: "document_not_ready",
+        message: "Document is still being processed (no chunks yet). Please wait a few seconds and try again.",
+        action_id: actionId,
+        document_id: docId,
+      }));
+    }
+    for (const batch of makePageBatches(pages, pagesPerBatch, maxCharsPerBatch)) {
+      batchPlans.push({
+        document_id: docId,
+        startPage: batch.startPage,
+        endPage: batch.endPage,
+      });
+    }
+  }
+
+  const inputConfig = {
+    strategy: "map_reduce",
+    action_id: actionId || null,
+    total_batches: batchPlans.length,
+    pages_per_batch: pagesPerBatch,
+    max_chars_per_batch: maxCharsPerBatch,
+    template_id: templateId,
+    ...(body.playbook_id ? { playbook_id: body.playbook_id } : {}),
+    ...(body.playbook_version_id ? { playbook_version_id: body.playbook_version_id } : {}),
+    ...(body.playbook_options ? { playbook_options: body.playbook_options } : {}),
+    ...(body.review_policy ? { review_policy: body.review_policy } : {}),
+    ...(documentIds.length > 1
+      ? {
+        scope_document_ids: documentIds,
+        document_ids: documentIds,
+        member_roles: Array.isArray(body.member_roles) ? body.member_roles : [],
+        primary_document_id: normalizeUuid(body.primary_document_id) || primaryDocumentId || documentIds[0],
+        precedence_policy: body.precedence_policy || "manual",
+        docset_mode: body.docset_mode || "ephemeral",
+      }
+      : {}),
+    ...(body.scope_mode ? { scope_mode: body.scope_mode } : {}),
+    ...(body.scope_policy ? { scope_policy: body.scope_policy } : {}),
+    ...(body.comparison_target ? { comparison_target: body.comparison_target } : {}),
+    ...(body.partition_key ? { partition_key: body.partition_key } : {}),
+    ...(body.api_connection_ids ? { api_connection_ids: body.api_connection_ids } : {}),
+    execution: {
+      execution_plane: "gcp",
+      request_id: requestId,
+    },
+  };
+
+  const { data: parentRun, error: parentError } = await supabase
+    .from("extraction_runs")
+    .insert({
+      document_id: primaryDocumentId || documentIds[0] || null,
+      workspace_id: workspaceId,
+      user_id: userId,
+      extraction_type: "document_analysis",
+      model: String(process.env.OPENAI_CONTRACT_MODEL || "gpt-5.2").trim(),
+      prompt_version: "map_reduce_v1",
+      status: "running",
+      input_config: inputConfig,
+      started_at: new Date().toISOString(),
+    })
+    .select("id, workspace_id, user_id, document_id, extraction_type, status, input_config, updated_at")
+    .single();
+  if (parentError) {
+    throw new Error(`Failed to create analysis run: ${parentError.message}`);
+  }
+
+  const batchRows = batchPlans.map((batch, index) => ({
+    document_id: batch.document_id || null,
+    workspace_id: workspaceId,
+    user_id: userId,
+    extraction_type: "document_analysis_batch",
+    model: String(process.env.OPENAI_CONTRACT_MODEL || "gpt-5.2").trim(),
+    prompt_version: "map_v1",
+    status: "pending",
+    input_config: {
+      ...inputConfig,
+      parent_run_id: parentRun.id,
+      batch_index: index + 1,
+      total_batches: batchPlans.length,
+      start_page: batch.startPage,
+      end_page: batch.endPage,
+      batch_mode: batch.document_id ? "document" : "api_only",
+    },
+  }));
+  const { data: createdBatches, error: batchError } = await supabase
+    .from("extraction_runs")
+    .insert(batchRows)
+    .select("id, workspace_id, user_id, document_id, extraction_type, status, input_config, updated_at");
+  if (batchError) {
+    throw new Error(`Failed to create analysis batch runs: ${batchError.message}`);
+  }
+
+  if (actionId) {
+    await supabase
+      .from("actions")
+      .update({
+        status: "running",
+        updated_at: new Date().toISOString(),
+        output_json: {
+          stage: "queued",
+          run_id: parentRun.id,
+          total_batches: createdBatches?.length || batchRows.length,
+          corpus,
+        },
+      })
+      .eq("id", actionId);
+  }
+
+  const launch = await startAnalysisWorkflow({
+    req,
+    supabase,
+    requestId,
+    parentRun,
+    batchRuns: createdBatches || [],
+    payload: {
+      parent_run_id: parentRun.id,
+      batch_run_ids: (createdBatches || []).map((row) => row.id),
+      workspace_id: workspaceId,
+      user_id: userId,
+      document_id: primaryDocumentId || documentIds[0] || null,
+      action_id: actionId,
+      template_id: templateId,
+      data_plane: null,
+    },
+    log,
+  });
+
+  return sendJson(res, 202, buildAnalyzeAcceptedPayload({
+    requestId,
+    actionId,
+    runId: parentRun.id,
+    message: "Document analysis queued. Progress will update as batches complete.",
+    workflowExecutionId: launch.workflow_execution_id || null,
+    deferred: launch.deferred === true,
+    alreadyEnqueued: launch.already_enqueued === true,
+  }));
+}
+
 export function isRetryableAnalysisError(error) {
   const status = Number(error?.statusCode || error?.status || 500);
   const message = String(error?.message || "").toLowerCase();
@@ -525,9 +863,12 @@ async function startAnalysisWorkflow({
 }
 
 async function handleStart(req, res, { requestId, log, readJsonBody }) {
-  requireInternalCaller(req.headers);
   const supabase = createServiceClient();
   const body = await readJsonBody(req);
+  if (!normalizeUuid(body.parent_run_id)) {
+    return await handleClientStart(req, res, { requestId, log, body });
+  }
+  requireInternalCaller(req.headers);
   const payload = parseStartPayload(body);
 
   ensureFields(payload, [

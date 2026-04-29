@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { mapHttpError } from '@/lib/errors';
+import { zohalBackendUrl } from '@/lib/zohal-backend';
 import { CHAT_MODEL_OPTIONS, DEFAULT_CHAT_MODEL_ID, findChatModelOption, type ChatModelOption } from '@/lib/chat-models';
 import {
   describeLiveExperienceLink,
@@ -286,7 +287,7 @@ export function AIPanel({
 
         if (!session) throw new Error('Not authenticated');
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`,
+          zohalBackendUrl('workspace/agent'),
           {
             method: 'POST',
             headers: {
@@ -635,7 +636,7 @@ export function AIPanel({
         : action.payload;
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workspace-agent`,
+        zohalBackendUrl('workspace/agent'),
         {
           method: 'POST',
           headers: {

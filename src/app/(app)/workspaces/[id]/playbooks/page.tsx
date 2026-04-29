@@ -19,6 +19,7 @@ import {
 } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import type { PlaybookRecord as TemplateRecord, TemplateSpecV1 as PlaybookSpecV1 } from '@/types/templates';
 import { cn } from '@/lib/utils';
 
@@ -414,20 +415,39 @@ export default function WorkspacePlaybooksPage() {
     setIsSaving(true);
     setIsCompiling(true);
     try {
-      const { data, error } = await supabase.functions.invoke('playbooks-save-draft', {
-        body: {
-          playbook_id: selected.id,
-          template_name: (spec.meta.name || selected.name || '').trim(),
-          template_source_text: templateSourceText,
-          language: spec.options?.language === 'ar' ? 'ar' : 'en',
-          document_type: spec.meta.kind || 'contract',
-          publish,
-          changelog: publish ? 'Published from template source' : 'Saved from template source',
+      const savedSpec = normalizeSpec({
+        ...spec,
+        meta: {
+          ...(spec.meta || {}),
+          name: (spec.meta.name || selected.name || '').trim(),
+          kind: spec.meta.kind || 'contract',
         },
+        template_source: {
+          version: 'zohal_template_source_v1',
+          text: templateSourceText,
+          compiler_version: 'manual_spec_editor_v1',
+          generated_from: 'user',
+          updated_at: new Date().toISOString(),
+        },
+      }, spec.meta.name || selected.name);
+      const data = await invokeZohalBackendJson<{
+        ok?: boolean;
+        message?: string;
+        version?: { id?: string; version_number?: number; published_at?: string | null };
+      }>(supabase, 'templates/create-version', {
+        template_id: selected.id,
+        spec_json: savedSpec as unknown as Record<string, unknown>,
+        make_current: true,
+        changelog: publish ? 'Published from template editor' : 'Saved from template editor',
       });
-      if (error) throw error;
       if (!data?.ok) throw new Error(data?.message || 'Failed to save');
-      const savedSpec = normalizeSpec(data.spec_json, spec.meta.name || selected.name);
+      if (publish && data.version?.id) {
+        await invokeZohalBackendJson<{ ok?: boolean }>(supabase, 'templates/publish', {
+          template_id: selected.id,
+          version_id: data.version.id,
+          changelog: 'Published from template editor',
+        });
+      }
       setSpec(savedSpec);
       setLastSaved(new Date());
       const v = data?.version as { id?: string; version_number?: number; published_at?: string | null } | undefined;

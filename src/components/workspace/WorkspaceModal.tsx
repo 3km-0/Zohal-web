@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 import { Button, Input, Card } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import type { Folder, Workspace, WorkspaceType } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { resolveIcon, isSFSymbol } from '@/lib/icon-mapping';
@@ -94,14 +95,16 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
     const loadTemplates = async () => {
       setLoadingTemplates(true);
       try {
-        const { data, error } = await supabase.functions.invoke('templates-list', {
-          body: {
+        const data = await invokeZohalBackendJson<{ templates?: PlaybookRecord[] }>(
+          supabase,
+          'templates/list',
+          {
             workspace_id: '00000000-0000-0000-0000-000000000000',
             kind: 'document',
             status: 'published',
           },
-        });
-        if (!error && data?.templates) {
+        );
+        if (data?.templates) {
           const visible = (data.templates as PlaybookRecord[]).filter(
             (p) => !p.is_system_preset || !isHiddenSystemPlaybook(p as Parameters<typeof isHiddenSystemPlaybook>[0])
           );

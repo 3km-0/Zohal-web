@@ -15,12 +15,17 @@ import {
   handleAgentOrchestrate,
   handleAgentOutboxRun,
 } from "./handlers/agent.js";
+import {
+  handleWorkspaceAutomationRunNow,
+  handleWorkspaceAutomations,
+} from "./handlers/automations.js";
 import { handleConvertToPdf } from "./handlers/convert-to-pdf.js";
 import {
   handleLibraryDownload,
   handleLibraryList,
 } from "./handlers/library.js";
 import {
+  handleDocumentDeleteEmbeddings,
   handleIngestionChunk,
   handleIngestionClassify,
   handleIngestionCleanupVectors,
@@ -36,12 +41,57 @@ import {
   handleIngestionTask,
 } from "./handlers/ingestion.js";
 import {
+  handleFetchApiSource,
+  handleGoogleDriveImport,
+  handleOneDriveImport,
+  handleWhatsappChannelStatus,
+  handleWhatsappImport,
+  handleWorkspaceApiConnections,
+} from "./handlers/integrations.js";
+import {
   handleDocumentDownloadUrl,
   handleDocumentSourceUploadUrl,
   handleDocumentUploadUrl,
   handleEnterpriseDataLocalityRegions,
+  handleMathpixToken,
   handleSupportTicketCreate,
 } from "./handlers/utility.js";
+import {
+  handleExportAuditPack,
+  handleExportCalendar,
+  handleExportContractReport,
+} from "./handlers/exports.js";
+import {
+  handleEnterpriseProvisionRegion,
+  handleEnterpriseProvisioningStatus,
+  handleOrgInviteAccept,
+  handleOrgInviteCreate,
+  handleOrgInviteRevoke,
+  handleWorkspaceMemberAdd,
+  handleWorkspaceMemberRemove,
+  handleWorkspaceMembersList,
+  handleWorkspaceMemberUpdateRole,
+} from "./handlers/team-admin.js";
+import {
+  handleSuggestOrganization,
+  handleWorkspaceOpsCockpit,
+} from "./handlers/operations.js";
+import {
+  handleAskConversations,
+  handleAskWorkspace,
+  handleChat,
+  handleExplain,
+  handleSemanticSearch,
+  handleUnifiedSearch,
+  handleWorkspaceAgent,
+} from "./handlers/search-agent.js";
+import {
+  handleTemplatesCreate,
+  handleTemplatesCreateVersion,
+  handleTemplatesGet,
+  handleTemplatesList,
+  handleTemplatesPublish,
+} from "./handlers/templates.js";
 import { handleWhatsappOrchestrate } from "./handlers/whatsapp.js";
 import { sendJson, sendOptions, getRequestId, readJsonBody } from "./runtime/http.js";
 import { createLogger } from "./runtime/logging.js";
@@ -92,12 +142,124 @@ const server = createServer(async (req, res) => {
       return await handleDocumentSourceUploadUrl(req, res, { requestId, log, readJsonBody });
     }
 
+    if (req.method === "POST" && url.pathname === "/documents/delete-embeddings") {
+      return await handleDocumentDeleteEmbeddings(req, res, { requestId, log, readJsonBody });
+    }
+
     if (req.method === "POST" && url.pathname === "/support/tickets") {
       return await handleSupportTicketCreate(req, res, { requestId, log, readJsonBody });
     }
 
+    if (req.method === "POST" && url.pathname === "/mathpix/token") {
+      return await handleMathpixToken(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/integrations/google-drive/import") {
+      return await handleGoogleDriveImport(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/integrations/onedrive/import") {
+      return await handleOneDriveImport(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/integrations/whatsapp/import") {
+      return await handleWhatsappImport(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/integrations/whatsapp/channel-status") {
+      return await handleWhatsappChannelStatus(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/integrations/api-connections") {
+      return await handleWorkspaceApiConnections(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/integrations/fetch-api-source") {
+      return await handleFetchApiSource(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/chat") {
+      return await handleChat(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/explain") {
+      return await handleExplain(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/search/semantic") {
+      return await handleSemanticSearch(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/search/unified") {
+      return await handleUnifiedSearch(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ask/workspace") {
+      return await handleAskWorkspace(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/ask/conversations") {
+      return await handleAskConversations(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/agent") {
+      return await handleWorkspaceAgent(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/automations") {
+      return await handleWorkspaceAutomations(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/automations/run-now") {
+      return await handleWorkspaceAutomationRunNow(req, res, { requestId, log, readJsonBody });
+    }
+
     if (req.method === "POST" && url.pathname === "/enterprise/data-locality/regions") {
       return await handleEnterpriseDataLocalityRegions(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/enterprise/provision-region") {
+      return await handleEnterpriseProvisionRegion(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/enterprise/provisioning-status") {
+      return await handleEnterpriseProvisioningStatus(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/members/list") {
+      return await handleWorkspaceMembersList(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/members/add") {
+      return await handleWorkspaceMemberAdd(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/members/update-role") {
+      return await handleWorkspaceMemberUpdateRole(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/members/remove") {
+      return await handleWorkspaceMemberRemove(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/ops-cockpit") {
+      return await handleWorkspaceOpsCockpit(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/workspace/suggest-organization") {
+      return await handleSuggestOrganization(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/org/invites/create") {
+      return await handleOrgInviteCreate(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/org/invites/accept") {
+      return await handleOrgInviteAccept(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/org/invites/revoke") {
+      return await handleOrgInviteRevoke(req, res, { requestId, log, readJsonBody });
     }
 
     if (req.method === "POST" && url.pathname === "/library/list") {
@@ -106,6 +268,38 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/library/download") {
       return await handleLibraryDownload(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/templates/list") {
+      return await handleTemplatesList(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/templates/get") {
+      return await handleTemplatesGet(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/templates/create") {
+      return await handleTemplatesCreate(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/templates/create-version") {
+      return await handleTemplatesCreateVersion(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/templates/publish") {
+      return await handleTemplatesPublish(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/exports/contract-report") {
+      return await handleExportContractReport(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/exports/calendar") {
+      return await handleExportCalendar(req, res, { requestId, log, readJsonBody });
+    }
+
+    if (req.method === "POST" && url.pathname === "/exports/audit-pack") {
+      return await handleExportAuditPack(req, res, { requestId, log, readJsonBody });
     }
 
     if (isAcquisitionApiRoute(req.method, url.pathname)) {

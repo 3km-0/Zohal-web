@@ -7,6 +7,7 @@ import { PDFDocument } from 'pdf-lib';
 import { Button, Card, Spinner } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { cn, formatFileSize } from '@/lib/utils';
 import { GoogleDrivePicker } from './GoogleDrivePicker';
 import { OneDrivePicker } from './OneDrivePicker';
@@ -314,32 +315,31 @@ export function DocumentUploadModal({
       text: p.sanitizedText,
     }));
 
-    const { error: chunkError, response: chunkResponse } = await supabase.functions.invoke('chunk-document', {
-      body: {
+    try {
+      await invokeZohalBackendJson(supabase, '/ingestion/chunk', {
         document_id: documentId,
         workspace_id: workspaceId,
         user_id: user.id,
         pages: sanitizedPagesForChunking,
-      },
-    });
-
-    if (chunkError) {
-      const json = chunkResponse ? await chunkResponse.json().catch(() => null) : null;
-      const uiErr = mapHttpError(chunkResponse?.status ?? 500, json, 'chunk-document');
+      });
+    } catch (error) {
+      const uiErr = mapHttpError(500, { message: error instanceof Error ? error.message : String(error) }, 'ingestion/chunk');
       toast.show(uiErr);
     }
 
     // 5. Create embeddings
-    supabase.functions
-      .invoke('embed-and-store', {
-        body: { document_id: documentId, workspace_id: workspaceId },
+    invokeZohalBackendJson(supabase, '/ingestion/embed', {
+        document_id: documentId,
+        workspace_id: workspaceId,
+        user_id: user.id,
       })
       .catch((err) => console.warn('[Ephemeral] embed-and-store failed:', err));
 
     // 6. Classify document
-    supabase.functions
-      .invoke('classify-document', {
-        body: { document_id: documentId },
+    invokeZohalBackendJson(supabase, '/ingestion/classify', {
+        document_id: documentId,
+        workspace_id: workspaceId,
+        user_id: user.id,
       })
       .catch((err) => console.warn('[Ephemeral] classify-document failed:', err));
 
@@ -370,24 +370,20 @@ export function DocumentUploadModal({
 
     const documentId = crypto.randomUUID();
 
-    const { data: uploadUrlData, error: urlError, response: urlResponse } = await supabase.functions.invoke(
-      'document-upload-url',
+    const uploadUrlData = await invokeZohalBackendJson<{ upload_url?: string; storage_path?: string }>(
+      supabase,
+      'documents/upload-url',
       {
-        body: {
-          document_id: documentId,
-          workspace_id: workspaceId,
-          content_type: pdfFile.type,
-          file_size: pdfFile.size,
-        },
+        document_id: documentId,
+        workspace_id: workspaceId,
+        content_type: pdfFile.type,
+        file_size: pdfFile.size,
       }
-    );
-
-    if (urlError) {
-      const json = urlResponse ? await urlResponse.json().catch(() => null) : null;
-      const uiErr = mapHttpError(urlResponse?.status ?? 500, json, 'document-upload-url');
+    ).catch((error) => {
+      const uiErr = mapHttpError(500, { error: error instanceof Error ? error.message : String(error) }, 'documents/upload-url');
       toast.show(uiErr);
       throw new Error(uiErr.message);
-    }
+    });
     if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
 
     const { upload_url: uploadUrl, storage_path: storagePath } = uploadUrlData;
@@ -459,25 +455,23 @@ export function DocumentUploadModal({
     const contentType = sourceFile.type || (extension === 'xlsx' ? XLSX_MIME : extension === 'csv' ? CSV_MIME : DOCX_MIME);
     const isTabular = extension === 'xlsx' || extension === 'csv';
 
-    const { data: uploadUrlData, error: urlError, response: urlResponse } = await supabase.functions.invoke(
-      'document-source-upload-url',
-      {
-        body: {
-          document_id: documentId,
-          workspace_id: workspaceId,
-          content_type: contentType,
-          file_size: sourceFile.size,
-          source_extension: extension,
-        },
-      }
-    );
-
-    if (urlError) {
-      const json = urlResponse ? await urlResponse.json().catch(() => null) : null;
-      const uiErr = mapHttpError(urlResponse?.status ?? 500, json, 'document-source-upload-url');
+    const uploadUrlData = await invokeZohalBackendJson<{
+      upload_url?: string;
+      source_storage_path?: string;
+      pdf_storage_path?: string;
+      canonical_storage_path?: string;
+      source_format?: string;
+    }>(supabase, 'documents/source-upload-url', {
+      document_id: documentId,
+      workspace_id: workspaceId,
+      content_type: contentType,
+      file_size: sourceFile.size,
+      source_extension: extension,
+    }).catch((error) => {
+      const uiErr = mapHttpError(500, { error: error instanceof Error ? error.message : String(error) }, 'documents/source-upload-url');
       toast.show(uiErr);
       throw new Error(uiErr.message);
-    }
+    });
     if (!uploadUrlData?.upload_url) throw new Error('Failed to get upload URL');
 
     const {
@@ -527,23 +521,26 @@ export function DocumentUploadModal({
     await onDocumentCreated?.(documentId);
 
     if (isTabular) {
-      const { error: enqueueError, response: enqueueResponse } = await supabase.functions.invoke(
-        'enqueue-document-ingestion',
-        { body: { document_id: documentId } }
-      );
-      if (enqueueError) {
-        const json = enqueueResponse ? await enqueueResponse.json().catch(() => null) : null;
-        const uiErr = mapHttpError(enqueueResponse?.status ?? 500, json, 'enqueue-document-ingestion');
+      try {
+        await invokeZohalBackendJson(supabase, '/ingestion/start', {
+          document_id: documentId,
+          workspace_id: workspaceId,
+          user_id: user.id,
+          source: 'web_upload',
+        });
+      } catch (error) {
+        const uiErr = mapHttpError(500, { message: error instanceof Error ? error.message : String(error) }, 'ingestion/start');
         toast.show(uiErr);
         throw new Error(uiErr.message);
       }
     } else {
-      const { error: convertError } = await supabase.functions.invoke('convert-to-pdf', {
-        body: { document_id: documentId, source_storage_path: sourceStoragePath },
-      });
-
-      if (convertError) {
-        console.warn('[Upload] convert-to-pdf failed:', convertError);
+      try {
+        await invokeZohalBackendJson(supabase, '/convert-to-pdf', {
+          document_id: documentId,
+          source_storage_path: sourceStoragePath,
+        });
+      } catch (error) {
+        console.warn('[Upload] convert-to-pdf failed:', error);
         setFiles((prev) =>
           prev.map((f) =>
             idsToMark.includes(f.id)

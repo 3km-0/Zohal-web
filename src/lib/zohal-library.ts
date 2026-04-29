@@ -1,6 +1,7 @@
 'use client';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { invokeZohalBackendBlob } from '@/lib/zohal-backend';
 
 export type ZohalLibraryDownloadRequest = {
   objectPath?: string | null;
@@ -58,21 +59,9 @@ export async function downloadLibraryPdf(
   supabase: SupabaseClient,
   request: ZohalLibraryDownloadRequest,
 ): Promise<Blob> {
-  const { data, error, response } = await supabase.functions.invoke('zohal-library-download', {
-    body: {
-      object_path: request.objectPath || undefined,
-      url: request.url || undefined,
-      filename: request.filename || undefined,
-    },
+  return invokeZohalBackendBlob(supabase, 'library/download', {
+    object_path: request.objectPath || undefined,
+    url: request.url || undefined,
+    filename: request.filename || undefined,
   });
-
-  if (error) throw error;
-  if (response && !response.ok) {
-    throw new Error(`Library download failed (${response.status})`);
-  }
-
-  if (data instanceof Blob) return data;
-  if (data instanceof ArrayBuffer) return new Blob([data], { type: 'application/pdf' });
-  if (response) return await response.blob();
-  throw new Error('Library download failed');
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button, Card, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { DataLocalityMap, type DataLocalityRegion } from '@/components/enterprise/DataLocalityMap';
 import { ProvisioningProgressModal, type ProvisioningRun } from '@/components/enterprise/ProvisioningProgressModal';
 
@@ -49,8 +50,6 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
   const currentRegionCode = currentPlane?.region || null;
   const regionLocked = Boolean(currentRegionCode);
   const canSelectRegion = eligible && !regionLocked;
-  const functionBase = useMemo(() => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1`, []);
-
   const ineligibleMessage = useMemo(() => {
     const reason = (eligibilityReason || '').toLowerCase();
     if (reason === 'org_admin_required') return t('reasonOrgAdminRequired');
@@ -60,28 +59,9 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
     return t('orgIneligibleBody');
   }, [eligibilityReason, t]);
 
-  const invokeFunction = useCallback(async (name: string, payload: Record<string, unknown>) => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) throw new Error('Not authenticated');
-
-    const resp = await fetch(`${functionBase}/${name}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const json = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      throw new Error(json?.message || json?.error || `Request failed (${resp.status})`);
-    }
-    return json;
-  }, [supabase, functionBase]);
+  const invokeFunction = useCallback(async (route: string, payload: Record<string, unknown>) => {
+    return invokeZohalBackendJson(supabase, route, payload);
+  }, [supabase]);
 
   const loadRegions = useCallback(async () => {
     if (!orgId) return;
@@ -89,7 +69,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
     setLoadingRegions(true);
     setError('');
     try {
-      const json = (await invokeFunction('enterprise-data-locality-regions', {
+      const json = (await invokeFunction('enterprise/data-locality/regions', {
         org_id: orgId,
       })) as RegionsResponse;
 
@@ -115,7 +95,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
     setProvisioning(true);
     setError('');
     try {
-      const json = (await invokeFunction('enterprise-provision-region', {
+      const json = (await invokeFunction('enterprise/provision-region', {
         org_id: orgId,
         region_code: selectedRegion.region_code,
       })) as { run_id: string };
@@ -148,7 +128,7 @@ export function OrgDataLocalityPanel({ orgId, orgName }: OrgDataLocalityPanelPro
 
     const poll = async () => {
       try {
-        const json = (await invokeFunction('enterprise-provisioning-status', {
+        const json = (await invokeFunction('enterprise/provisioning-status', {
           run_id: run.id,
         })) as { run: ProvisioningRun };
 

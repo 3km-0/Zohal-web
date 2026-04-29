@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 import { Button, Card, Spinner } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -30,11 +31,11 @@ export default function AcceptInvitePage() {
       setError(null);
 
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke('org-invite-accept', {
-          body: { token },
-        });
-
-        if (fnErr) throw fnErr;
+        const data = await invokeZohalBackendJson<{ ok?: boolean; message?: string; org_id?: string }>(
+          supabase,
+          'org/invites/accept',
+          { token },
+        );
         if (!data?.ok) {
           throw new Error(data?.message || 'Invite acceptance failed');
         }
@@ -120,4 +121,3 @@ export default function AcceptInvitePage() {
     </Card>
   );
 }
-

@@ -5,6 +5,7 @@ import {
   buildDocumentDownloadUrlResponse,
   buildDocumentSourceUploadUrlResponse,
   buildDocumentUploadUrlResponse,
+  buildMathpixTokenResponse,
   buildSupportTicketCreateResponse,
 } from "../src/handlers/utility.js";
 
@@ -77,6 +78,21 @@ test("support ticket response preserves legacy ticket envelope", () => {
       email_sent: false,
     },
     request_id: "req-4",
+    execution_plane: "gcp",
+  });
+});
+
+test("mathpix token response preserves iOS token contract with GCP metadata", () => {
+  assert.deepEqual(buildMathpixTokenResponse({
+    appToken: "app-token",
+    expiresAt: "2026-04-29T12:00:00.000Z",
+    strokesSessionId: "stroke-session",
+    requestId: "req-mathpix",
+  }), {
+    app_token: "app-token",
+    expires_at: "2026-04-29T12:00:00.000Z",
+    strokes_session_id: "stroke-session",
+    request_id: "req-mathpix",
     execution_plane: "gcp",
   });
 });
