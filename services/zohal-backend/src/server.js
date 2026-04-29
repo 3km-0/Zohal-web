@@ -11,6 +11,10 @@ import {
   handleAcquisitionInternal,
   isAcquisitionApiRoute,
 } from "./handlers/acquisition.js";
+import {
+  handleAgentOrchestrate,
+  handleAgentOutboxRun,
+} from "./handlers/agent.js";
 import { handleConvertToPdf } from "./handlers/convert-to-pdf.js";
 import {
   handleLibraryDownload,
@@ -222,6 +226,22 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/internal/whatsapp/orchestrate") {
       return await handleWhatsappOrchestrate(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/internal/agent/orchestrate") {
+      return await handleAgentOrchestrate(req, res, {
+        requestId,
+        log,
+        readJsonBody,
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/internal/agent/outbox/run") {
+      return await handleAgentOutboxRun(req, res, {
         requestId,
         log,
         readJsonBody,

@@ -294,6 +294,7 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   assert.equal(promoted.opportunity.source_channel, "user_provided_listing");
   assert.deepEqual(promoted.opportunity.metadata_json.photo_refs, ["https://example.com/photo-1.jpg"]);
   assert.equal(supabase.db.acquisition_opportunities.length, 1);
+  assert.equal(supabase.db.properties?.length || 0, 0);
   assert.equal(supabase.db.acquisition_scenarios.length, 1);
   assert.equal(supabase.db.acquisition_events.length, 2);
   assert(

@@ -1,6 +1,7 @@
 import { requireInternalCaller } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
+import { orchestrateAgentEvent } from "./agent.js";
 
 const WHATSAPP_MODES = new Set([
   "mandate_intake",
@@ -754,40 +755,83 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
   });
 
   const textBody = normalizeText(body.text_body);
-  const language = detectLanguageFromText(textBody, seededConversation.language);
   const hasMedia = Array.isArray(body.media) && body.media.length > 0;
-  const signals = extractAcquisitionSignals(textBody, body.media || []);
+  const result = await orchestrateAgentEvent({
+    supabase,
+    body: {
+      channel: "whatsapp",
+      external_thread_id: phoneNumber,
+      sender: {
+        address: phoneNumber,
+        display_name: normalizeText(body.sender_name || body.profile_name) || null,
+      },
+      message: {
+        provider_message_id: messageId,
+        text_body: textBody,
+        media: body.media || [],
+        timestamp: body.timestamp || null,
+        message_type: body.message_type || null,
+      },
+      workspace_session_snapshot: workspaceSession,
+      conversation_snapshot: seededConversation,
+      workspace_id: normalizeUuid(seededConversation.active_workspace_id || workspaceSession?.workspace_id),
+      user_id: normalizeUuid(seededConversation.linked_profile_id || workspaceSession?.user_id),
+      opportunity_id: normalizeUuid(body.opportunity_id || seededConversation.active_opportunity_id || seededConversation.state_json?.active_opportunity_id),
+      mandate_id: normalizeUuid(body.mandate_id || seededConversation.state_json?.active_mandate_id),
+      upload_kind: body.upload_kind || seededConversation.awaiting_upload_kind,
+      source_url: body.source_url || null,
+    },
+  });
+
+  const nextConversation = await upsertConversation(supabase, {
+    id: seededConversation.id,
+    channel: "whatsapp",
+    phone_number: phoneNumber,
+    mode: result.mode || seededConversation.mode || "mandate_intake",
+    language: detectLanguageFromText(textBody, seededConversation.language),
+    active_workspace_id: result.conversation?.workspace_id || seededConversation.active_workspace_id || normalizeUuid(workspaceSession?.workspace_id),
+    active_opportunity_id: result.conversation?.opportunity_id || seededConversation.active_opportunity_id || null,
+    active_acquisition_thread_id: result.crm_updates?.acquisition_thread_id || seededConversation.active_acquisition_thread_id || null,
+    awaiting_upload_kind: "none",
+    linked_profile_id: result.conversation?.linked_profile_id || seededConversation.linked_profile_id || normalizeUuid(workspaceSession?.user_id),
+    last_user_goal: textBody || seededConversation.last_user_goal || null,
+    state_json: {
+      ...(seededConversation.state_json || {}),
+      agent_conversation_id: result.conversation?.id || null,
+      agent_contact_id: result.contact?.id || null,
+      active_candidate_id: result.crm_updates?.candidate_id || seededConversation.state_json?.active_candidate_id || null,
+      active_mandate_id: result.conversation?.mandate_id || seededConversation.state_json?.active_mandate_id || null,
+      active_opportunity_id: result.conversation?.opportunity_id || seededConversation.active_opportunity_id || null,
+    },
+    last_inbound_message_id: messageId,
+    last_message_at: new Date().toISOString(),
+  });
 
   const inboundEvent = await insertConversationEvent(supabase, {
-    conversation_id: seededConversation.id,
-    workspace_id: normalizeUuid(seededConversation.active_workspace_id || workspaceSession?.workspace_id),
-    opportunity_id: normalizeUuid(seededConversation.state_json?.active_opportunity_id || seededConversation.active_opportunity_id),
-    acquisition_thread_id: normalizeUuid(seededConversation.state_json?.active_acquisition_thread_id || seededConversation.active_acquisition_thread_id),
+    conversation_id: nextConversation.id,
+    workspace_id: normalizeUuid(nextConversation.active_workspace_id),
+    opportunity_id: normalizeUuid(nextConversation.active_opportunity_id),
+    acquisition_thread_id: normalizeUuid(nextConversation.active_acquisition_thread_id),
     event_type: hasMedia ? "inbound_media" : "inbound_text",
     event_direction: "inbound",
     message_id: messageId,
     result_source: null,
     event_payload: {
-      text_body: textBody || null,
-      media: body.media || [],
+      text_excerpt: textBody.slice(0, 500) || null,
+      media_count: Array.isArray(body.media) ? body.media.length : 0,
       timestamp: body.timestamp || null,
       message_type: body.message_type || null,
-      acquisition_signals: signals,
+      agent_conversation_id: result.conversation?.id || null,
+      agent_event_id: result.import_request?.agent_event_id || null,
     },
   });
 
-  const route = decideWhatsappMode({ textBody, hasMedia, conversation: seededConversation, workspaceSession });
-
-  const result = route.mode === "document_ingestion"
-    ? await handleDocumentIngestion({ supabase, conversation: seededConversation, body, language, workspaceSession })
-    : await handleAcquisitionRoute({ supabase, conversation: seededConversation, body, language, signals, route, workspaceSession });
-
   for (const outbound of result.outbound_messages || []) {
     await insertConversationEvent(supabase, {
-      conversation_id: result.conversation.id,
-      workspace_id: normalizeUuid(result.conversation.active_workspace_id),
-      opportunity_id: normalizeUuid(result.conversation.state_json?.active_opportunity_id || result.conversation.active_opportunity_id),
-      acquisition_thread_id: normalizeUuid(result.conversation.state_json?.active_acquisition_thread_id || result.conversation.active_acquisition_thread_id),
+      conversation_id: nextConversation.id,
+      workspace_id: normalizeUuid(nextConversation.active_workspace_id),
+      opportunity_id: normalizeUuid(nextConversation.active_opportunity_id),
+      acquisition_thread_id: normalizeUuid(nextConversation.active_acquisition_thread_id),
       event_type: "outbound_text",
       event_direction: "outbound",
       message_id: null,
@@ -800,14 +844,15 @@ async function orchestrateWhatsappMessage({ supabase, body }) {
     handled: true,
     mode: result.mode,
     conversation_updates: {
-      conversation_id: result.conversation.id,
+      conversation_id: nextConversation.id,
       inbound_event_id: inboundEvent.id,
-      mode: result.conversation.mode,
-      language: result.conversation.language,
-      active_workspace_id: result.conversation.active_workspace_id,
-      active_opportunity_id: result.conversation.active_opportunity_id,
-      active_acquisition_thread_id: result.conversation.active_acquisition_thread_id,
-      awaiting_upload_kind: result.conversation.awaiting_upload_kind,
+      mode: nextConversation.mode,
+      language: nextConversation.language,
+      active_workspace_id: nextConversation.active_workspace_id,
+      active_opportunity_id: nextConversation.active_opportunity_id,
+      active_acquisition_thread_id: nextConversation.active_acquisition_thread_id,
+      awaiting_upload_kind: nextConversation.awaiting_upload_kind,
+      agent_conversation_id: result.conversation?.id || null,
     },
     side_effects: result.side_effects || [],
     outbound_messages: result.outbound_messages || [],
