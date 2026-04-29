@@ -5,6 +5,7 @@ import {
   buildAskConversationListResponse,
   buildChatMessageResponse,
   buildExplainResponse,
+  checkUsage,
   normalizeUuid,
   streamErrorMessage,
 } from "../src/handlers/search-agent.js";
@@ -139,4 +140,32 @@ test("workspace agent stream errors prefer user-facing limit messages", () => {
     response: { message: "You have reached your included usage. Upgrade your plan for more." },
   }), "You have reached your included usage. Upgrade your plan for more.");
   assert.equal(streamErrorMessage(new Error("Ask failed")), "Ask failed");
+});
+
+test("ask usage uses canonical billable-op meter before legacy ask counter", async () => {
+  const calls = [];
+  const supabase = {
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      if (name === "check_and_charge_billable_op") return { data: { allowed: true }, error: null };
+      return { data: { allowed: false, limit: 0 }, error: null };
+    },
+  };
+
+  assert.deepEqual(await checkUsage(supabase, "user-1", "ask", "req-1"), { allowed: true });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, "check_and_charge_billable_op");
+  assert.equal(calls[0].args.p_operation_key, "semantic_search");
+  assert.equal(calls[0].args.p_source, "workspace_agent");
+});
+
+test("ask usage falls back without blocking on legacy user-not-found errors", async () => {
+  const supabase = {
+    rpc: async (name) => {
+      if (name === "check_and_charge_billable_op") return { data: null, error: new Error("missing rpc") };
+      return { data: { allowed: false, error: "User not found" }, error: null };
+    },
+  };
+
+  assert.deepEqual(await checkUsage(supabase, "user-1", "ask", "req-1"), { allowed: true });
 });

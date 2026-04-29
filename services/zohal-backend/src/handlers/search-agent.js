@@ -98,11 +98,28 @@ function limitExceededResponse(result, metric, requestId) {
   };
 }
 
-async function checkUsage(supabase, userId, metric, requestId) {
+export async function checkUsage(supabase, userId, metric, requestId) {
+  if (metric === "ask") {
+    const { data, error } = await supabase.rpc("check_and_charge_billable_op", {
+      p_user_id: userId,
+      p_operation_key: "semantic_search",
+      p_units: 1,
+      p_workspace_id: null,
+      p_source: "workspace_agent",
+      p_metadata: { metric },
+    });
+    if (!error && data) {
+      if (data.allowed === false) return { allowed: false, response: limitExceededResponse(data, metric, requestId) };
+      return { allowed: true };
+    }
+  }
+
   const rpcName = metric === "ask" ? "check_and_increment_ask" : null;
   if (rpcName) {
     const { data, error } = await supabase.rpc(rpcName, { p_user_id: userId });
-    if (!error && data && data.allowed === false) return { allowed: false, response: limitExceededResponse(data, metric, requestId) };
+    if (!error && data && data.allowed === false && !data.error) {
+      return { allowed: false, response: limitExceededResponse(data, metric, requestId) };
+    }
   }
   return { allowed: true };
 }
