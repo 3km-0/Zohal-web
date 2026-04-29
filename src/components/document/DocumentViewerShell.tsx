@@ -24,6 +24,29 @@ interface DocumentViewerShellProps {
   initialPaneOpen?: boolean;
 }
 
+function getDocumentSourceFormat(doc: Document): string {
+  const sourceMeta = (doc.source_metadata as Record<string, unknown> | null) || {};
+  if (typeof sourceMeta.source_format === 'string') {
+    return sourceMeta.source_format.toLowerCase();
+  }
+  if (typeof sourceMeta.original_extension === 'string') {
+    return sourceMeta.original_extension.toLowerCase();
+  }
+  return 'pdf';
+}
+
+function isDocumentAwaitingPdfConversion(doc: Document): boolean {
+  const sourceMeta = (doc.source_metadata as Record<string, unknown> | null) || {};
+  const conversionMethod = typeof sourceMeta.conversion_method === 'string'
+    ? sourceMeta.conversion_method.toLowerCase()
+    : '';
+  const conversionStatus = typeof sourceMeta.conversion_status === 'string'
+    ? sourceMeta.conversion_status.toLowerCase()
+    : '';
+
+  return conversionMethod.includes('cloudconvert') && conversionStatus !== 'completed';
+}
+
 export default function DocumentViewerShell({
   initialMode = 'chat',
   initialPaneOpen = false,
@@ -196,6 +219,9 @@ export default function DocumentViewerShell({
 
       if (docData) {
         setDocument(docData);
+        const sourceFormat = getDocumentSourceFormat(docData);
+        const isTabular = sourceFormat === 'xlsx' || sourceFormat === 'csv';
+        const isAwaitingPdfConversion = isDocumentAwaitingPdfConversion(docData);
 
         // Privacy Mode: original PDF is device-only; web cannot fetch it.
         if (docData.privacy_mode) {
@@ -207,25 +233,23 @@ export default function DocumentViewerShell({
           setPdfUrl(null);
           setTabularManifestUrl(null);
         }
-        // Still processing — PDF not ready yet
+        // Still processing. Only hide the file when a source document is genuinely
+        // waiting for PDF conversion; uploaded PDFs can be viewed while indexing runs.
         else if (docData.processing_status === 'processing' || docData.processing_status === 'pending') {
-          setPdfUrl(null);
-          setTabularManifestUrl(
-            ((docData.source_metadata as Record<string, unknown> | null)?.source_format === 'xlsx' ||
-              (docData.source_metadata as Record<string, unknown> | null)?.source_format === 'csv')
-              ? `/api/documents/${documentId}/tabular`
-              : null
-          );
+          if (isTabular) {
+            setPdfUrl(null);
+            setTabularManifestUrl(`/api/documents/${documentId}/tabular`);
+          } else if (isAwaitingPdfConversion || !docData.storage_path || docData.storage_path === 'local') {
+            setPdfUrl(null);
+            setTabularManifestUrl(null);
+          } else {
+            setPdfUrl(`/api/documents/${documentId}/file`);
+            setTabularManifestUrl(null);
+          }
         }
         // Proxy through same-origin to avoid browser CORS failures on signed GCS URLs.
         else if (docData.storage_path && docData.storage_path !== 'local') {
-          const sourceMeta = (docData.source_metadata as Record<string, unknown> | null) || {};
-          const format = typeof sourceMeta.source_format === 'string'
-            ? String(sourceMeta.source_format).toLowerCase()
-            : typeof sourceMeta.original_extension === 'string'
-              ? String(sourceMeta.original_extension).toLowerCase()
-              : 'pdf';
-          if (format === 'xlsx' || format === 'csv') {
+          if (isTabular) {
             setPdfUrl(null);
             setTabularManifestUrl(`/api/documents/${documentId}/tabular`);
           } else {
@@ -548,12 +572,14 @@ export default function DocumentViewerShell({
                         </div>
                         <div>
                           <h2 className="text-lg font-semibold text-text">
-                            {sourceFormat === 'pdf' ? 'Converting document…' : 'Processing spreadsheet…'}
+                            {sourceFormat === 'pdf' ? 'Processing document…' : 'Converting document…'}
                           </h2>
                           <p className="mt-1 text-sm text-text-soft">
                             {sourceFormat === 'pdf'
-                              ? 'Your document is being converted to PDF. This usually takes under a minute. Checking automatically…'
-                              : 'Your spreadsheet is being parsed into a tabular analysis model. Checking automatically…'}
+                              ? 'Your document is uploaded and being indexed. Checking automatically…'
+                              : sourceFormat === 'xlsx' || sourceFormat === 'csv'
+                                ? 'Your spreadsheet is being parsed into a tabular analysis model. Checking automatically…'
+                                : 'Your document is being converted to PDF. This usually takes under a minute. Checking automatically…'}
                           </p>
                         </div>
                       </div>
