@@ -942,7 +942,7 @@ export default function WorkspaceCockpitPage() {
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb,35,215,255),.12),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb,185,255,38),.10),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(255,91,112,.06),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-border/80 bg-surface-alt/80 p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-accent/10 bg-[linear-gradient(180deg,rgba(20,24,22,.84),rgba(10,12,10,.9))] p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard
             workspace={workspace}
@@ -959,7 +959,7 @@ export default function WorkspaceCockpitPage() {
         </aside>
 
         <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="mx-auto flex min-h-full w-full max-w-[1760px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
+          <div className="mx-auto flex min-h-full w-full max-w-[1840px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
                 <Spinner size="lg" />
@@ -988,80 +988,64 @@ export default function WorkspaceCockpitPage() {
                 </div>
 
                 <div className="min-h-[380px] space-y-5">
+                  <CockpitHero
+                    opportunity={selectedOpportunity}
+                    missingCount={selectedMissing.length}
+                    documentCount={documentCount}
+                    latestUpdate={latestUpdate}
+                    mapOpen={heroMapOpen}
+                    onToggleMap={() => setHeroMapOpen((open) => !open)}
+                    onOpenDrawer={openDrawer}
+                  />
+                  <MandatePulse
+                    candidates={opportunities.length}
+                    pursue={pursueCount}
+                    openItems={missingCount}
+                    confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
+                  />
+                  <PrimaryWorkspaceTabs
+                    active={activePrimaryTab}
+                    openItems={selectedMissing.length}
+                    onChange={setActivePrimaryTab}
+                  />
                   {activePrimaryTab === 'deal' ? (
-                    <>
-                      <CockpitHero
-                        opportunity={selectedOpportunity}
-                        missingCount={selectedMissing.length}
-                        documentCount={documentCount}
-                        latestUpdate={latestUpdate}
-                        mapOpen={heroMapOpen}
-                        onToggleMap={() => setHeroMapOpen((open) => !open)}
-                        onOpenDrawer={openDrawer}
-                      />
-                      <MandatePulse
-                        candidates={opportunities.length}
-                        pursue={pursueCount}
-                        openItems={missingCount}
-                        confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
-                      />
-                      <PrimaryWorkspaceTabs
-                        active={activePrimaryTab}
-                        openItems={selectedMissing.length}
-                        onChange={setActivePrimaryTab}
-                      />
-                      <ModelModule
-                        opportunity={selectedOpportunity}
-                        scenario={scenario}
-                        saving={scenarioBusy}
-                        onScenarioChange={setScenario}
-                        onSave={saveScenarioAssumptions}
-                      />
-                    </>
+                    <ModelModule
+                      opportunity={selectedOpportunity}
+                      scenario={scenario}
+                      saving={scenarioBusy}
+                      onScenarioChange={setScenario}
+                      onSave={saveScenarioAssumptions}
+                    />
                   ) : activePrimaryTab === 'renovation' ? (
-                    <>
-                      <PrimaryWorkspaceTabs
-                        active={activePrimaryTab}
-                        openItems={selectedMissing.length}
-                        onChange={setActivePrimaryTab}
-                      />
-                      <RenovationTab
-                        opportunity={selectedOpportunity}
-                        scenario={scenario}
-                        saving={scenarioBusy}
-                        generating={capexBusy}
-                        error={capexError}
-                        events={renovationEvents}
-                        onScenarioChange={setScenario}
-                        onSave={saveScenarioAssumptions}
-                        onGenerateEstimate={generateCapexEstimate}
-                        onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
-                      />
-                    </>
+                    <RenovationTab
+                      opportunity={selectedOpportunity}
+                      scenario={scenario}
+                      saving={scenarioBusy}
+                      generating={capexBusy}
+                      error={capexError}
+                      events={renovationEvents}
+                      onScenarioChange={setScenario}
+                      onSave={saveScenarioAssumptions}
+                      onGenerateEstimate={generateCapexEstimate}
+                      onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
+                    />
                   ) : (
-                    <>
-                      <PrimaryWorkspaceTabs
-                        active={activePrimaryTab}
-                        openItems={selectedMissing.length}
-                        onChange={setActivePrimaryTab}
-                      />
-                      <ActionsWorkspace
-                        currentBlocker={currentBlocker}
-                        hasBlocker={hasActionBlocker}
-                        primaryActionLabel={primaryAction.label}
-                        primaryActionResult={primaryAction.result}
-                        readinessProfile={readinessProfile}
-                        readinessEvidence={readinessEvidence}
-                        sharingGrants={sharingGrants}
-                        actionApprovals={actionApprovals}
-                        readinessBusy={readinessBusy}
-                        approvalBusy={approvalBusy}
-                        selectedMissing={selectedMissing}
-                        selectedOpportunity={selectedOpportunity}
-                        brokerageActive={brokerageActive}
-                        onPrimaryAction={() => void executePrimaryAction()}
-                      />
-                    </>
+                    <ActionsWorkspace
+                      currentBlocker={currentBlocker}
+                      hasBlocker={hasActionBlocker}
+                      primaryActionLabel={primaryAction.label}
+                      primaryActionResult={primaryAction.result}
+                      readinessProfile={readinessProfile}
+                      readinessEvidence={readinessEvidence}
+                      sharingGrants={sharingGrants}
+                      actionApprovals={actionApprovals}
+                      readinessBusy={readinessBusy}
+                      approvalBusy={approvalBusy}
+                      selectedMissing={selectedMissing}
+                      selectedOpportunity={selectedOpportunity}
+                      brokerageActive={brokerageActive}
+                      onPrimaryAction={() => void executePrimaryAction()}
+                    />
                   )}
                 </div>
               </section>
@@ -1102,10 +1086,10 @@ export default function WorkspaceCockpitPage() {
               onWidthChange={setDrawerWidth}
             />
           ) : (
-            <button
+              <button
               type="button"
               onClick={() => openDrawer('evidence')}
-              className="absolute bottom-6 right-6 z-30 inline-flex rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] min-[1500px]:hidden"
+              className="absolute bottom-6 right-6 z-30 inline-flex rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] min-[1680px]:hidden"
             >
               <PanelRightOpen className="mr-2 h-4 w-4" />
               {t('openLiveFeed')}
@@ -1326,11 +1310,11 @@ function OpportunityRail({
   const t = useTranslations('workspaceCockpitPage');
   return (
     <Panel className={cn('p-4', compact && 'overflow-hidden')} data-testid={compact ? 'acquisition-opportunity-rail-compact' : 'acquisition-opportunity-rail'}>
-      <div className="mb-4 flex items-center justify-between">
+      <div className={cn('flex items-center justify-between', compact ? 'mb-4' : 'mb-5')}>
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedOpportunities')}</p>
         <Building2 className="h-4 w-4 text-accent" />
       </div>
-      <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-3')}>
+      <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-4')}>
         {opportunities.length === 0 ? (
           <p className="text-sm leading-6 text-text-muted">{emptyText}</p>
         ) : (
@@ -1341,34 +1325,35 @@ function OpportunityRail({
               data-testid="acquisition-opportunity-card"
               onClick={() => onSelect(item.id)}
               className={cn(
-                'rounded-[16px] border p-4 text-left transition dark:bg-[#141816]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.03)]',
-                missingInfoList(item.missing_info_json).length > 0 && 'border-l-4 border-l-warning',
-                compact ? 'min-w-[260px]' : 'w-full',
+                'relative rounded-[22px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(20,24,22,.82),rgba(13,15,13,.88))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.025)]',
+                compact ? 'min-w-[260px] p-4' : 'min-h-[214px] w-full p-5',
                 selectedId === item.id
-                  ? 'border-accent/50 bg-accent/10 shadow-[0_18px_45px_rgba(var(--accent-rgb,185,255,38),.12)]'
-                  : 'border-border bg-surface-alt hover:bg-surface dark:hover:border-white/15'
+                  ? 'border-accent/45 bg-accent/[0.075] shadow-[0_0_0_1px_rgba(var(--accent-rgb,183,243,74),.16),0_18px_45px_rgba(var(--accent-rgb,183,243,74),.10)]'
+                  : 'border-border/70 bg-surface-alt/70 hover:border-accent/18 hover:bg-surface'
               )}
             >
               <div className="flex justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] text-text-muted">#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
-                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-text">{titleFor(item) || t('untitledOpportunity')}</h3>
-                  {arabicTitleFor(item) ? <p className="mt-1 truncate text-xs text-text-soft" dir="rtl">{arabicTitleFor(item)}</p> : null}
+                  <p className={cn('text-text-muted', compact ? 'text-[11px]' : 'text-sm')}>#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
+                  <h3 className={cn('mt-2 line-clamp-2 font-semibold text-text', compact ? 'text-sm' : 'text-xl')}>{titleFor(item) || t('untitledOpportunity')}</h3>
+                  {arabicTitleFor(item) ? <p className={cn('mt-2 truncate text-text-soft', compact ? 'text-xs' : 'text-sm')} dir="rtl">{arabicTitleFor(item)}</p> : null}
                 </div>
-                <span className="h-fit rounded-2xl border border-accent/25 bg-accent/10 px-2 py-1 font-mono text-xs text-accent">{scoreFor(item) ?? t('notSet')}</span>
+                <span className={cn('grid shrink-0 place-items-center rounded-[14px] border border-accent/35 bg-accent/10 font-mono font-bold text-accent', compact ? 'h-8 min-w-12 px-2 text-xs' : 'h-14 min-w-14 px-3 text-xl')}>
+                  {scoreFor(item) ?? t('notSet')}
+                </span>
               </div>
-              <p className="mt-3 line-clamp-2 text-xs leading-5 text-text-muted">{item.summary}</p>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <span className="rounded-2xl bg-black/5 px-3 py-2 text-text dark:bg-black/25">{dealFacts(item).price || t('notSet')}</span>
-                <span className="rounded-2xl bg-black/5 px-3 py-2 text-text dark:bg-black/25">{dealFacts(item).area || t('notSet')}</span>
+              <p className={cn('mt-4 text-text-soft', compact ? 'line-clamp-2 text-xs leading-5' : 'line-clamp-3 text-base leading-7')}>{item.summary}</p>
+              <div className={cn('mt-5 flex items-center justify-between gap-4 font-mono text-text-muted', compact ? 'text-xs' : 'text-base')}>
+                <span>{dealFacts(item).price || t('notSet')}</span>
+                <span>{dealFacts(item).area || t('notSet')}</span>
               </div>
-              <div className="mt-3 flex justify-between text-xs text-text-soft">
+              <div className={cn('mt-4 flex justify-between text-text-soft', compact ? 'text-xs' : 'text-sm')}>
                 <span>{humanize(recommendationFor(item)) || t('notSet')} · {humanize(confidenceFor(item)) || t('notSet')}</span>
-                <span className={cn('rounded-full px-2 py-0.5', missingInfoList(item.missing_info_json).length > 0 ? 'bg-warning/15 text-warning' : 'bg-success/10 text-success')}>
+                <span className={cn('rounded-full px-2 py-0.5', missingInfoList(item.missing_info_json).length > 0 ? 'text-warning' : 'text-success')}>
                   {missingInfoList(item.missing_info_json).length} {t('openItemsShort')}
                 </span>
               </div>
-              <div className="mt-3 flex gap-1.5">
+              <div className={cn('mt-4 flex', compact ? 'gap-1.5' : 'gap-3')}>
                 <SignalDot hot={Boolean(recommendationFor(item))} />
                 <SignalDot hot={Boolean(confidenceFor(item))} />
                 <SignalDot hot={missingInfoList(item.missing_info_json).length === 0} warn={missingInfoList(item.missing_info_json).length > 0} />
@@ -1460,12 +1445,21 @@ function CockpitHero({
 
         <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-accent/15 bg-[#0A0C0A] shadow-[inset_0_1px_0_rgba(255,255,255,.045)]">
           {heroPhoto ? (
-            <img
-              src={heroPhoto}
-              alt={title || t('emptyCockpitTitle')}
-              data-testid="acquisition-hero-photo"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            <>
+              <img
+                src={heroPhoto}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-42 blur-2xl"
+              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_44%,transparent_0%,rgba(0,0,0,.18)_52%,rgba(0,0,0,.52)_100%)]" />
+              <img
+                src={heroPhoto}
+                alt={title || t('emptyCockpitTitle')}
+                data-testid="acquisition-hero-photo"
+                className="absolute inset-0 h-full w-full object-contain p-3"
+              />
+            </>
           ) : (
             <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           )}
@@ -2506,12 +2500,19 @@ function VisualCompanion({
         <div className="grid min-h-[250px] gap-3">
           {photoRefs.length > 0 ? (
             <>
-              <div className="overflow-hidden rounded-[18px] border border-border bg-background">
+              <div className="relative h-64 overflow-hidden rounded-[18px] border border-border bg-background">
+                <img
+                  src={photoRefs[0]}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
+                  loading="lazy"
+                />
                 <img
                   src={photoRefs[0]}
                   alt={title}
                   data-testid="acquisition-photo"
-                  className="h-64 w-full object-cover"
+                  className="relative h-full w-full object-contain p-2"
                   loading="lazy"
                 />
               </div>
@@ -2922,6 +2923,7 @@ function LiveFeedRail({
   const marketSignal = metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']);
   const brokerSignal = metadataString(opportunity, ['broker_note', 'counterparty_note', 'seller_note']);
   const titleSignal = metadataString(opportunity, ['title_note', 'title_status', 'deed_status']);
+  const sourceCount = Math.max(documentCount, claims.length);
   const selectedEvents = events.filter((event) => !opportunity?.id || !event.opportunity_id || event.opportunity_id === opportunity.id);
   const eventFeedItems: LiveFeedItem[] = selectedEvents.map((event) => ({
     id: event.id,
@@ -2985,36 +2987,36 @@ function LiveFeedRail({
   const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
 
   return (
-    <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-l border-border/80 bg-surface-alt/80 p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1500px]:block">
-      <Panel className="overflow-hidden p-0">
-        <div className="border-b border-border/80 px-5 py-5">
+    <aside className="relative hidden h-full w-[430px] shrink-0 overflow-y-auto border-l border-accent/10 bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb,183,243,74),.07),transparent_32%),linear-gradient(180deg,rgba(20,24,22,.86),rgba(10,12,10,.92))] p-6 shadow-[var(--shadowSm)] backdrop-blur min-[1680px]:block">
+      <Panel className="overflow-hidden rounded-[28px] border-accent/12 bg-[linear-gradient(180deg,rgba(20,24,22,.92),rgba(13,15,13,.94))] p-0">
+        <div className="px-6 py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('signalStream')}</p>
-              <h3 className="mt-1 text-2xl font-bold text-text">{t('liveFeed')}</h3>
+              <p className="font-mono text-xs uppercase tracking-[0.28em] text-accent">{t('signalStream')}</p>
+              <h3 className="mt-2 text-3xl font-bold leading-tight text-text">{t('liveFeed')}</h3>
             </div>
             <button
               type="button"
               onClick={() => onOpenDrawer('evidence')}
-              className="rounded-[10px] border border-highlight/25 bg-highlight/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-highlight transition hover:bg-highlight/15"
+              className="rounded-[12px] border border-accent/35 bg-accent/10 px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-accent transition hover:bg-accent/15"
             >
-              {documentCount} {t('sources')}
+              {sourceCount} {t('sources')}
             </button>
           </div>
-          <div className="mt-5 flex h-20 items-end gap-1 rounded-[14px] border border-border/70 bg-background/45 p-3">
-            {Array.from({ length: 28 }).map((_, index) => (
+          <div className="mt-7 flex h-[104px] items-end gap-1.5 rounded-[22px] border border-accent/10 bg-background/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+            {Array.from({ length: 30 }).map((_, index) => (
               <span
                 key={index}
-                className="w-full rounded-t-sm bg-accent/65 shadow-[0_0_10px_rgba(var(--accent-rgb,183,243,74),.14)]"
-                style={{ height: `${20 + Math.abs(Math.sin(index * 0.72)) * 58}%` }}
+                className="w-full rounded-t-sm bg-accent/75 shadow-[0_0_14px_rgba(var(--accent-rgb,183,243,74),.18)]"
+                style={{ height: `${24 + Math.abs(Math.sin(index * 0.72)) * 62}%` }}
               />
             ))}
           </div>
         </div>
 
-        <div className="space-y-3 p-4">
+        <div className="space-y-4 px-6 pb-6">
           {feedItems.length === 0 ? (
-            <p className="rounded-[14px] border border-border/80 bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
+            <p className="rounded-[18px] border border-accent/10 bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
           ) : (
             feedItems.map((item) => <LiveFeedRow key={item.id} item={item} />)
           )}
@@ -3026,21 +3028,19 @@ function LiveFeedRail({
 
 function LiveFeedRow({ item }: { item: LiveFeedItem }) {
   const toneClass = {
-    lime: 'border-accent/18 bg-accent/[0.075] text-accent',
-    cyan: 'border-highlight/20 bg-highlight/10 text-highlight',
-    warn: 'border-warning/25 bg-warning/10 text-warning',
-    neutral: 'border-border bg-surface-alt text-text-muted',
+    lime: 'text-accent',
+    cyan: 'text-highlight',
+    warn: 'text-warning',
+    neutral: 'text-text-muted',
   }[item.tone];
   return (
-    <div className="rounded-[14px] border border-border/80 bg-surface-alt/70 p-4">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <span className={cn('rounded-[7px] border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em]', toneClass)}>
-          {item.tag}
-        </span>
-        {item.time ? <span className="shrink-0 text-xs text-text-muted">{formatRelativeTime(item.time)}</span> : null}
+    <div className="grid grid-cols-[82px_minmax(0,1fr)_70px] gap-4 rounded-[20px] border border-accent/10 bg-surface-alt/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+      <p className={cn('pt-1 font-mono text-xs uppercase tracking-[0.18em]', toneClass)}>{item.tag}</p>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-text">{item.title}</p>
+        <p className="mt-1 text-base leading-6 text-text-soft">{item.body}</p>
       </div>
-      <p className="text-sm font-semibold text-text">{item.title}</p>
-      <p className="mt-1 text-sm leading-6 text-text-soft">{item.body}</p>
+      {item.time ? <span className={cn('pt-1 text-right text-xs font-semibold', item.tone === 'warn' ? 'text-warning' : item.tone === 'cyan' ? 'text-highlight' : item.tone === 'lime' ? 'text-accent' : 'text-text-muted')}>{formatRelativeTime(item.time)}</span> : null}
     </div>
   );
 }
@@ -3577,7 +3577,7 @@ function Panel({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-[20px] border border-border bg-surface shadow-2xl shadow-[color:var(--border)] backdrop-blur dark:bg-[image:var(--panel-bg)] dark:shadow-[var(--shadowMd)]', className)}
+      className={cn('rounded-[20px] border border-accent/10 bg-[linear-gradient(180deg,rgba(20,24,22,.92),rgba(13,15,13,.94))] shadow-[0_12px_36px_rgba(0,0,0,.30),inset_0_1px_0_rgba(255,255,255,.025)] backdrop-blur', className)}
       {...props}
     >
       {children}
@@ -3586,7 +3586,7 @@ function Panel({
 }
 
 function SignalDot({ hot, warn = false }: { hot?: boolean; warn?: boolean }) {
-  return <span className={cn('h-2.5 w-2.5 rounded-full', hot ? 'bg-success shadow-[0_0_14px_currentColor]' : warn ? 'bg-warning shadow-[0_0_14px_currentColor]' : 'bg-text-muted')} />;
+  return <span className={cn('h-3 w-3 rounded-full', hot ? 'bg-success shadow-[0_0_14px_currentColor]' : warn ? 'bg-warning shadow-[0_0_14px_currentColor]' : 'bg-text-muted')} />;
 }
 
 function TrustPill({ label, tone }: { label: string; tone: 'lime' | 'amber' | 'cyan' | 'slate' }) {
