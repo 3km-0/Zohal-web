@@ -409,6 +409,30 @@ function modelReturns(m: ScenarioState) {
   return { equity, cashFlow, irr, coc: cashFlow / Math.max(1, equity) };
 }
 
+function modelExit(m: ScenarioState) {
+  const debt = m.price * 0.68;
+  const sale = (m.price + m.renovation * 0.65) * Math.pow(1 + m.appreciation / 100, m.hold);
+  const remainingDebt = debt * Math.max(0.72, 1 - m.hold * 0.035);
+  return { netSale: sale * 0.975, remainingDebt, terminalEquity: sale * 0.975 - remainingDebt };
+}
+
+function cashFlowProjection(m: ScenarioState) {
+  return Array.from({ length: Math.max(1, Math.round(m.hold)) }, (_, index) => {
+    const year = index + 1;
+    const yearScenario = { ...m, rent: m.rent * Math.pow(1 + 0.018, index) };
+    const projected = modelReturns(yearScenario).cashFlow;
+    return { year, value: projected };
+  });
+}
+
+function sensitivityScenarios(m: ScenarioState) {
+  return [
+    { key: 'downside', label: 'downside', scenario: { ...m, rent: m.rent * 0.92, vacancy: Math.min(24, m.vacancy + 5), appreciation: Math.max(0, m.appreciation - 1.5), renovation: m.renovation * 1.12 } },
+    { key: 'base', label: 'base', scenario: m },
+    { key: 'upside', label: 'upside', scenario: { ...m, rent: m.rent * 1.07, vacancy: Math.max(0, m.vacancy - 2), appreciation: m.appreciation + 1.25, renovation: m.renovation * 0.96 } },
+  ].map((item) => ({ ...item, returns: modelReturns(item.scenario) }));
+}
+
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
@@ -2150,12 +2174,136 @@ function ModelModule({
           <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
           <OutputMetric label={t('baseIrr')} value={pct(returns.irr)} hot />
         </div>
+        <ScenarioCharts scenario={scenario} />
         <Panel className="border-accent/20 bg-accent/10 p-5">
           <p className="text-sm leading-6 text-text">
             {t('modelSensitivityNote')}
           </p>
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function ScenarioCharts({ scenario }: { scenario: ScenarioState }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const cashFlow = cashFlowProjection(scenario);
+  const sensitivity = sensitivityScenarios(scenario);
+  const exit = modelExit(scenario);
+  const returns = modelReturns(scenario);
+  const equityStack = [
+    { key: 'debt', label: t('debtLabel'), value: scenario.price * 0.68, className: 'bg-text-soft/45' },
+    { key: 'equity', label: t('equityLabel'), value: scenario.price * 0.32, className: 'bg-accent' },
+    { key: 'capex', label: t('capexLabel'), value: scenario.renovation, className: 'bg-highlight' },
+  ].filter((item) => item.value > 0);
+  const stackTotal = equityStack.reduce((total, item) => total + item.value, 0) || 1;
+  const minCash = Math.min(0, ...cashFlow.map((item) => item.value));
+  const maxCash = Math.max(1, ...cashFlow.map((item) => item.value));
+  const cashSpan = Math.max(1, maxCash - minCash);
+  const points = cashFlow.map((item, index) => {
+    const x = cashFlow.length === 1 ? 48 : 28 + (index / (cashFlow.length - 1)) * 264;
+    const y = 126 - ((item.value - minCash) / cashSpan) * 86;
+    return `${x},${y}`;
+  }).join(' ');
+  const maxIrr = Math.max(0.01, ...sensitivity.map((item) => Math.abs(item.returns.irr)));
+  return (
+    <Panel className="overflow-hidden p-0">
+      <div className="border-b border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 px-5 py-4">
+        <p className="text-xs uppercase tracking-[0.22em] text-text-soft">{t('chartsTitle')}</p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <h3 className="text-xl font-semibold text-text">{t('modelOutputs')}</h3>
+          <span className="rounded-full border border-accent/25 bg-accent/10 px-3 py-1 font-mono text-xs text-accent">{t('baseIrr')}: {pct(returns.irr)}</span>
+        </div>
+      </div>
+      <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="border-b border-[rgba(var(--accent-rgb),0.14)] p-5 lg:border-b-0 lg:border-r">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-text">{t('cashFlowCurve')}</p>
+            <p className="font-mono text-xs text-text-soft">{t('holdPeriod')}: {scenario.hold} {t('years')}</p>
+          </div>
+          <svg className="h-44 w-full overflow-visible" viewBox="0 0 320 150" role="img" aria-label={t('cashFlowCurve')}>
+            <defs>
+              <linearGradient id="cashflow-fill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="rgb(var(--accent-rgb))" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="rgb(var(--accent-rgb))" stopOpacity="0.02" />
+              </linearGradient>
+            </defs>
+            {[40, 78, 116].map((y) => <line key={y} x1="24" x2="304" y1={y} y2={y} className="stroke-border" strokeDasharray="4 7" />)}
+            <polyline points={`28,130 ${points} 292,130`} fill="url(#cashflow-fill)" stroke="none" className="transition-all duration-500" />
+            <polyline points={points} fill="none" stroke="rgb(var(--accent-rgb))" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" className="transition-all duration-500" />
+            {cashFlow.map((item, index) => {
+              const x = cashFlow.length === 1 ? 48 : 28 + (index / (cashFlow.length - 1)) * 264;
+              const y = 126 - ((item.value - minCash) / cashSpan) * 86;
+              return (
+                <g key={item.year} className="transition-transform duration-500">
+                  <circle cx={x} cy={y} r="5" className="fill-accent stroke-surface" strokeWidth="3" />
+                  <text x={x} y="146" textAnchor="middle" className="fill-text-soft text-[10px]">Y{item.year}</text>
+                </g>
+              );
+            })}
+          </svg>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {cashFlow.slice(0, 3).map((item) => (
+              <div key={item.year} className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt p-3">
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">{t('yearLabel')} {item.year}</p>
+                <p className="mt-1 font-mono text-sm font-semibold text-text">{compactSAR(item.value)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-4 p-5">
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-text">{t('equityStack')}</p>
+              <p className="font-mono text-xs text-text-soft">{compactSAR(stackTotal)}</p>
+            </div>
+            <div className="flex h-10 overflow-hidden rounded-full border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt">
+              {equityStack.map((item) => (
+                <div key={item.key} className={cn('transition-all duration-500', item.className)} style={{ width: `${(item.value / stackTotal) * 100}%` }} />
+              ))}
+            </div>
+            <div className="mt-3 grid gap-2">
+              {equityStack.map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-text-soft">{item.label}</span>
+                  <span className="font-mono text-text">{compactSAR(item.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-[16px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt p-4">
+            <p className="text-sm font-semibold text-text">{t('exitWaterfall')}</p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <OutputMini label={t('netSale')} value={compactSAR(exit.netSale) ?? 'SAR 0'} />
+              <OutputMini label={t('remainingDebt')} value={compactSAR(exit.remainingDebt) ?? 'SAR 0'} />
+              <OutputMini label={t('terminalEquity')} value={compactSAR(exit.terminalEquity) ?? 'SAR 0'} hot />
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm font-semibold text-text">{t('sensitivityTitle')}</p>
+            <div className="space-y-2">
+              {sensitivity.map((item) => (
+                <div key={item.key} className="grid grid-cols-[72px_1fr_58px] items-center gap-3">
+                  <span className="text-xs text-text-soft">{t(item.label)}</span>
+                  <div className="h-3 rounded-full bg-border">
+                    <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${Math.max(8, (Math.abs(item.returns.irr) / maxIrr) * 100)}%` }} />
+                  </div>
+                  <span className="text-right font-mono text-xs text-text">{pct(item.returns.irr)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function OutputMini({ label, value, hot = false }: { label: string; value: string; hot?: boolean }) {
+  return (
+    <div className={cn('min-w-0 rounded-[12px] border p-3', hot ? 'border-accent/25 bg-accent/10' : 'border-border bg-surface')}>
+      <p className="truncate text-[10px] uppercase tracking-[0.12em] text-text-muted">{label}</p>
+      <p className="mt-1 truncate font-mono text-sm font-semibold text-text">{value}</p>
     </div>
   );
 }
