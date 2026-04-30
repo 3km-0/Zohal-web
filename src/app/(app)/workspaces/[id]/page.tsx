@@ -654,6 +654,17 @@ export default function WorkspaceCockpitPage() {
     return () => window.removeEventListener('workspace:header-menu-open', onHeaderMenuOpen);
   }, []);
 
+  useEffect(() => {
+    function onOpenCommandDrawer(event: Event) {
+      const tab = (event as CustomEvent<{ tab?: WorkspaceDrawerTab }>).detail?.tab;
+      if (tab === 'evidence' || tab === 'activity' || tab === 'files' || tab === 'consent') {
+        openDrawer(tab);
+      }
+    }
+    window.addEventListener('workspace:open-command-drawer', onOpenCommandDrawer);
+    return () => window.removeEventListener('workspace:open-command-drawer', onOpenCommandDrawer);
+  }, [openDrawer]);
+
   const openBuyerVault = useCallback((upload = false) => {
     const sourceParams = new URLSearchParams({ view: 'buyer_vault', intent: 'readiness' });
     if (upload) sourceParams.set('upload', '1');
@@ -1120,7 +1131,7 @@ export default function WorkspaceCockpitPage() {
               <button
               type="button"
               onClick={() => openDrawer('evidence')}
-              className="absolute bottom-6 right-6 z-30 inline-flex rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] min-[1680px]:hidden"
+              className="absolute bottom-6 right-6 z-30 inline-flex rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] min-[1440px]:hidden"
             >
               <PanelRightOpen className="mr-2 h-4 w-4" />
               {t('openLiveFeed')}
@@ -3018,7 +3029,7 @@ function LiveFeedRail({
   const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
 
   return (
-    <aside className="relative hidden h-full w-[430px] shrink-0 overflow-y-auto border-l border-[rgba(var(--accent-rgb),0.22)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.12),transparent_32%),linear-gradient(180deg,rgba(15,22,18,.88),rgba(7,11,9,.95))] p-6 shadow-[var(--shadowSm)] backdrop-blur min-[1680px]:block">
+    <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-l border-[rgba(var(--accent-rgb),0.22)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.12),transparent_32%),linear-gradient(180deg,rgba(15,22,18,.88),rgba(7,11,9,.95))] p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[430px] 2xl:p-6">
       <Panel className="overflow-hidden rounded-[28px] border-[rgba(var(--accent-rgb),0.22)] p-0">
         <div className="px-6 py-6">
           <div className="flex items-start justify-between gap-4">

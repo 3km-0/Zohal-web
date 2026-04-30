@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { ChevronDown, LayoutDashboard, FolderOpen, PanelsTopLeft, Bolt } from 'lucide-react';
+import { Activity, ChevronDown, FileText, FolderOpen, LayoutDashboard, PanelsTopLeft, ShieldCheck, Bolt } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -16,6 +16,7 @@ interface WorkspaceTabsProps {
   active?: WorkspaceTabKey;
   className?: string;
   showMembersLink?: boolean;
+  showAcquisitionDrawerActions?: boolean;
 }
 
 export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
@@ -34,6 +35,7 @@ export function WorkspaceTabs({
   active,
   className,
   showMembersLink = false,
+  showAcquisitionDrawerActions = false,
 }: WorkspaceTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,6 +102,14 @@ export function WorkspaceTabs({
   const secondaryLinks: { href: string; label: string }[] = showMembersLink
     ? [{ href: withFolderContext(`/workspaces/${workspaceId}/members`), label: t('members') }]
     : [];
+  const drawerActions: { tab: 'evidence' | 'activity' | 'files' | 'consent'; label: string; icon: ComponentType<{ className?: string }> }[] = showAcquisitionDrawerActions
+    ? [
+        { tab: 'evidence', label: t('evidenceTrail'), icon: ShieldCheck },
+        { tab: 'activity', label: t('activityLog'), icon: Activity },
+        { tab: 'files', label: t('readinessFiles'), icon: FileText },
+        { tab: 'consent', label: t('consentApprovals'), icon: ShieldCheck },
+      ]
+    : [];
 
   const activeTab = tabs.find((tab) => tab.key === resolved) ?? tabs[0];
   const ActiveIcon = activeTab.icon;
@@ -120,7 +130,7 @@ export function WorkspaceTabs({
             return nextOpen;
           });
         }}
-        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-950 shadow-[0_8px_26px_rgba(15,23,42,.16)] transition hover:bg-slate-50 dark:border-white/15 dark:bg-[#05070B] dark:text-white dark:shadow-black/60 dark:hover:bg-[#0B1118]"
+        className="inline-flex min-h-[40px] items-center gap-2 rounded-[12px] border border-[rgba(var(--accent-rgb),0.22)] bg-surface px-3 text-sm font-semibold text-text shadow-[0_8px_26px_rgba(0,0,0,.24)] transition hover:bg-surface-alt"
       >
         <ActiveIcon className="h-4 w-4 text-accent" />
         <span>{t('workspaceMenu')}</span>
@@ -129,7 +139,7 @@ export function WorkspaceTabs({
       {moreOpen ? (
         <div
           role="menu"
-          className="absolute end-0 top-[calc(100%+8px)] z-[250] min-w-64 overflow-hidden rounded-[14px] border border-slate-300 bg-white text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.34)] ring-1 ring-slate-950/10 dark:border-white/15 dark:bg-[#05070B] dark:text-white dark:shadow-[0_28px_80px_rgba(0,0,0,.86)] dark:ring-white/12"
+          className="absolute end-0 top-[calc(100%+8px)] z-[250] min-w-72 overflow-hidden rounded-[18px] border border-[rgba(var(--accent-rgb),0.22)] bg-[image:var(--panel-bg)] text-text shadow-[0_28px_80px_rgba(0,0,0,.72)]"
         >
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -142,8 +152,8 @@ export function WorkspaceTabs({
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => setMoreOpen(false)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-white/10',
-                  isActive ? 'bg-lime-100 text-slate-950 dark:bg-lime-300/16 dark:text-lime-200' : 'text-slate-700 dark:text-slate-200'
+                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition hover:bg-accent/10',
+                  isActive ? 'bg-accent/14 text-accent' : 'text-text-soft'
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -152,17 +162,36 @@ export function WorkspaceTabs({
             );
           })}
           {secondaryLinks.length > 0 ? (
-            <div className="border-t border-slate-200 py-1 dark:border-white/12">
+            <div className="border-t border-[rgba(var(--accent-rgb),0.16)] py-1">
               {secondaryLinks.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   role="menuitem"
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-text-soft transition hover:bg-accent/10 hover:text-text"
                   onClick={() => setMoreOpen(false)}
                 >
                   {item.label}
                 </Link>
+              ))}
+            </div>
+          ) : null}
+          {drawerActions.length > 0 ? (
+            <div className="border-t border-[rgba(var(--accent-rgb),0.16)] py-1">
+              {drawerActions.map(({ tab, label, icon: Icon }) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-text-soft transition hover:bg-accent/10 hover:text-text"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    window.dispatchEvent(new CustomEvent('workspace:open-command-drawer', { detail: { tab } }));
+                  }}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
               ))}
             </div>
           ) : null}

@@ -470,7 +470,11 @@
     "workspaceMenu": "مساحة العمل",
     "workspace": "القمرة",
     "publish": "الواجهة الحية",
-    "automations": "الأتمتة"
+    "automations": "الأتمتة",
+    "evidenceTrail": "مسار الأدلة",
+    "activityLog": "سجل النشاط",
+    "readinessFiles": "ملفات الجاهزية",
+    "consentApprovals": "الموافقات والتصاريح"
   },
   "propertyOperatorPage": {
     "title": "المشغّل",

@@ -46,12 +46,12 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
-      <div className="relative z-[200] border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#0A0C0A]/90">
+      <div className="relative z-[200] border-b border-[rgba(var(--accent-rgb),0.16)] bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#0A0C0A]/90">
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(260px,0.9fr)_minmax(440px,1.4fr)_auto] xl:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href={backHref}
-              className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
+              className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -72,11 +72,15 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
           />
 
           <div className="flex shrink-0 items-center gap-2 xl:justify-end">
-            <WorkspaceTabs workspaceId={workspaceId} className="border-0 bg-transparent p-0 md:p-0" />
+            <WorkspaceTabs
+              workspaceId={workspaceId}
+              className="border-0 bg-transparent p-0 md:p-0"
+              showAcquisitionDrawerActions={pathname === `/workspaces/${workspaceId}`}
+            />
             <button
               type="button"
               aria-label="Activity"
-              className="grid h-10 w-10 place-items-center rounded-[10px] border border-border bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
+              className="grid h-10 w-10 place-items-center rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
             >
               <Bell className="h-4 w-4" />
             </button>

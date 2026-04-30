@@ -469,7 +469,11 @@
     "workspaceMenu": "Workspace",
     "workspace": "Cockpit",
     "publish": "Living Interface",
-    "automations": "Automations"
+    "automations": "Automations",
+    "evidenceTrail": "Evidence trail",
+    "activityLog": "Activity log",
+    "readinessFiles": "Readiness files",
+    "consentApprovals": "Consent and approvals"
   },
   "propertyOperatorPage": {
     "title": "Operator",
