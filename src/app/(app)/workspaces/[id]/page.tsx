@@ -145,6 +145,7 @@ type CapexEstimateResponse = {
 
 type AcquisitionEventRow = {
   id: string;
+  opportunity_id?: string | null;
   event_type?: string | null;
   body_text?: string | null;
   created_at?: string | null;
@@ -215,6 +216,17 @@ type ScenarioState = {
   vacancy: number;
   hold: number;
   appreciation: number;
+};
+
+type LiveFeedTone = 'lime' | 'cyan' | 'warn' | 'neutral';
+
+type LiveFeedItem = {
+  id: string;
+  tag: string;
+  title: string;
+  body: string;
+  time?: string | null;
+  tone: LiveFeedTone;
 };
 
 const moduleIcons: Record<CockpitModule, LucideIcon> = {
@@ -499,7 +511,7 @@ export default function WorkspaceCockpitPage() {
       if (selectedOpportunityIds.length > 0) {
         const eventsResult = await supabase
           .from('acquisition_events')
-          .select('id, event_type, body_text, created_at')
+          .select('id, opportunity_id, event_type, body_text, created_at')
           .in('opportunity_id', selectedOpportunityIds)
           .order('created_at', { ascending: false })
           .limit(8);
@@ -930,7 +942,7 @@ export default function WorkspaceCockpitPage() {
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb,35,215,255),.12),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb,185,255,38),.10),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(255,91,112,.06),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-border bg-surface-alt/85 p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-border/80 bg-surface-alt/80 p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard
             workspace={workspace}
@@ -946,110 +958,130 @@ export default function WorkspaceCockpitPage() {
           />
         </aside>
 
-        <main
-          className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain transition-[margin] duration-200"
-          style={{ marginRight: drawerOpen ? drawerWidth : 0 }}
-        >
+        <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto flex min-h-full w-full max-w-[1760px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
                 <Spinner size="lg" />
               </div>
             ) : (
-              <div className="flex flex-1 gap-5">
-                <section className="min-w-0 flex-1 space-y-5">
-                  <div className="xl:hidden">
-                    <OpportunityRail
-                      opportunities={opportunities}
-                      selectedId={selectedOpportunity?.id ?? null}
-                      onSelect={setSelectedOpportunityId}
-                      emptyText={t('emptyCandidates')}
-                      compact
-                    />
-                  </div>
+              <section className="min-w-0 flex-1 space-y-5">
+                <div className="xl:hidden">
+                  <OpportunityRail
+                    opportunities={opportunities}
+                    selectedId={selectedOpportunity?.id ?? null}
+                    onSelect={setSelectedOpportunityId}
+                    emptyText={t('emptyCandidates')}
+                    compact
+                  />
+                </div>
 
-                    <div className="xl:hidden">
-                      <ProgressTracker
+                <div className="xl:hidden">
+                  <ProgressTracker
+                    opportunity={selectedOpportunity}
+                    missingItems={selectedMissing}
+                    readinessProfile={readinessProfile}
+                    brokerageActive={brokerageActive}
+                    onOpenDrawer={openDrawer}
+                    onRequestVisit={() => void scheduleVisit()}
+                  />
+                </div>
+
+                <div className="min-h-[380px] space-y-5">
+                  {activePrimaryTab === 'deal' ? (
+                    <>
+                      <CockpitHero
                         opportunity={selectedOpportunity}
-                        missingItems={selectedMissing}
-                        readinessProfile={readinessProfile}
-                        brokerageActive={brokerageActive}
+                        missingCount={selectedMissing.length}
+                        documentCount={documentCount}
+                        latestUpdate={latestUpdate}
+                        mapOpen={heroMapOpen}
+                        onToggleMap={() => setHeroMapOpen((open) => !open)}
                         onOpenDrawer={openDrawer}
-                        onRequestVisit={() => void scheduleVisit()}
                       />
-                    </div>
+                      <MandatePulse
+                        candidates={opportunities.length}
+                        pursue={pursueCount}
+                        openItems={missingCount}
+                        confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
+                      />
+                      <PrimaryWorkspaceTabs
+                        active={activePrimaryTab}
+                        openItems={selectedMissing.length}
+                        onChange={setActivePrimaryTab}
+                      />
+                      <ModelModule
+                        opportunity={selectedOpportunity}
+                        scenario={scenario}
+                        saving={scenarioBusy}
+                        onScenarioChange={setScenario}
+                        onSave={saveScenarioAssumptions}
+                      />
+                    </>
+                  ) : activePrimaryTab === 'renovation' ? (
+                    <>
+                      <PrimaryWorkspaceTabs
+                        active={activePrimaryTab}
+                        openItems={selectedMissing.length}
+                        onChange={setActivePrimaryTab}
+                      />
+                      <RenovationTab
+                        opportunity={selectedOpportunity}
+                        scenario={scenario}
+                        saving={scenarioBusy}
+                        generating={capexBusy}
+                        error={capexError}
+                        events={renovationEvents}
+                        onScenarioChange={setScenario}
+                        onSave={saveScenarioAssumptions}
+                        onGenerateEstimate={generateCapexEstimate}
+                        onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <PrimaryWorkspaceTabs
+                        active={activePrimaryTab}
+                        openItems={selectedMissing.length}
+                        onChange={setActivePrimaryTab}
+                      />
+                      <ActionsWorkspace
+                        currentBlocker={currentBlocker}
+                        hasBlocker={hasActionBlocker}
+                        primaryActionLabel={primaryAction.label}
+                        primaryActionResult={primaryAction.result}
+                        readinessProfile={readinessProfile}
+                        readinessEvidence={readinessEvidence}
+                        sharingGrants={sharingGrants}
+                        actionApprovals={actionApprovals}
+                        readinessBusy={readinessBusy}
+                        approvalBusy={approvalBusy}
+                        selectedMissing={selectedMissing}
+                        selectedOpportunity={selectedOpportunity}
+                        brokerageActive={brokerageActive}
+                        onPrimaryAction={() => void executePrimaryAction()}
+                      />
+                    </>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        </main>
 
-                    <PrimaryWorkspaceTabs
-                      active={activePrimaryTab}
-                      openItems={selectedMissing.length}
-                      onChange={setActivePrimaryTab}
-                    />
-
-	                  <div className="min-h-[380px] space-y-5">
-                      {activePrimaryTab === 'deal' ? (
-                        <>
-                          <CockpitHero
-                            opportunity={selectedOpportunity}
-                            missingCount={selectedMissing.length}
-                            documentCount={documentCount}
-                            latestUpdate={latestUpdate}
-                            mapOpen={heroMapOpen}
-                            onToggleMap={() => setHeroMapOpen((open) => !open)}
-                            onOpenDrawer={openDrawer}
-                          />
-                          <MandatePulse
-                            candidates={opportunities.length}
-                            pursue={pursueCount}
-                            openItems={missingCount}
-                            confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
-                          />
-                          <ModelModule
-                          opportunity={selectedOpportunity}
-                          scenario={scenario}
-                          saving={scenarioBusy}
-                          onScenarioChange={setScenario}
-                          onSave={saveScenarioAssumptions}
-                        />
-                        </>
-                      ) : activePrimaryTab === 'renovation' ? (
-                        <RenovationTab
-                          opportunity={selectedOpportunity}
-                          scenario={scenario}
-                          saving={scenarioBusy}
-                          generating={capexBusy}
-                          error={capexError}
-                          events={renovationEvents}
-                          onScenarioChange={setScenario}
-                          onSave={saveScenarioAssumptions}
-                          onGenerateEstimate={generateCapexEstimate}
-                          onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
-                        />
-                      ) : (
-                        <>
-                          <ActionsWorkspace
-                            currentBlocker={currentBlocker}
-                            hasBlocker={hasActionBlocker}
-                            primaryActionLabel={primaryAction.label}
-                            primaryActionResult={primaryAction.result}
-                            readinessProfile={readinessProfile}
-                            readinessEvidence={readinessEvidence}
-                            sharingGrants={sharingGrants}
-                            actionApprovals={actionApprovals}
-                            readinessBusy={readinessBusy}
-                            approvalBusy={approvalBusy}
-                            selectedMissing={selectedMissing}
-                            selectedOpportunity={selectedOpportunity}
-                            brokerageActive={brokerageActive}
-                            onPrimaryAction={() => void executePrimaryAction()}
-                          />
-                        </>
-                      )}
-	                  </div>
-	                </section>
-	              </div>
-	            )}
-	          </div>
-	        </main>
+        {!loading ? (
+          <LiveFeedRail
+            events={events}
+            latestUpdate={latestUpdate}
+            documentCount={documentCount}
+            opportunity={selectedOpportunity}
+            missingItems={selectedMissing}
+            claims={claims}
+            primaryActionLabel={primaryAction.label}
+            currentBlocker={currentBlocker}
+            onOpenDrawer={openDrawer}
+          />
+        ) : null}
 
           {drawerOpen ? (
             <WorkspaceCommandDrawer
@@ -1073,10 +1105,10 @@ export default function WorkspaceCockpitPage() {
             <button
               type="button"
               onClick={() => openDrawer('evidence')}
-              className="absolute bottom-6 right-6 z-30 hidden rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] xl:inline-flex"
+              className="absolute bottom-6 right-6 z-30 inline-flex rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] min-[1500px]:hidden"
             >
               <PanelRightOpen className="mr-2 h-4 w-4" />
-              {t('openEvidencePane')}
+              {t('openLiveFeed')}
             </button>
           )}
 	      </div>
@@ -1374,9 +1406,12 @@ function CockpitHero({
   const photos = photoRefsFor(opportunity);
   const heroPhoto = photos[0] ?? null;
   const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source', 'original_source_channel']);
+  const arabicTitle = arabicTitleFor(opportunity);
+  const recommendation = humanize(recommendationFor(opportunity)) || t('notSet');
+  const confidence = humanize(confidenceFor(opportunity)) || t('notSet');
   return (
-    <Panel className="relative overflow-hidden p-6 dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(9,31,32,.92),rgba(8,13,17,.95)_52%,rgba(18,28,17,.92))] dark:shadow-[0_24px_90px_rgba(0,0,0,.42)]" data-testid="acquisition-cockpit-hero">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,rgba(var(--highlight-rgb,35,215,255),.14),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(var(--accent-rgb,185,255,38),.14),transparent_30%)]" />
+    <Panel className="relative overflow-hidden p-6 dark:bg-[linear-gradient(145deg,rgba(20,24,22,.96),rgba(13,15,13,.96))] dark:shadow-[0_24px_80px_rgba(0,0,0,.34),inset_0_1px_0_rgba(255,255,255,.035)]" data-testid="acquisition-cockpit-hero">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb,183,243,74),.10),transparent_34%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb,47,215,255),.09),transparent_30%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,.92fr)] xl:items-stretch">
         <div className="relative min-w-0">
@@ -1384,15 +1419,16 @@ function CockpitHero({
           <h2 className="line-clamp-2 max-w-4xl text-4xl font-black leading-[.96] tracking-normal text-text md:text-6xl">
             {title || t('emptyCockpitTitle')}
           </h2>
+          {arabicTitle ? <p className="mt-3 text-2xl font-semibold leading-tight text-text-soft" dir="rtl">{arabicTitle}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <TrustPill label={sourceLabel ? humanize(sourceLabel) : t('notSet')} tone="cyan" />
-            <TrustPill label={humanize(recommendationFor(opportunity)) || t('notSet')} tone="amber" />
-            <TrustPill label={humanize(confidenceFor(opportunity)) || t('notSet')} tone="cyan" />
+            <TrustPill label={recommendation} tone="lime" />
+            <TrustPill label={confidence} tone="cyan" />
             {facts.price ? <TrustPill label={facts.price} tone="slate" /> : null}
             {facts.area ? <TrustPill label={facts.area} tone="slate" /> : null}
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
-          <div className="mt-6 max-w-3xl border-l-2 border-accent/60 bg-surface/40 p-5">
+          <div className="mt-6 max-w-3xl rounded-r-[18px] border-l-2 border-accent/70 bg-surface/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
             <p className="mt-3 text-base leading-7 text-text-soft">
             {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
@@ -1422,7 +1458,7 @@ function CockpitHero({
           </div>
         </div>
 
-        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0C0A]">
+        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-accent/15 bg-[#0A0C0A] shadow-[inset_0_1px_0_rgba(255,255,255,.045)]">
           {heroPhoto ? (
             <img
               src={heroPhoto}
@@ -1433,10 +1469,13 @@ function CockpitHero({
           ) : (
             <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
+          <div className="absolute left-4 top-4 rounded-[9px] border border-highlight/25 bg-black/35 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-highlight backdrop-blur">
+            {t('photoEvidence')}
+          </div>
           <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-4">
-            <HeroChip label={t('mandateFit')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
-            <HeroChip label={t('confidence')} value={humanize(confidenceFor(opportunity)) || t('notSet')} />
+            <HeroChip label={t('mandateFit')} value={recommendation} />
+            <HeroChip label={t('confidence')} value={confidence} />
             <HeroChip label={t('openItems')} value={missingCount.toString()} />
             <HeroChip label={t('sources')} value={documentCount.toString()} />
           </div>
@@ -1465,9 +1504,9 @@ function CockpitHero({
 
 function HeroChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface-alt px-3 py-2">
-      <p className="text-xs font-medium text-text">{label}</p>
-      <p className="mt-1 truncate text-[11px] text-text-muted">{value}</p>
+    <div className="rounded-[12px] border border-white/12 bg-black/35 px-3 py-2 backdrop-blur">
+      <p className="text-xs font-semibold text-text">{label}</p>
+      <p className="mt-1 truncate text-[11px] text-text-soft">{value}</p>
     </div>
   );
 }
@@ -1485,8 +1524,8 @@ function MandatePulse({
 }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
-    <Panel className="p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <Panel className="p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{t('mandatePulse')}</p>
         <Search className="h-4 w-4 text-accent" />
       </div>
@@ -1598,8 +1637,8 @@ function ProgressTracker({
                 <span className={cn(
                   'relative z-[1] grid place-items-center rounded-full border font-black transition',
                   compact ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-sm',
-                  completed && 'border-success bg-success text-[#0A0C0A]',
-                  active && !nodeBlocked && 'border-accent bg-accent text-[color:var(--accent-text)] shadow-[0_0_0_6px_var(--accent-dim),0_0_26px_var(--accent-soft)]',
+                  completed && 'border-accent/45 bg-accent/18 text-accent',
+                  active && !nodeBlocked && 'border-accent/65 bg-accent/14 text-accent shadow-[0_0_0_5px_var(--accent-dim),0_0_20px_rgba(var(--accent-rgb,183,243,74),.12)]',
                   nodeBlocked && 'border-warning bg-warning text-[#0A0C0A] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(245,183,58,.18)]',
                   pending && 'border-border bg-[color:var(--bg)] text-text-muted'
                 )}>
@@ -1686,7 +1725,7 @@ function PrimaryWorkspaceTabs({
     { key: 'actions', label: t('actionsTab'), icon: ClipboardList },
   ];
   return (
-    <div className="flex w-full gap-2 rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#141816]/95">
+    <div className="flex w-full gap-2 rounded-[18px] border border-border bg-surface-alt/75 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
       {tabs.map(({ key, label, icon: Icon }) => {
         const selected = active === key;
         return (
@@ -1695,8 +1734,8 @@ function PrimaryWorkspaceTabs({
             type="button"
             onClick={() => onChange(key)}
             className={cn(
-              'inline-flex min-h-[50px] flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-semibold transition',
-              selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
+              'inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-[12px] px-4 text-sm font-semibold transition',
+              selected ? 'border border-accent/30 bg-accent/15 text-accent shadow-[0_0_18px_rgba(var(--accent-rgb,183,243,74),.08)]' : 'border border-transparent text-text-soft hover:bg-surface hover:text-text'
             )}
           >
             <Icon className="h-4 w-4" />
@@ -2858,6 +2897,170 @@ function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
   );
 }
 
+function LiveFeedRail({
+  events,
+  latestUpdate,
+  documentCount,
+  opportunity,
+  missingItems,
+  claims,
+  primaryActionLabel,
+  currentBlocker,
+  onOpenDrawer,
+}: {
+  events: AcquisitionEventRow[];
+  latestUpdate: string | null;
+  documentCount: number;
+  opportunity: OpportunityRow | null;
+  missingItems: string[];
+  claims: AcquisitionClaimRow[];
+  primaryActionLabel: string;
+  currentBlocker: string;
+  onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const marketSignal = metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']);
+  const brokerSignal = metadataString(opportunity, ['broker_note', 'counterparty_note', 'seller_note']);
+  const titleSignal = metadataString(opportunity, ['title_note', 'title_status', 'deed_status']);
+  const selectedEvents = events.filter((event) => !opportunity?.id || !event.opportunity_id || event.opportunity_id === opportunity.id);
+  const eventFeedItems: LiveFeedItem[] = selectedEvents.map((event) => ({
+    id: event.id,
+    tag: feedTagForEvent(event.event_type, t),
+    title: humanize(event.event_type) || t('feedEventTitle'),
+    body: event.body_text || t('emptyLog'),
+    time: event.created_at,
+    tone: feedToneForEvent(event.event_type),
+  }));
+  const rawFeedItems: Array<LiveFeedItem | null> = [
+    {
+      id: 'next',
+      tag: t('feedTags.next'),
+      title: t('feedNextTitle'),
+      body: primaryActionLabel || currentBlocker,
+      time: latestUpdate,
+      tone: missingItems.length ? 'warn' : 'lime',
+    },
+    missingItems[0] ? {
+      id: 'risk',
+      tag: t('feedTags.risk'),
+      title: t('feedRiskTitle'),
+      body: missingItems[0],
+      time: latestUpdate,
+      tone: 'warn',
+    } : null,
+    {
+      id: 'evidence',
+      tag: t('feedTags.evidence'),
+      title: t('feedEvidenceTitle'),
+      body: claims.length ? t('overviewClaimBody', { count: claims.length }) : t('sourceDocuments', { count: documentCount }),
+      time: latestUpdate,
+      tone: 'cyan',
+    },
+    marketSignal ? {
+      id: 'market',
+      tag: t('feedTags.market'),
+      title: t('trust.marketSignal'),
+      body: marketSignal,
+      time: latestUpdate,
+      tone: 'lime',
+    } : null,
+    brokerSignal ? {
+      id: 'broker',
+      tag: t('feedTags.broker'),
+      title: t('trust.counterparty'),
+      body: brokerSignal,
+      time: latestUpdate,
+      tone: 'cyan',
+    } : null,
+    titleSignal ? {
+      id: 'title',
+      tag: t('feedTags.title'),
+      title: t('feedTitleTitle'),
+      body: titleSignal,
+      time: latestUpdate,
+      tone: 'neutral',
+    } : null,
+    ...eventFeedItems,
+  ];
+  const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
+
+  return (
+    <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-l border-border/80 bg-surface-alt/80 p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1500px]:block">
+      <Panel className="overflow-hidden p-0">
+        <div className="border-b border-border/80 px-5 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('signalStream')}</p>
+              <h3 className="mt-1 text-2xl font-bold text-text">{t('liveFeed')}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenDrawer('evidence')}
+              className="rounded-[10px] border border-highlight/25 bg-highlight/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-highlight transition hover:bg-highlight/15"
+            >
+              {documentCount} {t('sources')}
+            </button>
+          </div>
+          <div className="mt-5 flex h-20 items-end gap-1 rounded-[14px] border border-border/70 bg-background/45 p-3">
+            {Array.from({ length: 28 }).map((_, index) => (
+              <span
+                key={index}
+                className="w-full rounded-t-sm bg-accent/65 shadow-[0_0_10px_rgba(var(--accent-rgb,183,243,74),.14)]"
+                style={{ height: `${20 + Math.abs(Math.sin(index * 0.72)) * 58}%` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3 p-4">
+          {feedItems.length === 0 ? (
+            <p className="rounded-[14px] border border-border/80 bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
+          ) : (
+            feedItems.map((item) => <LiveFeedRow key={item.id} item={item} />)
+          )}
+        </div>
+      </Panel>
+    </aside>
+  );
+}
+
+function LiveFeedRow({ item }: { item: LiveFeedItem }) {
+  const toneClass = {
+    lime: 'border-accent/18 bg-accent/[0.075] text-accent',
+    cyan: 'border-highlight/20 bg-highlight/10 text-highlight',
+    warn: 'border-warning/25 bg-warning/10 text-warning',
+    neutral: 'border-border bg-surface-alt text-text-muted',
+  }[item.tone];
+  return (
+    <div className="rounded-[14px] border border-border/80 bg-surface-alt/70 p-4">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <span className={cn('rounded-[7px] border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em]', toneClass)}>
+          {item.tag}
+        </span>
+        {item.time ? <span className="shrink-0 text-xs text-text-muted">{formatRelativeTime(item.time)}</span> : null}
+      </div>
+      <p className="text-sm font-semibold text-text">{item.title}</p>
+      <p className="mt-1 text-sm leading-6 text-text-soft">{item.body}</p>
+    </div>
+  );
+}
+
+function feedTagForEvent(eventType: string | null | undefined, t: ReturnType<typeof useTranslations>): string {
+  const type = `${eventType ?? ''}`.toLowerCase();
+  if (type.includes('broker') || type.includes('outreach') || type.includes('message')) return t('feedTags.broker');
+  if (type.includes('risk') || type.includes('missing') || type.includes('diligence')) return t('feedTags.risk');
+  if (type.includes('title') || type.includes('deed')) return t('feedTags.title');
+  if (type.includes('evidence') || type.includes('document') || type.includes('source')) return t('feedTags.evidence');
+  return t('feedTags.action');
+}
+
+function feedToneForEvent(eventType: string | null | undefined): LiveFeedTone {
+  const type = `${eventType ?? ''}`.toLowerCase();
+  if (type.includes('risk') || type.includes('missing') || type.includes('diligence')) return 'warn';
+  if (type.includes('evidence') || type.includes('document') || type.includes('source') || type.includes('broker')) return 'cyan';
+  return 'neutral';
+}
+
 function RightPane({
   activeModule,
   events,
@@ -3386,8 +3589,9 @@ function SignalDot({ hot, warn = false }: { hot?: boolean; warn?: boolean }) {
   return <span className={cn('h-2.5 w-2.5 rounded-full', hot ? 'bg-success shadow-[0_0_14px_currentColor]' : warn ? 'bg-warning shadow-[0_0_14px_currentColor]' : 'bg-text-muted')} />;
 }
 
-function TrustPill({ label, tone }: { label: string; tone: 'amber' | 'cyan' | 'slate' }) {
+function TrustPill({ label, tone }: { label: string; tone: 'lime' | 'amber' | 'cyan' | 'slate' }) {
   const styles = {
+    lime: 'border-accent/30 bg-accent/10 text-accent',
     amber: 'border-warning/30 bg-warning/10 text-warning',
     cyan: 'border-highlight/30 bg-highlight/10 text-highlight',
     slate: 'border-border bg-surface-alt text-text',
