@@ -50,12 +50,12 @@ export const metadata: Metadata = {
     template: '%s | Zohal',
   },
   description:
-    'Zohal helps teams review contracts, invoices, and document sets with verified findings, surfaced conflicts, and page-level evidence.',
+    'Zohal helps Saudi real estate investors turn a buy box into serious acquisition candidates with evidence, scenarios, renovation exposure, and clear next steps.',
   applicationName: 'Zohal',
   keywords: [
-    'document analysis',
-    'document verification',
-    'structured document analysis',
+    'real estate acquisition workflow',
+    'Saudi real estate investors',
+    'property acquisition AI',
     'evidence-based review',
     'Arabic English document review',
     'invoice verification',

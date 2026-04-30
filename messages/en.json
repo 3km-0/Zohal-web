@@ -2044,14 +2044,14 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Turn files into workspaces",
-      "description": "Turn contracts, reports, and PDFs into source-linked workspaces with timelines, dashboards, and follow-ups your team can use."
+      "title": "Zohal — AI acquisition workflow for Saudi real estate investors",
+      "description": "Give Zohal your buy box and get serious property candidates with evidence, scenarios, renovation exposure, and clear next steps."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Source-linked workspaces from your documents.",
-        "theme": "scholar-neutral"
+        "tagline": "Your AI-powered real estate acquisition team.",
+        "theme": "acquisition-operator"
       },
       "nav": {
         "links": [
@@ -2064,7 +2064,7 @@
             "href": "#how"
           },
           {
-            "label": "Workflows",
+            "label": "Workspaces",
             "href": "#workflows"
           },
           {
@@ -2088,43 +2088,43 @@
             "href": "/auth/login"
           },
           "primaryCta": {
-            "label": "Start free",
+            "label": "Start your mandate",
             "href": "/auth/signup"
           }
         }
       },
       "hero": {
-        "headline": "Turn your files into smart dynamic dashboards",
-        "subhead": "Timelines, dashboards, and follow-ups from your contracts, reports, and PDFs.",
+        "headline": "Your AI-powered real estate acquisition team",
+        "subhead": "Give Zohal your buy box. It sources serious Saudi property opportunities, verifies the evidence, models scenarios, estimates renovation exposure, and gives you a live workspace to decide what to do next.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start free",
+            "label": "Start your mandate",
             "href": "/auth/signup"
           },
           {
             "type": "secondary",
-            "label": "Book a demo",
+            "label": "Book an investor demo",
             "href": "/support"
           }
         ],
-        "proofLine": "Source-linked answers • Private-data controls • Arabic + English",
+        "proofLine": "Mandate-first sourcing • Evidence-linked deal files • Renovation-aware scenarios",
         "mock": {
-          "title": "Living Workspace",
+          "title": "Acquisition Workspace",
           "panels": [
-            "Source PDF",
-            "Key Facts",
-            "Action Queue"
+            "Mandate Fit",
+            "Scenario Model",
+            "Diligence Gaps"
           ]
         }
       },
       "credibilityStrip": {
-        "label": "Built for real review teams",
+        "label": "Built for serious Saudi investors",
         "items": [
-          "Regional processing options across supported GCP regions, including Saudi, UAE, and the US",
-          "Arabic + English review with translation and localization checks",
-          "Second-pass verifier before export or handoff",
-          "WhatsApp, Google Drive, and OneDrive integrations"
+          "Launch focus: active Riyadh investors buying SAR 1.5M-5M residential or mixed-use opportunities",
+          "Buy-box interpretation, candidate sourcing, comparable context, and diligence tracking",
+          "Renovation scope ranges, capex bands, confidence levels, and return impact",
+          "Evidence labels separate verified sources, market signals, modeled outputs, counterparty claims, and open diligence"
         ]
       },
       "partners": {
@@ -2161,40 +2161,40 @@
         ]
       },
       "problem": {
-        "title": "Stop digging through files.",
+        "title": "Investors start with a mandate, not a listing.",
         "body": [
-          "Dates, obligations, and changes are usually scattered across contracts, annexes, reports, and PDFs.",
-          "Zohal pulls them into one clear workspace with source-linked answers, live timelines, and follow-ups your team can use immediately."
+          "A serious buyer already knows the budget, neighborhoods, asset type, financing limits, return target, renovation appetite, timeline, and risk tolerance. The hard part is turning that intent into a researched shortlist before the opportunity disappears.",
+          "Zohal works like a high-output acquisition analyst: it turns the buy box into candidates, normalizes messy property information, builds comparable and valuation context, flags diligence gaps, coordinates missing information, and preserves the decision record."
         ],
         "sideCard": {
-          "title": "Dead files -> living workspace",
+          "title": "From scattered search to acquisition workflow",
           "before": [
-            "Teams hunt through folders and PDFs to answer simple operational questions",
-            "Important changes stay buried in addendums, annexes, and revised versions",
-            "Every handoff rebuilds the same context in email, slides, and spreadsheets"
+            "Listings, brokers, private groups, classifieds, and WhatsApp threads stay fragmented",
+            "Comparable context, valuation logic, and renovation exposure arrive too late",
+            "Broker follow-up, missing documents, and partner comments disappear across chats"
           ],
           "after": [
-            "Answers, dates, obligations, and exceptions stay live in one shared workspace",
-            "Changes across related files surface as clear updates your team can review",
-            "Every item can link back to the exact page and source text when needed"
+            "The mandate becomes a ranked candidate pipeline with clear fit reasons",
+            "Each serious property gets a live workspace with evidence, scenarios, capex logic, and next steps",
+            "Decisions, assumptions, diligence items, and counterparty replies stay in one shared memory"
           ]
         }
       },
       "howItWorks": {
-        "title": "What your team gets.",
-        "subhead": "Bring in the files, and Zohal returns a workspace built around the facts, dates, changes, and follow-ups that matter.",
+        "title": "From buy box to decision-ready workspace.",
+        "subhead": "Zohal follows the same core loop every time: mandate intake, opportunity sourcing, research and enrichment, evaluation, renovation logic, and diligence coordination.",
         "steps": [
           {
-            "title": "Bring in the files",
-            "body": "Upload PDFs and related files from uploads, WhatsApp, Google Drive, and OneDrive."
+            "title": "Give Zohal the mandate",
+            "body": "Share the buy box: budget, neighborhoods, asset type, financing constraints, target returns, renovation appetite, timeline, and risk tolerance."
           },
           {
-            "title": "Get the workspace",
-            "body": "Zohal turns them into timelines, dashboards, source-linked facts, and follow-up views."
+            "title": "Receive serious candidates",
+            "body": "Zohal sources and ranks opportunities, enriches property facts, builds comparable context, and marks what is verified, modeled, claimed, or still uncertain."
           },
           {
-            "title": "Review and move",
-            "body": "Your team checks what changed, resolves exceptions, and moves work forward."
+            "title": "Model, coordinate, and decide",
+            "body": "Each serious candidate becomes a live acquisition workspace with scenarios, renovation ranges, diligence gaps, broker follow-up, and a clear next action."
           }
         ],
         "ctas": [
@@ -2288,45 +2288,45 @@
         ]
       },
       "applications": {
-        "title": "Where teams start.",
-        "subhead": "Three early workflows where static files become something teams can actually work from.",
+        "title": "What each acquisition workspace contains.",
+        "subhead": "The homepage now reflects the sharper product: a mandate-first acquisition operator, not a generic listing dashboard.",
         "cards": [
           {
             "id": "contracts",
-            "title": "Contract Workspaces",
-            "subtitle": "See obligations, renewal terms, and risk areas in one place instead of across PDFs and policy docs.",
+            "title": "Mandate Fit",
+            "subtitle": "See why a property surfaced, where it fits the buy box, and where it fails the investor's constraints.",
             "bullets": [
-              "Clause-level source links behind every surfaced item",
-              "Policy and contract language kept in one shared workspace"
+              "Budget, geography, asset type, timeline, financing, and return fit",
+              "Clear pursue, pass, request info, visit, negotiate, or quote next step"
             ],
             "cta": {
-              "label": "See contract workspaces",
+              "label": "See mandate fit",
               "href": "#product"
             }
           },
           {
             "id": "amendments",
-            "title": "Amendment Trackers",
-            "subtitle": "See what changed across the main agreement, addendums, and annexes without rereading everything.",
+            "title": "Evidence and Diligence",
+            "subtitle": "Keep listing data, documents, photos, maps, public-record references, broker claims, and open questions in one deal file.",
             "bullets": [
-              "Primary agreement versus addendum comparison",
-              "Conflicting terms surfaced as explicit updates"
+              "Basis labels for verified sources, market signals, modeled outputs, counterparty claims, and uncertainty",
+              "Missing documents, contradictions, inspection needs, and broker follow-ups"
             ],
             "cta": {
-              "label": "See amendment trackers",
+              "label": "See evidence layer",
               "href": "#product"
             }
           },
           {
             "id": "bilingual-work",
-            "title": "Bilingual Workspaces",
-            "subtitle": "Review Arabic and English versions together, with differences surfaced early.",
+            "title": "Scenario and Renovation Logic",
+            "subtitle": "Model price, financing, hold period, rent, operating costs, capex, exit assumptions, and return thresholds.",
             "bullets": [
-              "Side-by-side evidence across both languages",
-              "Translation and localization mismatches surfaced early"
+              "Base, upside, and downside scenarios with visible assumptions",
+              "Renovation scope ranges, capex bands, confidence levels, and return impact"
             ],
             "cta": {
-              "label": "See bilingual workspaces",
+              "label": "See scenarios",
               "href": "#product"
             }
           }
@@ -2369,39 +2369,39 @@
       },
       "pricing": {
         "id": "pricing",
-        "title": "Pricing for individuals and teams.",
+        "title": "Pricing for active acquisition work.",
         "toggleLabels": [
-          "Individuals",
+          "Investors",
           "Teams"
         ],
         "professional": [
           {
             "id": "pro",
-            "name": "Core",
+            "name": "Starter Workspace",
             "price": "SAR 299 / month",
             "bullets": [
-              "Best for one operator turning recurring document sets into living workspaces",
-              "1 workspace, 1 user, source-linked answers, and follow-up tracking",
-              "Drive, OneDrive, and WhatsApp import included",
-              "SAR 2,999 annually"
+              "Best for evaluating one live property with discipline",
+              "One acquisition workspace for mandate fit, evidence, scenarios, diligence gaps, and next steps",
+              "Upload listing material, documents, photos, and broker notes",
+              "Evidence labels and review history included"
             ],
             "cta": {
-              "label": "Start Core",
+              "label": "Start Workspace",
               "href": "/auth/signup"
             }
           },
           {
             "id": "max",
-            "name": "Investor Pro",
+            "name": "Active Investor",
             "price": "SAR 749 / month",
             "bullets": [
-              "Best for active real estate investors",
-              "3 workspaces and 2 users",
-              "Buyer mandate broadcasts to approved and consented contacts",
-              "2 physical vendor renovation estimates or visits yearly"
+              "Best for repeated mandates and active Riyadh deal flow",
+              "3 workspaces and 2 users for collaboration with a partner, adviser, or family member",
+              "Mandate monitoring, candidate ranking, scenario modeling, and diligence tracking",
+              "Renovation ranges plus 2 vendor estimate or visit workflows yearly"
             ],
             "cta": {
-              "label": "Start Investor Pro",
+              "label": "Start Active Investor",
               "href": "/auth/signup"
             }
           }
@@ -2412,10 +2412,10 @@
             "name": "Team",
             "price": "Contact us",
             "bullets": [
-              "Annual package starts at SAR 24,000",
-              "20 workspaces and 5 users",
-              "Portfolio tab across investments",
-              "5 physical vendor renovation estimates or visits yearly"
+              "For family-office-style buyers, small investment teams, and recurring acquisition programs",
+              "20 acquisition workspaces and 5 users",
+              "Portfolio continuity, shared mandate memory, and team decision history",
+              "Premium live-deal coordination and 5 vendor estimate or visit workflows yearly"
             ],
             "cta": {
               "label": "Contact Us",
@@ -2424,8 +2424,8 @@
           }
         ],
         "usageMeter": {
-          "title": "Simple entitlements",
-          "body": "Plans are organized around workspaces, users, vendor visits, broadcasts, and portfolio operations. Safety limits run quietly in the background to protect reliability."
+          "title": "Simple acquisition units",
+          "body": "Plans are organized around mandates, candidate workspaces, users, renovation estimate workflows, monitoring, and premium coordination. The goal is simple: move from raw opportunity to disciplined decision faster."
         }
       },
       "insights": {
@@ -2518,17 +2518,17 @@
         }
       },
       "finalCta": {
-        "title": "See your files as a workspace.",
-        "subhead": "We can show you what this looks like on your contracts, reports, and document sets.",
+        "title": "Send us your buy box.",
+        "subhead": "We will show how Zohal turns it into serious candidates, evidence-linked deal files, renovation exposure, and clear next steps.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start free",
+            "label": "Start your mandate",
             "href": "/auth/signup"
           },
           {
             "type": "secondary",
-            "label": "Book a demo",
+            "label": "Book an investor demo",
             "href": "/support"
           }
         ]
@@ -2543,15 +2543,15 @@
                 "href": "#product"
               },
               {
-                "label": "Living Workspaces",
+                "label": "Acquisition Workspaces",
                 "href": "#product"
               },
               {
-                "label": "Source-linked Answers",
+                "label": "Evidence Labels",
                 "href": "#how"
               },
               {
-                "label": "Workflows",
+                "label": "Investor Workflows",
                 "href": "#workflows"
               }
             ]
@@ -2560,15 +2560,15 @@
             "title": "Use Cases",
             "links": [
               {
-                "label": "Contract Workspaces",
+                "label": "Mandate Screening",
                 "href": "#workflows"
               },
               {
-                "label": "Bilingual Workspaces",
+                "label": "Renovation-Aware Deals",
                 "href": "#workflows"
               },
               {
-                "label": "Amendment Trackers",
+                "label": "Diligence Tracking",
                 "href": "#workflows"
               }
             ]
@@ -2604,10 +2604,10 @@
             ]
           }
         ],
-        "legalNote": "Watd Information Technology Company provides source-linked workflow software for document-driven operations. Your team remains responsible for legal review and final approvals."
+        "legalNote": "Watd Information Technology Company provides acquisition workflow software for investor-side research and decision support. Investors remain responsible for final diligence, licensed advice, and transaction decisions."
       },
       "ui": {
-        "mentalModelLine": "For contracts, reports, and document-heavy operations",
+        "mentalModelLine": "Mandate -> Candidate Pipeline -> Property Workspace -> Decision",
         "beforeLabel": "Without Zohal",
         "afterLabel": "With Zohal",
         "modal": {
@@ -2619,32 +2619,32 @@
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Workspace Brief",
-          "samplePackTitle": "Commercial Lease Workspace - Arabic/English",
+          "decisionPackLabel": "Acquisition Workspace",
+          "samplePackTitle": "Riyadh Villa Candidate - Al Narjis",
           "provisional": "Needs review",
           "finalized": "Live",
-          "verifiedStatus": "Live",
-          "reviewStatus": "Check update",
-          "sampleGoverningLawLabel": "Governing Law",
-          "sampleGoverningLawValue": "Clause 18",
-          "samplePartyALabel": "Counterparty",
-          "samplePartyAValue": "Al Noor Trading Co.",
-          "sampleEffectiveDateLabel": "Effective Date",
-          "sampleEffectiveDateValue": "2026-01-15",
-          "sampleTermLabel": "Term",
-          "sampleTermMonthsValue": "24 months",
-          "documentViewer": "Source PDF",
-          "verifiedVariables": "Key Facts",
+          "verifiedStatus": "Verified",
+          "reviewStatus": "Check",
+          "sampleGoverningLawLabel": "Mandate Fit",
+          "sampleGoverningLawValue": "Riyadh north, SAR 3.2M ask",
+          "samplePartyALabel": "Market Signal",
+          "samplePartyAValue": "Comparable range pending review",
+          "sampleEffectiveDateLabel": "Renovation Exposure",
+          "sampleEffectiveDateValue": "MEP + roof inspection needed",
+          "sampleTermLabel": "Next Action",
+          "sampleTermMonthsValue": "Request documents + visit",
+          "documentViewer": "Evidence Layer",
+          "verifiedVariables": "Deal Signals",
           "exports": "Workspace Outputs",
           "showEvidence": "Show source",
           "hideEvidence": "Hide source",
           "evidence": "Evidence",
           "pageLabel": "Page {page}",
-          "highlightSnippet": "Flagged update: renewal notice terms do not match across related files.",
+          "highlightSnippet": "Counterparty claim: roof work was completed last year. Needs invoice, photo evidence, or inspection before underwriting.",
           "verificationObjectFilename": "",
           "uiMockLabel": "Workspace Preview",
-          "exceptionsQueueTitle": "Conflict routed for review",
-          "exceptionsQueueBody": "Page 4 says \"30 days\" but Page 12 says \"60 days\".",
+          "exceptionsQueueTitle": "Diligence blocker",
+          "exceptionsQueueBody": "Capex range changes the base case. Request MEP photos and contractor quote before negotiation.",
           "fieldEvidenceLabel": "Linked evidence",
           "claimKey": "claim",
           "statusKey": "status",
@@ -2654,12 +2654,12 @@
         "decisionPackPreview": {
           "deliverablesLabel": "Included",
           "deliverables": [
-            "Share-ready summary",
-            "Follow-up tracker",
-            "Key facts",
-            "Linked evidence"
+            "Mandate fit",
+            "Scenario model",
+            "Capex range",
+            "Diligence tracker"
           ],
-          "deliverablesBody": "Ready for review, sharing, and operational follow-up."
+          "deliverablesBody": "Ready for review, coordination, and a disciplined next step."
         },
         "security": {
           "buyersCareTitle": "What governance teams ask first"
