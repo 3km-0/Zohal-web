@@ -18,7 +18,7 @@ import {
   Gauge,
   HelpCircle,
   Home,
-  Map,
+  Map as MapIcon,
   MapPin,
   MessageSquare,
   PanelRightOpen,
@@ -46,6 +46,7 @@ import {
 } from '@/lib/acquisition-workspace-ui';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 type AgentScope = {
   kind: 'workspace';
@@ -73,6 +74,73 @@ type OpportunityRow = {
   missing_info_json?: unknown;
   screening_readiness?: string | null;
   updated_at?: string | null;
+  renovation_capex_json?: RenovationCapexEstimate | null;
+  renovation_capex_updated_at?: string | null;
+  renovation_rate_card_id?: string | null;
+};
+
+type RenovationCapexLine = {
+  name?: string | null;
+  category?: string | null;
+  category_code?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  low_total?: number | null;
+  base_total?: number | null;
+  high_total?: number | null;
+  confidence_score?: number | null;
+  quantity_basis?: string | null;
+};
+
+type RenovationCapexNotice = {
+  type?: string | null;
+  label?: string | null;
+  message?: string | null;
+  description?: string | null;
+  suggested_action?: string | null;
+  severity?: string | null;
+};
+
+type RenovationCapexEstimate = {
+  version?: number;
+  mode?: string | null;
+  pricing_status?: string | null;
+  planning_estimate_label?: string | null;
+  city?: string | null;
+  city_fallback_used?: boolean | null;
+  currency?: string | null;
+  strategy?: string | null;
+  finish_level?: string | null;
+  low_total?: number | null;
+  base_total?: number | null;
+  high_total?: number | null;
+  confidence_score?: number | null;
+  confidence_label?: string | null;
+  rate_card_id?: string | null;
+  line_items?: RenovationCapexLine[];
+  assumptions?: RenovationCapexNotice[];
+  risks?: RenovationCapexNotice[];
+  missing_evidence?: RenovationCapexNotice[];
+  included_scope?: string[];
+  excluded_scope?: string[];
+  unknowns?: string[];
+  generated_at?: string | null;
+};
+
+type RenovationEstimateEventRow = {
+  id: string;
+  event_type?: string | null;
+  low_total?: number | null;
+  base_total?: number | null;
+  high_total?: number | null;
+  confidence_score?: number | null;
+  created_at?: string | null;
+};
+
+type CapexEstimateResponse = {
+  estimate?: RenovationCapexEstimate;
+  event?: { event_id?: string; renovation_capex_updated_at?: string } | null;
+  explanation?: { summary?: string; next_action?: string };
 };
 
 type AcquisitionEventRow = {
@@ -260,7 +328,7 @@ function scenarioFromOpportunity(item: OpportunityRow | null | undefined): Scena
   if (price === null || rent === null) return null;
   return {
     price,
-    renovation: metadataNumber(item, ['renovation_budget', 'capex', 'estimated_capex']) ?? 0,
+    renovation: item?.renovation_capex_json?.base_total ?? metadataNumber(item, ['renovation_budget', 'capex', 'estimated_capex']) ?? 0,
     rent,
     vacancy: metadataNumber(item, ['vacancy', 'vacancy_rate']) ?? 7,
     hold: metadataNumber(item, ['hold_period', 'hold_years']) ?? 5,
@@ -355,6 +423,9 @@ export default function WorkspaceCockpitPage() {
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [readinessBusy, setReadinessBusy] = useState(false);
   const [scenarioBusy, setScenarioBusy] = useState(false);
+  const [capexBusy, setCapexBusy] = useState(false);
+  const [capexError, setCapexError] = useState<string | null>(null);
+  const [renovationEvents, setRenovationEvents] = useState<RenovationEstimateEventRow[]>([]);
   const [buyBoxEditorOpen, setBuyBoxEditorOpen] = useState(false);
   const [buyBoxDraft, setBuyBoxDraft] = useState('');
   const [buyBoxSaving, setBuyBoxSaving] = useState(false);
@@ -368,7 +439,7 @@ export default function WorkspaceCockpitPage() {
         supabase.from('workspaces').select('id, name, description, analysis_brief, org_id, owner_id').eq('id', workspaceId).maybeSingle(),
         supabase
           .from('acquisition_opportunities')
-          .select('id, stage, title, acquisition_focus, area_summary, budget_band, metadata_json, summary, missing_info_json, screening_readiness, updated_at')
+          .select('id, stage, title, acquisition_focus, area_summary, budget_band, metadata_json, summary, missing_info_json, screening_readiness, updated_at, renovation_capex_json, renovation_capex_updated_at, renovation_rate_card_id')
           .eq('workspace_id', workspaceId)
           .neq('stage', 'archived')
           .order('updated_at', { ascending: false })
@@ -497,6 +568,27 @@ export default function WorkspaceCockpitPage() {
       if (!cancelled) setClaims((data ?? []) as AcquisitionClaimRow[]);
     }
     void loadClaims();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOpportunity?.id, supabase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRenovationEvents() {
+      if (!selectedOpportunity?.id) {
+        setRenovationEvents([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('renovation_estimate_events')
+        .select('id, event_type, low_total, base_total, high_total, confidence_score, created_at')
+        .eq('acquisition_opportunity_id', selectedOpportunity.id)
+        .order('created_at', { ascending: false })
+        .limit(8);
+      if (!cancelled) setRenovationEvents((data ?? []) as RenovationEstimateEventRow[]);
+    }
+    void loadRenovationEvents();
     return () => {
       cancelled = true;
     };
@@ -668,6 +760,61 @@ export default function WorkspaceCockpitPage() {
       setScenarioBusy(false);
     }
   }, [selectedOpportunity, supabase, t]);
+
+  const generateCapexEstimate = useCallback(async (input: {
+    strategy: string;
+    finish_level: string;
+    user_notes: string;
+  }) => {
+    if (!selectedOpportunity) return;
+    setCapexBusy(true);
+    setCapexError(null);
+    try {
+      const response = await invokeZohalBackendJson<CapexEstimateResponse>(
+        supabase,
+        `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/capex-estimate`,
+        {
+          strategy: input.strategy,
+          finish_level: input.finish_level,
+          user_notes: input.user_notes,
+          save: true,
+        },
+      );
+      const estimate = response.estimate ?? {};
+      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id
+        ? {
+            ...item,
+            renovation_capex_json: estimate,
+            renovation_capex_updated_at: response.event?.renovation_capex_updated_at ?? new Date().toISOString(),
+            renovation_rate_card_id: estimate.rate_card_id ?? null,
+            metadata_json: estimate.base_total ? {
+              ...(item.metadata_json ?? {}),
+              renovation_budget: estimate.base_total,
+              capex: estimate.base_total,
+              estimated_capex: estimate.base_total,
+            } : item.metadata_json,
+          }
+        : item));
+      if (estimate.base_total && scenario) {
+        setScenario({ ...scenario, renovation: estimate.base_total });
+      }
+      if (response.event?.event_id) {
+        setRenovationEvents((current) => [{
+          id: response.event?.event_id ?? crypto.randomUUID(),
+          event_type: 'generated',
+          low_total: estimate.low_total,
+          base_total: estimate.base_total,
+          high_total: estimate.high_total,
+          confidence_score: estimate.confidence_score,
+          created_at: new Date().toISOString(),
+        }, ...current].slice(0, 8));
+      }
+    } catch (error) {
+      setCapexError(error instanceof Error ? error.message : t('capexGenerateError'));
+    } finally {
+      setCapexBusy(false);
+    }
+  }, [scenario, selectedOpportunity, supabase, t]);
 
   const updateSelectedStage = useCallback(async (stage: string) => {
     if (!selectedOpportunity) return;
@@ -869,8 +1016,12 @@ export default function WorkspaceCockpitPage() {
                           opportunity={selectedOpportunity}
                           scenario={scenario}
                           saving={scenarioBusy}
+                          generating={capexBusy}
+                          error={capexError}
+                          events={renovationEvents}
                           onScenarioChange={setScenario}
                           onSave={saveScenarioAssumptions}
+                          onGenerateEstimate={generateCapexEstimate}
                           onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
                         />
                       ) : (
@@ -1898,23 +2049,151 @@ function ModelModule({
   );
 }
 
-function RenovationModule({ opportunity, onRequestQuote }: { opportunity: OpportunityRow | null; onRequestQuote: () => void }) {
-  const t = useTranslations('workspaceCockpitPage');
-  const capex = metadataNumber(opportunity, ['renovation_budget', 'capex', 'estimated_capex']);
-  const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
+const renovationStrategies = [
+  'cosmetic_refresh',
+  'rental_ready',
+  'value_add',
+  'premium_repositioning',
+  'custom_scope',
+];
+
+const finishLevels = [
+  'economy',
+  'standard',
+  'mid_grade',
+  'premium',
+  'luxury',
+];
+
+function categoryBreakdown(lines: RenovationCapexLine[] = []) {
+  const map = new Map<string, number>();
+  for (const line of lines) {
+    const category = line.category || humanize(line.category_code) || 'Other';
+    map.set(category, (map.get(category) || 0) + Number(line.base_total || 0));
+  }
+  return [...map.entries()].filter(([, value]) => value > 0).sort((a, b) => b[1] - a[1]);
+}
+
+function CapexRangeBar({ estimate }: { estimate: RenovationCapexEstimate }) {
+  const low = Number(estimate.low_total || 0);
+  const base = Number(estimate.base_total || 0);
+  const high = Number(estimate.high_total || 0);
+  if (!high) return <div className="h-2 rounded-full bg-border" />;
+  const basePosition = Math.min(100, Math.max(0, (base / high) * 100));
   return (
-    <Panel className="p-5">
+    <div className="space-y-2">
+      <div className="relative h-3 rounded-full bg-border">
+        <div className="absolute inset-y-0 left-0 rounded-full bg-accent/35" style={{ width: `${Math.max(8, (low / high) * 100)}%` }} />
+        <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${basePosition}%` }} />
+      </div>
+      <div className="flex justify-between text-xs text-text-soft">
+        <span>{compactSAR(low)}</span>
+        <span>{compactSAR(base)}</span>
+        <span>{compactSAR(high)}</span>
+      </div>
+    </div>
+  );
+}
+
+function RenovationModule({
+  opportunity,
+  scenario,
+  events,
+  onRequestQuote,
+}: {
+  opportunity: OpportunityRow | null;
+  scenario: ScenarioState | null;
+  events: RenovationEstimateEventRow[];
+  onRequestQuote: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const estimate = opportunity?.renovation_capex_json || null;
+  const capex = estimate?.base_total ?? metadataNumber(opportunity, ['renovation_budget', 'capex', 'estimated_capex']);
+  const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
+  const breakdown = categoryBreakdown(estimate?.line_items);
+  const totalBreakdown = breakdown.reduce((total, [, value]) => total + value, 0);
+  const returnsBase = scenario && estimate?.base_total ? modelReturns({ ...scenario, renovation: estimate.base_total }) : null;
+  const returnsHigh = scenario && estimate?.high_total ? modelReturns({ ...scenario, renovation: estimate.high_total }) : null;
+  return (
+    <Panel className="p-5 space-y-5">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('renovationExposure')}</p>
           <h3 className="mt-1 text-xl font-semibold text-text">{t('renovationScopeTitle')}</h3>
         </div>
-        <span className="rounded-2xl border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{t('decisionBlockers')}</span>
+        <span className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">{estimate?.confidence_label ? humanize(estimate.confidence_label) : t('planningEstimate')}</span>
       </div>
+      {estimate ? (
+        <div className="rounded-[18px] border border-border bg-surface-alt p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">{estimate.planning_estimate_label || t('planningEstimate')}</p>
+              <h4 className="mt-1 text-2xl font-semibold text-text">
+                {estimate.low_total && estimate.high_total ? `${compactSAR(estimate.low_total)} - ${compactSAR(estimate.high_total)}` : t('pricingMissingTitle')}
+              </h4>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-text-soft">{t('baseCase')}</p>
+              <p className="text-lg font-semibold text-text">{estimate.base_total ? formatSAR.format(estimate.base_total) : t('notSet')}</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <CapexRangeBar estimate={estimate} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-border px-3 py-1 text-text-soft">{humanize(estimate.strategy)}</span>
+            <span className="rounded-full border border-border px-3 py-1 text-text-soft">{humanize(estimate.finish_level)}</span>
+            <span className="rounded-full border border-border px-3 py-1 text-text-soft">{humanize(estimate.city)}{estimate.city_fallback_used ? ` · ${t('fallbackUsed')}` : ''}</span>
+          </div>
+        </div>
+      ) : null}
       <div className="grid gap-3">
         <DecisionBlock icon={Wrench} title={t('capexTitle')} body={capex === null ? t('capexBody') : formatSAR.format(capex)} />
         <DecisionBlock icon={AlertTriangle} title={t('decisionBlockers')} body={condition || t('renovationEmpty')} />
       </div>
+      {breakdown.length ? (
+        <div>
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-text-soft">{t('categoryBreakdown')}</p>
+          <div className="space-y-3">
+            {breakdown.slice(0, 6).map(([category, value]) => (
+              <div key={category} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="font-medium text-text">{category}</span>
+                  <span className="text-text-soft">{compactSAR(value)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-border">
+                  <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(5, Math.round((value / Math.max(1, totalBreakdown)) * 100))}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {estimate?.assumptions?.length ? <NoticeList title={t('assumptions')} items={estimate.assumptions} /> : null}
+      {estimate?.missing_evidence?.length ? <NoticeList title={t('missingEvidence')} items={estimate.missing_evidence} /> : null}
+      {estimate?.risks?.length ? <NoticeList title={t('risks')} items={estimate.risks} /> : null}
+      {returnsBase && returnsHigh ? (
+        <div className="rounded-[18px] border border-border bg-surface-alt p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-text-soft">{t('scenarioImpact')}</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <OutputMetric label={t('baseCapexYield')} value={`${(returnsBase.coc * 100).toFixed(1)}%`} />
+            <OutputMetric label={t('highCapexYield')} value={`${(returnsHigh.coc * 100).toFixed(1)}%`} hot />
+          </div>
+        </div>
+      ) : null}
+      {events.length ? (
+        <div>
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-text-soft">{t('estimateHistory')}</p>
+          <div className="space-y-2">
+            {events.slice(0, 4).map((event) => (
+              <div key={event.id} className="flex items-center justify-between rounded-[14px] border border-border px-3 py-2 text-xs">
+                <span className="font-medium text-text">{humanize(event.event_type)}</span>
+                <span className="text-text-soft">{event.base_total ? compactSAR(event.base_total) : t('scopeOnly')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <button type="button" onClick={onRequestQuote} className="mt-5 w-full rounded-3xl border border-accent/25 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent hover:bg-accent/15">
         {t('requestQuotePack')}
       </button>
@@ -1922,23 +2201,50 @@ function RenovationModule({ opportunity, onRequestQuote }: { opportunity: Opport
   );
 }
 
+function NoticeList({ title, items }: { title: string; items: RenovationCapexNotice[] }) {
+  return (
+    <div>
+      <p className="mb-2 text-xs uppercase tracking-[0.2em] text-text-soft">{title}</p>
+      <div className="space-y-2">
+        {items.slice(0, 4).map((item, index) => (
+          <div key={`${title}-${item.type || index}`} className="rounded-[14px] border border-border bg-surface-alt px-3 py-2 text-sm">
+            <p className="font-medium text-text">{item.label || item.message || item.description || humanize(item.type)}</p>
+            {item.suggested_action ? <p className="mt-1 text-xs leading-5 text-text-soft">{item.suggested_action}</p> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function RenovationTab({
   opportunity,
   scenario,
   saving,
+  generating,
+  error,
+  events,
   onScenarioChange,
   onSave,
+  onGenerateEstimate,
   onRequestQuote,
 }: {
   opportunity: OpportunityRow | null;
   scenario: ScenarioState | null;
   saving: boolean;
+  generating: boolean;
+  error: string | null;
+  events: RenovationEstimateEventRow[];
   onScenarioChange: (next: ScenarioState) => void;
   onSave: (next: ScenarioState) => Promise<void>;
+  onGenerateEstimate: (input: { strategy: string; finish_level: string; user_notes: string }) => Promise<void>;
   onRequestQuote: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const seed = scenario ?? seedScenarioFromOpportunity(opportunity);
+  const [strategy, setStrategy] = useState(opportunity?.renovation_capex_json?.strategy || 'rental_ready');
+  const [finishLevel, setFinishLevel] = useState(opportunity?.renovation_capex_json?.finish_level || 'mid_grade');
+  const [notes, setNotes] = useState('');
   const setRenovation = (value: number) => onScenarioChange({ ...seed, renovation: value });
   return (
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1946,6 +2252,42 @@ function RenovationTab({
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('renovationTab')}</p>
         <h3 className="mt-1 text-2xl font-semibold text-text">{t('renovationModelTitle')}</h3>
         <p className="mt-2 text-sm leading-6 text-text-soft">{t('renovationModelBody')}</p>
+        <div className="mt-5 space-y-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">{t('strategy')}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {renovationStrategies.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setStrategy(item)}
+                  className={cn('rounded-[12px] border px-3 py-2 text-sm font-semibold transition', strategy === item ? 'border-accent bg-accent text-[color:var(--accent-text)]' : 'border-border bg-surface-alt text-text-soft hover:text-text')}
+                >
+                  {t(`strategies.${item}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">{t('finishLevel')}</span>
+            <select value={finishLevel} onChange={(event) => setFinishLevel(event.target.value)} className="w-full rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm text-text outline-none focus:border-accent">
+              {finishLevels.map((item) => <option key={item} value={item}>{t(`finishLevels.${item}`)}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">{t('renovationNotes')}</span>
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder={t('renovationNotesPlaceholder')} className="w-full resize-none rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent" />
+          </label>
+          {error ? <p className="rounded-[12px] border border-error/25 bg-error/10 px-3 py-2 text-sm text-error">{error}</p> : null}
+          <button
+            type="button"
+            disabled={generating || !opportunity}
+            onClick={() => void onGenerateEstimate({ strategy, finish_level: finishLevel, user_notes: notes })}
+            className="w-full rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {generating ? t('generatingEstimate') : t('generateEstimate')}
+          </button>
+        </div>
         <div className="mt-5">
           <ScenarioSlider
             label={t('renovationBudget')}
@@ -1966,7 +2308,7 @@ function RenovationTab({
           {saving ? t('savingAssumptions') : t('saveAssumptions')}
         </button>
       </Panel>
-      <RenovationModule opportunity={opportunity} onRequestQuote={onRequestQuote} />
+      <RenovationModule opportunity={opportunity} scenario={scenario} events={events} onRequestQuote={onRequestQuote} />
     </div>
   );
 }
@@ -2086,7 +2428,7 @@ function VisualCompanion({
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('visualCompanion')}</p>
           <h3 className="mt-1 text-lg font-semibold text-text">{t('visualCompanionTitle')}</h3>
         </div>
-        <Map className="h-5 w-5 text-highlight" />
+        <MapIcon className="h-5 w-5 text-highlight" />
       </div>
 
       <div className="mb-4 grid grid-cols-4 gap-1 rounded-[12px] border border-border bg-background/60 p-1">

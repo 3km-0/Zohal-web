@@ -6,10 +6,13 @@ import {
 import { createHttpTask } from "../runtime/gcp.js";
 import {
   getExpectedInternalToken,
+  isInternalCaller,
   requireInternalCaller,
+  verifySupabaseJwt,
 } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
+import { runRenovationCapexAgent } from "../renovation/agent.js";
 
 const SEARCH_TASK_QUEUE = String(
   process.env.GCP_ACQUISITION_SEARCH_TASK_QUEUE || "acquisition-search-runs",
@@ -169,6 +172,11 @@ function normalizeText(value) {
 
 function normalizeUuid(value) {
   return normalizeText(value).toLowerCase() || null;
+}
+
+function bearerToken(headers) {
+  const raw = String(headers?.authorization || "").trim();
+  return raw.toLowerCase().startsWith("bearer ") ? raw.slice("bearer ".length).trim() : raw;
 }
 
 function normalizeMissingItems(value) {
@@ -1916,6 +1924,7 @@ function matchRoute(method, pathname) {
   if (method === "POST" && parts[3] === "candidates" && parts[5] === "promote") return { name: "promoteCandidate", candidateId: parts[4] };
   if (method === "GET" && parts[3] === "opportunities" && parts.length === 5) return { name: "getOpportunity", opportunityId: parts[4] };
   if (method === "GET" && parts[3] === "opportunities" && parts[5] === "actions" && parts.length === 6) return { name: "listOpportunityActions", opportunityId: parts[4] };
+  if (method === "POST" && parts[3] === "opportunities" && parts[5] === "capex-estimate" && parts.length === 6) return { name: "generateCapexEstimate", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "actions" && parts[7] === "prepare") return { name: "prepareOpportunityAction", opportunityId: parts[4], actionId: parts[6] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "actions" && parts[7] === "execute") return { name: "executeOpportunityAction", opportunityId: parts[4], actionId: parts[6] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "enrich") return { name: "enrichOpportunity", opportunityId: parts[4] };
@@ -1944,6 +1953,34 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
   const route = matchRoute(req.method, new URL(req.url || "/", "http://localhost").pathname);
   if (!route) return false;
   try {
+    if (route.name === "generateCapexEstimate") {
+      const body = await readJsonBody(req);
+      const allowInternal = isInternalCaller(req.headers);
+      let userId = null;
+      if (!allowInternal) {
+        const token = bearerToken(req.headers);
+        if (!token) {
+          const error = new Error("not_authenticated");
+          error.statusCode = 401;
+          throw error;
+        }
+        const verified = await verifySupabaseJwt(token);
+        userId = verified.payload?.sub || null;
+        if (!userId) {
+          const error = new Error("invalid_user_token");
+          error.statusCode = 401;
+          throw error;
+        }
+      }
+      return sendJson(res, 200, buildEnvelope(requestId, await runRenovationCapexAgent({
+        supabase,
+        opportunityId: route.opportunityId,
+        input: body,
+        requestId,
+        userId,
+        allowInternal,
+      })));
+    }
     requireInternalCaller(req.headers);
     const body = req.method === "GET" ? {} : await readJsonBody(req);
     if (route.name === "createMandate") {
