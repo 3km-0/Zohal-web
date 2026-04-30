@@ -1309,7 +1309,7 @@ function OpportunityRail({
               data-testid="acquisition-opportunity-card"
               onClick={() => onSelect(item.id)}
               className={cn(
-                'rounded-[16px] border p-4 text-left transition dark:bg-[#07101A]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.055)]',
+                'rounded-[16px] border p-4 text-left transition dark:bg-[#141816]/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,.03)]',
                 missingInfoList(item.missing_info_json).length > 0 && 'border-l-4 border-l-warning',
                 compact ? 'min-w-[260px]' : 'w-full',
                 selectedId === item.id
@@ -1422,7 +1422,7 @@ function CockpitHero({
           </div>
         </div>
 
-        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0C0A]">
           {heroPhoto ? (
             <img
               src={heroPhoto}
@@ -1443,7 +1443,7 @@ function CockpitHero({
         </div>
       </div>
       {mapOpen ? (
-        <div className="relative mt-6 overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+        <div className="relative mt-6 overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0C0A]">
           <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
           <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
@@ -1598,9 +1598,9 @@ function ProgressTracker({
                 <span className={cn(
                   'relative z-[1] grid place-items-center rounded-full border font-black transition',
                   compact ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-sm',
-                  completed && 'border-success bg-success text-[#030509]',
+                  completed && 'border-success bg-success text-[#0A0C0A]',
                   active && !nodeBlocked && 'border-accent bg-accent text-[color:var(--accent-text)] shadow-[0_0_0_6px_var(--accent-dim),0_0_26px_var(--accent-soft)]',
-                  nodeBlocked && 'border-warning bg-warning text-[#030509] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(255,176,32,.18)]',
+                  nodeBlocked && 'border-warning bg-warning text-[#0A0C0A] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(245,183,58,.18)]',
                   pending && 'border-border bg-[color:var(--bg)] text-text-muted'
                 )}>
                   {nodeBlocked ? (
@@ -1686,7 +1686,7 @@ function PrimaryWorkspaceTabs({
     { key: 'actions', label: t('actionsTab'), icon: ClipboardList },
   ];
   return (
-    <div className="flex w-full gap-2 rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#07101A]/95">
+    <div className="flex w-full gap-2 rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#141816]/95">
       {tabs.map(({ key, label, icon: Icon }) => {
         const selected = active === key;
         return (
@@ -1702,7 +1702,7 @@ function PrimaryWorkspaceTabs({
             <Icon className="h-4 w-4" />
             <span>{label}</span>
             {key === 'actions' && openItems > 0 ? (
-              <span className="rounded-full bg-warning px-2 py-0.5 font-mono text-[11px] font-bold text-[#030509]">
+              <span className="rounded-full bg-warning px-2 py-0.5 font-mono text-[11px] font-bold text-[#0A0C0A]">
                 {openItems}
               </span>
             ) : null}
@@ -1733,7 +1733,7 @@ function CurrentBlockerBanner({
     <div className={cn('rounded-[14px] border p-4 shadow-[var(--shadowSm)]', blocked ? 'border-warning/35 bg-warning/12' : 'border-success/30 bg-success/10')}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#030509]' : 'bg-success text-[#030509]')}>
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]')}>
             {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
           </span>
           <div>
@@ -1748,7 +1748,7 @@ function CurrentBlockerBanner({
           disabled={busy}
           className={cn(
             'rounded-[12px] px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
-            blocked ? 'bg-warning text-[#030509]' : 'bg-success text-[#030509]'
+            blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]'
           )}
         >
           {actionLabel}
@@ -1762,7 +1762,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
   const t = useTranslations('workspaceCockpitPage.modules');
   const modules: CockpitModule[] = ['overview', 'model', 'openItems', 'renovation', 'outreach', 'offer'];
   return (
-    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#07101A]/95">
+    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#141816]/95">
       {modules.map((module) => {
         const Icon = moduleIcons[module];
         const selected = active === module;
@@ -2448,7 +2448,7 @@ function VisualCompanion({
       </div>
 
       {mode === 'map' ? (
-        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0C0A]">
           <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
           <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
@@ -2607,7 +2607,7 @@ function WorkspaceCommandDrawer({
         <div onPointerDown={handleDragStart} aria-hidden="true" className="absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize touch-none items-center justify-center xl:flex">
           <div className={cn('h-10 w-1 rounded-full transition-colors', isDragging ? 'bg-accent' : 'bg-border hover:bg-accent/60')} />
         </div>
-        <div className="flex items-center justify-between border-b border-border bg-[color:var(--bg)] px-4 py-3 dark:bg-[#030509]">
+        <div className="flex items-center justify-between border-b border-border bg-[color:var(--bg)] px-4 py-3 dark:bg-[#0A0C0A]">
           <div>
             <p className="text-sm font-semibold text-text">{t('evidencePaneTitle')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
@@ -2616,7 +2616,7 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-4 gap-1 border-b border-border bg-[color:var(--bg)] p-2 dark:bg-[#07101A]">
+        <div className="grid grid-cols-4 gap-1 border-b border-border bg-[color:var(--bg)] p-2 dark:bg-[#141816]">
           {tabs.map(({ key, label, icon: Icon }) => {
             const selected = activeTab === key;
             return (
@@ -2841,7 +2841,7 @@ function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
     <Panel className="p-4">
       <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.map')}</p>
       <h3 className="mt-1 text-xl font-semibold text-text">{title}</h3>
-      <div className="relative mt-4 min-h-[360px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#030509]">
+        <div className="relative mt-4 min-h-[360px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0C0A]">
         <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
         <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
         <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />

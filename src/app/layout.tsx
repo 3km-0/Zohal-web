@@ -117,7 +117,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir}
-      data-theme="zohal-light"
+      data-theme="zohal-dark"
       className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${vectorSans.variable}`}
       suppressHydrationWarning
     >

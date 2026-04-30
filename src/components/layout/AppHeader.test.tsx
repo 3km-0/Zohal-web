@@ -51,16 +51,16 @@ describe('AppHeader', () => {
     document.documentElement.setAttribute('data-theme', 'zohal-light');
   });
 
-  it('toggles from light to dark mode from the header control', () => {
+  it('toggles from Obsidian dark to light mode from the header control', () => {
     render(React.createElement(AppHeader, { title: 'Workspace' }));
 
     const toggle = screen.getByTestId('app-header-theme-toggle');
-    expect(toggle).toHaveAttribute('aria-label', 'Switch to dark mode');
+    expect(toggle).toHaveAttribute('aria-label', 'Switch to light mode');
 
     fireEvent.click(toggle);
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-dark');
-    expect(window.localStorage.getItem('theme')).toBe('dark');
-    expect(toggle).toHaveAttribute('aria-label', 'Switch to light mode');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-light');
+    expect(window.localStorage.getItem('theme')).toBe('light');
+    expect(toggle).toHaveAttribute('aria-label', 'Switch to dark mode');
   });
 });

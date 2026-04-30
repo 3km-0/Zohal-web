@@ -6,7 +6,7 @@ const config: Config = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  darkMode: ['class', '[data-theme="dark"]'],
+  darkMode: ['class', '[data-theme="dark"], [data-theme="zohal-dark"]'],
   theme: {
     extend: {
       colors: {
@@ -38,14 +38,14 @@ const config: Config = {
         mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {
-        zohal: '10px',
-        'zohal-sm': '6px',
-        'zohal-lg': '16px',
+        zohal: '18px',
+        'zohal-sm': '14px',
+        'zohal-lg': '22px',
         'zohal-xl': '24px',
       },
       boxShadow: {
-        zohal: '0 4px 24px rgba(0, 0, 0, 0.06)',
-        'zohal-lg': '0 8px 32px rgba(0, 0, 0, 0.08)',
+        zohal: 'var(--shadowSm)',
+        'zohal-lg': 'var(--shadowMd)',
       },
       spacing: {
         'zohal-xs': '4px',

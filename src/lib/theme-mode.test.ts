@@ -14,12 +14,12 @@ describe('theme mode helpers', () => {
     document.documentElement.setAttribute('data-theme', 'zohal-light');
   });
 
-  it('defaults to light mode when no preference is stored', () => {
-    expect(DEFAULT_THEME_MODE).toBe('light');
+  it('defaults to Obsidian dark mode when no preference is stored', () => {
+    expect(DEFAULT_THEME_MODE).toBe('dark');
     expect(readThemeModeFromStorage()).toBeNull();
-    expect(initializeThemeMode()).toBe('light');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-light');
-    expect(window.localStorage.getItem('theme')).toBe('light');
+    expect(initializeThemeMode()).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-dark');
+    expect(window.localStorage.getItem('theme')).toBe('dark');
   });
 
   it('applies and persists dark mode when requested', () => {

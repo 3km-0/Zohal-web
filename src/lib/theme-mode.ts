@@ -5,7 +5,7 @@ export type DataTheme = 'zohal-light' | 'zohal-dark';
 
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_CHANGE_EVENT = 'zohal-theme-change';
-export const DEFAULT_THEME_MODE: ThemeMode = 'light';
+export const DEFAULT_THEME_MODE: ThemeMode = 'dark';
 
 export function normalizeThemeMode(value: string | null | undefined): ThemeMode | null {
   if (value === 'light' || value === 'dark') return value;

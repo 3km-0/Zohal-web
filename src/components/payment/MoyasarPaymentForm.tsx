@@ -232,7 +232,11 @@ export function MoyasarPaymentForm({
         [data-theme="dark"] .moyasar-form .mpf-card-number,
         [data-theme="dark"] .moyasar-form .mpf-card-expiry,
         [data-theme="dark"] .moyasar-form .mpf-card-cvc,
-        [data-theme="dark"] .moyasar-form .mpf-card-holder {
+        [data-theme="dark"] .moyasar-form .mpf-card-holder,
+        [data-theme="zohal-dark"] .moyasar-form .mpf-card-number,
+        [data-theme="zohal-dark"] .moyasar-form .mpf-card-expiry,
+        [data-theme="zohal-dark"] .moyasar-form .mpf-card-cvc,
+        [data-theme="zohal-dark"] .moyasar-form .mpf-card-holder {
           background-color: var(--surface-alt);
           color: var(--text);
         }
