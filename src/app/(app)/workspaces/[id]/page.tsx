@@ -229,6 +229,36 @@ type LiveFeedItem = {
   tone: LiveFeedTone;
 };
 
+const acquisitionObsidianStyle = {
+  '--bg': '#060A09',
+  '--surface': '#101612',
+  '--surface-alt': '#151D18',
+  '--surface-active': '#1B281F',
+  '--text': '#F5F7EF',
+  '--text-soft': '#9EAFA6',
+  '--text-muted': '#748179',
+  '--border': 'rgba(144, 184, 58, 0.18)',
+  '--accent': '#98C742',
+  '--accent-rgb': '152, 199, 66',
+  '--accent-alt': '#B6DE58',
+  '--highlight': '#36C8F1',
+  '--highlight-rgb': '54, 200, 241',
+  '--success': '#74D7A0',
+  '--warning': '#F0B33F',
+  '--accent-soft': 'rgba(152, 199, 66, 0.16)',
+  '--accent-dim': 'rgba(152, 199, 66, 0.075)',
+  '--grid-color': 'rgba(152, 199, 66, 0.035)',
+  '--grid-opacity': '0.18',
+  '--grid-size': '58px',
+  '--console-bg':
+    'radial-gradient(circle at 86% 16%, rgba(116, 151, 48, 0.22), transparent 36rem), radial-gradient(circle at 48% 0%, rgba(54, 200, 241, 0.08), transparent 34rem), linear-gradient(180deg, #080D0B 0%, #050807 100%)',
+  '--panel-bg':
+    'radial-gradient(circle at 8% 0%, rgba(152, 199, 66, 0.08), transparent 34rem), linear-gradient(180deg, rgba(18, 25, 21, 0.96), rgba(10, 14, 12, 0.98))',
+} as CSSProperties;
+
+const obsidianBorder = 'border-[rgba(var(--accent-rgb),0.18)]';
+const obsidianPanel = 'bg-[image:var(--panel-bg)] shadow-[0_18px_55px_rgba(0,0,0,.38),inset_0_1px_0_rgba(152,199,66,.06)]';
+
 const moduleIcons: Record<CockpitModule, LucideIcon> = {
   overview: ShieldCheck,
   model: Gauge,
@@ -924,7 +954,7 @@ export default function WorkspaceCockpitPage() {
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]" style={acquisitionObsidianStyle}>
       {!loading ? (
         <HeaderProgressPortal targetId={headerProgressSlotId}>
           <ProgressTracker
@@ -939,10 +969,11 @@ export default function WorkspaceCockpitPage() {
         </HeaderProgressPortal>
       ) : null}
       <div className={cn('relative flex min-h-0 min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
-        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb,35,215,255),.12),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb,185,255,38),.10),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(255,91,112,.06),transparent_24rem)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[image:var(--console-bg)]" />
+        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb),.08),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb),.20),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(var(--accent-rgb),.055),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-accent/10 bg-[linear-gradient(180deg,rgba(20,24,22,.84),rgba(10,12,10,.9))] p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-[rgba(var(--accent-rgb),0.22)] bg-[linear-gradient(180deg,rgba(15,22,18,.88),rgba(7,11,9,.94))] p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard
             workspace={workspace}
@@ -1098,9 +1129,9 @@ export default function WorkspaceCockpitPage() {
 	      </div>
 
       {agentOpen ? (
-        <aside className="fixed inset-0 z-50 flex bg-background/60 backdrop-blur-sm lg:static lg:z-auto lg:w-[430px] lg:border-l lg:border-border lg:bg-surface">
+        <aside className="fixed inset-0 z-50 flex bg-background/60 backdrop-blur-sm lg:static lg:z-auto lg:w-[430px] lg:border-l lg:border-[rgba(var(--accent-rgb),0.16)] lg:bg-surface">
           <div className="ml-auto flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl shadow-[color:var(--border)] lg:max-w-none lg:shadow-none">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div className="flex items-center justify-between border-b border-[rgba(var(--accent-rgb),0.16)] px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-text">{t('askZohal')}</p>
                 <p className="text-xs text-text-muted">{t('workspaceScope', { id: agentScope.workspaceId })}</p>
@@ -1201,7 +1232,7 @@ function BuyBoxCard({
           <button
             type="button"
             onClick={() => setExpanded((open) => !open)}
-            className="grid h-8 w-8 place-items-center rounded-[10px] border border-border bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
+            className="grid h-8 w-8 place-items-center rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface text-text-soft transition hover:bg-surface-alt hover:text-text"
             aria-label={isOpen ? t('collapseMandate') : t('expandMandate')}
             aria-expanded={isOpen}
           >
@@ -1219,7 +1250,7 @@ function BuyBoxCard({
       </div>
       {isOpen ? (
         <div className="mt-3 space-y-3">
-          <div className="rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm font-semibold leading-5 text-text">
+          <div className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-3 py-3 text-sm font-semibold leading-5 text-text">
             {briefParts[0] || t('notSet')}
           </div>
           <div className="grid gap-1.5">
@@ -1239,7 +1270,7 @@ function BuyBoxCard({
             <button
               type="button"
               onClick={onOpenAgent}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition hover:bg-surface-alt"
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-sm font-semibold text-text transition hover:bg-surface-alt"
             >
               <MessageSquare className="h-4 w-4" />
               {t('openSourcingAgent')}
@@ -1267,7 +1298,7 @@ function BuyBoxEditorModal({
   const t = useTranslations('workspaceCockpitPage');
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4 backdrop-blur-md" role="dialog" aria-modal="true">
-      <div className="w-full max-w-xl rounded-[20px] border border-border bg-surface p-5 shadow-2xl shadow-black/35">
+      <div className="w-full max-w-xl rounded-[20px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface p-5 shadow-2xl shadow-black/35">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('editBuyBox')}</p>
@@ -1282,7 +1313,7 @@ function BuyBoxEditorModal({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           rows={7}
-          className="w-full resize-y rounded-[14px] border border-border bg-background p-3 text-sm leading-6 text-text outline-none ring-accent/30 focus:ring-2"
+          className="w-full resize-y rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background p-3 text-sm leading-6 text-text outline-none ring-accent/30 focus:ring-2"
           placeholder={t('editBuyBoxPlaceholder')}
         />
         <div className="mt-4 flex justify-end gap-2">
@@ -1325,11 +1356,11 @@ function OpportunityRail({
               data-testid="acquisition-opportunity-card"
               onClick={() => onSelect(item.id)}
               className={cn(
-                'relative rounded-[22px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(20,24,22,.82),rgba(13,15,13,.88))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.025)]',
+                'relative rounded-[22px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(20,24,22,.82),rgba(13,15,13,.88))] dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]',
                 compact ? 'min-w-[260px] p-4' : 'min-h-[214px] w-full p-5',
                 selectedId === item.id
-                  ? 'border-accent/45 bg-accent/[0.075] shadow-[0_0_0_1px_rgba(var(--accent-rgb,183,243,74),.16),0_18px_45px_rgba(var(--accent-rgb,183,243,74),.10)]'
-                  : 'border-border/70 bg-surface-alt/70 hover:border-accent/18 hover:bg-surface'
+                  ? 'border-[rgba(var(--accent-rgb),0.48)] bg-[rgba(var(--accent-rgb),0.08)] shadow-[0_0_0_1px_rgba(var(--accent-rgb),.16),0_18px_45px_rgba(var(--accent-rgb),.10)]'
+                  : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/70 hover:border-[rgba(var(--accent-rgb),0.26)] hover:bg-surface'
               )}
             >
               <div className="flex justify-between gap-3">
@@ -1395,8 +1426,8 @@ function CockpitHero({
   const recommendation = humanize(recommendationFor(opportunity)) || t('notSet');
   const confidence = humanize(confidenceFor(opportunity)) || t('notSet');
   return (
-    <Panel className="relative overflow-hidden p-6 dark:bg-[linear-gradient(145deg,rgba(20,24,22,.96),rgba(13,15,13,.96))] dark:shadow-[0_24px_80px_rgba(0,0,0,.34),inset_0_1px_0_rgba(255,255,255,.035)]" data-testid="acquisition-cockpit-hero">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb,183,243,74),.10),transparent_34%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb,47,215,255),.09),transparent_30%)]" />
+    <Panel className="relative overflow-hidden border-[rgba(var(--accent-rgb),0.24)] p-6" data-testid="acquisition-cockpit-hero">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb),.13),transparent_34%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb),.055),transparent_30%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,.92fr)] xl:items-stretch">
         <div className="relative min-w-0">
@@ -1413,7 +1444,7 @@ function CockpitHero({
             {facts.area ? <TrustPill label={facts.area} tone="slate" /> : null}
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
-          <div className="mt-6 max-w-3xl rounded-r-[18px] border-l-2 border-accent/70 bg-surface/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+          <div className="mt-6 max-w-3xl rounded-r-[18px] border-l-2 border-accent/70 bg-surface/45 p-5 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
             <p className="mt-3 text-base leading-7 text-text-soft">
             {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
@@ -1436,14 +1467,14 @@ function CockpitHero({
                 <span className="min-w-0 truncate">{t('openListing')}</span>
               </a>
             ) : null}
-            <button type="button" onClick={() => onOpenDrawer('evidence')} className="inline-flex items-center gap-2 rounded-[12px] border border-border bg-surface/70 px-4 py-3 text-sm font-semibold text-text transition hover:bg-surface-alt">
+            <button type="button" onClick={() => onOpenDrawer('evidence')} className="inline-flex items-center gap-2 rounded-[12px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface/70 px-4 py-3 text-sm font-semibold text-text transition hover:bg-surface-alt">
               <ShieldCheck className="h-4 w-4" />
               {t('showEvidence')}
             </button>
           </div>
         </div>
 
-        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-accent/15 bg-[#0A0C0A] shadow-[inset_0_1px_0_rgba(255,255,255,.045)]">
+        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-[rgba(var(--accent-rgb),0.22)] bg-[#0A0C0A] shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.07)]">
           {heroPhoto ? (
             <>
               <img
@@ -1484,7 +1515,7 @@ function CockpitHero({
             <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
               {scoreFor(opportunity) ?? '--'}
             </div>
-            <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-border bg-background/80 p-3 backdrop-blur">
+            <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/80 p-3 backdrop-blur">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
               <p className="mt-1 text-sm font-semibold text-text">{title || t('emptyCockpitTitle')}</p>
               <p className="mt-1 text-xs leading-5 text-text-soft">{metadataString(opportunity, ['district', 'city', 'source', 'source_label', 'listing_source']) || t('marketSignalEmpty')}</p>
@@ -1498,7 +1529,7 @@ function CockpitHero({
 
 function HeroChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[12px] border border-white/12 bg-black/35 px-3 py-2 backdrop-blur">
+    <div className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.26)] bg-black/35 px-3 py-2 backdrop-blur">
       <p className="text-xs font-semibold text-text">{label}</p>
       <p className="mt-1 truncate text-[11px] text-text-soft">{value}</p>
     </div>
@@ -1634,7 +1665,7 @@ function ProgressTracker({
                   completed && 'border-accent/45 bg-accent/18 text-accent',
                   active && !nodeBlocked && 'border-accent/65 bg-accent/14 text-accent shadow-[0_0_0_5px_var(--accent-dim),0_0_20px_rgba(var(--accent-rgb,183,243,74),.12)]',
                   nodeBlocked && 'border-warning bg-warning text-[#0A0C0A] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(245,183,58,.18)]',
-                  pending && 'border-border bg-[color:var(--bg)] text-text-muted'
+                  pending && 'border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] text-text-muted'
                 )}>
                   {nodeBlocked ? (
                     <>
@@ -1655,7 +1686,7 @@ function ProgressTracker({
                     {status}
                   </p>
                 ) : null}
-                <span className="pointer-events-none absolute top-full z-40 mt-2 w-48 rounded-[10px] border border-border bg-surface px-3 py-2 text-left text-xs leading-5 text-text opacity-0 shadow-2xl transition group-hover:opacity-100">
+                <span className="pointer-events-none absolute top-full z-40 mt-2 w-48 rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-left text-xs leading-5 text-text opacity-0 shadow-2xl transition group-hover:opacity-100">
                   <span className="block font-semibold">{step} · {status}</span>
                   <span className="mt-0.5 block text-text-soft">{detail}</span>
                 </span>
@@ -1692,7 +1723,7 @@ function ProgressTracker({
         <button type="button" onClick={() => onOpenDrawer(!readinessProfile ? 'files' : missingItems.length ? 'evidence' : 'activity')} className="rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-[color:var(--accent-text)]">
           {t('progress.primaryAction')}
         </button>
-        <button type="button" onClick={onRequestVisit} disabled={!opportunity || !readinessProfile} className="rounded-[12px] border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
+        <button type="button" onClick={onRequestVisit} disabled={!opportunity || !readinessProfile} className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-4 py-2.5 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
           {t('scheduleVisit')}
         </button>
         <button type="button" onClick={() => onOpenDrawer('activity')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
@@ -1719,7 +1750,7 @@ function PrimaryWorkspaceTabs({
     { key: 'actions', label: t('actionsTab'), icon: ClipboardList },
   ];
   return (
-    <div className="flex w-full gap-2 rounded-[18px] border border-border bg-surface-alt/75 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+    <div className="flex w-full gap-2 rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/75 p-2 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
       {tabs.map(({ key, label, icon: Icon }) => {
         const selected = active === key;
         return (
@@ -1729,7 +1760,7 @@ function PrimaryWorkspaceTabs({
             onClick={() => onChange(key)}
             className={cn(
               'inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-[12px] px-4 text-sm font-semibold transition',
-              selected ? 'border border-accent/30 bg-accent/15 text-accent shadow-[0_0_18px_rgba(var(--accent-rgb,183,243,74),.08)]' : 'border border-transparent text-text-soft hover:bg-surface hover:text-text'
+              selected ? 'border border-[rgba(var(--accent-rgb),0.34)] bg-accent/15 text-accent shadow-[0_0_18px_rgba(var(--accent-rgb),.08)]' : 'border border-transparent text-text-soft hover:bg-surface hover:text-text'
             )}
           >
             <Icon className="h-4 w-4" />
@@ -1795,7 +1826,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
   const t = useTranslations('workspaceCockpitPage.modules');
   const modules: CockpitModule[] = ['overview', 'model', 'openItems', 'renovation', 'outreach', 'offer'];
   return (
-    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-border bg-surface-alt p-2 dark:bg-[#141816]/95">
+    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-2 dark:bg-[#141816]/95">
       {modules.map((module) => {
         const Icon = moduleIcons[module];
         const selected = active === module;
@@ -1890,7 +1921,7 @@ function ActionsWorkspace({
           {selectedMissing.length ? (
             <OpenItemsModule items={selectedMissing} />
           ) : (
-            <p className="rounded-[12px] border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">{t('actions.noOpenItems')}</p>
+            <p className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-4 py-3 text-sm text-text-soft">{t('actions.noOpenItems')}</p>
           )}
         </ActionSection>
 
@@ -1926,7 +1957,7 @@ function ActionSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const toneClass = {
-    neutral: 'text-text-muted bg-surface-alt border-border',
+    neutral: 'text-text-muted bg-surface-alt border-[rgba(var(--accent-rgb),0.16)]',
     success: 'text-success bg-success/10 border-success/25',
     warning: 'text-warning bg-warning/10 border-warning/25',
   }[tone];
@@ -1944,7 +1975,7 @@ function ActionSection({
         </div>
         <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold', toneClass)}>{status}</span>
       </button>
-      {open ? <div className="border-t border-border p-4">{children}</div> : null}
+      {open ? <div className="border-t border-[rgba(var(--accent-rgb),0.16)] p-4">{children}</div> : null}
     </Panel>
   );
 }
@@ -1994,7 +2025,7 @@ function OverviewModule({
             </span>
           </a>
         ) : null}
-        <div className="mt-5 rounded-3xl border border-border bg-surface-alt p-4">
+        <div className="mt-5 rounded-3xl border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
           <p className="text-xs text-text-muted">{t('sources')}</p>
           <p className="mt-1 text-sm text-text">{documentCount}</p>
         </div>
@@ -2032,7 +2063,7 @@ function ModelModule({
             <button type="button" onClick={() => onScenarioChange(seed)} className="rounded-[12px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)]">
               {t('addAssumptions')}
             </button>
-            <button type="button" onClick={() => onScenarioChange(seed)} className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
+            <button type="button" onClick={() => onScenarioChange(seed)} className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-4 py-3 text-sm font-semibold text-text">
               {t('useListingFacts')}
             </button>
           </div>
@@ -2157,7 +2188,7 @@ function RenovationModule({
         <span className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">{estimate?.confidence_label ? humanize(estimate.confidence_label) : t('planningEstimate')}</span>
       </div>
       {estimate ? (
-        <div className="rounded-[18px] border border-border bg-surface-alt p-4">
+        <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-text-muted">{estimate.planning_estimate_label || t('planningEstimate')}</p>
@@ -2174,9 +2205,9 @@ function RenovationModule({
             <CapexRangeBar estimate={estimate} />
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-border px-3 py-1 text-text-soft">{humanize(estimate.strategy)}</span>
-            <span className="rounded-full border border-border px-3 py-1 text-text-soft">{humanize(estimate.finish_level)}</span>
-            <span className="rounded-full border border-border px-3 py-1 text-text-soft">{humanize(estimate.city)}{estimate.city_fallback_used ? ` · ${t('fallbackUsed')}` : ''}</span>
+            <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] px-3 py-1 text-text-soft">{humanize(estimate.strategy)}</span>
+            <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] px-3 py-1 text-text-soft">{humanize(estimate.finish_level)}</span>
+            <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] px-3 py-1 text-text-soft">{humanize(estimate.city)}{estimate.city_fallback_used ? ` · ${t('fallbackUsed')}` : ''}</span>
           </div>
         </div>
       ) : null}
@@ -2206,7 +2237,7 @@ function RenovationModule({
       {estimate?.missing_evidence?.length ? <NoticeList title={t('missingEvidence')} items={estimate.missing_evidence} /> : null}
       {estimate?.risks?.length ? <NoticeList title={t('risks')} items={estimate.risks} /> : null}
       {returnsBase && returnsHigh ? (
-        <div className="rounded-[18px] border border-border bg-surface-alt p-4">
+        <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-text-soft">{t('scenarioImpact')}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <OutputMetric label={t('baseCapexYield')} value={`${(returnsBase.coc * 100).toFixed(1)}%`} />
@@ -2219,7 +2250,7 @@ function RenovationModule({
           <p className="mb-3 text-xs uppercase tracking-[0.2em] text-text-soft">{t('estimateHistory')}</p>
           <div className="space-y-2">
             {events.slice(0, 4).map((event) => (
-              <div key={event.id} className="flex items-center justify-between rounded-[14px] border border-border px-3 py-2 text-xs">
+              <div key={event.id} className="flex items-center justify-between rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] px-3 py-2 text-xs">
                 <span className="font-medium text-text">{humanize(event.event_type)}</span>
                 <span className="text-text-soft">{event.base_total ? compactSAR(event.base_total) : t('scopeOnly')}</span>
               </div>
@@ -2240,7 +2271,7 @@ function NoticeList({ title, items }: { title: string; items: RenovationCapexNot
       <p className="mb-2 text-xs uppercase tracking-[0.2em] text-text-soft">{title}</p>
       <div className="space-y-2">
         {items.slice(0, 4).map((item, index) => (
-          <div key={`${title}-${item.type || index}`} className="rounded-[14px] border border-border bg-surface-alt px-3 py-2 text-sm">
+          <div key={`${title}-${item.type || index}`} className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-3 py-2 text-sm">
             <p className="font-medium text-text">{item.label || item.message || item.description || humanize(item.type)}</p>
             {item.suggested_action ? <p className="mt-1 text-xs leading-5 text-text-soft">{item.suggested_action}</p> : null}
           </div>
@@ -2294,7 +2325,7 @@ function RenovationTab({
                   key={item}
                   type="button"
                   onClick={() => setStrategy(item)}
-                  className={cn('rounded-[12px] border px-3 py-2 text-sm font-semibold transition', strategy === item ? 'border-accent bg-accent text-[color:var(--accent-text)]' : 'border-border bg-surface-alt text-text-soft hover:text-text')}
+                  className={cn('rounded-[12px] border px-3 py-2 text-sm font-semibold transition', strategy === item ? 'border-accent bg-accent text-[color:var(--accent-text)]' : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt text-text-soft hover:text-text')}
                 >
                   {t(`strategies.${item}`)}
                 </button>
@@ -2303,13 +2334,13 @@ function RenovationTab({
           </div>
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">{t('finishLevel')}</span>
-            <select value={finishLevel} onChange={(event) => setFinishLevel(event.target.value)} className="w-full rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm text-text outline-none focus:border-accent">
+            <select value={finishLevel} onChange={(event) => setFinishLevel(event.target.value)} className="w-full rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-3 py-3 text-sm text-text outline-none focus:border-accent">
               {finishLevels.map((item) => <option key={item} value={item}>{t(`finishLevels.${item}`)}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">{t('renovationNotes')}</span>
-            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder={t('renovationNotesPlaceholder')} className="w-full resize-none rounded-[12px] border border-border bg-surface-alt px-3 py-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent" />
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder={t('renovationNotesPlaceholder')} className="w-full resize-none rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-3 py-3 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent" />
           </label>
           {error ? <p className="rounded-[12px] border border-error/25 bg-error/10 px-3 py-2 text-sm text-error">{error}</p> : null}
           <button
@@ -2352,12 +2383,12 @@ function OpenItemsModule({ items }: { items: string[] }) {
     <Panel className="p-5">
       <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('openItems')}</p>
       <h3 className="mt-1 text-xl font-semibold text-text">{t('openItemsModuleTitle')}</h3>
-      <div className="mt-5 overflow-hidden rounded-3xl border border-border">
+      <div className="mt-5 overflow-hidden rounded-3xl border border-[rgba(var(--accent-rgb),0.16)]">
         {items.length === 0 ? (
           <p className="bg-surface-alt p-4 text-sm text-text-soft">{t('openItemsEmpty')}</p>
         ) : (
           items.map((item, index) => (
-            <div key={`${item}-${index}`} className="grid gap-3 border-b border-border bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr]">
+            <div key={`${item}-${index}`} className="grid gap-3 border-b border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-4 py-4 text-sm last:border-b-0 md:grid-cols-[40px_1fr]">
               <p className="font-mono text-xs text-text-muted">#{index + 1}</p>
               <p className="font-medium text-text">{item}</p>
             </div>
@@ -2375,7 +2406,7 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
     <Panel className="p-5">
       <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('marketComps')}</p>
       <h3 className="mt-1 text-xl font-semibold text-text">{t('compsPressureTitle')}</h3>
-      <div className="mt-5 rounded-3xl border border-border bg-surface-alt p-4">
+      <div className="mt-5 rounded-3xl border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
         <p className="text-sm leading-6 text-text">{compsNote || t('compsEmpty')}</p>
       </div>
     </Panel>
@@ -2390,11 +2421,11 @@ function OutreachModule({
   const t = useTranslations('workspaceCockpitPage');
   const brokerNote = metadataString(opportunity, ['broker_note', 'counterparty_note', 'contact_access']);
   return (
-    <div className="rounded-[14px] border border-border bg-surface-alt p-4">
+    <div className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
         <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('outreach.title')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('outreach.heading')}</h3>
         <p className="mt-3 text-sm leading-6 text-text-soft">{brokerNote || t('outreach.body')}</p>
-        <p className="mt-4 rounded-[12px] border border-border bg-surface px-4 py-3 text-sm text-text-soft">{t('actions.usePrimaryAction')}</p>
+        <p className="mt-4 rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-4 py-3 text-sm text-text-soft">{t('actions.usePrimaryAction')}</p>
     </div>
   );
 }
@@ -2418,13 +2449,13 @@ function OfferModule({
           <h3 className="mt-1 text-xl font-semibold text-text">{t('offer.heading')}</h3>
         </div>
         {latestApproval ? (
-          <span className="rounded-full border border-border bg-surface-alt px-3 py-1 text-xs font-semibold text-text-soft">
+          <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-3 py-1 text-xs font-semibold text-text-soft">
             {humanize(latestApproval.approval_status) || t('notSet')}
           </span>
         ) : null}
       </div>
       <p className="mt-3 text-sm leading-6 text-text-soft">{brokerageActive ? t('offer.readyBody') : t('brokerageGateHint')}</p>
-      <p className="mt-4 rounded-[12px] border border-border bg-surface-alt px-4 py-3 text-sm text-text-soft">
+      <p className="mt-4 rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-4 py-3 text-sm text-text-soft">
         {opportunity && brokerageActive ? t('actions.usePrimaryAction') : t('brokerageGateHint')}
       </p>
     </Panel>
@@ -2464,7 +2495,7 @@ function VisualCompanion({
         <MapIcon className="h-5 w-5 text-highlight" />
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-1 rounded-[12px] border border-border bg-background/60 p-1">
+      <div className="mb-4 grid grid-cols-4 gap-1 rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/60 p-1">
         {modes.map((item) => (
           <button
             key={item.key}
@@ -2488,7 +2519,7 @@ function VisualCompanion({
           <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
             {scoreFor(opportunity) ?? '--'}
           </div>
-          <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-border bg-background/80 p-3 backdrop-blur">
+          <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/80 p-3 backdrop-blur">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
             <p className="mt-1 text-sm font-semibold text-text">{title}</p>
             <p className="mt-1 text-xs leading-5 text-text-soft">{sourceLabel || t('marketSignalEmpty')}</p>
@@ -2500,7 +2531,7 @@ function VisualCompanion({
         <div className="grid min-h-[250px] gap-3">
           {photoRefs.length > 0 ? (
             <>
-              <div className="relative h-64 overflow-hidden rounded-[18px] border border-border bg-background">
+              <div className="relative h-64 overflow-hidden rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-background">
                 <img
                   src={photoRefs[0]}
                   alt=""
@@ -2522,7 +2553,7 @@ function VisualCompanion({
                     key={photo}
                     src={photo}
                     alt={`${title} ${index + 2}`}
-                    className="h-20 w-full rounded-[14px] border border-border object-cover"
+                    className="h-20 w-full rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] object-cover"
                     loading="lazy"
                   />
                 ))}
@@ -2530,13 +2561,13 @@ function VisualCompanion({
             </>
           ) : (
             <>
-              <div className="rounded-[18px] border border-border bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb,35,215,255),.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))] p-4">
+              <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb,35,215,255),.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))] p-4">
                 <TrustPill label={t('photoEvidence')} tone="cyan" />
                 <p className="mt-4 text-sm leading-6 text-text-soft">{condition || t('photosEmpty')}</p>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[t('facade'), t('interior'), t('roof')].map((label) => (
-                  <div key={label} className="grid min-h-20 place-items-center rounded-[14px] border border-border bg-surface-alt px-2 text-center text-xs font-medium text-text-muted">
+                  <div key={label} className="grid min-h-20 place-items-center rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-2 text-center text-xs font-medium text-text-muted">
                     {label}
                   </div>
                 ))}
@@ -2549,7 +2580,7 @@ function VisualCompanion({
       {mode === 'docs' ? (
         <div className="space-y-3">
           {[t('sourceDocuments', { count: documentCount }), missingItems[0] || t('uncertainEmpty'), sourceLabel || t('marketSignalEmpty')].map((body, index) => (
-            <div key={`${body}-${index}`} className="rounded-[16px] border border-border bg-surface-alt p-4">
+            <div key={`${body}-${index}`} className="rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">DOC {String(index + 1).padStart(2, '0')}</p>
               <p className="mt-2 text-sm leading-6 text-text">{body}</p>
             </div>
@@ -2558,10 +2589,10 @@ function VisualCompanion({
       ) : null}
 
       {mode === 'parcel' ? (
-        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-border bg-background p-5">
+        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-background p-5">
           <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:28px_28px]" />
           <div className="relative mx-auto mt-6 h-36 w-48 rotate-[-8deg] border-2 border-highlight bg-highlight/10 shadow-[0_0_26px_rgba(var(--highlight-rgb,35,215,255),.20)]" />
-          <div className="relative mt-7 rounded-[14px] border border-border bg-surface-alt p-3">
+          <div className="relative mt-7 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('parcelSignal')}</p>
             <p className="mt-1 text-sm text-text">{[facts.area, facts.price].filter(Boolean).join(' · ') || t('notSet')}</p>
           </div>
@@ -2641,13 +2672,13 @@ function WorkspaceCommandDrawer({
     >
       <button type="button" aria-label={t('close')} onClick={onClose} className="hidden flex-1 xl:block" />
       <div
-        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-border shadow-2xl shadow-black/30 dark:border-white/12 dark:shadow-black/65 xl:max-w-none"
+        className="relative ml-auto flex h-full w-full max-w-xl flex-col border-l border-[rgba(var(--accent-rgb),0.16)] shadow-2xl shadow-black/30 dark:border-[rgba(var(--accent-rgb),0.18)] dark:shadow-black/65 xl:max-w-none"
         style={{ width: `${width}px`, background: 'var(--console-bg, var(--bg))' } as CSSProperties}
       >
         <div onPointerDown={handleDragStart} aria-hidden="true" className="absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize touch-none items-center justify-center xl:flex">
           <div className={cn('h-10 w-1 rounded-full transition-colors', isDragging ? 'bg-accent' : 'bg-border hover:bg-accent/60')} />
         </div>
-        <div className="flex items-center justify-between border-b border-border bg-[color:var(--bg)] px-4 py-3 dark:bg-[#0A0C0A]">
+        <div className="flex items-center justify-between border-b border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] px-4 py-3 dark:bg-[#0A0C0A]">
           <div>
             <p className="text-sm font-semibold text-text">{t('evidencePaneTitle')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
@@ -2656,7 +2687,7 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-4 gap-1 border-b border-border bg-[color:var(--bg)] p-2 dark:bg-[#141816]">
+        <div className="grid grid-cols-4 gap-1 border-b border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] p-2 dark:bg-[#141816]">
           {tabs.map(({ key, label, icon: Icon }) => {
             const selected = activeTab === key;
             return (
@@ -2777,7 +2808,7 @@ function DrawerEvidence({
                 {t('showSource')}
               </a>
             ) : (
-              <p className="mt-3 rounded-[10px] border border-border bg-surface-alt px-3 py-2 text-xs text-text-muted">{t('noSourceAttached')}</p>
+              <p className="mt-3 rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-3 py-2 text-xs text-text-muted">{t('noSourceAttached')}</p>
             )}
           </Panel>
         );
@@ -2805,7 +2836,7 @@ function DrawerActivity({ events, latestUpdate }: { events: AcquisitionEventRow[
         {events.length === 0 ? (
           <p className="text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
         ) : events.map((event) => (
-          <div key={event.id} className="rounded-[14px] border border-border bg-surface-alt p-4">
+          <div key={event.id} className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
             <div className="mb-2 flex justify-between gap-3">
               <p className="text-sm font-medium text-text">{humanize(event.event_type)}</p>
               {event.created_at ? <span className="text-xs text-text-muted">{formatRelativeTime(event.created_at)}</span> : null}
@@ -2888,7 +2919,7 @@ function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
         <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
           {scoreFor(opportunity) ?? '--'}
         </div>
-        <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-border bg-background/80 p-3 backdrop-blur">
+        <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/80 p-3 backdrop-blur">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
           <p className="mt-1 text-sm font-semibold text-text">{title}</p>
           <p className="mt-1 text-xs leading-5 text-text-soft">{sourceLabel || t('marketSignalEmpty')}</p>
@@ -2987,8 +3018,8 @@ function LiveFeedRail({
   const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
 
   return (
-    <aside className="relative hidden h-full w-[430px] shrink-0 overflow-y-auto border-l border-accent/10 bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb,183,243,74),.07),transparent_32%),linear-gradient(180deg,rgba(20,24,22,.86),rgba(10,12,10,.92))] p-6 shadow-[var(--shadowSm)] backdrop-blur min-[1680px]:block">
-      <Panel className="overflow-hidden rounded-[28px] border-accent/12 bg-[linear-gradient(180deg,rgba(20,24,22,.92),rgba(13,15,13,.94))] p-0">
+    <aside className="relative hidden h-full w-[430px] shrink-0 overflow-y-auto border-l border-[rgba(var(--accent-rgb),0.22)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.12),transparent_32%),linear-gradient(180deg,rgba(15,22,18,.88),rgba(7,11,9,.95))] p-6 shadow-[var(--shadowSm)] backdrop-blur min-[1680px]:block">
+      <Panel className="overflow-hidden rounded-[28px] border-[rgba(var(--accent-rgb),0.22)] p-0">
         <div className="px-6 py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -2998,16 +3029,16 @@ function LiveFeedRail({
             <button
               type="button"
               onClick={() => onOpenDrawer('evidence')}
-              className="rounded-[12px] border border-accent/35 bg-accent/10 px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-accent transition hover:bg-accent/15"
+              className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.48)] bg-accent/10 px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-accent transition hover:bg-accent/15"
             >
               {sourceCount} {t('sources')}
             </button>
           </div>
-          <div className="mt-7 flex h-[104px] items-end gap-1.5 rounded-[22px] border border-accent/10 bg-background/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+          <div className="mt-7 flex h-[104px] items-end gap-1.5 rounded-[22px] border border-[rgba(var(--accent-rgb),0.18)] bg-background/45 p-5 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
             {Array.from({ length: 30 }).map((_, index) => (
               <span
                 key={index}
-                className="w-full rounded-t-sm bg-accent/75 shadow-[0_0_14px_rgba(var(--accent-rgb,183,243,74),.18)]"
+                className="w-full rounded-t-sm bg-accent/85 shadow-[0_0_14px_rgba(var(--accent-rgb),.22)]"
                 style={{ height: `${24 + Math.abs(Math.sin(index * 0.72)) * 62}%` }}
               />
             ))}
@@ -3016,7 +3047,7 @@ function LiveFeedRail({
 
         <div className="space-y-4 px-6 pb-6">
           {feedItems.length === 0 ? (
-            <p className="rounded-[18px] border border-accent/10 bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
+            <p className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
           ) : (
             feedItems.map((item) => <LiveFeedRow key={item.id} item={item} />)
           )}
@@ -3034,7 +3065,7 @@ function LiveFeedRow({ item }: { item: LiveFeedItem }) {
     neutral: 'text-text-muted',
   }[item.tone];
   return (
-    <div className="grid grid-cols-[82px_minmax(0,1fr)_70px] gap-4 rounded-[20px] border border-accent/10 bg-surface-alt/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.025)]">
+    <div className="grid grid-cols-[82px_minmax(0,1fr)_70px] gap-4 rounded-[20px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/72 p-4 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
       <p className={cn('pt-1 font-mono text-xs uppercase tracking-[0.18em]', toneClass)}>{item.tag}</p>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-text">{item.title}</p>
@@ -3124,7 +3155,7 @@ function RightPane({
           </span>
         </div>
 
-        <div className="mb-5 flex h-20 items-end gap-1 rounded-[14px] border border-border bg-background/50 p-3">
+        <div className="mb-5 flex h-20 items-end gap-1 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/50 p-3">
           {Array.from({ length: 28 }).map((_, index) => (
             <span
               key={index}
@@ -3156,7 +3187,7 @@ function RightPane({
             <p className="text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
           ) : (
             events.map((event) => (
-              <div key={event.id} className="rounded-3xl border border-border bg-surface-alt p-4">
+              <div key={event.id} className="rounded-3xl border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
                 <div className="mb-2 flex justify-between gap-3">
                   <p className="text-sm font-medium text-text">{humanize(event.event_type)}</p>
                   {event.created_at ? <span className="text-xs text-text-muted">{formatRelativeTime(event.created_at)}</span> : null}
@@ -3188,7 +3219,7 @@ function RightPane({
         ) : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button
-            className="rounded-[12px] border border-border bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55"
+            className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55"
             disabled={!opportunity || !readinessProfile || Boolean(approvalBusy)}
             onClick={() => void onRequestAction('schedule_visit')}
           >
@@ -3330,13 +3361,13 @@ function ReadinessList({
   items: { id: string; label: string; meta: string; tone: 'neutral' | 'lime' | 'cyan' | 'warn' }[];
 }) {
   const toneClass = {
-    neutral: 'border-border bg-surface-alt text-text-muted',
+    neutral: 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt text-text-muted',
     lime: 'border-accent/20 bg-accent/10 text-accent',
     cyan: 'border-highlight/20 bg-highlight/10 text-highlight',
     warn: 'border-warning/25 bg-warning/10 text-warning',
   };
   return (
-    <div className="rounded-[12px] border border-border bg-background/40 p-3">
+    <div className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/40 p-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">{title}</p>
       {items.length === 0 ? (
         <p className="text-sm leading-5 text-text-soft">{empty}</p>
@@ -3403,7 +3434,7 @@ function readinessChecklist(
 
 function RightPaneRow({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'lime' | 'cyan' | 'warn' }) {
   const toneClass = {
-    neutral: 'border-border bg-surface-alt',
+    neutral: 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt',
     lime: 'border-accent/20 bg-accent/10',
     cyan: 'border-highlight/20 bg-highlight/10',
     warn: 'border-warning/25 bg-warning/10',
@@ -3441,7 +3472,7 @@ function ConfidenceDot({ basis }: { basis: string | null | undefined }) {
     cyan: 'border-highlight/30 bg-highlight text-highlight',
     amber: 'border-accent/30 bg-accent text-accent',
     red: 'border-error/30 bg-error text-error',
-    grey: 'border-border bg-text-muted text-text-muted',
+    grey: 'border-[rgba(var(--accent-rgb),0.16)] bg-text-muted text-text-muted',
   }[basisTone(basis)];
   return <span className={cn('mt-1 h-3 w-3 shrink-0 rounded-full border shadow-[0_0_14px_currentColor]', styles)} />;
 }
@@ -3460,19 +3491,19 @@ function FactCard({
   onEvidence: () => void;
 }) {
   return (
-    <div className="w-full rounded-[16px] border border-border bg-surface-alt p-4 text-left">
+    <div className="w-full rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4 text-left">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <ConfidenceDot basis={basis} />
-          <span className="rounded-[6px] border border-border bg-background/40 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-text">{label}</span>
+          <span className="rounded-[6px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/40 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-text">{label}</span>
         </div>
         <div className="flex items-center gap-1">
           <button type="button" onClick={onEvidence} className="rounded-[8px] border border-highlight/25 bg-highlight/10 p-1.5 text-highlight" aria-label="Evidence">
             <ShieldCheck className="h-3.5 w-3.5" />
           </button>
-          <span className="group relative rounded-[8px] border border-border bg-background/40 p-1.5 text-text-muted">
+          <span className="group relative rounded-[8px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/40 p-1.5 text-text-muted">
             <HelpCircle className="h-3.5 w-3.5" />
-            <span className="pointer-events-none absolute right-0 top-full z-20 mt-2 hidden w-56 rounded-[10px] border border-border bg-surface p-3 text-xs leading-5 text-text shadow-xl group-hover:block">
+            <span className="pointer-events-none absolute right-0 top-full z-20 mt-2 hidden w-56 rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface p-3 text-xs leading-5 text-text shadow-xl group-hover:block">
               {info}
             </span>
           </span>
@@ -3491,7 +3522,7 @@ function TrustRow({ label, body, tone }: { label: string; body: string; tone: 'e
     rose: 'border-error/30 bg-error/10 text-error',
   }[tone];
   return (
-    <div className="w-full rounded-[16px] border border-border bg-surface-alt p-4 text-left">
+    <div className="w-full rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4 text-left">
       <span className={cn('rounded-[6px] border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em]', styles)}>{label}</span>
       <p className="mt-3 text-sm leading-6 text-text">{body}</p>
     </div>
@@ -3516,10 +3547,10 @@ function ScenarioSlider({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-[16px] border border-border bg-surface-alt p-4">
+    <div className="rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
       <div className="mb-3 flex justify-between gap-4">
         <p className="text-sm font-medium text-text">{label}</p>
-        <span className="rounded-[8px] border border-accent/20 bg-accent/10 px-3 py-1.5 font-mono text-sm text-accent">{format(value)}</span>
+        <span className="rounded-[8px] border border-[rgba(var(--accent-rgb),0.28)] bg-accent/10 px-3 py-1.5 font-mono text-sm text-accent">{format(value)}</span>
       </div>
       <input className="w-full accent-accent" type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     </div>
@@ -3528,7 +3559,7 @@ function ScenarioSlider({
 
 function OutputMetric({ label, value, hot = false }: { label: string; value: string; hot?: boolean }) {
   return (
-    <div className={cn('min-w-0 overflow-hidden rounded-[16px] border p-4', hot ? 'border-accent/40 bg-accent/10' : 'border-border bg-surface-alt')}>
+    <div className={cn('min-w-0 overflow-hidden rounded-[16px] border p-4', hot ? 'border-[rgba(var(--accent-rgb),0.42)] bg-accent/10' : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt')}>
       <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{label}</p>
       <p className="mt-2 min-w-0 overflow-hidden break-words font-mono text-2xl font-semibold leading-tight text-text 2xl:text-3xl">{value}</p>
     </div>
@@ -3537,7 +3568,7 @@ function OutputMetric({ label, value, hot = false }: { label: string; value: str
 
 function MetricCard({ icon: Icon, label, value, hot = false, compact = false }: { icon: LucideIcon; label: string; value: string; hot?: boolean; compact?: boolean }) {
   return (
-    <Panel className={cn(compact ? 'p-3' : 'p-4', hot && 'border-accent/25 bg-accent/10')}>
+    <Panel className={cn(compact ? 'p-3' : 'p-4', hot && 'border-[rgba(var(--accent-rgb),0.34)] bg-accent/10')}>
       <Icon className="h-4 w-4 text-accent" />
       <p className="mt-3 truncate text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
       <p className={cn('mt-1 truncate font-semibold text-text', compact ? 'text-xl' : 'text-2xl')}>{value}</p>
@@ -3547,7 +3578,7 @@ function MetricCard({ icon: Icon, label, value, hot = false, compact = false }: 
 
 function DecisionBlock({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
   return (
-    <div className="rounded-[16px] border border-border bg-surface-alt p-4">
+    <div className="rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="font-medium text-text"><Icon className="mr-2 inline h-4 w-4 text-accent" />{title}</p>
@@ -3577,7 +3608,7 @@ function Panel({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-[20px] border border-accent/10 bg-[linear-gradient(180deg,rgba(20,24,22,.92),rgba(13,15,13,.94))] shadow-[0_12px_36px_rgba(0,0,0,.30),inset_0_1px_0_rgba(255,255,255,.025)] backdrop-blur', className)}
+      className={cn('rounded-[20px] border', obsidianBorder, obsidianPanel, 'backdrop-blur', className)}
       {...props}
     >
       {children}
@@ -3594,7 +3625,7 @@ function TrustPill({ label, tone }: { label: string; tone: 'lime' | 'amber' | 'c
     lime: 'border-accent/30 bg-accent/10 text-accent',
     amber: 'border-warning/30 bg-warning/10 text-warning',
     cyan: 'border-highlight/30 bg-highlight/10 text-highlight',
-    slate: 'border-border bg-surface-alt text-text',
+    slate: 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt text-text',
   }[tone];
   return <span className={cn('rounded-[8px] border px-3 py-1 font-mono text-xs uppercase tracking-[0.08em]', styles)}>{label}</span>;
 }
