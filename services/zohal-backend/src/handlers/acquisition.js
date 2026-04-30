@@ -89,6 +89,35 @@ const EXTERNAL_ACTION_TYPES = new Set([
   "send_offer",
   "send_negotiation_message",
 ]);
+
+function safeHeaderCookie(value) {
+  return String(value || "").split(";")[0] || "";
+}
+
+async function verifyRedeemAccessUrl(redeemUrl, fallbackLiveUrl) {
+  const normalizedRedeemUrl = String(redeemUrl || "").trim();
+  const normalizedLiveUrl = String(fallbackLiveUrl || "").trim();
+  if (!normalizedRedeemUrl) return false;
+  const redeemResponse = await fetch(normalizedRedeemUrl, {
+    method: "GET",
+    redirect: "manual",
+  }).catch(() => null);
+  if (!redeemResponse || ![301, 302, 303, 307, 308].includes(redeemResponse.status)) {
+    return false;
+  }
+  const cookie = safeHeaderCookie(redeemResponse.headers.get("set-cookie"));
+  if (!cookie) return false;
+  const redirectLocation = redeemResponse.headers.get("location");
+  const probeUrl = redirectLocation
+    ? new URL(redirectLocation, normalizedRedeemUrl).toString()
+    : normalizedLiveUrl;
+  if (!probeUrl) return false;
+  const probeResponse = await fetch(probeUrl, {
+    method: "GET",
+    headers: { cookie, "user-agent": "zohal-deal-desk-backend-smoke/1.0" },
+  }).catch(() => null);
+  return Boolean(probeResponse?.ok);
+}
 const ACQUISITION_ACTION_DEFINITIONS = {
   add_listing_evidence: {
     stage: "submitted",
@@ -1912,6 +1941,658 @@ async function executeOpportunityAction(supabase, opportunityId, actionId, body 
   return { action: { action_id: actionId, ...definition }, event, folders };
 }
 
+const DEAL_DESK_RECOMMENDATION_STATES = new Set([
+  "strong_pursue",
+  "pursue_after_verification",
+  "watch",
+  "pass",
+  "needs_info",
+]);
+
+const DEAL_DESK_BASIS_LABELS = new Set([
+  "verified_source",
+  "market_signal",
+  "modeled_output",
+  "counterparty_provided",
+  "third_party_input",
+  "uncertain_needs_diligence",
+]);
+const DEAL_DESK_NOTE_KINDS = new Set([
+  "general",
+  "preference",
+  "assumption",
+  "remove_candidate",
+  "request_info",
+  "correction",
+  "approval_signal",
+]);
+
+function normalizeDealDeskBasis(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  if (DEAL_DESK_BASIS_LABELS.has(normalized)) return normalized;
+  if (normalized === "inferred" || normalized === "uncertain") return "uncertain_needs_diligence";
+  if (normalized === "owner_provided" || normalized === "broker_provided") return "counterparty_provided";
+  return "uncertain_needs_diligence";
+}
+
+function normalizeDealDeskRecommendation(value, row = {}) {
+  const normalized = normalizeText(value).toLowerCase();
+  if (DEAL_DESK_RECOMMENDATION_STATES.has(normalized)) return normalized;
+  if (normalized === "insufficient_info" || normalized === "needs_info") return "needs_info";
+  if (normalized === "pursue") {
+    const score = Number(row.fit_score ?? row.screening_output_json?.fit?.score ?? row.score);
+    return Number.isFinite(score) && score >= 85 ? "strong_pursue" : "pursue_after_verification";
+  }
+  if (normalized === "promoted" || normalized === "workspace_created") return "pursue_after_verification";
+  if (normalized === "passed" || normalized === "archived") return "pass";
+  if (normalized === "watch") return "watch";
+  return "needs_info";
+}
+
+function reportPeriodFromBody(body = {}) {
+  return normalizeText(body.report_period) ||
+    normalizeText(body.period) ||
+    new Date().toISOString().slice(0, 7);
+}
+
+function buildDealDeskSurfaceKey(workspaceId, reportPeriod) {
+  const hash = createHash("sha256")
+    .update(`${workspaceId}:${reportPeriod}:${Date.now()}:${Math.random()}`)
+    .digest("base64url")
+    .slice(0, 16)
+    .toLowerCase();
+  return `dd_${hash}`;
+}
+
+function compactJson(value, fallback = {}) {
+  return value && typeof value === "object" ? value : fallback;
+}
+
+async function selectRows(query, tableName) {
+  const { data, error } = await query;
+  if (error) throw new Error(`Failed to load ${tableName}: ${error.message}`);
+  return Array.isArray(data) ? data : [];
+}
+
+async function loadLatestMandateForWorkspace(supabase, workspaceId) {
+  const { data, error } = await supabase
+    .from("acquisition_mandates")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Failed to load mandate: ${error.message}`);
+  return data || null;
+}
+
+async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
+  const mandateId = normalizeUuid(body.mandate_id);
+  const mandate = mandateId
+    ? await fetchMandate(supabase, mandateId)
+    : await loadLatestMandateForWorkspace(supabase, workspaceId);
+  if (!mandate) {
+    const error = new Error("Mandate not found for workspace");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const searchRunIds = Array.isArray(body.search_run_ids)
+    ? body.search_run_ids.map(normalizeUuid).filter(Boolean)
+    : [];
+  let searchRunsQuery = supabase
+    .from("acquisition_search_runs")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+  if (searchRunIds.length) searchRunsQuery = searchRunsQuery.in("id", searchRunIds);
+  else if (mandate.id) searchRunsQuery = searchRunsQuery.eq("mandate_id", mandate.id);
+  const searchRuns = await selectRows(searchRunsQuery, "acquisition_search_runs");
+
+  const opportunityIds = Array.isArray(body.opportunity_ids)
+    ? body.opportunity_ids.map(normalizeUuid).filter(Boolean)
+    : [];
+  let opportunitiesQuery = supabase
+    .from("acquisition_opportunities")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  if (opportunityIds.length) opportunitiesQuery = opportunitiesQuery.in("id", opportunityIds);
+  const opportunities = await selectRows(opportunitiesQuery, "acquisition_opportunities");
+
+  let candidatesQuery = supabase
+    .from("acquisition_candidate_opportunities")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false })
+    .limit(30);
+  if (searchRunIds.length) candidatesQuery = candidatesQuery.in("search_run_id", searchRunIds);
+  else if (mandate.id) candidatesQuery = candidatesQuery.eq("mandate_id", mandate.id);
+  const candidates = await selectRows(candidatesQuery, "acquisition_candidate_opportunities");
+
+  const loadedOpportunityIds = opportunities.map((row) => row.id).filter(Boolean);
+  const [claims, diligenceItems, scenarios, capexEvents, priorNotes] = await Promise.all([
+    loadedOpportunityIds.length
+      ? selectRows(
+        supabase.from("acquisition_claims").select("*").in("opportunity_id", loadedOpportunityIds),
+        "acquisition_claims",
+      )
+      : [],
+    loadedOpportunityIds.length
+      ? selectRows(
+        supabase.from("acquisition_diligence_items").select("*").in("opportunity_id", loadedOpportunityIds),
+        "acquisition_diligence_items",
+      )
+      : [],
+    loadedOpportunityIds.length
+      ? selectRows(
+        supabase.from("acquisition_scenarios").select("*").in("opportunity_id", loadedOpportunityIds),
+        "acquisition_scenarios",
+      )
+      : [],
+    loadedOpportunityIds.length
+      ? selectRows(
+        supabase.from("renovation_estimate_events").select("*").in("acquisition_opportunity_id", loadedOpportunityIds),
+        "renovation_estimate_events",
+      ).catch(() => [])
+      : [],
+    selectRows(
+      supabase
+        .from("acquisition_deal_desk_notes")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .eq("mandate_id", mandate.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      "acquisition_deal_desk_notes",
+    ).catch(() => []),
+  ]);
+
+  const claimsByOpportunity = new Map();
+  for (const claim of claims) {
+    const rows = claimsByOpportunity.get(claim.opportunity_id) || [];
+    rows.push(claim);
+    claimsByOpportunity.set(claim.opportunity_id, rows);
+  }
+  const capexByOpportunity = new Map();
+  for (const event of capexEvents) {
+    if (!capexByOpportunity.has(event.acquisition_opportunity_id)) {
+      capexByOpportunity.set(event.acquisition_opportunity_id, event);
+    }
+  }
+
+  const candidateRows = candidates.map((candidate) => {
+    const fit = compactJson(candidate.screening_output_json?.fit, {});
+    const recommendationState = normalizeDealDeskRecommendation(
+      candidate.screening_decision || candidate.status,
+      { ...candidate, fit_score: fit.score },
+    );
+    return {
+      candidate_id: candidate.id,
+      opportunity_id: candidate.promoted_opportunity_id || null,
+      title: normalizeText(candidate.title) || normalizeText(candidate.source_url) || "Candidate opportunity",
+      source_channel: candidate.source || null,
+      source_url: candidate.source_url || null,
+      city: candidate.city || null,
+      district: candidate.district || null,
+      property_type: candidate.property_type || null,
+      asking_price: candidate.asking_price ?? null,
+      area_sqm: candidate.area_sqm ?? null,
+      photo_refs: normalizePhotoRefs(candidate.photo_refs_json),
+      fit_score: fit.score ?? candidate.screening_output_json?.score ?? null,
+      confidence: normalizeText(candidate.screening_output_json?.confidence) || null,
+      recommendation_state: recommendationState,
+      basis: candidate.terms_policy === "allowed" ? "market_signal" : "uncertain_needs_diligence",
+      evidence_id: candidate.source_fingerprint || candidate.id,
+      summary: normalizeText(candidate.short_description) ||
+        normalizeText(candidate.screening_output_json?.summary) ||
+        normalizeText(fit.reason),
+    };
+  });
+
+  const opportunityRows = opportunities.map((opportunity) => {
+    const claimRows = claimsByOpportunity.get(opportunity.id) || [];
+    const capexEvent = capexByOpportunity.get(opportunity.id);
+    const capexJson = compactJson(opportunity.renovation_capex_json || capexEvent?.estimate_json, {});
+    const modeledYield = Number(opportunity.metadata_json?.modeled_yield_pct || opportunity.result_json?.modeled_yield_pct);
+    const askingPrice = Number(opportunity.asking_price || opportunity.metadata_json?.asking_price || opportunity.result_json?.asking_price);
+    const capexBase = Number(capexJson.base || capexJson.base_total || capexJson.total_base);
+    const photoRefs = normalizePhotoRefs(opportunity.metadata_json?.photo_refs || opportunity.metadata_json?.photoRefs || []);
+    const evidenceId =
+      claimRows.flatMap((claim) => Array.isArray(claim.evidence_refs_json) ? claim.evidence_refs_json : [])[0] ||
+      opportunity.id;
+    return {
+      opportunity_id: opportunity.id,
+      title: normalizeText(opportunity.title || opportunity.name || opportunity.address) || "Opportunity",
+      source_channel: opportunity.source_channel || null,
+      stage: opportunity.stage || null,
+      recommendation_state: normalizeDealDeskRecommendation(opportunity.stage, {
+        fit_score: opportunity.metadata_json?.fit_score || opportunity.result_json?.fit_score,
+      }),
+      basis: normalizeDealDeskBasis(claimRows[0]?.basis_label || opportunity.metadata_json?.basis_label),
+      asking_price: Number.isFinite(askingPrice) ? askingPrice : null,
+      capex_base: Number.isFinite(capexBase) ? capexBase : null,
+      modeled_yield_pct: Number.isFinite(modeledYield) ? modeledYield : null,
+      area_sqm: opportunity.metadata_json?.area_sqm || opportunity.result_json?.area_sqm || null,
+      property_type: opportunity.metadata_json?.property_type || opportunity.result_json?.property_type || null,
+      photo_refs: photoRefs,
+      confidence: normalizeText(opportunity.metadata_json?.confidence || opportunity.result_json?.confidence) || null,
+      summary: normalizeText(opportunity.summary || opportunity.description || opportunity.result_json?.summary),
+      evidence_id: typeof evidenceId === "string" ? evidenceId : evidenceId?.evidence_id || opportunity.id,
+      claim_count: claimRows.length,
+    };
+  });
+
+  const ranked = [...opportunityRows, ...candidateRows]
+    .sort((left, right) => {
+      const stateRank = { strong_pursue: 5, pursue_after_verification: 4, watch: 3, needs_info: 2, pass: 1 };
+      const decision = (stateRank[right.recommendation_state] || 0) - (stateRank[left.recommendation_state] || 0);
+      if (decision) return decision;
+      return Number(right.fit_score || 0) - Number(left.fit_score || 0);
+    })
+    .slice(0, 20);
+
+  const reportPeriod = reportPeriodFromBody(body);
+  return {
+    payload_schema_version: "deal_desk_payload/v1",
+    report: {
+      id: null,
+      title: normalizeText(body.title) || `${mandate.title || "Acquisition mandate"} Deal Desk`,
+      report_period: reportPeriod,
+      summary: normalizeText(body.presentation_instruction) ||
+        "Private acquisition shortlist with modeled scenarios, renovation exposure, diligence gaps, and proof.",
+      language: normalizeText(body.language) || "en",
+      currency: normalizeText(body.currency) || "SAR",
+    },
+    mandate: {
+      id: mandate.id,
+      title: mandate.title || "Acquisition mandate",
+      status: mandate.status || null,
+      risk_appetite: mandate.risk_appetite || null,
+      constraints: [
+        { label: "Buy box", value: mandate.buy_box_json, basis: "verified_source" },
+        { label: "Locations", value: mandate.target_locations_json, basis: "verified_source" },
+        { label: "Budget", value: mandate.budget_range_json, basis: "verified_source" },
+      ],
+      buy_box: mandate.buy_box_json || {},
+      target_locations: mandate.target_locations_json || [],
+      budget_range: mandate.budget_range_json || {},
+      excluded_criteria: mandate.excluded_criteria_json || [],
+    },
+    search_runs: searchRuns.map((run) => ({
+      id: run.id,
+      status: run.status,
+      trigger_kind: run.trigger_kind,
+      candidate_count: run.candidate_count,
+      query_description: run.query_description,
+      sources: run.sources_json || [],
+      completed_at: run.completed_at || null,
+    })),
+    ranked_candidates: ranked,
+    opportunities: opportunityRows,
+    recommendation_states: ["strong_pursue", "pursue_after_verification", "watch", "pass", "needs_info"],
+    comparison_matrix: { rows: ranked },
+    scenario_defaults: {
+      rent_growth_pct: body.scenario_defaults?.rent_growth_pct ?? 4,
+      vacancy_pct: body.scenario_defaults?.vacancy_pct ?? 7,
+      financing_rate_pct: body.scenario_defaults?.financing_rate_pct ?? 6,
+      exit_cap_rate_pct: body.scenario_defaults?.exit_cap_rate_pct ?? 8,
+      basis: "modeled_output",
+    },
+    renovation: {
+      opportunities: opportunityRows.map((row) => ({
+        ...row,
+        capex: {
+          low: row.capex_base ? Math.round(row.capex_base * 0.75) : null,
+          base: row.capex_base,
+          high: row.capex_base ? Math.round(row.capex_base * 1.35) : null,
+          basis: row.capex_base ? "modeled_output" : "uncertain_needs_diligence",
+        },
+      })),
+    },
+    diligence_gaps: diligenceItems.map((item) => ({
+      id: item.id,
+      opportunity_id: item.opportunity_id,
+      title: item.title,
+      status: item.status,
+      severity: item.priority,
+      basis: normalizeDealDeskBasis(item.evidence_refs_json?.length ? "verified_source" : "uncertain_needs_diligence"),
+      evidence_id: Array.isArray(item.evidence_refs_json) ? item.evidence_refs_json[0] : null,
+    })),
+    source_manifest: {
+      basis_labels: [...DEAL_DESK_BASIS_LABELS],
+      sources: [
+        ...candidateRows.map((row) => ({
+          source_id: row.evidence_id,
+          title: row.title,
+          source_type: row.source_channel || "candidate",
+          url: row.source_url || null,
+          basis: row.basis,
+        })),
+        ...claims.map((claim) => ({
+          source_id: Array.isArray(claim.evidence_refs_json) ? claim.evidence_refs_json[0] || claim.id : claim.id,
+          title: claim.fact_key,
+          source_type: claim.source_channel || "claim",
+          basis: normalizeDealDeskBasis(claim.basis_label),
+        })),
+      ].filter((row) => row.source_id),
+    },
+    prior_notes: priorNotes.map((note) => ({
+      id: note.id,
+      opportunity_id: note.opportunity_id,
+      note_kind: note.note_kind,
+      body: note.body,
+      created_at: note.created_at,
+    })),
+    access: {
+      visibility: "public_unlisted_link",
+      delivery_hint: normalizeText(body.delivery_hint) || null,
+      notes_endpoint: null,
+    },
+    _internal: {
+      scenario_count: scenarios.length,
+    },
+  };
+}
+
+function buildDealDeskSourceOverride(payload) {
+  const sources = payload.source_manifest?.sources || [];
+  return {
+    schema_version: "3.0",
+    template_id: "acquisition_workspace",
+    analyzed_at: new Date().toISOString(),
+    source_manifest: {
+      documents: sources.slice(0, 20).map((source) => ({
+        document_id: source.source_id,
+        chunk_count: 1,
+        page_numbers: [1],
+      })),
+      document_count: sources.length,
+    },
+    proof_manifest: {
+      proof_paths: { extracted: "source_anchor", derived: "lineage" },
+      counts: {
+        total_items: payload.ranked_candidates.length,
+        extracted_items: sources.length,
+        derived_items: payload.ranked_candidates.length,
+        anchor_verified_items: sources.length,
+        anchor_failed_items: 0,
+        derived_with_lineage: payload.ranked_candidates.length,
+      },
+    },
+    items: payload.ranked_candidates.slice(0, 20).map((row, index) => ({
+      id: row.opportunity_id || row.candidate_id || `deal_desk_item_${index + 1}`,
+      structural_facet: "annotation",
+      provenance_class: "derived",
+      display_name: row.title || `Candidate ${index + 1}`,
+      confidence: row.basis === "uncertain_needs_diligence" ? "low" : "medium",
+      verification_state: row.basis === "uncertain_needs_diligence" ? "needs_review" : "verified",
+      payload: {
+        annotation_kind: "deal_desk_candidate",
+        summary: row.summary || null,
+        recommendation_state: row.recommendation_state,
+        basis_label: row.basis,
+      },
+      source_anchors: row.evidence_id ? [{ document_id: row.evidence_id, page_number: 1 }] : [],
+      created_at: new Date().toISOString(),
+    })),
+    links: [],
+    stage_trace: { execution_plane: "gcp", entries: [] },
+  };
+}
+
+async function publishDealDeskReport({ report, payload, requestId }) {
+  const publicationBaseUrl = normalizeText(
+    process.env.EXPERIENCES_PUBLICATION_API_URL ||
+      process.env.EXPERIENCES_PUBLICATION_URL ||
+      process.env.PUBLICATION_API_BASE_URL,
+  ).replace(/\/+$/, "");
+  if (!publicationBaseUrl) {
+    return {
+      attempted: false,
+      status: "assembled",
+      experience_id: report.experience_id,
+      live_url: report.live_url,
+      redeem_url: report.redeem_url,
+      reason: "publication_api_not_configured",
+    };
+  }
+  const actorId = report.created_by || "acquisition-deal-desk";
+  const headers = getInternalTaskHeaders(requestId);
+  const post = async (path, body) => {
+    const response = await fetch(`${publicationBaseUrl}${path}`, {
+      method: "POST",
+      headers: { ...headers, "x-zohal-user-id": actorId },
+      body: JSON.stringify(body),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(json?.error?.message || json?.message || `Publication request failed: ${response.status}`);
+      error.statusCode = response.status;
+      error.response = json;
+      throw error;
+    }
+    return json;
+  };
+  const get = async (path) => {
+    const response = await fetch(`${publicationBaseUrl}${path}`, {
+      method: "GET",
+      headers: { ...headers, "x-zohal-user-id": actorId },
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(json?.error?.message || json?.message || `Publication request failed: ${response.status}`);
+      error.statusCode = response.status;
+      error.response = json;
+      throw error;
+    }
+    return json;
+  };
+  const requestBody = {
+    request_id: requestId,
+    workspace_id: report.workspace_id,
+    document_id: report.id,
+    verification_object_id: `deal_desk_${report.id}`,
+    verification_object_version_id: `deal_desk_payload_${report.id}`,
+    experience_id: report.experience_id,
+    analysis_template_id: "acquisition_workspace",
+    surface_family: "deal_desk",
+    path_family: "deal-desk",
+    host: process.env.DEAL_DESK_LIVE_HOST || "live.zohal.ai",
+    visibility: "public_unlisted",
+    publication_lane: "trusted_runtime",
+    org_restricted: false,
+    title: payload.report.title,
+    summary: payload.report.summary,
+    source_override: buildDealDeskSourceOverride(payload),
+    operations_workspace_state: {
+      workspace: { id: report.workspace_id },
+      analysis_space: {
+        scope_entity_type: "mandate",
+        scope_entity_id: report.mandate_id,
+      },
+      summary: {
+        property_count: payload.ranked_candidates.length,
+        linked_document_count: payload.source_manifest.sources.length,
+      },
+      deal_desk_payload: payload,
+    },
+  };
+  const compile = await post("/v1/experiences/compile", requestBody);
+  const candidateId = compile?.compile?.candidate_id;
+  if (!candidateId) throw new Error("Publication compile did not return candidate_id");
+  await post(`/v1/experiences/candidates/${encodeURIComponent(candidateId)}/validate`, { request: "deal_desk_publish" });
+  const promote = await post(`/v1/experiences/candidates/${encodeURIComponent(candidateId)}/promote`, { actor_id: actorId });
+  const diagnostics = await get(
+    `/v1/experiences/publications/${encodeURIComponent(compile?.compile?.experience_id || report.experience_id)}/diagnostics?candidate_id=${encodeURIComponent(candidateId)}&refresh_probe=1&route_id=brief`,
+  ).catch(() => null);
+  const experienceId = compile?.compile?.experience_id || report.experience_id;
+  const canonicalLiveUrl =
+    diagnostics?.diagnostics?.summary?.live_url ||
+    promote?.diagnostics?.summary?.live_url ||
+    compile?.compile?.public_url ||
+    null;
+  const verifiedLiveUrl = diagnostics?.diagnostics?.live_probe?.ok
+    ? canonicalLiveUrl
+    : null;
+  let redeemUrl =
+    diagnostics?.diagnostics?.live_probe?.redeem_url ||
+    promote?.access?.redeem_url ||
+    promote?.redeem_url ||
+    null;
+  if (!redeemUrl && canonicalLiveUrl) {
+    const canonicalPath = new URL(canonicalLiveUrl).pathname || "/";
+    const ttlSeconds = 60 * 60 * 24 * 14;
+    const accessSession = await post("/v1/experiences/access/links", {
+      experience_id: experienceId,
+      host: requestBody.host,
+      next_path: canonicalPath,
+      ttl_seconds: ttlSeconds,
+      expires_at: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
+      metadata: {
+        source: "acquisition_deal_desk",
+        report_id: report.id,
+        workspace_id: report.workspace_id,
+      },
+    }).catch(() => null);
+    redeemUrl = accessSession?.redeem_url || null;
+  }
+  const verifiedRedeemAccess = redeemUrl
+    ? await verifyRedeemAccessUrl(redeemUrl, canonicalLiveUrl).catch(() => false)
+    : false;
+  return {
+    attempted: true,
+    status: verifiedLiveUrl || verifiedRedeemAccess ? "private_live" : "compiled",
+    experience_id: experienceId,
+    live_url: verifiedLiveUrl || (verifiedRedeemAccess ? canonicalLiveUrl : null),
+    redeem_url: redeemUrl,
+    candidate_id: candidateId,
+    verified_access: Boolean(verifiedLiveUrl || verifiedRedeemAccess),
+  };
+}
+
+async function createDealDeskReport(supabase, workspaceId, body = {}, { requestId } = {}) {
+  const normalizedWorkspaceId = normalizeUuid(workspaceId);
+  if (!normalizedWorkspaceId) {
+    const error = new Error("workspace_id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const payload = await buildDealDeskPayload(supabase, normalizedWorkspaceId, body);
+  const reportPeriod = payload.report.report_period;
+  const surfaceKey = buildDealDeskSurfaceKey(normalizedWorkspaceId, reportPeriod);
+  const experienceId = `exp_${surfaceKey}`;
+  const notesEndpoint = `/api/acquisition/v1/deal-desk/{report_id}/notes`;
+  payload.access.notes_endpoint = notesEndpoint;
+  const { data: report, error } = await supabase
+    .from("acquisition_deal_desk_reports")
+    .insert({
+      workspace_id: normalizedWorkspaceId,
+      mandate_id: payload.mandate.id,
+      report_period: reportPeriod,
+      status: "assembled",
+      surface_key: surfaceKey,
+      experience_id: experienceId,
+      live_url: null,
+      redeem_url: null,
+      payload_json: payload,
+      created_by: normalizeUuid(body.user_id || body.created_by),
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(`Failed to create Deal Desk report: ${error.message}`);
+
+  payload.report.id = report.id;
+  payload.access.notes_endpoint = `/api/acquisition/v1/deal-desk/${report.id}/notes`;
+  await supabase
+    .from("acquisition_deal_desk_reports")
+    .update({ payload_json: payload })
+    .eq("id", report.id);
+
+  let publication = null;
+  try {
+    publication = await publishDealDeskReport({
+      report: { ...report, experience_id: experienceId },
+      payload,
+      requestId,
+    });
+    await supabase
+      .from("acquisition_deal_desk_reports")
+      .update({
+        status: publication.status || "assembled",
+        experience_id: publication.experience_id || experienceId,
+        live_url: publication.live_url || null,
+        redeem_url: publication.redeem_url || null,
+      })
+      .eq("id", report.id);
+  } catch (publishError) {
+    publication = {
+      attempted: true,
+      status: "promotion_failed",
+      error: publishError instanceof Error ? publishError.message : String(publishError),
+    };
+    await supabase
+      .from("acquisition_deal_desk_reports")
+      .update({ status: "promotion_failed" })
+      .eq("id", report.id);
+  }
+
+  return {
+    report_id: report.id,
+    experience_id: publication?.experience_id || experienceId,
+    surface_family: "deal_desk",
+    surface_key: surfaceKey,
+    live_url: publication?.live_url || null,
+    redeem_url: publication?.redeem_url || null,
+    status: publication?.status || "assembled",
+    publication,
+  };
+}
+
+async function addDealDeskReportNote(supabase, reportId, body = {}) {
+  const { data: report, error: reportError } = await supabase
+    .from("acquisition_deal_desk_reports")
+    .select("*")
+    .eq("id", reportId)
+    .maybeSingle();
+  if (reportError || !report) {
+    const error = new Error(reportError?.message || "Deal Desk report not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const requestedNoteKind = normalizeText(body.note_kind || body.kind) || "general";
+  const noteKind = DEAL_DESK_NOTE_KINDS.has(requestedNoteKind) ? requestedNoteKind : "general";
+  const bodyText = normalizeText(body.body || body.note || body.text);
+  if (!bodyText) {
+    const error = new Error("note body is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (bodyText.length > 5000) {
+    const error = new Error("note body is too long");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data: note, error } = await supabase
+    .from("acquisition_deal_desk_notes")
+    .insert({
+      report_id: report.id,
+      workspace_id: report.workspace_id,
+      mandate_id: report.mandate_id,
+      opportunity_id: normalizeUuid(body.opportunity_id),
+      note_kind: noteKind,
+      body: bodyText,
+      viewer_ref: normalizeText(body.viewer_ref) || null,
+      metadata_json: body.metadata_json || body.metadata || {},
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(`Failed to store Deal Desk note: ${error.message}`);
+  return { report_id: report.id, note };
+}
+
 function matchRoute(method, pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "api" || parts[1] !== "acquisition" || parts[2] !== "v1") return null;
@@ -1920,6 +2601,8 @@ function matchRoute(method, pathname) {
   if (method === "GET" && parts[3] === "search-runs" && parts.length === 5) return { name: "getSearchRun", searchRunId: parts[4] };
   if (method === "GET" && parts[3] === "search-runs" && parts[5] === "candidates") return { name: "listSearchCandidates", searchRunId: parts[4] };
   if (method === "POST" && parts[3] === "intake" && parts[4] === "listing") return { name: "intakeListing" };
+  if (method === "POST" && parts[3] === "workspaces" && parts[5] === "deal-desk" && parts.length === 6) return { name: "createDealDeskReport", workspaceId: parts[4] };
+  if (method === "POST" && parts[3] === "deal-desk" && parts[5] === "notes" && parts.length === 6) return { name: "addDealDeskReportNote", reportId: parts[4] };
   if (method === "POST" && parts[3] === "candidates" && parts[5] === "screen") return { name: "screenCandidate", candidateId: parts[4] };
   if (method === "POST" && parts[3] === "candidates" && parts[5] === "promote") return { name: "promoteCandidate", candidateId: parts[4] };
   if (method === "GET" && parts[3] === "opportunities" && parts.length === 5) return { name: "getOpportunity", opportunityId: parts[4] };
@@ -1981,6 +2664,11 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
         allowInternal,
       })));
     }
+    if (route.name === "addDealDeskReportNote") {
+      const body = await readJsonBody(req);
+      const result = await addDealDeskReportNote(supabase, route.reportId, body);
+      return sendJson(res, 201, buildEnvelope(requestId, result));
+    }
     requireInternalCaller(req.headers);
     const body = req.method === "GET" ? {} : await readJsonBody(req);
     if (route.name === "createMandate") {
@@ -2008,6 +2696,11 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
     if (route.name === "intakeListing") {
       const result = await createListingCandidate(supabase, body);
       return sendJson(res, 201, buildEnvelope(requestId, result));
+    }
+    if (route.name === "createDealDeskReport") {
+      const result = await createDealDeskReport(supabase, route.workspaceId, body, { requestId });
+      const statusCode = result.publication?.attempted ? 201 : 202;
+      return sendJson(res, statusCode, buildEnvelope(requestId, result));
     }
     if (route.name === "screenCandidate") {
       const result = await screenCandidate(supabase, route.candidateId, { requestId });
