@@ -231,9 +231,9 @@ type LiveFeedItem = {
 
 const acquisitionObsidianStyle = {
   '--bg': '#060A09',
-  '--surface': '#101612',
-  '--surface-alt': '#151D18',
-  '--surface-active': '#1B281F',
+  '--surface': '#0E1512',
+  '--surface-alt': '#121B16',
+  '--surface-active': '#1B2A20',
   '--text': '#F5F7EF',
   '--text-soft': '#9EAFA6',
   '--text-muted': '#748179',
@@ -251,9 +251,9 @@ const acquisitionObsidianStyle = {
   '--grid-opacity': '0.18',
   '--grid-size': '58px',
   '--console-bg':
-    'radial-gradient(circle at 86% 16%, rgba(116, 151, 48, 0.22), transparent 36rem), radial-gradient(circle at 48% 0%, rgba(54, 200, 241, 0.08), transparent 34rem), linear-gradient(180deg, #080D0B 0%, #050807 100%)',
+    'radial-gradient(circle at 82% 10%, rgba(116, 151, 48, 0.26), transparent 38rem), radial-gradient(circle at 47% -8%, rgba(54, 200, 241, 0.12), transparent 34rem), radial-gradient(circle at 16% 78%, rgba(152, 199, 66, 0.075), transparent 30rem), linear-gradient(180deg, #070C0B 0%, #040706 100%)',
   '--panel-bg':
-    'radial-gradient(circle at 8% 0%, rgba(152, 199, 66, 0.08), transparent 34rem), linear-gradient(180deg, rgba(18, 25, 21, 0.96), rgba(10, 14, 12, 0.98))',
+    'radial-gradient(circle at 8% 0%, rgba(152, 199, 66, 0.10), transparent 34rem), linear-gradient(180deg, rgba(18, 25, 21, 0.95), rgba(8, 12, 10, 0.98))',
 } as CSSProperties;
 
 const obsidianBorder = 'border-[rgba(var(--accent-rgb),0.18)]';
@@ -331,6 +331,24 @@ function displayUrl(value: string): string {
 
 function titleFor(item: OpportunityRow | null | undefined): string | null {
   return displayTitleForOpportunity(item);
+}
+
+function cleanDisplayText(value: string | null | undefined): string | null {
+  const cleaned = `${value ?? ''}`
+    .replace(/\.\.\./g, '')
+    .replace(/…/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || null;
+}
+
+function investmentThesisFor(item: OpportunityRow | null | undefined, fallback: string): string {
+  const summary = `${item?.summary ?? ''}`.trim();
+  const weakSummary =
+    !summary ||
+    /^candidate can be compared against the saved mandate/i.test(summary) ||
+    /core visible facts are available for a first screen/i.test(summary);
+  return weakSummary ? fallback : summary;
 }
 
 function arabicTitleFor(item: OpportunityRow | null | undefined): string | null {
@@ -1367,24 +1385,26 @@ function OpportunityRail({
               data-testid="acquisition-opportunity-card"
               onClick={() => onSelect(item.id)}
               className={cn(
-                'relative rounded-[22px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(20,24,22,.82),rgba(13,15,13,.88))] dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]',
-                compact ? 'min-w-[260px] p-4' : 'min-h-[214px] w-full p-5',
+                'relative rounded-[28px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(18,26,21,.84),rgba(8,12,10,.90))] dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]',
+                compact ? 'min-w-[260px] p-4' : 'min-h-[238px] w-full p-6',
                 selectedId === item.id
-                  ? 'border-[rgba(var(--accent-rgb),0.48)] bg-[rgba(var(--accent-rgb),0.08)] shadow-[0_0_0_1px_rgba(var(--accent-rgb),.16),0_18px_45px_rgba(var(--accent-rgb),.10)]'
+                  ? 'border-[rgba(var(--accent-rgb),0.52)] bg-[rgba(var(--accent-rgb),0.075)] shadow-[0_0_0_1px_rgba(var(--accent-rgb),.16),0_20px_48px_rgba(var(--accent-rgb),.11)]'
                   : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/70 hover:border-[rgba(var(--accent-rgb),0.26)] hover:bg-surface'
               )}
             >
               <div className="flex justify-between gap-3">
                 <div className="min-w-0">
                   <p className={cn('text-text-muted', compact ? 'text-[11px]' : 'text-sm')}>#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
-                  <h3 className={cn('mt-2 line-clamp-2 font-semibold text-text', compact ? 'text-sm' : 'text-xl')}>{titleFor(item) || t('untitledOpportunity')}</h3>
+                  <h3 className={cn('mt-2 line-clamp-2 font-semibold text-text', compact ? 'text-sm' : 'text-xl')}>{cleanDisplayText(titleFor(item)) || t('untitledOpportunity')}</h3>
                   {arabicTitleFor(item) ? <p className={cn('mt-2 truncate text-text-soft', compact ? 'text-xs' : 'text-sm')} dir="rtl">{arabicTitleFor(item)}</p> : null}
                 </div>
-                <span className={cn('grid shrink-0 place-items-center rounded-[14px] border border-accent/35 bg-accent/10 font-mono font-bold text-accent', compact ? 'h-8 min-w-12 px-2 text-xs' : 'h-14 min-w-14 px-3 text-xl')}>
-                  {scoreFor(item) ?? t('notSet')}
-                </span>
+                {scoreFor(item) ? (
+                  <span className={cn('grid shrink-0 place-items-center rounded-[16px] border border-accent/35 bg-accent/10 font-mono font-bold text-accent shadow-[0_0_22px_rgba(var(--accent-rgb),.10)]', compact ? 'h-8 min-w-12 px-2 text-xs' : 'h-14 min-w-14 px-3 text-xl')}>
+                    {scoreFor(item)}
+                  </span>
+                ) : null}
               </div>
-              <p className={cn('mt-4 text-text-soft', compact ? 'line-clamp-2 text-xs leading-5' : 'line-clamp-3 text-base leading-7')}>{item.summary}</p>
+              <p className={cn('mt-4 text-text-soft', compact ? 'line-clamp-2 text-xs leading-5' : 'line-clamp-3 text-base leading-7')}>{investmentThesisFor(item, t('heroAnalystThesis'))}</p>
               <div className={cn('mt-5 flex items-center justify-between gap-4 font-mono text-text-muted', compact ? 'text-xs' : 'text-base')}>
                 <span>{dealFacts(item).price || t('notSet')}</span>
                 <span>{dealFacts(item).area || t('notSet')}</span>
@@ -1436,15 +1456,17 @@ function CockpitHero({
   const arabicTitle = arabicTitleFor(opportunity);
   const recommendation = humanize(recommendationFor(opportunity)) || t('notSet');
   const confidence = humanize(confidenceFor(opportunity)) || t('notSet');
+  const displayTitle = cleanDisplayText(title);
+  const thesis = investmentThesisFor(opportunity, t('heroAnalystThesis'));
   return (
-    <Panel className="relative overflow-hidden border-[rgba(var(--accent-rgb),0.24)] p-6" data-testid="acquisition-cockpit-hero">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb),.13),transparent_34%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb),.055),transparent_30%)]" />
+    <Panel className="relative overflow-hidden rounded-[28px] border-[rgba(var(--accent-rgb),0.24)] p-7" data-testid="acquisition-cockpit-hero">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb),.16),transparent_36%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb),.07),transparent_32%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,.92fr)] xl:items-stretch">
         <div className="relative min-w-0">
           <p className="mb-2 font-mono text-xs uppercase tracking-[0.24em] text-accent">{t('selectedWorkspace')}</p>
-          <h2 className="line-clamp-2 max-w-4xl text-4xl font-black leading-[.96] tracking-normal text-text md:text-6xl">
-            {title || t('emptyCockpitTitle')}
+          <h2 className="max-w-4xl text-4xl font-black leading-[.96] tracking-normal text-text md:text-6xl">
+            {displayTitle || t('emptyCockpitTitle')}
           </h2>
           {arabicTitle ? <p className="mt-3 text-2xl font-semibold leading-tight text-text-soft" dir="rtl">{arabicTitle}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
@@ -1458,9 +1480,10 @@ function CockpitHero({
           <div className="mt-6 max-w-3xl rounded-r-[18px] border-l-2 border-accent/70 bg-surface/45 p-5 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
             <p className="mt-3 text-base leading-7 text-text-soft">
-            {opportunity?.summary || (opportunity ? t('heroBody') : t('emptyPosture'))}
+              {opportunity ? thesis : t('emptyPosture')}
             </p>
           </div>
+          <AcquisitionVector />
           <div className="mt-5 flex flex-wrap gap-2">
             <button type="button" onClick={onToggleMap} className="inline-flex items-center gap-2 rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight transition hover:bg-highlight/15">
               <MapPin className="h-4 w-4" />
@@ -1497,7 +1520,7 @@ function CockpitHero({
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_44%,transparent_0%,rgba(0,0,0,.18)_52%,rgba(0,0,0,.52)_100%)]" />
               <img
                 src={heroPhoto}
-                alt={title || t('emptyCockpitTitle')}
+                alt={displayTitle || t('emptyCockpitTitle')}
                 data-testid="acquisition-hero-photo"
                 className="absolute inset-0 h-full w-full object-contain p-3"
               />
@@ -1543,6 +1566,19 @@ function HeroChip({ label, value }: { label: string; value: string }) {
     <div className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.26)] bg-black/35 px-3 py-2 backdrop-blur">
       <p className="text-xs font-semibold text-text">{label}</p>
       <p className="mt-1 truncate text-[11px] text-text-soft">{value}</p>
+    </div>
+  );
+}
+
+function AcquisitionVector() {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <div className="mt-5 max-w-3xl rounded-[20px] border border-highlight/20 bg-[radial-gradient(circle_at_0%_0%,rgba(var(--accent-rgb),.14),transparent_38%),linear-gradient(135deg,rgba(18,35,28,.74),rgba(8,14,13,.78))] p-5 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]">
+      <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('acquisitionVector')}</p>
+      <div className="mt-4 h-9 overflow-hidden rounded-full bg-[rgba(var(--accent-rgb),0.16)]">
+        <div className="h-full w-[74%] rounded-full bg-gradient-to-r from-accent via-success to-highlight shadow-[0_0_28px_rgba(var(--accent-rgb),.18)]" />
+      </div>
+      <p className="mt-3 text-sm font-medium leading-6 text-text-soft">{t('acquisitionVectorPath')}</p>
     </div>
   );
 }
