@@ -3081,11 +3081,12 @@ function LiveFeedRail({
               {sourceCount} {t('sources')}
             </button>
           </div>
-          <div className="mt-7 flex h-[104px] items-end gap-1.5 rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[#0A0F14]/60 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
+          <div className="relative mt-7 flex h-[104px] items-end gap-1.5 overflow-hidden rounded-[22px] border border-[rgba(255,255,255,0.09)] bg-[radial-gradient(circle_at_50%_100%,rgba(var(--accent-rgb),.12),transparent_58%),linear-gradient(180deg,rgba(15,21,27,.88),rgba(10,15,20,.96))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.045),0_14px_34px_rgba(0,0,0,.22)]">
+            <div className="pointer-events-none absolute inset-x-5 bottom-5 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.42),rgba(var(--highlight-rgb),.30),transparent)]" />
             {Array.from({ length: 30 }).map((_, index) => (
               <span
                 key={index}
-                className="w-full rounded-t-sm bg-accent/75 shadow-[0_0_12px_rgba(var(--accent-rgb),.16)]"
+                className="relative z-10 w-full rounded-t-sm bg-[linear-gradient(180deg,#D1FF76_0%,#B7F34A_52%,rgba(47,215,255,.72)_100%)] shadow-[0_0_14px_rgba(var(--accent-rgb),.34)]"
                 style={{ height: `${24 + Math.abs(Math.sin(index * 0.72)) * 62}%` }}
               />
             ))}
