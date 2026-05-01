@@ -210,6 +210,7 @@ type PrimaryWorkspaceTab = 'deal' | 'renovation' | 'actions';
 type EvidencePaneTab = 'evidence' | 'activity' | 'files' | 'consent';
 
 type ScenarioState = {
+  strategy: 'rent_hold' | 'flip';
   price: number;
   renovation: number;
   rent: number;
@@ -219,6 +220,7 @@ type ScenarioState = {
   financingRate: number;
   targetIrr: number;
 };
+type NumericScenarioKey = Exclude<keyof ScenarioState, 'strategy'>;
 
 type UnderwritingMetricSet = {
   irr?: number | null;
@@ -463,13 +465,15 @@ function missingInfoList(value: unknown): string[] {
 function scenarioFromOpportunity(item: OpportunityRow | null | undefined): ScenarioState | null {
   const price = metadataNumber(item, ['price', 'asking_price', 'acquisition_price', 'purchase_price']);
   const rent = metadataNumber(item, ['monthly_rent', 'rent', 'expected_monthly_rent']);
-  if (price === null || rent === null) return null;
+  if (price === null) return null;
+  const strategy = metadataString(item, ['deal_strategy', 'strategy']) === 'flip' ? 'flip' : 'rent_hold';
   return {
+    strategy,
     price,
     renovation: item?.renovation_capex_json?.base_total ?? metadataNumber(item, ['renovation_budget', 'capex', 'estimated_capex']) ?? 0,
-    rent,
-    vacancy: metadataNumber(item, ['vacancy', 'vacancy_rate']) ?? 7,
-    hold: metadataNumber(item, ['hold_period', 'hold_years']) ?? 5,
+    rent: rent ?? (strategy === 'flip' ? 0 : Math.max(3500, Math.round(price * 0.0036))),
+    vacancy: strategy === 'flip' ? 0 : metadataNumber(item, ['vacancy', 'vacancy_rate']) ?? 7,
+    hold: metadataNumber(item, ['hold_period', 'hold_years']) ?? (strategy === 'flip' ? 1 : 5),
     appreciation: metadataNumber(item, ['appreciation', 'annual_appreciation']) ?? 4,
     financingRate: metadataNumber(item, ['financing_rate_pct', 'financing_rate']) ?? 5.5,
     targetIrr: metadataNumber(item, ['target_irr_pct', 'target_irr']) ?? 8,
@@ -478,6 +482,7 @@ function scenarioFromOpportunity(item: OpportunityRow | null | undefined): Scena
 
 function completeScenario(seed: Partial<ScenarioState>): ScenarioState {
   return {
+    strategy: seed.strategy ?? 'rent_hold',
     price: seed.price ?? 0,
     renovation: seed.renovation ?? 0,
     rent: seed.rent ?? 0,
@@ -954,6 +959,7 @@ export default function WorkspaceCockpitPage() {
     try {
       const metadata = {
         ...(selectedOpportunity.metadata_json ?? {}),
+        deal_strategy: nextScenario.strategy,
         price: nextScenario.price,
         acquisition_price: nextScenario.price,
         monthly_rent: nextScenario.rent,
@@ -988,8 +994,11 @@ export default function WorkspaceCockpitPage() {
           mode: 'quick',
           save: true,
           target_irr_pct: nextScenario.targetIrr,
+          deal_strategy: nextScenario.strategy,
+          investment_strategy: nextScenario.strategy,
           financing_rate_pct: nextScenario.financingRate,
           assumptions: {
+            deal_strategy: nextScenario.strategy,
             purchase_price: nextScenario.price,
             acquisition_price: nextScenario.price,
             monthly_rent: nextScenario.rent,
@@ -2308,19 +2317,53 @@ function ModelModule({
   }
 
   const returns = modelReturns(scenario);
-  const set = (key: keyof ScenarioState) => (value: number) => onScenarioChange({ ...scenario, [key]: value });
+  const set = (key: NumericScenarioKey) => (value: number) => onScenarioChange({ ...scenario, [key]: value });
+  const anchor = scenarioFromOpportunity(opportunity) ?? completeScenario(seedScenarioFromOpportunity(opportunity));
+  const setStrategy = (strategy: ScenarioState['strategy']) => {
+    onScenarioChange({
+      ...scenario,
+      strategy,
+      rent: strategy === 'flip' ? 0 : scenario.rent > 0 ? scenario.rent : anchor.rent,
+      vacancy: strategy === 'flip' ? 0 : scenario.vacancy > 0 ? scenario.vacancy : anchor.vacancy,
+      hold: strategy === 'flip' ? Math.min(scenario.hold, 3) : Math.max(scenario.hold, 2),
+    });
+  };
+  const priceMin = Math.min(scenario.price, anchor.price * 0.85);
+  const priceMax = Math.max(scenario.price, anchor.price * 1.12, priceMin + 10000);
+  const renovationMax = Math.max(100000, anchor.renovation * 2.2, anchor.price * 0.18, scenario.renovation);
+  const rentMin = scenario.strategy === 'flip' ? 0 : Math.min(scenario.rent, anchor.rent * 0.7);
+  const rentMax = Math.max(scenario.rent, anchor.rent * 1.35, 5000);
   return (
     <div className="grid gap-5 [@media(min-width:1780px)]:grid-cols-[0.95fr_1.05fr]">
       <Panel className="p-5">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('underwritingTitle')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('underwritingKnobsTitle')}</h3>
         <div className="mt-5 grid gap-3">
-          <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={scenario.price * 0.85} max={scenario.price * 1.12} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
-          <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={Math.max(100000, scenario.renovation * 2.2)} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
-          <ScenarioSlider label={t('monthlyRent')} value={scenario.rent} min={scenario.rent * 0.7} max={scenario.rent * 1.35} step={500} format={(v) => formatSAR.format(v)} onChange={set('rent')} />
-          <ScenarioSlider label={t('vacancy')} value={scenario.vacancy} min={0} max={20} step={1} format={(v) => `${v}%`} onChange={set('vacancy')} />
+          <div className="grid gap-2 rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4 sm:grid-cols-2">
+            {(['rent_hold', 'flip'] as const).map((strategy) => (
+              <button
+                key={strategy}
+                type="button"
+                onClick={() => setStrategy(strategy)}
+                className={cn(
+                  'rounded-[12px] border px-4 py-3 text-sm font-semibold transition',
+                  scenario.strategy === strategy ? 'border-accent bg-accent text-[color:var(--accent-text)]' : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface text-text-soft hover:text-text',
+                )}
+              >
+                {t(strategy === 'flip' ? 'strategyFlip' : 'strategyRentHold')}
+              </button>
+            ))}
+          </div>
+          <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={priceMin} max={priceMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
+          <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={renovationMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
+          {scenario.strategy === 'rent_hold' ? (
+            <>
+              <ScenarioSlider label={t('monthlyRent')} value={scenario.rent} min={rentMin} max={rentMax} step={500} format={(v) => formatSAR.format(v)} onChange={set('rent')} />
+              <ScenarioSlider label={t('vacancy')} value={scenario.vacancy} min={0} max={20} step={1} format={(v) => `${v}%`} onChange={set('vacancy')} />
+            </>
+          ) : null}
           <ScenarioSlider label={t('holdPeriod')} value={scenario.hold} min={1} max={10} step={1} format={(v) => `${v} ${t('years')}`} onChange={set('hold')} />
-          <ScenarioSlider label={t('appreciation')} value={scenario.appreciation} min={0} max={10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
+          <ScenarioSlider label={t(scenario.strategy === 'flip' ? 'exitUplift' : 'appreciation')} value={scenario.appreciation} min={scenario.strategy === 'flip' ? -5 : 0} max={scenario.strategy === 'flip' ? 35 : 10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
           <ScenarioSlider label={t('financingRate')} value={scenario.financingRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('financingRate')} />
           <ScenarioSlider label={t('targetIrr')} value={scenario.targetIrr} min={2} max={18} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('targetIrr')} />
         </div>
@@ -2345,7 +2388,10 @@ function ModelModule({
       </Panel>
       <div className="space-y-5">
         {underwriting ? (
-          <UnderwritingDashboard underwriting={underwriting} />
+          <>
+            <UnderwritingDashboard underwriting={underwriting} />
+            <ScenarioCharts scenario={scenario} />
+          </>
         ) : (
           <>
             <div className="grid min-w-0 gap-3 md:grid-cols-2">
@@ -2473,6 +2519,14 @@ function MonteCarloChart({ underwriting }: { underwriting: UnderwritingRun }) {
   const t = useTranslations('workspaceCockpitPage');
   const bins = underwriting.monte_carlo?.histogram || [];
   const maxCount = Math.max(1, ...bins.map((bin) => bin.count));
+  const p10 = underwriting.monte_carlo?.p10_irr ?? null;
+  const p50 = underwriting.monte_carlo?.p50_irr ?? null;
+  const p90 = underwriting.monte_carlo?.p90_irr ?? null;
+  const target = underwriting.summary?.target_irr ?? null;
+  const domainMin = Math.min(...bins.map((bin) => bin.min_irr), p10 ?? 0, p50 ?? 0, p90 ?? 0, target ?? 0);
+  const domainMax = Math.max(...bins.map((bin) => bin.max_irr), p10 ?? 0, p50 ?? 0, p90 ?? 0, target ?? 0.01);
+  const domainSpan = Math.max(0.001, domainMax - domainMin);
+  const pos = (value: number | null) => value === null ? 0 : ((value - domainMin) / domainSpan) * 100;
   return (
     <Panel className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -2488,6 +2542,27 @@ function MonteCarloChart({ underwriting }: { underwriting: UnderwritingRun }) {
         {bins.map((bin, index) => (
           <div key={`${bin.min_irr}-${index}`} className={cn('flex-1 rounded-t-[6px]', bin.max_irr < 0 ? 'bg-error/80' : 'bg-accent/80')} style={{ height: `${Math.max(4, (bin.count / maxCount) * 100)}%` }} title={`${pctMaybe(bin.min_irr)} - ${pctMaybe(bin.max_irr)}`} />
         ))}
+      </div>
+      <div className="mt-5 rounded-[16px] border border-[rgba(var(--highlight-rgb),0.18)] bg-highlight/10 p-4">
+        <div className="relative h-12">
+          <div className="absolute left-0 right-0 top-1/2 h-px bg-border" />
+          <div className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-highlight/45" style={{ left: `${pos(p10)}%`, width: `${Math.max(2, pos(p90) - pos(p10))}%` }} />
+          {target !== null ? <div className="absolute top-0 h-12 w-px bg-accent shadow-[0_0_14px_rgba(var(--accent-rgb),0.45)]" style={{ left: `${pos(target)}%` }} /> : null}
+          {[
+            ['P10', p10, 'bg-warning'],
+            ['P50', p50, 'bg-accent'],
+            ['P90', p90, 'bg-highlight'],
+          ].map(([label, value, className]) => (
+            <div key={label as string} className={cn('absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface', className as string)} style={{ left: `${pos(value as number | null)}%` }}>
+              <span className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] text-text-soft">{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex justify-between font-mono text-[10px] text-text-muted">
+          <span>{pctMaybe(domainMin)}</span>
+          {target !== null ? <span className="text-accent">{t('targetIrr')} {pctMaybe(target)}</span> : null}
+          <span>{pctMaybe(domainMax)}</span>
+        </div>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <OutputMetric label="P10" value={pctMaybe(underwriting.monte_carlo?.p10_irr)} />

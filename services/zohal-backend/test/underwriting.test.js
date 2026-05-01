@@ -93,3 +93,29 @@ test("missing capex suppresses zero-value overrun thresholds", () => {
   assert.equal(result.outputs.capex.overrun_risk_label, "Needs evidence");
   assert.deepEqual(result.outputs.capex.thresholds, []);
 });
+
+test("flip underwriting does not require rent assumptions", () => {
+  const result = runUnderwritingEngine({
+    opportunity: {
+      id: "opp_flip",
+      metadata_json: {
+        asking_price: 1200000,
+        acquisition_price: 1150000,
+      },
+      renovation_capex_json: { base_total: 120000, low_total: 90000, high_total: 170000 },
+    },
+    input: {
+      deal_strategy: "flip",
+      exit_growth_pct: 18,
+      hold_period_years: 1,
+      target_irr_pct: 8,
+    },
+    mode: "quick",
+  });
+  assert.equal(result.status, "complete");
+  assert.equal(result.assumptions.deal_strategy, "flip");
+  assert.equal(result.assumptions.operations.gross_annual_rent, 0);
+  assert.equal(result.assumptions.operations.vacancy_pct, 0);
+  assert.deepEqual(result.assumptions.missing_assumptions, []);
+  assert.deepEqual(result.outputs.sensitivity.rent, []);
+});

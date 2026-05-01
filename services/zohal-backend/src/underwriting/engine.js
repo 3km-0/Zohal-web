@@ -77,6 +77,12 @@ function normalizePercent(value, fallback) {
   return parsed === null ? fallback : parsed;
 }
 
+function normalizeDealStrategy(value) {
+  const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["flip", "resale", "renovate_resell", "fix_and_flip"].includes(raw)) return "flip";
+  return "rent_hold";
+}
+
 function normalizeCapex(opportunity, input) {
   const metadata = compactObject(opportunity?.metadata_json);
   const capex = compactObject(opportunity?.renovation_capex_json);
@@ -231,17 +237,21 @@ export function normalizeUnderwritingAssumptions({ opportunity, mandate = null, 
   const sources = [input, compactObject(input.assumptions), metadata, result, opportunity || {}];
   const asking = firstNumber(sources, ["asking_price", "listing_price", "price"]);
   const purchase = firstNumber(sources, ["purchase_price", "acquisition_price", "offer_price"]) ?? asking;
+  const dealStrategy = normalizeDealStrategy(firstText(sources, ["deal_strategy", "investment_strategy", "strategy"]));
   const monthlyRent = firstNumber(sources, ["monthly_rent", "rent", "expected_monthly_rent", "rent_assumption"]);
-  const annualRent = firstNumber(sources, ["gross_annual_rent", "annual_rent", "market_rent_estimate"]) ?? (monthlyRent === null ? null : monthlyRent * 12);
+  const annualRent = dealStrategy === "flip"
+    ? 0
+    : firstNumber(sources, ["gross_annual_rent", "annual_rent", "market_rent_estimate"]) ?? (monthlyRent === null ? null : monthlyRent * 12);
   const capex = normalizeCapex(opportunity, { ...input, ...compactObject(input.assumptions) });
   const budgetRange = normalizeBudgetRange(mandate?.budget_range_json || input.budget_range || metadata.budget_range);
   const targetIrr = normalizePercent(input.target_irr_pct ?? input.target_irr ?? metadata.target_irr_pct ?? mandate?.target_irr_pct, DEFAULT_ASSUMPTIONS.target_irr_pct);
   const missing = [];
   if (!purchase || purchase <= 0) missing.push("purchase_price");
-  if (!annualRent || annualRent <= 0) missing.push("gross_annual_rent");
+  if (dealStrategy !== "flip" && (!annualRent || annualRent <= 0)) missing.push("gross_annual_rent");
   return {
     underwriting_engine_version: UNDERWRITING_ENGINE_VERSION,
     currency: firstText(sources, ["currency"]) || "SAR",
+    deal_strategy: dealStrategy,
     property: {
       asking_price: asking,
       purchase_price: purchase,
@@ -265,8 +275,8 @@ export function normalizeUnderwritingAssumptions({ opportunity, mandate = null, 
     },
     operations: {
       gross_annual_rent: annualRent,
-      vacancy_pct: normalizePercent(input.vacancy_pct ?? input.vacancy ?? metadata.vacancy_pct ?? metadata.vacancy, DEFAULT_ASSUMPTIONS.vacancy_pct),
-      operating_expense_ratio_pct: normalizePercent(input.operating_expense_ratio_pct ?? metadata.operating_expense_ratio_pct, DEFAULT_ASSUMPTIONS.operating_expense_ratio_pct),
+      vacancy_pct: dealStrategy === "flip" ? 0 : normalizePercent(input.vacancy_pct ?? input.vacancy ?? metadata.vacancy_pct ?? metadata.vacancy, DEFAULT_ASSUMPTIONS.vacancy_pct),
+      operating_expense_ratio_pct: dealStrategy === "flip" ? 0 : normalizePercent(input.operating_expense_ratio_pct ?? metadata.operating_expense_ratio_pct, DEFAULT_ASSUMPTIONS.operating_expense_ratio_pct),
     },
     renovation: capex,
     exit: {
@@ -297,10 +307,11 @@ function withScenario(base, overrides) {
 
 function buildScenarioCases(assumptions) {
   const base = calculateDealMetrics(assumptions);
+  const isFlip = assumptions.deal_strategy === "flip";
   const downside = withScenario(assumptions, {
     property: { purchase_price: assumptions.property.asking_price || assumptions.property.purchase_price },
     renovation: { base: assumptions.renovation.high },
-    operations: {
+    operations: isFlip ? { gross_annual_rent: 0, vacancy_pct: 0 } : {
       gross_annual_rent: Math.min(assumptions.operations.gross_annual_rent, assumptions.property.current_rent || assumptions.operations.gross_annual_rent) * 0.95,
       vacancy_pct: Math.max(assumptions.operations.vacancy_pct + 5, 12),
     },
@@ -310,7 +321,7 @@ function buildScenarioCases(assumptions) {
   const upside = withScenario(assumptions, {
     property: { purchase_price: assumptions.property.purchase_price * 0.95 },
     renovation: { base: assumptions.renovation.low },
-    operations: {
+    operations: isFlip ? { gross_annual_rent: 0, vacancy_pct: 0 } : {
       gross_annual_rent: assumptions.operations.gross_annual_rent * 1.12,
       vacancy_pct: Math.max(0, assumptions.operations.vacancy_pct - 4),
     },
@@ -375,6 +386,7 @@ function histogram(values, bucketCount = 18) {
 function runMonteCarlo(assumptions, mode) {
   const runs = mode === "deep" ? DEFAULT_ASSUMPTIONS.monte_carlo_runs_deep : DEFAULT_ASSUMPTIONS.monte_carlo_runs_quick;
   const random = lcg(92821);
+  const isFlip = assumptions.deal_strategy === "flip";
   const irrs = [];
   const multiples = [];
   let targetHits = 0;
@@ -382,11 +394,11 @@ function runMonteCarlo(assumptions, mode) {
   let capexOver20 = 0;
   for (let index = 0; index < runs; index += 1) {
     const capex = triangular(random, assumptions.renovation.low, assumptions.renovation.base, assumptions.renovation.high);
-    const rent = triangular(random, assumptions.operations.gross_annual_rent * 0.86, assumptions.operations.gross_annual_rent, assumptions.operations.gross_annual_rent * 1.16);
-    const vacancy = triangular(random, Math.max(0, assumptions.operations.vacancy_pct - 4), assumptions.operations.vacancy_pct, Math.min(35, assumptions.operations.vacancy_pct + 7));
+    const rent = isFlip ? 0 : triangular(random, assumptions.operations.gross_annual_rent * 0.86, assumptions.operations.gross_annual_rent, assumptions.operations.gross_annual_rent * 1.16);
+    const vacancy = isFlip ? 0 : triangular(random, Math.max(0, assumptions.operations.vacancy_pct - 4), assumptions.operations.vacancy_pct, Math.min(35, assumptions.operations.vacancy_pct + 7));
     const growth = triangular(random, Math.max(-2, assumptions.exit.exit_growth_pct - 2), assumptions.exit.exit_growth_pct, assumptions.exit.exit_growth_pct + 3);
     const rate = triangular(random, Math.max(0, assumptions.financing.financing_rate_pct - 0.75), assumptions.financing.financing_rate_pct, assumptions.financing.financing_rate_pct + 1);
-    const opex = triangular(random, Math.max(5, assumptions.operations.operating_expense_ratio_pct - 4), assumptions.operations.operating_expense_ratio_pct, assumptions.operations.operating_expense_ratio_pct + 6);
+    const opex = isFlip ? 0 : triangular(random, Math.max(5, assumptions.operations.operating_expense_ratio_pct - 4), assumptions.operations.operating_expense_ratio_pct, assumptions.operations.operating_expense_ratio_pct + 6);
     const metrics = calculateDealMetrics(withScenario(assumptions, {
       renovation: { base: capex },
       operations: { gross_annual_rent: rent, vacancy_pct: vacancy, operating_expense_ratio_pct: opex },
@@ -533,7 +545,8 @@ function sensitivity(assumptions, baseMetrics) {
       const metrics = calculateDealMetrics(withScenario(assumptions, { renovation: { base: amount } }));
       return { renovation_cost: round(amount, 0), irr: metrics.irr };
     });
-  const rentSteps = [-0.12, -0.06, 0, 0.06, 0.12].map((shift) => {
+  const isFlip = assumptions.deal_strategy === "flip";
+  const rentSteps = isFlip ? [] : [-0.12, -0.06, 0, 0.06, 0.12].map((shift) => {
     const rent = assumptions.operations.gross_annual_rent * (1 + shift);
     const metrics = calculateDealMetrics(withScenario(assumptions, { operations: { gross_annual_rent: rent } }));
     return { annual_rent: round(rent, 0), irr: metrics.irr };
@@ -544,8 +557,10 @@ function sensitivity(assumptions, baseMetrics) {
     ...(assumptions.renovation.has_capex_assumption
       ? [["renovation_cost", { renovation: { base: assumptions.renovation.low } }, { renovation: { base: assumptions.renovation.high } }]]
       : []),
-    ["rent", { operations: { gross_annual_rent: assumptions.operations.gross_annual_rent * 1.08 } }, { operations: { gross_annual_rent: assumptions.operations.gross_annual_rent * 0.92 } }],
-    ["vacancy", { operations: { vacancy_pct: Math.max(0, assumptions.operations.vacancy_pct - 4) } }, { operations: { vacancy_pct: assumptions.operations.vacancy_pct + 5 } }],
+    ...(isFlip ? [] : [
+      ["rent", { operations: { gross_annual_rent: assumptions.operations.gross_annual_rent * 1.08 } }, { operations: { gross_annual_rent: assumptions.operations.gross_annual_rent * 0.92 } }],
+      ["vacancy", { operations: { vacancy_pct: Math.max(0, assumptions.operations.vacancy_pct - 4) } }, { operations: { vacancy_pct: assumptions.operations.vacancy_pct + 5 } }],
+    ]),
     ["financing_rate", { financing: { financing_rate_pct: Math.max(0, assumptions.financing.financing_rate_pct - 0.75) } }, { financing: { financing_rate_pct: assumptions.financing.financing_rate_pct + 0.75 } }],
     ["operating_expenses", { operations: { operating_expense_ratio_pct: Math.max(5, assumptions.operations.operating_expense_ratio_pct - 4) } }, { operations: { operating_expense_ratio_pct: assumptions.operations.operating_expense_ratio_pct + 6 } }],
   ].map(([key, up, down]) => {
@@ -568,6 +583,7 @@ function recommendation({ baseMetrics, downsideMetrics, monteCarlo, maxBid, assu
 
 function riskFlags({ baseMetrics, monteCarlo, assumptions, capexRisk, maxBid }) {
   const target = assumptions.investor.target_irr_pct / 100;
+  const isFlip = assumptions.deal_strategy === "flip";
   const capexLevel = capexRisk.overrun_risk_label === "Needs evidence"
     ? "high"
     : String(capexRisk.overrun_risk_label || "low").toLowerCase();
@@ -575,7 +591,7 @@ function riskFlags({ baseMetrics, monteCarlo, assumptions, capexRisk, maxBid }) 
     { key: "return_risk", label: "Return risk", level: (baseMetrics.irr ?? -1) >= target ? "low" : "high", detail: "Base IRR compared with the selected target return." },
     { key: "capital_loss_risk", label: "Capital loss risk", level: monteCarlo.probability_capital_loss > 0.2 ? "high" : monteCarlo.probability_capital_loss > 0.08 ? "medium" : "low", detail: "Probability simulated total cash returned is below equity invested." },
     { key: "capex_risk", label: "Capex risk", level: capexLevel, detail: capexRisk.overrun_risk_label === "Needs evidence" ? "Renovation capex needs a priced estimate or explicit planning allowance." : "Probability renovation cost exceeds the base estimate." },
-    { key: "rent_risk", label: "Rent risk", level: assumptions.operations.gross_annual_rent > (assumptions.property.current_rent || assumptions.operations.gross_annual_rent) * 1.1 ? "medium" : "low", detail: "Whether target returns depend on higher-than-current rent." },
+    { key: "rent_risk", label: isFlip ? "Resale risk" : "Rent risk", level: isFlip ? "medium" : assumptions.operations.gross_annual_rent > (assumptions.property.current_rent || assumptions.operations.gross_annual_rent) * 1.1 ? "medium" : "low", detail: isFlip ? "Whether target returns depend on exit resale value rather than operating income." : "Whether target returns depend on higher-than-current rent." },
     { key: "exit_risk", label: "Exit risk", level: assumptions.exit.exit_growth_pct > 4 ? "medium" : "low", detail: "Whether returns depend heavily on appreciation." },
     { key: "financing_risk", label: "Financing risk", level: assumptions.financing.financing_rate_pct > 6.5 ? "medium" : "low", detail: "Sensitivity to higher borrowing cost." },
     { key: "evidence_risk", label: "Evidence risk", level: assumptions.renovation.missing_evidence.length || assumptions.missing_assumptions.length ? "high" : "low", detail: "Missing assumptions and unsupported capex evidence." },
@@ -606,10 +622,10 @@ export function runUnderwritingEngine({ opportunity, mandate = null, input = {},
         summary: {
           recommendation: "Watchlist",
           missing_assumptions: assumptions.missing_assumptions,
-          next_action: "Add purchase price and rent assumptions before running deal simulation.",
+          next_action: assumptions.deal_strategy === "flip" ? "Add purchase price before running flip underwriting." : "Add purchase price and rent assumptions before running deal simulation.",
         },
         readout: {
-          investor_summary: "Underwriting is blocked until the required price and rent assumptions are provided.",
+          investor_summary: assumptions.deal_strategy === "flip" ? "Underwriting is blocked until the required purchase price assumption is provided." : "Underwriting is blocked until the required price and rent assumptions are provided.",
           disclaimer: DISCLAIMER,
         },
       },
