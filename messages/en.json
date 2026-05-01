@@ -1275,7 +1275,7 @@
     "dark": "Dark",
     "switchToDarkMode": "Switch to dark mode",
     "switchToLightMode": "Switch to light mode",
-    "languageDesc": "Language can be changed using the language switcher in the header.",
+    "languageDesc": "Change the interface language here or from the header.",
     "dangerZone": "Danger Zone",
     "logOut": "Log Out",
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your workspaces, documents, and notes will be permanently deleted.",

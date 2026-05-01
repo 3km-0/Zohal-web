@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Button, Card, Input, Badge, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -293,6 +294,7 @@ export default function SettingsPage() {
             <p className="text-sm text-text-soft mb-4">
               {tSettings('languageDesc')}
             </p>
+            <LanguageSwitcher />
           </Card>
 
           {/* Danger Zone */}

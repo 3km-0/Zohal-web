@@ -1,21 +1,19 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export function LanguageSwitcher() {
   const locale = useLocale();
   const tCommon = useTranslations('common');
-  const router = useRouter();
 
   const toggleLanguage = () => {
     const newLocale = locale === 'en' ? 'ar' : 'en';
     // Persist locale preference and mark it as an explicit user choice so
     // the geo-detection middleware won't override it on future visits.
-    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
-    document.cookie = `LOCALE_EXPLICIT=1; path=/; max-age=31536000`;
-    router.refresh();
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = 'LOCALE_EXPLICIT=1; path=/; max-age=31536000; SameSite=Lax';
+    window.location.reload();
   };
 
   return (

@@ -108,7 +108,7 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
         </button>
 
         {/* Language Switcher */}
-        <div className="hidden md:block">
+        <div className="block">
           <LanguageSwitcher />
         </div>
 
