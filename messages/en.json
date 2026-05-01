@@ -2792,6 +2792,7 @@
     "addAssumptions": "Add assumptions",
     "useListingFacts": "Use listing facts",
     "saveAssumptions": "Save assumptions",
+    "resetAssumptions": "Reset assumptions",
     "savingAssumptions": "Saving...",
     "scenarioSaveError": "Unable to save assumptions right now.",
     "underwritingTitle": "Underwriting engine",

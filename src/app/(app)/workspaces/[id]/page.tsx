@@ -540,6 +540,30 @@ function completeScenario(seed: Partial<ScenarioState>): ScenarioState {
   };
 }
 
+function scenarioMetadataForOpportunity(item: OpportunityRow, nextScenario: ScenarioState): Record<string, unknown> {
+  return {
+    ...(item.metadata_json ?? {}),
+    deal_strategy: nextScenario.strategy,
+    price: nextScenario.price,
+    acquisition_price: nextScenario.price,
+    monthly_rent: nextScenario.rent,
+    renovation_budget: nextScenario.renovation,
+    vacancy: nextScenario.vacancy,
+    hold_period: nextScenario.hold,
+    appreciation: nextScenario.appreciation,
+    ltv_pct: nextScenario.ltv,
+    after_repair_value: nextScenario.arv,
+    arv: nextScenario.arv,
+    financing_rate_pct: nextScenario.financingRate,
+    refinance_enabled: nextScenario.refinanceEnabled,
+    refinance_ltv_pct: nextScenario.refinanceLtv,
+    refinance_rate_pct: nextScenario.refinanceRate,
+    refinance_year: nextScenario.refinanceYear,
+    refinance_cost_pct: nextScenario.refinanceCost,
+    target_irr_pct: nextScenario.targetIrr,
+  };
+}
+
 function modelReturns(m: ScenarioState) {
   const ltv = Math.max(0, Math.min(85, m.ltv)) / 100;
   const equity = m.price * (1 - ltv) + m.renovation;
@@ -1007,27 +1031,7 @@ export default function WorkspaceCockpitPage() {
     if (!selectedOpportunity) return;
     setScenarioBusy(true);
     try {
-      const metadata = {
-        ...(selectedOpportunity.metadata_json ?? {}),
-        deal_strategy: nextScenario.strategy,
-        price: nextScenario.price,
-        acquisition_price: nextScenario.price,
-        monthly_rent: nextScenario.rent,
-        renovation_budget: nextScenario.renovation,
-        vacancy: nextScenario.vacancy,
-        hold_period: nextScenario.hold,
-        appreciation: nextScenario.appreciation,
-        ltv_pct: nextScenario.ltv,
-        after_repair_value: nextScenario.arv,
-        arv: nextScenario.arv,
-        financing_rate_pct: nextScenario.financingRate,
-        refinance_enabled: nextScenario.refinanceEnabled,
-        refinance_ltv_pct: nextScenario.refinanceLtv,
-        refinance_rate_pct: nextScenario.refinanceRate,
-        refinance_year: nextScenario.refinanceYear,
-        refinance_cost_pct: nextScenario.refinanceCost,
-        target_irr_pct: nextScenario.targetIrr,
-      };
+      const metadata = scenarioMetadataForOpportunity(selectedOpportunity, nextScenario);
       const { error } = await supabase
         .from('acquisition_opportunities')
         .update({ metadata_json: metadata })
@@ -1042,11 +1046,26 @@ export default function WorkspaceCockpitPage() {
     }
   }, [selectedOpportunity, supabase, t]);
 
+  const resetScenarioDraft = useCallback(() => {
+    const reset = completeScenario(seedScenarioFromOpportunity(selectedOpportunity));
+    setScenario(reset);
+    setUnderwriting(null);
+    setApprovalError(null);
+  }, [selectedOpportunity]);
+
   const runUnderwriting = useCallback(async (nextScenario: ScenarioState) => {
     if (!selectedOpportunity) return;
     setUnderwritingBusy(true);
     setApprovalError(null);
     try {
+      const metadata = scenarioMetadataForOpportunity(selectedOpportunity, nextScenario);
+      const { error: saveError } = await supabase
+        .from('acquisition_opportunities')
+        .update({ metadata_json: metadata })
+        .eq('id', selectedOpportunity.id);
+      if (saveError) throw saveError;
+      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, metadata_json: metadata } : item));
+
       const response = await invokeZohalBackendJson<UnderwritingResponse>(
         supabase,
         `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/underwriting-run`,
@@ -1341,6 +1360,7 @@ export default function WorkspaceCockpitPage() {
                       running={underwritingBusy}
                       onScenarioChange={setScenario}
                       onSave={saveScenarioAssumptions}
+                      onResetDraft={resetScenarioDraft}
                       onRunUnderwriting={runUnderwriting}
                     />
                   ) : activePrimaryTab === 'renovation' ? (
@@ -2360,6 +2380,7 @@ function ModelModule({
   running,
   onScenarioChange,
   onSave,
+  onResetDraft,
   onRunUnderwriting,
 }: {
   opportunity: OpportunityRow | null;
@@ -2369,6 +2390,7 @@ function ModelModule({
   running: boolean;
   onScenarioChange: (next: ScenarioState) => void;
   onSave: (next: ScenarioState) => Promise<void>;
+  onResetDraft: () => void;
   onRunUnderwriting: (next: ScenarioState) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
@@ -2493,10 +2515,10 @@ function ModelModule({
         <button
           type="button"
           disabled={saving}
-          onClick={() => void onSave(scenario)}
+          onClick={() => underwriting ? onResetDraft() : void onSave(scenario)}
           className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? t('savingAssumptions') : t('saveAssumptions')}
+          {underwriting ? t('resetAssumptions') : saving ? t('savingAssumptions') : t('saveAssumptions')}
         </button>
         <button
           type="button"
@@ -2859,19 +2881,46 @@ function CapexUnderwritingChart({ capex }: { capex?: UnderwritingRun['capex'] })
 
 function PurchaseSensitivityChart({ points = [], maxBid, currentAsk }: { points?: NonNullable<UnderwritingRun['sensitivity']>['purchase_price']; maxBid: number | null; currentAsk: number | null }) {
   const t = useTranslations('workspaceCockpitPage');
-  const maxIrr = Math.max(0.01, ...points.map((point) => Math.abs(point.irr || 0)));
+  const validPoints = points.filter((point) => typeof point.irr === 'number');
+  const irrValues = validPoints.map((point) => point.irr as number);
+  const minIrr = Math.min(0, ...irrValues);
+  const maxIrr = Math.max(0.01, ...irrValues);
+  const span = Math.max(0.001, maxIrr - minIrr);
+  const chartPoints = validPoints.map((point, index) => {
+    const x = validPoints.length === 1 ? 150 : 24 + (index / (validPoints.length - 1)) * 272;
+    const y = 126 - (((point.irr as number) - minIrr) / span) * 86;
+    return { ...point, x, y };
+  });
+  const polyline = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
   return (
     <Panel className="p-5">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('purchaseSensitivity')}</p>
-      <div className="mt-5 space-y-3">
-        {points.map((point) => (
-          <div key={point.purchase_price} className="grid grid-cols-[92px_1fr_54px] items-center gap-3 text-xs">
-            <span className="text-text-soft">{compactSAR(point.purchase_price)}</span>
-            <div className="h-2 rounded-full bg-border">
-              <div className={cn('h-2 rounded-full', point.clears_target ? 'bg-accent' : 'bg-highlight')} style={{ width: `${Math.max(4, Math.abs(point.irr || 0) / maxIrr * 100)}%` }} />
-            </div>
-            <span className="font-mono text-text">{pctMaybe(point.irr)}</span>
-          </div>
+      <div className="mt-5 rounded-[16px] border border-[rgba(var(--highlight-rgb),0.16)] bg-highlight/10 p-3">
+        <svg className="h-40 w-full overflow-visible" viewBox="0 0 320 150" role="img" aria-label={t('purchaseSensitivity')}>
+          <defs>
+            <linearGradient id="purchase-sensitivity-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="rgb(var(--highlight-rgb))" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="rgb(var(--highlight-rgb))" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {[40, 78, 116].map((y) => <line key={y} x1="24" x2="296" y1={y} y2={y} className="stroke-border" strokeDasharray="4 7" />)}
+          {chartPoints.length ? <polyline points={`24,130 ${polyline} 296,130`} fill="url(#purchase-sensitivity-fill)" stroke="none" /> : null}
+          {chartPoints.length ? <polyline points={polyline} fill="none" stroke="rgb(var(--highlight-rgb))" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" /> : null}
+          {chartPoints.map((point) => (
+            <g key={point.purchase_price}>
+              <circle cx={point.x} cy={point.y} r="5" className={cn('stroke-surface', point.clears_target ? 'fill-accent' : 'fill-highlight')} strokeWidth="3" />
+              <text x={point.x} y="146" textAnchor="middle" className="fill-text-soft text-[10px]">{compactSAR(point.purchase_price)?.replace(' SAR', '')}</text>
+            </g>
+          ))}
+        </svg>
+        <div className="mt-2 flex justify-between font-mono text-[10px] text-text-muted">
+          <span>{pctMaybe(minIrr)}</span>
+          <span>{pctMaybe(maxIrr)}</span>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {points.slice(0, 3).map((point) => (
+          <OutputMini key={point.purchase_price} label={compactSAR(point.purchase_price) ?? '--'} value={pctMaybe(point.irr)} hot={Boolean(point.clears_target)} />
         ))}
       </div>
       <p className="mt-4 text-xs leading-5 text-text-soft">{t('maxBid')}: {sarMaybe(maxBid)} · {t('currentAsk')}: {sarMaybe(currentAsk)}</p>

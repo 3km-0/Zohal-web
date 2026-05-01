@@ -2778,6 +2778,7 @@
     "addAssumptions": "إضافة الافتراضات",
     "useListingFacts": "استخدام حقائق الإعلان",
     "saveAssumptions": "حفظ الافتراضات",
+    "resetAssumptions": "إعادة ضبط الافتراضات",
     "savingAssumptions": "جارٍ الحفظ...",
     "scenarioSaveError": "تعذر حفظ الافتراضات حالياً.",
     "underwritingTitle": "محرك الاكتتاب",
