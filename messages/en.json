@@ -2691,10 +2691,15 @@
     "renovationTab": "Renovation",
     "currentBlocker": "Current blocker",
     "actionDock": {
-      "title": "Action dock",
+      "title": "Next action",
       "addEvidence": "Add evidence",
+      "addEvidenceMeta": "Open Files with the property upload flow ready.",
       "uploadPropertyDocument": "Upload property doc",
+      "uploadPropertyDocumentMeta": "Open Files and route analysis as acquisition property evidence.",
       "openBuyerVault": "Buyer vault",
+      "openBuyerVaultMeta": "Open secure buyer readiness files.",
+      "passMeta": "Record this opportunity as passed.",
+      "moreCommands": "More commands",
       "working": "Working..."
     },
     "evidencePaneTitle": "Evidence",
@@ -3018,7 +3023,6 @@
     "renovationModelTitle": "Renovation-adjusted return input",
     "renovationModelBody": "Describe the intended scope, generate an evidence-aware range, then explicitly choose whether to use an estimate in the Deal model.",
     "usedInDealModel": "Used in Deal model",
-    "usedInDealModelBody": "Deal owns the editable scenario capex. Renovation estimates only update it when you apply a range.",
     "applyEstimateTitle": "Apply estimate to Deal",
     "applyEstimate": {
       "low": "Use low",

@@ -2692,10 +2692,15 @@
     "renovationTab": "التجديد",
     "currentBlocker": "العائق الحالي",
     "actionDock": {
-      "title": "لوحة الإجراء",
+      "title": "الإجراء التالي",
       "addEvidence": "إضافة دليل",
+      "addEvidenceMeta": "فتح الملفات مع تجهيز رفع أدلة العقار.",
       "uploadPropertyDocument": "رفع مستند عقار",
+      "uploadPropertyDocumentMeta": "فتح الملفات وتوجيه التحليل كدليل عقاري للاستحواذ.",
       "openBuyerVault": "خزنة المشتري",
+      "openBuyerVaultMeta": "فتح ملفات جاهزية المشتري الآمنة.",
+      "passMeta": "تسجيل هذه الفرصة كفرصة مرفوضة.",
+      "moreCommands": "أوامر إضافية",
       "working": "جارٍ التنفيذ..."
     },
     "evidencePaneTitle": "الأدلة",
@@ -3004,7 +3009,6 @@
     "renovationModelTitle": "مدخل عوائد معدل بالتجديد",
     "renovationModelBody": "صف نطاق التجديد المطلوب، ثم ولّد نطاق تكلفة مدعوماً بالأدلة، وبعدها اختر صراحة إن كنت تريد استخدام التقدير في نموذج الصفقة.",
     "usedInDealModel": "المستخدم في نموذج الصفقة",
-    "usedInDealModelBody": "تبقى قيمة الكابكس القابلة للتحرير في تبويب الصفقة. تقديرات التجديد لا تحدثها إلا عند تطبيق نطاق محدد.",
     "applyEstimateTitle": "تطبيق التقدير على الصفقة",
     "applyEstimate": {
       "low": "استخدم الأدنى",
