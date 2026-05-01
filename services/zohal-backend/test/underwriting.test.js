@@ -51,6 +51,32 @@ test("deal metrics calculate project cost, equity, cash flow, and multiple", () 
   assert(metrics.equity_multiple > 1);
 });
 
+test("LTV, ARV, and refinance assumptions affect the debt stack and cash flows", () => {
+  const assumptions = normalizeUnderwritingAssumptions({
+    opportunity,
+    input: {
+      ltv_pct: 70,
+      after_repair_value: 3800000,
+      exit_growth_pct: 2,
+      refinance_enabled: true,
+      refinance_year: 2,
+      refinance_ltv_pct: 65,
+      refinance_rate_pct: 5.25,
+      refinance_cost_pct: 1,
+      target_irr_pct: 8,
+    },
+  });
+  const metrics = calculateDealMetrics(assumptions);
+  assert.equal(metrics.loan_amount, 2170000);
+  assert(metrics.equity_required < 1400000);
+  assert.equal(metrics.exit_price, Math.round(3800000 * (1.02 ** 5)));
+  assert.equal(metrics.refinance.enabled, true);
+  assert.equal(metrics.refinance.year, 2);
+  assert(metrics.refinance.loan_amount > metrics.refinance.payoff_balance);
+  assert(metrics.refinance.net_proceeds > 0);
+  assert.equal(metrics.cash_flows.length, 6);
+});
+
 test("underwriting run is deterministic and produces decision payload sections", () => {
   const first = runUnderwritingEngine({ opportunity, input: { target_irr_pct: 8 }, mode: "quick" });
   const second = runUnderwritingEngine({ opportunity, input: { target_irr_pct: 8 }, mode: "quick" });
@@ -58,6 +84,8 @@ test("underwriting run is deterministic and produces decision payload sections",
   assert.equal(first.outputs.monte_carlo.p50_irr, second.outputs.monte_carlo.p50_irr);
   assert.equal(first.outputs.monte_carlo.runs, 5000);
   assert(first.outputs.summary.max_bid > 0);
+  assert(first.outputs.financing.loan_amount > 0);
+  assert(Array.isArray(first.outputs.sensitivity.financing_ltv));
   assert(Array.isArray(first.outputs.scenarios));
   assert(Array.isArray(first.outputs.sensitivity.purchase_price));
   assert(Array.isArray(first.outputs.risk_flags));

@@ -13,6 +13,8 @@ export const DEFAULT_ASSUMPTIONS = Object.freeze({
   legal_admin_costs: 10000,
   selling_cost_pct: 2.5,
   exit_growth_pct: 2,
+  refinance_ltv_pct: 65,
+  refinance_cost_pct: 1,
   monte_carlo_runs_quick: 5000,
   monte_carlo_runs_deep: 25000,
 });
@@ -81,6 +83,17 @@ function normalizeDealStrategy(value) {
   const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (["flip", "resale", "renovate_resell", "fix_and_flip"].includes(raw)) return "flip";
   return "rent_hold";
+}
+
+function normalizeBoolean(value, fallback = false) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "yes", "1", "enabled", "on"].includes(normalized)) return true;
+    if (["false", "no", "0", "disabled", "off"].includes(normalized)) return false;
+  }
+  return fallback;
 }
 
 function normalizeCapex(opportunity, input) {
@@ -198,15 +211,41 @@ export function calculateDealMetrics(assumptions) {
   const noi = egi - operatingExpenses;
   const annualCashFlow = noi - debtService;
   const hold = Math.max(1, Math.round(assumptions.exit.hold_period_years));
-  const exitPrice = purchasePrice * ((1 + assumptions.exit.exit_growth_pct / 100) ** hold);
+  const exitValueBasis = assumptions.exit.after_repair_value && assumptions.exit.after_repair_value > 0
+    ? assumptions.exit.after_repair_value
+    : purchasePrice;
+  const exitPrice = exitValueBasis * ((1 + assumptions.exit.exit_growth_pct / 100) ** hold);
   const netSaleBeforeDebt = exitPrice * (1 - assumptions.exit.selling_cost_pct / 100);
-  const remainingDebt = remainingLoanBalance(loanAmount, assumptions.financing.financing_rate_pct, assumptions.financing.amortization_years, hold);
+  const requestedRefinanceYear = Math.max(1, Math.round(assumptions.financing.refinance_year || 2));
+  const refinanceYear = clamp(requestedRefinanceYear, 1, Math.max(1, hold - 1));
+  const canRefinance = assumptions.financing.refinance_enabled && hold > 1;
+  const refinanceValue = canRefinance ? exitValueBasis * ((1 + assumptions.exit.exit_growth_pct / 100) ** refinanceYear) : null;
+  const refinanceLoanAmount = canRefinance ? refinanceValue * assumptions.financing.refinance_ltv_pct / 100 : 0;
+  const refinanceCost = canRefinance ? refinanceLoanAmount * assumptions.financing.refinance_cost_pct / 100 : 0;
+  const acquisitionBalanceAtRefi = canRefinance
+    ? remainingLoanBalance(loanAmount, assumptions.financing.financing_rate_pct, assumptions.financing.amortization_years, refinanceYear)
+    : 0;
+  const refinanceProceeds = canRefinance ? refinanceLoanAmount - acquisitionBalanceAtRefi - refinanceCost : 0;
+  const refinanceDebtService = canRefinance
+    ? annualDebtService(refinanceLoanAmount, assumptions.financing.refinance_rate_pct, assumptions.financing.refinance_amortization_years)
+    : 0;
+  const remainingDebt = canRefinance
+    ? remainingLoanBalance(refinanceLoanAmount, assumptions.financing.refinance_rate_pct, assumptions.financing.refinance_amortization_years, hold - refinanceYear)
+    : remainingLoanBalance(loanAmount, assumptions.financing.financing_rate_pct, assumptions.financing.amortization_years, hold);
   const netSaleProceeds = netSaleBeforeDebt - remainingDebt;
-  const cashFlows = [-equityRequired, ...Array.from({ length: hold }, (_, index) =>
-    index === hold - 1 ? annualCashFlow + netSaleProceeds : annualCashFlow
-  )];
+  const cashFlows = [-equityRequired, ...Array.from({ length: hold }, (_, index) => {
+    const year = index + 1;
+    const operatingCashFlow = canRefinance && year > refinanceYear ? noi - refinanceDebtService : annualCashFlow;
+    const refiCashFlow = canRefinance && year === refinanceYear ? refinanceProceeds : 0;
+    const saleCashFlow = index === hold - 1 ? netSaleProceeds : 0;
+    return operatingCashFlow + refiCashFlow + saleCashFlow;
+  })];
   const dealIrr = irr(cashFlows);
-  const totalCashReturned = annualCashFlow * hold + netSaleProceeds;
+  const totalCashReturned = cashFlows.slice(1).reduce((total, flow) => total + flow, 0);
+  const firstYearDebtService = debtService;
+  const stabilizedDebtService = canRefinance ? refinanceDebtService : debtService;
+  const firstYearDscr = firstYearDebtService > 0 ? noi / firstYearDebtService : null;
+  const stabilizedDscr = stabilizedDebtService > 0 ? noi / stabilizedDebtService : null;
   return {
     purchase_price: round(purchasePrice, 0),
     renovation_cost: round(renovationCost, 0),
@@ -217,12 +256,25 @@ export function calculateDealMetrics(assumptions) {
     loan_amount: round(loanAmount, 0),
     equity_required: round(equityRequired, 0),
     annual_debt_service: round(debtService, 0),
+    stabilized_annual_debt_service: round(stabilizedDebtService, 0),
+    debt_service_coverage_ratio: firstYearDscr === null ? null : round(firstYearDscr, 4),
+    stabilized_debt_service_coverage_ratio: stabilizedDscr === null ? null : round(stabilizedDscr, 4),
     effective_gross_income: round(egi, 0),
     operating_expenses: round(operatingExpenses, 0),
     noi: round(noi, 0),
     annual_cash_flow: round(annualCashFlow, 0),
     exit_price: round(exitPrice, 0),
     net_sale_proceeds: round(netSaleProceeds, 0),
+    refinance: {
+      enabled: Boolean(canRefinance),
+      year: canRefinance ? refinanceYear : null,
+      valuation: refinanceValue === null ? null : round(refinanceValue, 0),
+      loan_amount: round(refinanceLoanAmount, 0),
+      payoff_balance: round(acquisitionBalanceAtRefi, 0),
+      costs: round(refinanceCost, 0),
+      net_proceeds: round(refinanceProceeds, 0),
+      annual_debt_service: round(refinanceDebtService, 0),
+    },
     irr: dealIrr === null ? null : round(dealIrr, 6),
     cash_on_cash: equityRequired > 0 ? round(annualCashFlow / equityRequired, 6) : null,
     equity_multiple: equityRequired > 0 ? round(totalCashReturned / equityRequired, 4) : null,
@@ -272,6 +324,14 @@ export function normalizeUnderwritingAssumptions({ opportunity, mandate = null, 
       ltv_pct: normalizePercent(input.ltv_pct ?? input.loan_to_value_pct ?? metadata.ltv_pct, DEFAULT_ASSUMPTIONS.ltv_pct),
       financing_rate_pct: normalizePercent(input.financing_rate_pct ?? metadata.financing_rate_pct, DEFAULT_ASSUMPTIONS.financing_rate_pct),
       amortization_years: firstNumber(sources, ["amortization_years", "amortization_period"]) ?? DEFAULT_ASSUMPTIONS.amortization_years,
+      refinance_enabled: dealStrategy === "flip"
+        ? false
+        : normalizeBoolean(input.refinance_enabled ?? input.refi_enabled ?? metadata.refinance_enabled ?? metadata.refi_enabled, false),
+      refinance_ltv_pct: normalizePercent(input.refinance_ltv_pct ?? input.refi_ltv_pct ?? metadata.refinance_ltv_pct ?? metadata.refi_ltv_pct, DEFAULT_ASSUMPTIONS.refinance_ltv_pct),
+      refinance_rate_pct: normalizePercent(input.refinance_rate_pct ?? input.refi_rate_pct ?? metadata.refinance_rate_pct ?? metadata.refi_rate_pct ?? input.financing_rate_pct ?? metadata.financing_rate_pct, DEFAULT_ASSUMPTIONS.financing_rate_pct),
+      refinance_amortization_years: firstNumber(sources, ["refinance_amortization_years", "refi_amortization_years"]) ?? DEFAULT_ASSUMPTIONS.amortization_years,
+      refinance_cost_pct: normalizePercent(input.refinance_cost_pct ?? input.refi_cost_pct ?? metadata.refinance_cost_pct ?? metadata.refi_cost_pct, DEFAULT_ASSUMPTIONS.refinance_cost_pct),
+      refinance_year: firstNumber(sources, ["refinance_year", "refi_year"]) ?? 2,
     },
     operations: {
       gross_annual_rent: annualRent,
@@ -283,6 +343,7 @@ export function normalizeUnderwritingAssumptions({ opportunity, mandate = null, 
       hold_period_years: firstNumber(sources, ["hold_period_years", "hold_period", "hold"]) ?? DEFAULT_ASSUMPTIONS.hold_period_years,
       exit_growth_pct: normalizePercent(input.exit_growth_pct ?? input.appreciation ?? metadata.exit_growth_pct ?? metadata.appreciation, DEFAULT_ASSUMPTIONS.exit_growth_pct),
       selling_cost_pct: normalizePercent(input.selling_cost_pct ?? metadata.selling_cost_pct, DEFAULT_ASSUMPTIONS.selling_cost_pct),
+      after_repair_value: firstNumber(sources, ["after_repair_value", "arv", "arv_price", "stabilized_value"]),
     },
     investor: {
       target_irr_pct: targetIrr,
@@ -316,7 +377,12 @@ function buildScenarioCases(assumptions) {
       vacancy_pct: Math.max(assumptions.operations.vacancy_pct + 5, 12),
     },
     exit: { exit_growth_pct: Math.min(assumptions.exit.exit_growth_pct, 0) },
-    financing: { financing_rate_pct: assumptions.financing.financing_rate_pct + 0.75 },
+    financing: {
+      ltv_pct: Math.max(0, assumptions.financing.ltv_pct - 5),
+      financing_rate_pct: assumptions.financing.financing_rate_pct + 0.75,
+      refinance_ltv_pct: Math.max(0, assumptions.financing.refinance_ltv_pct - 5),
+      refinance_rate_pct: assumptions.financing.refinance_rate_pct + 1,
+    },
   });
   const upside = withScenario(assumptions, {
     property: { purchase_price: assumptions.property.purchase_price * 0.95 },
@@ -326,7 +392,12 @@ function buildScenarioCases(assumptions) {
       vacancy_pct: Math.max(0, assumptions.operations.vacancy_pct - 4),
     },
     exit: { exit_growth_pct: assumptions.exit.exit_growth_pct + 3 },
-    financing: { financing_rate_pct: Math.max(0, assumptions.financing.financing_rate_pct - 0.75) },
+    financing: {
+      ltv_pct: Math.min(85, assumptions.financing.ltv_pct + 5),
+      financing_rate_pct: Math.max(0, assumptions.financing.financing_rate_pct - 0.75),
+      refinance_ltv_pct: Math.min(85, assumptions.financing.refinance_ltv_pct + 5),
+      refinance_rate_pct: Math.max(0, assumptions.financing.refinance_rate_pct - 0.75),
+    },
   });
   return [
     { key: "downside", label: "Downside", assumptions: downside, metrics: calculateDealMetrics(downside) },
@@ -398,12 +469,18 @@ function runMonteCarlo(assumptions, mode) {
     const vacancy = isFlip ? 0 : triangular(random, Math.max(0, assumptions.operations.vacancy_pct - 4), assumptions.operations.vacancy_pct, Math.min(35, assumptions.operations.vacancy_pct + 7));
     const growth = triangular(random, Math.max(-2, assumptions.exit.exit_growth_pct - 2), assumptions.exit.exit_growth_pct, assumptions.exit.exit_growth_pct + 3);
     const rate = triangular(random, Math.max(0, assumptions.financing.financing_rate_pct - 0.75), assumptions.financing.financing_rate_pct, assumptions.financing.financing_rate_pct + 1);
+    const ltv = triangular(random, Math.max(0, assumptions.financing.ltv_pct - 5), assumptions.financing.ltv_pct, Math.min(85, assumptions.financing.ltv_pct + 5));
+    const refinanceLtv = triangular(random, Math.max(0, assumptions.financing.refinance_ltv_pct - 5), assumptions.financing.refinance_ltv_pct, Math.min(85, assumptions.financing.refinance_ltv_pct + 5));
+    const refinanceRate = triangular(random, Math.max(0, assumptions.financing.refinance_rate_pct - 0.75), assumptions.financing.refinance_rate_pct, assumptions.financing.refinance_rate_pct + 1.25);
     const opex = isFlip ? 0 : triangular(random, Math.max(5, assumptions.operations.operating_expense_ratio_pct - 4), assumptions.operations.operating_expense_ratio_pct, assumptions.operations.operating_expense_ratio_pct + 6);
+    const afterRepairValue = assumptions.exit.after_repair_value && assumptions.exit.after_repair_value > 0
+      ? triangular(random, assumptions.exit.after_repair_value * 0.9, assumptions.exit.after_repair_value, assumptions.exit.after_repair_value * 1.12)
+      : null;
     const metrics = calculateDealMetrics(withScenario(assumptions, {
       renovation: { base: capex },
       operations: { gross_annual_rent: rent, vacancy_pct: vacancy, operating_expense_ratio_pct: opex },
-      exit: { exit_growth_pct: growth },
-      financing: { financing_rate_pct: rate },
+      exit: { exit_growth_pct: growth, after_repair_value: afterRepairValue },
+      financing: { ltv_pct: ltv, financing_rate_pct: rate, refinance_ltv_pct: refinanceLtv, refinance_rate_pct: refinanceRate },
     }));
     if (metrics.irr !== null) {
       irrs.push(metrics.irr);
@@ -551,6 +628,23 @@ function sensitivity(assumptions, baseMetrics) {
     const metrics = calculateDealMetrics(withScenario(assumptions, { operations: { gross_annual_rent: rent } }));
     return { annual_rent: round(rent, 0), irr: metrics.irr };
   });
+  const ltvSteps = [-10, -5, 0, 5, 10].map((shift) => {
+    const ltv = clamp(assumptions.financing.ltv_pct + shift, 0, 85);
+    const metrics = calculateDealMetrics(withScenario(assumptions, { financing: { ltv_pct: ltv } }));
+    return { ltv_pct: round(ltv, 1), irr: metrics.irr, equity_required: metrics.equity_required, annual_debt_service: metrics.annual_debt_service };
+  });
+  const rateSteps = [-1, -0.5, 0, 0.5, 1].map((shift) => {
+    const rate = Math.max(0, assumptions.financing.financing_rate_pct + shift);
+    const metrics = calculateDealMetrics(withScenario(assumptions, { financing: { financing_rate_pct: rate } }));
+    return { financing_rate_pct: round(rate, 2), irr: metrics.irr, annual_debt_service: metrics.annual_debt_service };
+  });
+  const arvSteps = assumptions.exit.after_repair_value && assumptions.exit.after_repair_value > 0
+    ? [-0.1, -0.05, 0, 0.05, 0.1].map((shift) => {
+      const arv = assumptions.exit.after_repair_value * (1 + shift);
+      const metrics = calculateDealMetrics(withScenario(assumptions, { exit: { after_repair_value: arv } }));
+      return { after_repair_value: round(arv, 0), irr: metrics.irr, exit_price: metrics.exit_price };
+    })
+    : [];
   const drivers = [
     ["exit_value", { exit: { exit_growth_pct: assumptions.exit.exit_growth_pct + 2 } }, { exit: { exit_growth_pct: assumptions.exit.exit_growth_pct - 2 } }],
     ["purchase_price", { property: { purchase_price: assumptions.property.purchase_price * 0.95 } }, { property: { purchase_price: assumptions.property.purchase_price * 1.05 } }],
@@ -562,13 +656,17 @@ function sensitivity(assumptions, baseMetrics) {
       ["vacancy", { operations: { vacancy_pct: Math.max(0, assumptions.operations.vacancy_pct - 4) } }, { operations: { vacancy_pct: assumptions.operations.vacancy_pct + 5 } }],
     ]),
     ["financing_rate", { financing: { financing_rate_pct: Math.max(0, assumptions.financing.financing_rate_pct - 0.75) } }, { financing: { financing_rate_pct: assumptions.financing.financing_rate_pct + 0.75 } }],
+    ["ltv", { financing: { ltv_pct: Math.min(85, assumptions.financing.ltv_pct + 5) } }, { financing: { ltv_pct: Math.max(0, assumptions.financing.ltv_pct - 5) } }],
+    ...(assumptions.exit.after_repair_value && assumptions.exit.after_repair_value > 0
+      ? [["arv", { exit: { after_repair_value: assumptions.exit.after_repair_value * 1.05 } }, { exit: { after_repair_value: assumptions.exit.after_repair_value * 0.95 } }]]
+      : []),
     ["operating_expenses", { operations: { operating_expense_ratio_pct: Math.max(5, assumptions.operations.operating_expense_ratio_pct - 4) } }, { operations: { operating_expense_ratio_pct: assumptions.operations.operating_expense_ratio_pct + 6 } }],
   ].map(([key, up, down]) => {
     const upIrr = calculateDealMetrics(withScenario(assumptions, up)).irr ?? baseMetrics.irr;
     const downIrr = calculateDealMetrics(withScenario(assumptions, down)).irr ?? baseMetrics.irr;
     return { key, upside_irr: upIrr, downside_irr: downIrr, impact: round(Math.abs((upIrr ?? 0) - (downIrr ?? 0)), 4) };
   }).sort((a, b) => b.impact - a.impact);
-  return { purchase_price: priceSteps, renovation_cost: renovationSteps, rent: rentSteps, tornado: drivers };
+  return { purchase_price: priceSteps, renovation_cost: renovationSteps, rent: rentSteps, financing_ltv: ltvSteps, financing_rate: rateSteps, after_repair_value: arvSteps, tornado: drivers };
 }
 
 function recommendation({ baseMetrics, downsideMetrics, monteCarlo, maxBid, assumptions, capexRisk }) {
@@ -593,7 +691,7 @@ function riskFlags({ baseMetrics, monteCarlo, assumptions, capexRisk, maxBid }) 
     { key: "capex_risk", label: "Capex risk", level: capexLevel, detail: capexRisk.overrun_risk_label === "Needs evidence" ? "Renovation capex needs a priced estimate or explicit planning allowance." : "Probability renovation cost exceeds the base estimate." },
     { key: "rent_risk", label: isFlip ? "Resale risk" : "Rent risk", level: isFlip ? "medium" : assumptions.operations.gross_annual_rent > (assumptions.property.current_rent || assumptions.operations.gross_annual_rent) * 1.1 ? "medium" : "low", detail: isFlip ? "Whether target returns depend on exit resale value rather than operating income." : "Whether target returns depend on higher-than-current rent." },
     { key: "exit_risk", label: "Exit risk", level: assumptions.exit.exit_growth_pct > 4 ? "medium" : "low", detail: "Whether returns depend heavily on appreciation." },
-    { key: "financing_risk", label: "Financing risk", level: assumptions.financing.financing_rate_pct > 6.5 ? "medium" : "low", detail: "Sensitivity to higher borrowing cost." },
+    { key: "financing_risk", label: "Financing risk", level: assumptions.financing.financing_rate_pct > 6.5 || (baseMetrics.debt_service_coverage_ratio !== null && baseMetrics.debt_service_coverage_ratio < 1.1) ? "medium" : "low", detail: "Sensitivity to leverage, borrowing cost, and debt-service coverage." },
     { key: "evidence_risk", label: "Evidence risk", level: assumptions.renovation.missing_evidence.length || assumptions.missing_assumptions.length ? "high" : "low", detail: "Missing assumptions and unsupported capex evidence." },
     { key: "negotiation_risk", label: "Negotiation risk", level: maxBid < assumptions.property.purchase_price ? "high" : "low", detail: "Whether current ask leaves enough margin of safety." },
   ];
@@ -667,6 +765,10 @@ export function runUnderwritingEngine({ opportunity, mandate = null, input = {},
         loan_amount: baseMetrics.loan_amount,
         equity_required: baseMetrics.equity_required,
         annual_debt_service: baseMetrics.annual_debt_service,
+        stabilized_annual_debt_service: baseMetrics.stabilized_annual_debt_service,
+        debt_service_coverage_ratio: baseMetrics.debt_service_coverage_ratio,
+        stabilized_debt_service_coverage_ratio: baseMetrics.stabilized_debt_service_coverage_ratio,
+        refinance: baseMetrics.refinance,
       },
       operations: {
         ...assumptions.operations,
@@ -690,11 +792,25 @@ export function runUnderwritingEngine({ opportunity, mandate = null, input = {},
           annual_rent: item.assumptions.operations.gross_annual_rent,
           vacancy_pct: item.assumptions.operations.vacancy_pct,
           exit_growth_pct: item.assumptions.exit.exit_growth_pct,
+          after_repair_value: item.assumptions.exit.after_repair_value,
+          ltv_pct: item.assumptions.financing.ltv_pct,
           financing_rate_pct: item.assumptions.financing.financing_rate_pct,
+          refinance_ltv_pct: item.assumptions.financing.refinance_ltv_pct,
         },
         metrics: item.metrics,
       })),
       monte_carlo: monteCarlo,
+      financing: {
+        ltv_pct: assumptions.financing.ltv_pct,
+        loan_amount: baseMetrics.loan_amount,
+        equity_required: baseMetrics.equity_required,
+        annual_debt_service: baseMetrics.annual_debt_service,
+        debt_service_coverage_ratio: baseMetrics.debt_service_coverage_ratio,
+        stabilized_debt_service_coverage_ratio: baseMetrics.stabilized_debt_service_coverage_ratio,
+        after_repair_value: assumptions.exit.after_repair_value,
+        exit_price: baseMetrics.exit_price,
+        refinance: baseMetrics.refinance,
+      },
       capex: capexRisk,
       mandate_fit: fit,
       renovation_confidence: {

@@ -217,10 +217,17 @@ type ScenarioState = {
   vacancy: number;
   hold: number;
   appreciation: number;
+  ltv: number;
+  arv: number;
   financingRate: number;
+  refinanceEnabled: boolean;
+  refinanceLtv: number;
+  refinanceRate: number;
+  refinanceYear: number;
+  refinanceCost: number;
   targetIrr: number;
 };
-type NumericScenarioKey = Exclude<keyof ScenarioState, 'strategy'>;
+type NumericScenarioKey = Exclude<keyof ScenarioState, 'strategy' | 'refinanceEnabled'>;
 
 type UnderwritingMetricSet = {
   irr?: number | null;
@@ -265,6 +272,26 @@ type UnderwritingRun = {
     probability_capital_loss?: number;
     histogram?: Array<{ min_irr: number; max_irr: number; count: number; pct: number }>;
   };
+  financing?: {
+    ltv_pct?: number | null;
+    loan_amount?: number | null;
+    equity_required?: number | null;
+    annual_debt_service?: number | null;
+    debt_service_coverage_ratio?: number | null;
+    stabilized_debt_service_coverage_ratio?: number | null;
+    after_repair_value?: number | null;
+    exit_price?: number | null;
+    refinance?: {
+      enabled?: boolean;
+      year?: number | null;
+      valuation?: number | null;
+      loan_amount?: number | null;
+      payoff_balance?: number | null;
+      costs?: number | null;
+      net_proceeds?: number | null;
+      annual_debt_service?: number | null;
+    };
+  };
   capex?: {
     low?: number | null;
     base?: number | null;
@@ -287,6 +314,9 @@ type UnderwritingRun = {
   };
   sensitivity?: {
     purchase_price?: Array<{ purchase_price: number; irr: number | null; clears_target?: boolean }>;
+    financing_ltv?: Array<{ ltv_pct: number; irr: number | null; equity_required?: number | null; annual_debt_service?: number | null }>;
+    financing_rate?: Array<{ financing_rate_pct: number; irr: number | null; annual_debt_service?: number | null }>;
+    after_repair_value?: Array<{ after_repair_value: number; irr: number | null; exit_price?: number | null }>;
     tornado?: Array<{ key: string; upside_irr: number | null; downside_irr: number | null; impact: number }>;
   };
   risk_flags?: Array<{ key: string; label: string; level: string; detail: string }>;
@@ -467,6 +497,8 @@ function scenarioFromOpportunity(item: OpportunityRow | null | undefined): Scena
   const rent = metadataNumber(item, ['monthly_rent', 'rent', 'expected_monthly_rent']);
   if (price === null) return null;
   const strategy = metadataString(item, ['deal_strategy', 'strategy']) === 'flip' ? 'flip' : 'rent_hold';
+  const refinanceEnabledRaw = metadataString(item, ['refinance_enabled', 'refi_enabled']);
+  const refinanceEnabled = refinanceEnabledRaw === 'true' || refinanceEnabledRaw === 'yes' || refinanceEnabledRaw === '1';
   return {
     strategy,
     price,
@@ -475,7 +507,14 @@ function scenarioFromOpportunity(item: OpportunityRow | null | undefined): Scena
     vacancy: strategy === 'flip' ? 0 : metadataNumber(item, ['vacancy', 'vacancy_rate']) ?? 7,
     hold: metadataNumber(item, ['hold_period', 'hold_years']) ?? (strategy === 'flip' ? 1 : 5),
     appreciation: metadataNumber(item, ['appreciation', 'annual_appreciation']) ?? 4,
+    ltv: metadataNumber(item, ['ltv_pct', 'loan_to_value_pct']) ?? 60,
+    arv: metadataNumber(item, ['after_repair_value', 'arv', 'stabilized_value']) ?? 0,
     financingRate: metadataNumber(item, ['financing_rate_pct', 'financing_rate']) ?? 5.5,
+    refinanceEnabled: strategy === 'flip' ? false : refinanceEnabled,
+    refinanceLtv: metadataNumber(item, ['refinance_ltv_pct', 'refi_ltv_pct']) ?? 65,
+    refinanceRate: metadataNumber(item, ['refinance_rate_pct', 'refi_rate_pct']) ?? metadataNumber(item, ['financing_rate_pct', 'financing_rate']) ?? 5.5,
+    refinanceYear: metadataNumber(item, ['refinance_year', 'refi_year']) ?? 2,
+    refinanceCost: metadataNumber(item, ['refinance_cost_pct', 'refi_cost_pct']) ?? 1,
     targetIrr: metadataNumber(item, ['target_irr_pct', 'target_irr']) ?? 8,
   };
 }
@@ -489,17 +528,27 @@ function completeScenario(seed: Partial<ScenarioState>): ScenarioState {
     vacancy: seed.vacancy ?? 7,
     hold: seed.hold ?? 5,
     appreciation: seed.appreciation ?? 4,
+    ltv: seed.ltv ?? 60,
+    arv: seed.arv ?? 0,
     financingRate: seed.financingRate ?? 5.5,
+    refinanceEnabled: seed.refinanceEnabled ?? false,
+    refinanceLtv: seed.refinanceLtv ?? 65,
+    refinanceRate: seed.refinanceRate ?? seed.financingRate ?? 5.5,
+    refinanceYear: seed.refinanceYear ?? 2,
+    refinanceCost: seed.refinanceCost ?? 1,
     targetIrr: seed.targetIrr ?? 8,
   };
 }
 
 function modelReturns(m: ScenarioState) {
-  const equity = m.price * 0.32 + m.renovation;
-  const debt = m.price * 0.68;
+  const ltv = Math.max(0, Math.min(85, m.ltv)) / 100;
+  const equity = m.price * (1 - ltv) + m.renovation;
+  const debt = m.price * ltv;
   const rent = m.rent * 12 * (1 - m.vacancy / 100);
-  const cashFlow = rent * 0.82 - debt * 0.071;
-  const sale = (m.price + m.renovation * 0.65) * Math.pow(1 + m.appreciation / 100, m.hold);
+  const debtService = debt * (m.financingRate / 100 + 0.018);
+  const cashFlow = m.strategy === 'flip' ? -debtService : rent * 0.82 - debtService;
+  const saleBasis = m.arv > 0 ? m.arv : m.price;
+  const sale = saleBasis * Math.pow(1 + m.appreciation / 100, m.hold);
   const remainingDebt = debt * Math.max(0.72, 1 - m.hold * 0.035);
   const terminal = sale * 0.975 - remainingDebt;
   const profit = cashFlow * m.hold + terminal - equity;
@@ -508,8 +557,9 @@ function modelReturns(m: ScenarioState) {
 }
 
 function modelExit(m: ScenarioState) {
-  const debt = m.price * 0.68;
-  const sale = (m.price + m.renovation * 0.65) * Math.pow(1 + m.appreciation / 100, m.hold);
+  const debt = m.price * Math.max(0, Math.min(85, m.ltv)) / 100;
+  const saleBasis = m.arv > 0 ? m.arv : m.price;
+  const sale = saleBasis * Math.pow(1 + m.appreciation / 100, m.hold);
   const remainingDebt = debt * Math.max(0.72, 1 - m.hold * 0.035);
   return { netSale: sale * 0.975, remainingDebt, terminalEquity: sale * 0.975 - remainingDebt };
 }
@@ -967,6 +1017,16 @@ export default function WorkspaceCockpitPage() {
         vacancy: nextScenario.vacancy,
         hold_period: nextScenario.hold,
         appreciation: nextScenario.appreciation,
+        ltv_pct: nextScenario.ltv,
+        after_repair_value: nextScenario.arv,
+        arv: nextScenario.arv,
+        financing_rate_pct: nextScenario.financingRate,
+        refinance_enabled: nextScenario.refinanceEnabled,
+        refinance_ltv_pct: nextScenario.refinanceLtv,
+        refinance_rate_pct: nextScenario.refinanceRate,
+        refinance_year: nextScenario.refinanceYear,
+        refinance_cost_pct: nextScenario.refinanceCost,
+        target_irr_pct: nextScenario.targetIrr,
       };
       const { error } = await supabase
         .from('acquisition_opportunities')
@@ -996,7 +1056,15 @@ export default function WorkspaceCockpitPage() {
           target_irr_pct: nextScenario.targetIrr,
           deal_strategy: nextScenario.strategy,
           investment_strategy: nextScenario.strategy,
+          ltv_pct: nextScenario.ltv,
           financing_rate_pct: nextScenario.financingRate,
+          after_repair_value: nextScenario.arv,
+          arv: nextScenario.arv,
+          refinance_enabled: nextScenario.refinanceEnabled,
+          refinance_ltv_pct: nextScenario.refinanceLtv,
+          refinance_rate_pct: nextScenario.refinanceRate,
+          refinance_year: nextScenario.refinanceYear,
+          refinance_cost_pct: nextScenario.refinanceCost,
           assumptions: {
             deal_strategy: nextScenario.strategy,
             purchase_price: nextScenario.price,
@@ -1006,7 +1074,15 @@ export default function WorkspaceCockpitPage() {
             vacancy_pct: nextScenario.vacancy,
             hold_period_years: nextScenario.hold,
             exit_growth_pct: nextScenario.appreciation,
+            ltv_pct: nextScenario.ltv,
             financing_rate_pct: nextScenario.financingRate,
+            after_repair_value: nextScenario.arv,
+            arv: nextScenario.arv,
+            refinance_enabled: nextScenario.refinanceEnabled,
+            refinance_ltv_pct: nextScenario.refinanceLtv,
+            refinance_rate_pct: nextScenario.refinanceRate,
+            refinance_year: nextScenario.refinanceYear,
+            refinance_cost_pct: nextScenario.refinanceCost,
             target_irr_pct: nextScenario.targetIrr,
           },
         },
@@ -2295,6 +2371,7 @@ function ModelModule({
   onRunUnderwriting: (next: ScenarioState) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   if (!scenario) {
     const seed = completeScenario(seedScenarioFromOpportunity(opportunity));
     return (
@@ -2326,13 +2403,18 @@ function ModelModule({
       rent: strategy === 'flip' ? 0 : scenario.rent > 0 ? scenario.rent : anchor.rent,
       vacancy: strategy === 'flip' ? 0 : scenario.vacancy > 0 ? scenario.vacancy : anchor.vacancy,
       hold: strategy === 'flip' ? Math.min(scenario.hold, 3) : Math.max(scenario.hold, 2),
+      refinanceEnabled: strategy === 'flip' ? false : scenario.refinanceEnabled,
     });
   };
+  const setRefinanceEnabled = (refinanceEnabled: boolean) => onScenarioChange({ ...scenario, refinanceEnabled });
   const priceMin = Math.min(scenario.price, anchor.price * 0.85);
   const priceMax = Math.max(scenario.price, anchor.price * 1.12, priceMin + 10000);
   const renovationMax = Math.max(100000, anchor.renovation * 2.2, anchor.price * 0.18, scenario.renovation);
   const rentMin = scenario.strategy === 'flip' ? 0 : Math.min(scenario.rent, anchor.rent * 0.7);
   const rentMax = Math.max(scenario.rent, anchor.rent * 1.35, 5000);
+  const arvMin = 0;
+  const arvMax = Math.max(scenario.arv, scenario.price * 1.8, scenario.price + scenario.renovation * 2, arvMin + 10000);
+  const refiYearMax = Math.max(1, scenario.hold - 1);
   return (
     <div className="grid gap-5 [@media(min-width:1780px)]:grid-cols-[0.95fr_1.05fr]">
       <Panel className="p-4">
@@ -2368,6 +2450,44 @@ function ModelModule({
           <ScenarioSlider label={t(scenario.strategy === 'flip' ? 'exitUplift' : 'appreciation')} value={scenario.appreciation} min={scenario.strategy === 'flip' ? -5 : 0} max={scenario.strategy === 'flip' ? 35 : 10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
           <ScenarioSlider label={t('financingRate')} value={scenario.financingRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('financingRate')} />
           <ScenarioSlider label={t('targetIrr')} value={scenario.targetIrr} min={2} max={18} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('targetIrr')} />
+        </div>
+        <div className="mt-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.12)] bg-surface-alt/70">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+          >
+            <span>
+              <span className="block text-sm font-semibold text-text">{t('advancedFinancing')}</span>
+              <span className="mt-1 block text-xs leading-5 text-text-muted">{t('advancedFinancingHint')}</span>
+            </span>
+            <ChevronDown className={cn('h-4 w-4 text-text-soft transition', advancedOpen && 'rotate-180')} />
+          </button>
+          {advancedOpen ? (
+            <div className="grid gap-3 border-t border-[rgba(var(--accent-rgb),0.12)] p-3 md:grid-cols-2">
+              <ScenarioSlider label={t('ltv')} value={scenario.ltv} min={0} max={85} step={1} format={(v) => `${v.toFixed(0)}%`} onChange={set('ltv')} />
+              <ScenarioSlider label={t('afterRepairValue')} value={scenario.arv} min={arvMin} max={arvMax} step={10000} format={(v) => v > 0 ? formatSAR.format(v) : t('notSet')} onChange={set('arv')} />
+              {scenario.strategy === 'rent_hold' ? (
+                <div className="md:col-span-2 rounded-[14px] border border-[rgba(var(--highlight-rgb),0.16)] bg-highlight/10 p-3">
+                  <label className="flex items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-semibold text-text">{t('enableRefinance')}</span>
+                      <span className="mt-1 block text-xs leading-5 text-text-muted">{t('enableRefinanceHint')}</span>
+                    </span>
+                    <input className="h-5 w-5 accent-accent" type="checkbox" checked={scenario.refinanceEnabled} onChange={(event) => setRefinanceEnabled(event.target.checked)} />
+                  </label>
+                </div>
+              ) : null}
+              {scenario.strategy === 'rent_hold' && scenario.refinanceEnabled ? (
+                <>
+                  <ScenarioSlider label={t('refinanceYear')} value={Math.min(scenario.refinanceYear, refiYearMax)} min={1} max={refiYearMax} step={1} format={(v) => `${v.toFixed(0)} ${t('years')}`} onChange={set('refinanceYear')} />
+                  <ScenarioSlider label={t('refinanceLtv')} value={scenario.refinanceLtv} min={0} max={85} step={1} format={(v) => `${v.toFixed(0)}%`} onChange={set('refinanceLtv')} />
+                  <ScenarioSlider label={t('refinanceRate')} value={scenario.refinanceRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('refinanceRate')} />
+                  <ScenarioSlider label={t('refinanceCost')} value={scenario.refinanceCost} min={0} max={4} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('refinanceCost')} />
+                </>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <button
@@ -2484,6 +2604,7 @@ function UnderwritingDashboard({ underwriting }: { underwriting: UnderwritingRun
       <div className="grid gap-5 xl:grid-cols-2">
         <ScenarioComparisonChart scenarios={underwriting.scenarios || []} target={summary.target_irr ?? null} />
         <MonteCarloChart underwriting={underwriting} />
+        <FinancingStructureChart underwriting={underwriting} />
         <CapexUnderwritingChart capex={underwriting.capex} />
         <PurchaseSensitivityChart points={underwriting.sensitivity?.purchase_price || []} maxBid={summary.max_bid ?? null} currentAsk={summary.current_ask ?? null} />
         <BreakdownChart title={t('mandateFitBreakdown')} rows={underwriting.mandate_fit?.components || []} />
@@ -2513,6 +2634,77 @@ function ScenarioComparisonChart({ scenarios, target }: { scenarios: NonNullable
           );
         })}
       </div>
+    </Panel>
+  );
+}
+
+function FinancingStructureChart({ underwriting }: { underwriting: UnderwritingRun }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const financing = underwriting.financing;
+  const debt = financing?.loan_amount ?? 0;
+  const equity = financing?.equity_required ?? 0;
+  const total = Math.max(1, debt + equity);
+  const refi = financing?.refinance;
+  const ltvSensitivity = underwriting.sensitivity?.financing_ltv || [];
+  const maxImpact = Math.max(0.01, ...ltvSensitivity.map((point) => Math.abs(point.irr || 0)));
+  return (
+    <Panel className="p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('financingStructure')}</p>
+          <p className="mt-1 text-sm text-text-soft">{t('ltv')}: {typeof financing?.ltv_pct === 'number' ? `${financing.ltv_pct.toFixed(0)}%` : '--'}</p>
+        </div>
+        <span className="rounded-[10px] border border-accent/25 bg-accent/10 px-3 py-1 font-mono text-xs text-accent">
+          DSCR {typeof financing?.debt_service_coverage_ratio === 'number' ? financing.debt_service_coverage_ratio.toFixed(2) : '--'}
+        </span>
+      </div>
+      <div className="mt-5 overflow-hidden rounded-[14px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt">
+        <div className="flex h-9">
+          <div className="bg-highlight/80" style={{ width: `${Math.max(0, debt / total * 100)}%` }} />
+          <div className="bg-accent/85" style={{ width: `${Math.max(0, equity / total * 100)}%` }} />
+        </div>
+        <div className="grid grid-cols-2 gap-3 p-3 text-xs">
+          <div>
+            <p className="text-text-muted">{t('debtLabel')}</p>
+            <p className="mt-1 font-mono text-text">{sarMaybe(debt)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-text-muted">{t('equityLabel')}</p>
+            <p className="mt-1 font-mono text-text">{sarMaybe(equity)}</p>
+          </div>
+        </div>
+      </div>
+      {refi?.enabled ? (
+        <div className="mt-4 rounded-[14px] border border-[rgba(var(--highlight-rgb),0.18)] bg-highlight/10 p-3">
+          <div className="grid gap-3 text-xs sm:grid-cols-3">
+            <div>
+              <p className="text-text-muted">{t('refinanceYear')}</p>
+              <p className="mt-1 font-mono text-text">{refi.year ?? '--'}</p>
+            </div>
+            <div>
+              <p className="text-text-muted">{t('refiNetProceeds')}</p>
+              <p className={cn('mt-1 font-mono', (refi.net_proceeds ?? 0) >= 0 ? 'text-accent' : 'text-warning')}>{sarMaybe(refi.net_proceeds)}</p>
+            </div>
+            <div>
+              <p className="text-text-muted">{t('refiDebtService')}</p>
+              <p className="mt-1 font-mono text-text">{sarMaybe(refi.annual_debt_service)}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {ltvSensitivity.length ? (
+        <div className="mt-4 space-y-2">
+          {ltvSensitivity.map((point) => (
+            <div key={point.ltv_pct} className="grid grid-cols-[44px_1fr_54px] items-center gap-3 text-xs">
+              <span className="font-mono text-text-soft">{point.ltv_pct.toFixed(0)}%</span>
+              <div className="h-2 rounded-full bg-border">
+                <div className={cn('h-2 rounded-full', (point.irr ?? -1) >= (underwriting.summary?.target_irr ?? Infinity) ? 'bg-accent' : 'bg-highlight')} style={{ width: `${Math.max(4, Math.abs(point.irr || 0) / maxImpact * 100)}%` }} />
+              </div>
+              <span className="font-mono text-text">{pctMaybe(point.irr)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </Panel>
   );
 }
