@@ -2746,6 +2746,11 @@
     "feedEvidenceTitle": "Evidence state",
     "feedTitleTitle": "Title / records",
     "feedEventTitle": "Workspace update",
+    "feedDiligenceTitle": "Diligence queue",
+    "feedDiligenceBody": "{count} open items still need evidence, owner follow-up, or a decision.",
+    "feedDiligenceClear": "No open diligence items are blocking this opportunity.",
+    "feedConfidenceTitle": "Screening confidence",
+    "feedConfidenceBody": "Current confidence is {confidence}.",
     "feedTags": {
       "market": "Market",
       "broker": "Broker",

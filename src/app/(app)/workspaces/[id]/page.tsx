@@ -3933,6 +3933,14 @@ function LiveFeedRail({
   }));
   const rawFeedItems: Array<LiveFeedItem | null> = [
     ...eventFeedItems,
+    {
+      id: 'next-action',
+      tag: t('feedTags.next'),
+      title: t('feedNextTitle'),
+      body: primaryActionResult,
+      time: latestUpdate,
+      tone: hasActionBlocker ? 'warn' : 'lime',
+    },
     missingItems[0] ? {
       id: 'risk',
       tag: t('feedTags.risk'),
@@ -3946,6 +3954,22 @@ function LiveFeedRail({
       tag: t('feedTags.evidence'),
       title: t('feedEvidenceTitle'),
       body: claims.length ? t('overviewClaimBody', { count: claims.length }) : t('sourceDocuments', { count: documentCount }),
+      time: latestUpdate,
+      tone: 'cyan',
+    },
+    {
+      id: 'diligence',
+      tag: openItems > 0 ? t('feedTags.risk') : t('feedTags.evidence'),
+      title: t('feedDiligenceTitle'),
+      body: openItems > 0 ? t('feedDiligenceBody', { count: openItems }) : t('feedDiligenceClear'),
+      time: latestUpdate,
+      tone: openItems > 0 ? 'warn' : 'lime',
+    },
+    {
+      id: 'confidence',
+      tag: t('confidence'),
+      title: t('feedConfidenceTitle'),
+      body: t('feedConfidenceBody', { confidence }),
       time: latestUpdate,
       tone: 'cyan',
     },
@@ -3995,31 +4019,31 @@ function LiveFeedRail({
           onScheduleVisit={onScheduleVisit}
           onPassProperty={onPassProperty}
         />
-      <Panel className="overflow-hidden rounded-[28px] border-[rgba(255,255,255,0.07)] p-0">
-        <div className="px-6 py-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.28em] text-accent">{t('signalStream')}</p>
-              <h3 className="mt-2 text-3xl font-bold leading-tight text-text">{t('liveFeed')}</h3>
+        <Panel className="overflow-hidden rounded-[24px] border-[rgba(var(--accent-rgb),0.12)] p-0">
+          <div className="px-5 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent">{t('signalStream')}</p>
+                <h3 className="mt-2 text-2xl font-bold leading-tight text-text">{t('liveFeed')}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenDrawer('evidence')}
+                className="shrink-0 rounded-[12px] border border-[rgba(var(--accent-rgb),0.48)] bg-accent/10 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition hover:bg-accent/15"
+              >
+                {sourceCount} {t('sources')}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenDrawer('evidence')}
-              className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.48)] bg-accent/10 px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-accent transition hover:bg-accent/15"
-            >
-              {sourceCount} {t('sources')}
-            </button>
           </div>
-        </div>
 
-        <div className="space-y-4 px-6 pb-6">
-          {feedItems.length === 0 ? (
-            <p className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
-          ) : (
-            feedItems.map((item) => <LiveFeedRow key={item.id} item={item} />)
-          )}
-        </div>
-      </Panel>
+          <div className="space-y-3 px-5 pb-5">
+            {feedItems.length === 0 ? (
+              <p className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/70 p-4 text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
+            ) : (
+              feedItems.map((item) => <LiveFeedRow key={item.id} item={item} />)
+            )}
+          </div>
+        </Panel>
       </div>
     </aside>
   );
@@ -4135,15 +4159,30 @@ function LiveFeedRow({ item }: { item: LiveFeedItem }) {
     warn: 'text-warning',
     neutral: 'text-text-muted',
   }[item.tone];
+  const toneBorder = {
+    lime: 'border-accent/18 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]',
+    cyan: 'border-highlight/18 shadow-[inset_0_1px_0_rgba(var(--highlight-rgb),.05)]',
+    warn: 'border-warning/22 shadow-[inset_0_1px_0_rgba(255,199,89,.06)]',
+    neutral: 'border-[rgba(var(--accent-rgb),0.12)] shadow-[inset_0_1px_0_rgba(255,255,255,.035)]',
+  }[item.tone];
+  const dotClass = {
+    lime: 'bg-accent shadow-[0_0_12px_var(--accent-soft)]',
+    cyan: 'bg-highlight shadow-[0_0_12px_rgba(var(--highlight-rgb),.22)]',
+    warn: 'bg-warning shadow-[0_0_12px_rgba(255,199,89,.2)]',
+    neutral: 'bg-text-muted',
+  }[item.tone];
   return (
-    <div className="grid grid-cols-[82px_minmax(0,1fr)_70px] gap-4 rounded-[20px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/72 p-4 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
-      <p className={cn('pt-1 font-mono text-xs uppercase tracking-[0.18em]', toneClass)}>{item.tag}</p>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-text">{item.title}</p>
-        <p className="mt-1 text-base leading-6 text-text-soft">{item.body}</p>
+    <article className={cn('rounded-[18px] border bg-[linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))] px-4 py-3.5 transition hover:border-accent/28', toneBorder)}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClass)} />
+          <p className={cn('truncate font-mono text-[10px] uppercase tracking-[0.2em]', toneClass)}>{item.tag}</p>
+        </div>
+        {item.time ? <span className={cn('shrink-0 text-right text-[11px] font-semibold', toneClass)}>{formatRelativeTime(item.time)}</span> : null}
       </div>
-      {item.time ? <span className={cn('pt-1 text-right text-xs font-semibold', item.tone === 'warn' ? 'text-warning' : item.tone === 'cyan' ? 'text-highlight' : item.tone === 'lime' ? 'text-accent' : 'text-text-muted')}>{formatRelativeTime(item.time)}</span> : null}
-    </div>
+      <p className="mt-3 line-clamp-2 break-words text-sm font-semibold leading-5 text-text" dir="auto">{item.title}</p>
+      <p className="mt-1.5 line-clamp-3 break-words text-sm leading-6 text-text-soft" dir="auto">{item.body}</p>
+    </article>
   );
 }
 
