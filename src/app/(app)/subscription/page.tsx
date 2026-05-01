@@ -270,8 +270,12 @@ export default function SubscriptionPage() {
   };
 
   const isTrialEligible = (_plan: SubscriptionPlan) => false;
+  // Promo input is shown for any web-checkoutable tier when the hosted-checkout
+  // flow (v2) is enabled. Server-side promo resolution lives in
+  // `moyasar-create-subscription`; the legacy MoyasarPaymentForm path bypasses
+  // the server and therefore cannot honor coupons safely.
   const canApplyPromo = (plan: SubscriptionPlan) =>
-    plan.tier === 'premium' && subscriptionFlags.v2Enabled;
+    ['pro', 'premium'].includes(plan.tier) && subscriptionFlags.v2Enabled;
 
   const tierIcons: Record<string, typeof Crown> = {
     free: Zap,

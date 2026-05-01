@@ -1100,7 +1100,7 @@
     "teamTrialFeature": "Contact us for Team onboarding",
     "promoCodeLabel": "Promotional code",
     "promoCodePlaceholder": "Enter code",
-    "promoCheckoutHint": "If valid, the discount will be applied in Moyasar checkout for Investor Pro web subscriptions.",
+    "promoCheckoutHint": "If valid, the discount is applied in Moyasar checkout for Core and Investor Pro web subscriptions.",
     "promoTrialHint": "If valid, the discount will be saved now and applied when Team billing starts after the trial.",
     "close": "Close",
     "promoErrors": {

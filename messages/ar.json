@@ -1101,7 +1101,7 @@
     "teamTrialFeature": "تواصل معنا لتفعيل Team",
     "promoCodeLabel": "الكود الترويجي",
     "promoCodePlaceholder": "أدخل الكود",
-    "promoCheckoutHint": "إذا كان الكود صالحاً فسيتم تطبيق الخصم داخل صفحة Moyasar لاشتراكات Investor Pro على الويب.",
+    "promoCheckoutHint": "إذا كان الكود صالحاً فسيتم تطبيق الخصم داخل صفحة Moyasar لاشتراكات Core وInvestor Pro على الويب.",
     "promoTrialHint": "إذا كان الكود صالحاً فسيتم حفظه الآن وتطبيق الخصم عند بدء فوترة Team بعد انتهاء التجربة.",
     "close": "إغلاق",
     "promoErrors": {
