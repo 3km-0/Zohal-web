@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { Activity, ChevronDown, FileText, FolderOpen, LayoutDashboard, PanelsTopLeft, ShieldCheck, Bolt } from 'lucide-react';
+import { Activity, ChevronDown, FolderOpen, LayoutDashboard, PanelsTopLeft, ShieldCheck, Bolt } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -102,11 +102,10 @@ export function WorkspaceTabs({
   const secondaryLinks: { href: string; label: string }[] = showMembersLink
     ? [{ href: withFolderContext(`/workspaces/${workspaceId}/members`), label: t('members') }]
     : [];
-  const drawerActions: { tab: 'evidence' | 'activity' | 'files' | 'consent'; label: string; icon: ComponentType<{ className?: string }> }[] = showAcquisitionDrawerActions
+  const drawerActions: { tab: 'evidence' | 'activity' | 'consent'; label: string; icon: ComponentType<{ className?: string }> }[] = showAcquisitionDrawerActions
     ? [
         { tab: 'evidence', label: t('evidenceTrail'), icon: ShieldCheck },
         { tab: 'activity', label: t('activityLog'), icon: Activity },
-        { tab: 'files', label: t('readinessFiles'), icon: FileText },
         { tab: 'consent', label: t('consentApprovals'), icon: ShieldCheck },
       ]
     : [];

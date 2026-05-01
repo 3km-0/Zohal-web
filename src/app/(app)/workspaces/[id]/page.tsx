@@ -206,7 +206,7 @@ type AcquisitionClaimRow = {
 
 type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
-type PrimaryWorkspaceTab = 'deal' | 'renovation' | 'actions';
+type PrimaryWorkspaceTab = 'deal' | 'renovation';
 type EvidencePaneTab = 'evidence' | 'activity' | 'files' | 'consent';
 
 type ScenarioState = {
@@ -912,6 +912,14 @@ export default function WorkspaceCockpitPage() {
     router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
   }, [router, workspaceId]);
 
+  const openPropertyFiles = useCallback((options: { upload?: boolean; analysisPolicy?: string } = {}) => {
+    const sourceParams = new URLSearchParams({ view: 'property_sources' });
+    if (options.upload) sourceParams.set('upload', '1');
+    if (options.analysisPolicy) sourceParams.set('analysis_policy', options.analysisPolicy);
+    if (selectedOpportunity?.id) sourceParams.set('opportunity_id', selectedOpportunity.id);
+    router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
+  }, [router, selectedOpportunity?.id, workspaceId]);
+
   const openBuyBoxEditor = useCallback(() => {
     setBuyBoxDraft(workspace?.analysis_brief || workspace?.description || '');
     setBuyBoxEditorOpen(true);
@@ -1046,6 +1054,12 @@ export default function WorkspaceCockpitPage() {
     }
   }, [selectedOpportunity, supabase, t]);
 
+  const applyRenovationEstimateToDeal = useCallback(async (amount: number) => {
+    const base = scenario ?? completeScenario(seedScenarioFromOpportunity(selectedOpportunity));
+    await saveScenarioAssumptions({ ...base, renovation: amount });
+    setActivePrimaryTab('deal');
+  }, [saveScenarioAssumptions, scenario, selectedOpportunity]);
+
   const resetScenarioDraft = useCallback(() => {
     const reset = completeScenario(seedScenarioFromOpportunity(selectedOpportunity));
     setScenario(reset);
@@ -1141,17 +1155,8 @@ export default function WorkspaceCockpitPage() {
             renovation_capex_json: estimate,
             renovation_capex_updated_at: response.event?.renovation_capex_updated_at ?? new Date().toISOString(),
             renovation_rate_card_id: estimate.rate_card_id ?? null,
-            metadata_json: estimate.base_total ? {
-              ...(item.metadata_json ?? {}),
-              renovation_budget: estimate.base_total,
-              capex: estimate.base_total,
-              estimated_capex: estimate.base_total,
-            } : item.metadata_json,
           }
         : item));
-      if (estimate.base_total && scenario) {
-        setScenario({ ...scenario, renovation: estimate.base_total });
-      }
       if (response.event?.event_id) {
         setRenovationEvents((current) => [{
           id: response.event?.event_id ?? crypto.randomUUID(),
@@ -1168,7 +1173,7 @@ export default function WorkspaceCockpitPage() {
     } finally {
       setCapexBusy(false);
     }
-  }, [scenario, selectedOpportunity, supabase, t]);
+  }, [selectedOpportunity, supabase, t]);
 
   const updateSelectedStage = useCallback(async (stage: string) => {
     if (!selectedOpportunity) return;
@@ -1191,9 +1196,7 @@ export default function WorkspaceCockpitPage() {
     if (!selectedOpportunity && primaryAction.action_id !== 'add_listing_evidence') return;
     switch (primaryAction.action_id) {
       case 'add_listing_evidence': {
-        const params = new URLSearchParams({ view: 'property_sources', upload: '1' });
-        if (selectedOpportunity?.id) params.set('opportunity_id', selectedOpportunity.id);
-        router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${params.toString()}`);
+        openPropertyFiles({ upload: true });
         return;
       }
       case 'upload_financing_document':
@@ -1220,9 +1223,7 @@ export default function WorkspaceCockpitPage() {
         });
         return;
       case 'upload_property_document': {
-        const params = new URLSearchParams({ view: 'property_sources', upload: '1', analysis_policy: 'acquisition_property' });
-        if (selectedOpportunity?.id) params.set('opportunity_id', selectedOpportunity.id);
-        router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${params.toString()}`);
+        openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property' });
         return;
       }
       case 'activate_buyer_broker':
@@ -1253,16 +1254,15 @@ export default function WorkspaceCockpitPage() {
     }
   }, [
     openBuyerVault,
+    openPropertyFiles,
     primaryAction.action_id,
     readinessProfile,
     requestExternalAction,
-    router,
     scheduleVisit,
     selectedMissing,
     selectedOpportunity,
     startReadiness,
     updateSelectedStage,
-    workspaceId,
   ]);
 
   return (
@@ -1285,7 +1285,7 @@ export default function WorkspaceCockpitPage() {
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb),.04),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb),.055),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(var(--highlight-rgb),.035),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-r border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-6 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard
             workspace={workspace}
@@ -1340,15 +1340,8 @@ export default function WorkspaceCockpitPage() {
                     onToggleMap={() => setHeroMapOpen((open) => !open)}
                     onOpenDrawer={openDrawer}
                   />
-                  <MandatePulse
-                    candidates={opportunities.length}
-                    pursue={pursueCount}
-                    openItems={missingCount}
-                    confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
-                  />
                   <PrimaryWorkspaceTabs
                     active={activePrimaryTab}
-                    openItems={selectedMissing.length}
                     onChange={setActivePrimaryTab}
                   />
                   {activePrimaryTab === 'deal' ? (
@@ -1372,29 +1365,12 @@ export default function WorkspaceCockpitPage() {
                       generating={capexBusy}
                       error={capexError}
                       events={renovationEvents}
-                      onScenarioChange={setScenario}
-                      onSave={saveScenarioAssumptions}
                       onGenerateEstimate={generateCapexEstimate}
+                      onApplyEstimate={applyRenovationEstimateToDeal}
+                      onEditDealAssumptions={() => setActivePrimaryTab('deal')}
                       onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
                     />
-                  ) : (
-                    <ActionsWorkspace
-                      currentBlocker={currentBlocker}
-                      hasBlocker={hasActionBlocker}
-                      primaryActionLabel={primaryAction.label}
-                      primaryActionResult={primaryAction.result}
-                      readinessProfile={readinessProfile}
-                      readinessEvidence={readinessEvidence}
-                      sharingGrants={sharingGrants}
-                      actionApprovals={actionApprovals}
-                      readinessBusy={readinessBusy}
-                      approvalBusy={approvalBusy}
-                      selectedMissing={selectedMissing}
-                      selectedOpportunity={selectedOpportunity}
-                      brokerageActive={brokerageActive}
-                      onPrimaryAction={() => void executePrimaryAction()}
-                    />
-                  )}
+                  ) : null}
                 </div>
               </section>
             )}
@@ -1409,8 +1385,21 @@ export default function WorkspaceCockpitPage() {
             opportunity={selectedOpportunity}
             missingItems={selectedMissing}
             claims={claims}
+            candidates={opportunities.length}
+            pursue={pursueCount}
+            openItems={missingCount}
+            confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
             primaryActionLabel={primaryAction.label}
+            primaryActionResult={primaryAction.result}
             currentBlocker={currentBlocker}
+            hasActionBlocker={hasActionBlocker}
+            actionBusy={Boolean(readinessBusy || approvalBusy)}
+            onPrimaryAction={() => void executePrimaryAction()}
+            onAddEvidence={() => openPropertyFiles({ upload: true })}
+            onUploadPropertyDocument={() => openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property' })}
+            onOpenBuyerVault={() => openBuyerVault(true)}
+            onScheduleVisit={() => void scheduleVisit()}
+            onPassProperty={() => void updateSelectedStage('passed')}
             onOpenDrawer={openDrawer}
           />
         ) : null}
@@ -1771,7 +1760,6 @@ function CockpitHero({
               {opportunity ? thesis : t('emptyPosture')}
             </p>
           </div>
-          <AcquisitionVector />
           <div className="mt-5 flex flex-wrap gap-2">
             <button type="button" onClick={onToggleMap} className="inline-flex items-center gap-2 rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight transition hover:bg-highlight/15">
               <MapPin className="h-4 w-4" />
@@ -1858,29 +1846,18 @@ function HeroChip({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AcquisitionVector() {
-  const t = useTranslations('workspaceCockpitPage');
-  return (
-    <div className="mt-5 max-w-3xl rounded-[20px] border border-[rgba(var(--accent-rgb),0.12)] bg-[linear-gradient(180deg,#0F1A14_0%,#0A0F14_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
-      <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('acquisitionVector')}</p>
-      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-[rgba(var(--accent-rgb),0.12)]">
-        <div className="h-full w-[74%] rounded-full bg-[linear-gradient(90deg,#B7F34A_0%,#2FD7FF_100%)] shadow-[0_0_18px_rgba(var(--accent-rgb),.12)]" />
-      </div>
-      <p className="mt-3 text-sm font-medium leading-6 text-text-soft">{t('acquisitionVectorPath')}</p>
-    </div>
-  );
-}
-
 function MandatePulse({
   candidates,
   pursue,
   openItems,
   confidence,
+  rail = false,
 }: {
   candidates: number;
   pursue: number;
   openItems: number;
   confidence: string;
+  rail?: boolean;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
@@ -1889,7 +1866,7 @@ function MandatePulse({
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{t('mandatePulse')}</p>
         <Search className="h-4 w-4 text-accent" />
       </div>
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className={cn('grid gap-3', rail ? 'grid-cols-2' : 'md:grid-cols-4')}>
         <MetricCard icon={Search} label={t('candidates')} value={candidates.toString()} compact />
         <MetricCard icon={TrendingUp} label={t('pursue')} value={pursue.toString()} hot compact />
         <MetricCard icon={ClipboardList} label={t('openItems')} value={openItems.toString()} compact />
@@ -2071,18 +2048,15 @@ function ProgressTracker({
 
 function PrimaryWorkspaceTabs({
   active,
-  openItems,
   onChange,
 }: {
   active: PrimaryWorkspaceTab;
-  openItems: number;
   onChange: (tab: PrimaryWorkspaceTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = [
     { key: 'deal', label: t('dealTab'), icon: Building2 },
     { key: 'renovation', label: t('renovationTab'), icon: Wrench },
-    { key: 'actions', label: t('actionsTab'), icon: ClipboardList },
   ];
   return (
     <div className="flex w-full gap-2 rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/75 p-2 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
@@ -2100,11 +2074,6 @@ function PrimaryWorkspaceTabs({
           >
             <Icon className="h-4 w-4" />
             <span>{label}</span>
-            {key === 'actions' && openItems > 0 ? (
-              <span className="rounded-full bg-warning px-2 py-0.5 font-mono text-[11px] font-bold text-[#0A0C0A]">
-                {openItems}
-              </span>
-            ) : null}
           </button>
         );
       })}
@@ -3122,18 +3091,24 @@ function RenovationModule({
   opportunity,
   scenario,
   underwriting,
+  saving,
   events,
+  onApplyEstimate,
+  onEditDealAssumptions,
   onRequestQuote,
 }: {
   opportunity: OpportunityRow | null;
   scenario: ScenarioState | null;
   underwriting: UnderwritingRun | null;
+  saving: boolean;
   events: RenovationEstimateEventRow[];
+  onApplyEstimate: (amount: number) => Promise<void>;
+  onEditDealAssumptions: () => void;
   onRequestQuote: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const estimate = opportunity?.renovation_capex_json || null;
-  const capex = estimate?.base_total ?? metadataNumber(opportunity, ['renovation_budget', 'capex', 'estimated_capex']);
+  const scenarioCapex = scenario?.renovation ?? metadataNumber(opportunity, ['renovation_budget', 'capex', 'estimated_capex']);
   const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
   const breakdown = categoryBreakdown(estimate?.line_items);
   const totalBreakdown = breakdown.reduce((total, [, value]) => total + value, 0);
@@ -3173,9 +3148,38 @@ function RenovationModule({
         </div>
       ) : null}
       <div className="grid gap-3">
-        <DecisionBlock icon={Wrench} title={t('capexTitle')} body={capex === null ? t('capexBody') : formatSAR.format(capex)} />
+        <DecisionBlock icon={Wrench} title={t('usedInDealModel')} body={scenarioCapex === null ? t('capexBody') : formatSAR.format(scenarioCapex)} />
         <DecisionBlock icon={AlertTriangle} title={t('decisionBlockers')} body={condition || t('renovationEmpty')} />
       </div>
+      {estimate ? (
+        <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-text-soft">{t('applyEstimateTitle')}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {([
+              ['low', estimate.low_total],
+              ['base', estimate.base_total],
+              ['high', estimate.high_total],
+            ] as const).map(([key, value]) => (
+              <button
+                key={key}
+                type="button"
+                disabled={saving || typeof value !== 'number'}
+                onClick={() => typeof value === 'number' && void onApplyEstimate(value)}
+                className="rounded-[12px] border border-accent/25 bg-accent/10 px-3 py-2 text-sm font-semibold text-accent transition hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t(`applyEstimate.${key}`)}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={onEditDealAssumptions}
+            className="mt-3 w-full rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
+          >
+            {t('editInDealAssumptions')}
+          </button>
+        </div>
+      ) : null}
       {breakdown.length ? (
         <div>
           <p className="mb-3 text-xs uppercase tracking-[0.2em] text-text-soft">{t('categoryBreakdown')}</p>
@@ -3253,9 +3257,9 @@ function RenovationTab({
   generating,
   error,
   events,
-  onScenarioChange,
-  onSave,
   onGenerateEstimate,
+  onApplyEstimate,
+  onEditDealAssumptions,
   onRequestQuote,
 }: {
   opportunity: OpportunityRow | null;
@@ -3265,9 +3269,9 @@ function RenovationTab({
   generating: boolean;
   error: string | null;
   events: RenovationEstimateEventRow[];
-  onScenarioChange: (next: ScenarioState) => void;
-  onSave: (next: ScenarioState) => Promise<void>;
   onGenerateEstimate: (input: { strategy: string; finish_level: string; user_notes: string }) => Promise<void>;
+  onApplyEstimate: (amount: number) => Promise<void>;
+  onEditDealAssumptions: () => void;
   onRequestQuote: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
@@ -3275,7 +3279,6 @@ function RenovationTab({
   const [strategy, setStrategy] = useState(opportunity?.renovation_capex_json?.strategy || 'rental_ready');
   const [finishLevel, setFinishLevel] = useState(opportunity?.renovation_capex_json?.finish_level || 'mid_grade');
   const [notes, setNotes] = useState('');
-  const setRenovation = (value: number) => onScenarioChange({ ...seed, renovation: value });
   return (
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
       <Panel className="p-5">
@@ -3318,27 +3321,29 @@ function RenovationTab({
             {generating ? t('generatingEstimate') : t('generateEstimate')}
           </button>
         </div>
-        <div className="mt-5">
-          <ScenarioSlider
-            label={t('renovationBudget')}
-            value={seed.renovation}
-            min={0}
-            max={Math.max(100000, seed.renovation * 2.2)}
-            step={10000}
-            format={(v) => formatSAR.format(v)}
-            onChange={setRenovation}
-          />
+        <div className="mt-5 rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-text-soft">{t('usedInDealModel')}</p>
+          <p className="mt-1 font-mono text-xl font-semibold text-text">{formatSAR.format(seed.renovation)}</p>
+          <p className="mt-2 text-sm leading-6 text-text-soft">{t('usedInDealModelBody')}</p>
+          <button
+            type="button"
+            onClick={onEditDealAssumptions}
+            className="mt-3 rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-sm font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text"
+          >
+            {t('editInDealAssumptions')}
+          </button>
         </div>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void onSave(seed)}
-          className="mt-4 w-full rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? t('savingAssumptions') : t('saveAssumptions')}
-        </button>
       </Panel>
-      <RenovationModule opportunity={opportunity} scenario={scenario} underwriting={underwriting} events={events} onRequestQuote={onRequestQuote} />
+      <RenovationModule
+        opportunity={opportunity}
+        scenario={scenario}
+        underwriting={underwriting}
+        saving={saving}
+        events={events}
+        onApplyEstimate={onApplyEstimate}
+        onEditDealAssumptions={onEditDealAssumptions}
+        onRequestQuote={onRequestQuote}
+      />
     </div>
   );
 }
@@ -3902,8 +3907,21 @@ function LiveFeedRail({
   opportunity,
   missingItems,
   claims,
+  candidates,
+  pursue,
+  openItems,
+  confidence,
   primaryActionLabel,
+  primaryActionResult,
   currentBlocker,
+  hasActionBlocker,
+  actionBusy,
+  onPrimaryAction,
+  onAddEvidence,
+  onUploadPropertyDocument,
+  onOpenBuyerVault,
+  onScheduleVisit,
+  onPassProperty,
   onOpenDrawer,
 }: {
   events: AcquisitionEventRow[];
@@ -3912,8 +3930,21 @@ function LiveFeedRail({
   opportunity: OpportunityRow | null;
   missingItems: string[];
   claims: AcquisitionClaimRow[];
+  candidates: number;
+  pursue: number;
+  openItems: number;
+  confidence: string;
   primaryActionLabel: string;
+  primaryActionResult: string;
   currentBlocker: string;
+  hasActionBlocker: boolean;
+  actionBusy: boolean;
+  onPrimaryAction: () => void;
+  onAddEvidence: () => void;
+  onUploadPropertyDocument: () => void;
+  onOpenBuyerVault: () => void;
+  onScheduleVisit: () => void;
+  onPassProperty: () => void;
   onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
@@ -3921,7 +3952,9 @@ function LiveFeedRail({
   const brokerSignal = metadataString(opportunity, ['broker_note', 'counterparty_note', 'seller_note']);
   const titleSignal = metadataString(opportunity, ['title_note', 'title_status', 'deed_status']);
   const sourceCount = Math.max(documentCount, claims.length);
-  const selectedEvents = events.filter((event) => !opportunity?.id || !event.opportunity_id || event.opportunity_id === opportunity.id);
+  const selectedEvents = events
+    .filter((event) => !opportunity?.id || !event.opportunity_id || event.opportunity_id === opportunity.id)
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
   const eventFeedItems: LiveFeedItem[] = selectedEvents.map((event) => ({
     id: event.id,
     tag: feedTagForEvent(event.event_type, t),
@@ -3931,14 +3964,7 @@ function LiveFeedRail({
     tone: feedToneForEvent(event.event_type),
   }));
   const rawFeedItems: Array<LiveFeedItem | null> = [
-    {
-      id: 'next',
-      tag: t('feedTags.next'),
-      title: t('feedNextTitle'),
-      body: primaryActionLabel || currentBlocker,
-      time: latestUpdate,
-      tone: missingItems.length ? 'warn' : 'lime',
-    },
+    ...eventFeedItems,
     missingItems[0] ? {
       id: 'risk',
       tag: t('feedTags.risk'),
@@ -3979,12 +4005,27 @@ function LiveFeedRail({
       time: latestUpdate,
       tone: 'neutral',
     } : null,
-    ...eventFeedItems,
   ];
   const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
 
   return (
-    <aside className="relative hidden h-full w-[360px] shrink-0 overflow-y-auto border-l border-[rgba(255,255,255,0.07)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[430px] 2xl:p-6">
+    <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-[rgba(255,255,255,0.07)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
+      <div className="space-y-4">
+        <MandatePulse candidates={candidates} pursue={pursue} openItems={openItems} confidence={confidence} rail />
+        <ActionDock
+          title={currentBlocker}
+          actionLabel={primaryActionLabel}
+          actionResult={primaryActionResult}
+          blocked={hasActionBlocker}
+          busy={actionBusy}
+          opportunity={opportunity}
+          onPrimaryAction={onPrimaryAction}
+          onAddEvidence={onAddEvidence}
+          onUploadPropertyDocument={onUploadPropertyDocument}
+          onOpenBuyerVault={onOpenBuyerVault}
+          onScheduleVisit={onScheduleVisit}
+          onPassProperty={onPassProperty}
+        />
       <Panel className="overflow-hidden rounded-[28px] border-[rgba(255,255,255,0.07)] p-0">
         <div className="px-6 py-6">
           <div className="flex items-start justify-between gap-4">
@@ -4000,16 +4041,6 @@ function LiveFeedRail({
               {sourceCount} {t('sources')}
             </button>
           </div>
-          <div className="relative mt-7 flex h-[104px] items-end gap-1.5 overflow-hidden rounded-[22px] border border-[rgba(255,255,255,0.09)] bg-[radial-gradient(circle_at_50%_100%,rgba(var(--accent-rgb),.12),transparent_58%),linear-gradient(180deg,rgba(15,21,27,.88),rgba(10,15,20,.96))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.045),0_14px_34px_rgba(0,0,0,.22)]">
-            <div className="pointer-events-none absolute inset-x-5 bottom-5 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.42),rgba(var(--highlight-rgb),.30),transparent)]" />
-            {Array.from({ length: 30 }).map((_, index) => (
-              <span
-                key={index}
-                className="relative z-10 w-full rounded-t-sm bg-[linear-gradient(180deg,#D1FF76_0%,#B7F34A_52%,rgba(47,215,255,.72)_100%)] shadow-[0_0_14px_rgba(var(--accent-rgb),.34)]"
-                style={{ height: `${24 + Math.abs(Math.sin(index * 0.72)) * 62}%` }}
-              />
-            ))}
-          </div>
         </div>
 
         <div className="space-y-4 px-6 pb-6">
@@ -4020,7 +4051,87 @@ function LiveFeedRail({
           )}
         </div>
       </Panel>
+      </div>
     </aside>
+  );
+}
+
+function ActionDock({
+  title,
+  actionLabel,
+  actionResult,
+  blocked,
+  busy,
+  opportunity,
+  onPrimaryAction,
+  onAddEvidence,
+  onUploadPropertyDocument,
+  onOpenBuyerVault,
+  onScheduleVisit,
+  onPassProperty,
+}: {
+  title: string;
+  actionLabel: string;
+  actionResult: string;
+  blocked: boolean;
+  busy: boolean;
+  opportunity: OpportunityRow | null;
+  onPrimaryAction: () => void;
+  onAddEvidence: () => void;
+  onUploadPropertyDocument: () => void;
+  onOpenBuyerVault: () => void;
+  onScheduleVisit: () => void;
+  onPassProperty: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const commands = [
+    { key: 'evidence', label: t('actionDock.addEvidence'), onClick: onAddEvidence, disabled: false },
+    { key: 'property-document', label: t('actionDock.uploadPropertyDocument'), onClick: onUploadPropertyDocument, disabled: !opportunity },
+    { key: 'buyer-vault', label: t('actionDock.openBuyerVault'), onClick: onOpenBuyerVault, disabled: false },
+    { key: 'visit', label: t('scheduleVisit'), onClick: onScheduleVisit, disabled: !opportunity },
+    { key: 'pass', label: t('pass'), onClick: onPassProperty, disabled: !opportunity },
+  ];
+  return (
+    <Panel className={cn('overflow-hidden p-0', blocked ? 'border-warning/30' : 'border-success/25')}>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className={cn('font-mono text-xs uppercase tracking-[0.24em]', blocked ? 'text-warning' : 'text-success')}>
+              {t('actionDock.title')}
+            </p>
+            <h3 className="mt-2 text-xl font-bold leading-tight text-text">{title}</h3>
+          </div>
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]')}>
+            {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
+          </span>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-text-soft">{actionResult}</p>
+        <button
+          type="button"
+          onClick={onPrimaryAction}
+          disabled={busy}
+          className={cn(
+            'mt-4 w-full rounded-[14px] px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
+            blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]'
+          )}
+        >
+          {busy ? t('actionDock.working') : actionLabel}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2 border-t border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/55 p-3">
+        {commands.map((command) => (
+          <button
+            key={command.key}
+            type="button"
+            onClick={command.onClick}
+            disabled={busy || command.disabled}
+            className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-xs font-semibold text-text-soft transition hover:bg-surface-alt hover:text-text disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {command.label}
+          </button>
+        ))}
+      </div>
+    </Panel>
   );
 }
 
