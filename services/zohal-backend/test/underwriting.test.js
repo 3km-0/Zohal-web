@@ -73,3 +73,23 @@ test("missing price or rent returns a structured assumptions blocker", () => {
   assert.deepEqual(blocked.assumptions.missing_assumptions, ["gross_annual_rent"]);
   assert.equal(blocked.outputs.summary.recommendation, "Watchlist");
 });
+
+test("missing capex suppresses zero-value overrun thresholds", () => {
+  const result = runUnderwritingEngine({
+    opportunity: {
+      ...opportunity,
+      renovation_capex_json: {
+        pricing_status: "missing_rate_card",
+        low_total: null,
+        base_total: null,
+        high_total: null,
+      },
+    },
+    input: { target_irr_pct: 8, renovation: 0 },
+    mode: "quick",
+  });
+  assert.equal(result.status, "complete");
+  assert.equal(result.assumptions.renovation.has_capex_assumption, false);
+  assert.equal(result.outputs.capex.overrun_risk_label, "Needs evidence");
+  assert.deepEqual(result.outputs.capex.thresholds, []);
+});

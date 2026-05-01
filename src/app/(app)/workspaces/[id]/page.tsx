@@ -267,9 +267,12 @@ type UnderwritingRun = {
     low?: number | null;
     base?: number | null;
     high?: number | null;
+    source?: string | null;
+    pricing_status?: string | null;
+    evidence_status?: string | null;
     confidence_score?: number | null;
     overrun_risk_label?: string | null;
-    thresholds?: Array<{ key: string; amount: number; probability: number }>;
+    thresholds?: Array<{ key: string; label?: string; amount: number; probability: number }>;
   };
   mandate_fit?: {
     score?: number;
@@ -2373,6 +2376,27 @@ function sarMaybe(value: number | null | undefined): string {
   return typeof value === 'number' && Number.isFinite(value) ? formatSAR.format(value) : '--';
 }
 
+function capexSourceLabel(t: ReturnType<typeof useTranslations>, source?: string | null, pricingStatus?: string | null) {
+  const key = source || pricingStatus;
+  switch (key) {
+    case 'priced_estimate':
+      return t('capexSourcePricedEstimate');
+    case 'saved_estimate':
+      return t('capexSourceSavedEstimate');
+    case 'user_assumption':
+      return t('capexSourceUserAssumption');
+    case 'listing_metadata':
+      return t('capexSourceListingMetadata');
+    case 'missing_rate_card':
+      return t('capexSourcePricingMissing');
+    case 'capex_assumption_required':
+    case 'missing':
+      return t('capexSourceNeedsAssumption');
+    default:
+      return key ? humanize(key) : t('capexSourceNeedsAssumption');
+  }
+}
+
 function UnderwritingDashboard({ underwriting }: { underwriting: UnderwritingRun }) {
   const t = useTranslations('workspaceCockpitPage');
   const summary = underwriting.summary || {};
@@ -2476,6 +2500,7 @@ function MonteCarloChart({ underwriting }: { underwriting: UnderwritingRun }) {
 
 function CapexUnderwritingChart({ capex }: { capex?: UnderwritingRun['capex'] }) {
   const t = useTranslations('workspaceCockpitPage');
+  const hasRange = typeof capex?.low === 'number' && typeof capex?.base === 'number' && typeof capex?.high === 'number' && capex.base > 0;
   const low = capex?.low ?? 0;
   const base = capex?.base ?? low;
   const high = capex?.high ?? Math.max(base, low);
@@ -2483,26 +2508,40 @@ function CapexUnderwritingChart({ capex }: { capex?: UnderwritingRun['capex'] })
   const baseLeft = ((base - low) / span) * 100;
   return (
     <Panel className="p-5">
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('capexRange')}</p>
-      <div className="mt-5 rounded-[16px] border border-warning/25 bg-warning/10 p-4">
-        <div className="relative h-8 rounded-full bg-border">
-          <div className="absolute inset-y-0 rounded-full bg-warning/70" style={{ left: 0, right: 0 }} />
-          <div className="absolute -top-1 h-10 w-1 rounded-full bg-accent shadow-[0_0_16px_rgba(var(--accent-rgb),0.6)]" style={{ left: `${baseLeft}%` }} />
-        </div>
-        <div className="mt-3 flex justify-between gap-2 font-mono text-xs text-text-soft">
-          <span>{compactSAR(low)}</span>
-          <span>{compactSAR(base)}</span>
-          <span>{compactSAR(high)}</span>
-        </div>
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('capexRange')}</p>
+        <span className="rounded-full border border-[rgba(var(--highlight-rgb),0.28)] bg-highlight/10 px-2.5 py-1 text-[11px] font-semibold text-highlight">
+          {capexSourceLabel(t, capex?.source, capex?.pricing_status)}
+        </span>
       </div>
-      <div className="mt-4 space-y-2">
-        {(capex?.thresholds || []).slice(0, 4).map((item) => (
-          <div key={item.key} className="flex justify-between gap-3 rounded-[12px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt px-3 py-2 text-xs">
-            <span className="text-text-soft">{humanize(item.key)} &gt; {compactSAR(item.amount)}</span>
-            <span className="font-mono text-warning">{pctMaybe(item.probability)}</span>
+      {hasRange ? (
+        <>
+          <div className="mt-5 rounded-[16px] border border-warning/25 bg-warning/10 p-4">
+            <div className="relative h-8 rounded-full bg-border">
+              <div className="absolute inset-y-0 rounded-full bg-warning/70" style={{ left: 0, right: 0 }} />
+              <div className="absolute -top-1 h-10 w-1 rounded-full bg-accent shadow-[0_0_16px_rgba(var(--accent-rgb),0.6)]" style={{ left: `${baseLeft}%` }} />
+            </div>
+            <div className="mt-3 flex justify-between gap-2 font-mono text-xs text-text-soft">
+              <span>{compactSAR(low)}</span>
+              <span>{compactSAR(base)}</span>
+              <span>{compactSAR(high)}</span>
+            </div>
           </div>
-        ))}
-      </div>
+          <div className="mt-4 space-y-2">
+            {(capex?.thresholds || []).slice(0, 4).map((item) => (
+              <div key={item.key} className="flex justify-between gap-3 rounded-[12px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt px-3 py-2 text-xs">
+                <span className="text-text-soft">{item.label || humanize(item.key)} · {compactSAR(item.amount)}</span>
+                <span className="font-mono text-warning">{pctMaybe(item.probability)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="mt-5 rounded-[16px] border border-warning/25 bg-warning/10 p-4">
+          <p className="text-sm font-semibold text-warning">{t('capexNeedsEvidenceTitle')}</p>
+          <p className="mt-2 text-sm leading-6 text-text-soft">{t('capexNeedsEvidenceBody')}</p>
+        </div>
+      )}
     </Panel>
   );
 }

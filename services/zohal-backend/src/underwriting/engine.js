@@ -81,16 +81,54 @@ function normalizeCapex(opportunity, input) {
   const metadata = compactObject(opportunity?.metadata_json);
   const capex = compactObject(opportunity?.renovation_capex_json);
   const inputCapex = compactObject(input?.renovation_capex);
-  const base = firstNumber([inputCapex, input, capex, metadata], ["base_total", "base", "renovation", "renovation_budget", "capex", "estimated_capex"]) ?? 0;
-  const low = firstNumber([inputCapex, input, capex, metadata], ["low_total", "low", "low_capex"]) ?? Math.max(0, base * 0.75);
-  const high = firstNumber([inputCapex, input, capex, metadata], ["high_total", "high", "high_capex"]) ?? Math.max(base, base * 1.35);
+  const inputBase = firstNumber([inputCapex, input], ["base_total", "base", "renovation", "renovation_budget", "capex", "estimated_capex"]);
+  const pricedBase = firstNumber([capex], ["base_total", "base"]);
+  const metadataBase = firstNumber([metadata], ["renovation_budget", "capex", "estimated_capex"]);
+  const pricingStatus = firstText([inputCapex, capex], ["pricing_status"]) || null;
+  let source = "missing";
+  let base = 0;
+  if (pricedBase !== null && pricedBase > 0 && (inputBase === null || Math.abs(inputBase - pricedBase) < 1)) {
+    source = pricingStatus === "priced" || capex.rate_card_id ? "priced_estimate" : "saved_estimate";
+    base = pricedBase;
+  } else if (inputBase !== null && inputBase > 0) {
+    source = "user_assumption";
+    base = inputBase;
+  } else if (pricedBase !== null && pricedBase > 0) {
+    source = pricingStatus === "priced" || capex.rate_card_id ? "priced_estimate" : "saved_estimate";
+    base = pricedBase;
+  } else if (metadataBase !== null && metadataBase > 0) {
+    source = "listing_metadata";
+    base = metadataBase;
+  } else if (pricingStatus) {
+    source = pricingStatus;
+  }
+  const rangeSources = source === "user_assumption" ? [inputCapex, input] : [inputCapex, capex, metadata];
+  const low = base > 0
+    ? firstNumber(rangeSources, ["low_total", "low", "low_capex"]) ?? Math.max(0, base * 0.75)
+    : null;
+  const high = base > 0
+    ? firstNumber(rangeSources, ["high_total", "high", "high_capex"]) ?? Math.max(base, base * 1.35)
+    : null;
+  const missingEvidence = Array.isArray(capex.missing_evidence) ? [...capex.missing_evidence] : [];
+  if (base <= 0 && !missingEvidence.some((item) => item?.type === "capex_assumption_required" || item?.type === "pricing_library_missing")) {
+    missingEvidence.push({
+      type: pricingStatus === "missing_rate_card" ? "pricing_library_missing" : "capex_assumption_required",
+      label: pricingStatus === "missing_rate_card" ? "Pricing library missing" : "Renovation capex assumption missing",
+      suggested_action: pricingStatus === "missing_rate_card"
+        ? "Seed an active renovation rate card or enter a manual planning allowance before relying on capex risk."
+        : "Enter a manual planning allowance or generate a priced renovation estimate.",
+    });
+  }
   return {
-    low: round(low, 0),
+    low: low === null ? null : round(low, 0),
     base: round(base, 0),
-    high: round(high, 0),
+    high: high === null ? null : round(high, 0),
+    source,
+    pricing_status: pricingStatus,
+    has_capex_assumption: base > 0,
     confidence_score: firstNumber([inputCapex, capex, metadata], ["confidence_score", "renovation_confidence_score"]) ?? null,
     confidence_label: firstText([inputCapex, capex, metadata], ["confidence_label", "confidence", "renovation_confidence"]) || null,
-    missing_evidence: Array.isArray(capex.missing_evidence) ? capex.missing_evidence : [],
+    missing_evidence: missingEvidence,
     risks: Array.isArray(capex.risks) ? capex.risks : [],
   };
 }
@@ -361,7 +399,7 @@ function runMonteCarlo(assumptions, mode) {
     }
     if (metrics.equity_multiple !== null) multiples.push(metrics.equity_multiple);
     if (metrics.capital_loss) capitalLosses += 1;
-    if (capex > assumptions.renovation.base * 1.2) capexOver20 += 1;
+    if (assumptions.renovation.has_capex_assumption && capex > assumptions.renovation.base * 1.2) capexOver20 += 1;
   }
   irrs.sort((a, b) => a - b);
   multiples.sort((a, b) => a - b);
@@ -374,18 +412,32 @@ function runMonteCarlo(assumptions, mode) {
     probability_target_irr: round(targetHits / runs, 4),
     probability_capital_loss: round(capitalLosses / runs, 4),
     median_equity_multiple: round(percentile(multiples, 0.5), 4),
-    capex_overrun_probability_20: round(capexOver20 / runs, 4),
+    capex_overrun_probability_20: assumptions.renovation.has_capex_assumption ? round(capexOver20 / runs, 4) : null,
     histogram: histogram(irrs),
   };
 }
 
 function capexOverrun(assumptions) {
   const base = assumptions.renovation.base;
+  if (!assumptions.renovation.has_capex_assumption || base <= 0) {
+    return {
+      low: null,
+      base: null,
+      high: null,
+      source: assumptions.renovation.source,
+      pricing_status: assumptions.renovation.pricing_status,
+      confidence_score: renovationConfidenceScore(assumptions),
+      confidence_label: assumptions.renovation.confidence_label || null,
+      thresholds: [],
+      overrun_risk_label: "Needs evidence",
+      evidence_status: "capex_assumption_required",
+    };
+  }
   const thresholds = [
-    { key: "base_plus_10", amount: base * 1.1 },
-    { key: "base_plus_20", amount: base * 1.2 },
-    { key: "base_plus_30", amount: base * 1.3 },
-    { key: "severe", amount: Math.max(base * 1.5, assumptions.renovation.high * 0.95) },
+    { key: "base_plus_10", label: "10% over base", amount: base * 1.1 },
+    { key: "base_plus_20", label: "20% over base", amount: base * 1.2 },
+    { key: "base_plus_30", label: "30% over base", amount: base * 1.3 },
+    { key: "severe", label: "Severe overrun", amount: Math.max(base * 1.5, assumptions.renovation.high * 0.95) },
   ];
   const low = assumptions.renovation.low;
   const mode = assumptions.renovation.base;
@@ -407,6 +459,8 @@ function capexOverrun(assumptions) {
     low: assumptions.renovation.low,
     base,
     high: assumptions.renovation.high,
+    source: assumptions.renovation.source,
+    pricing_status: assumptions.renovation.pricing_status,
     confidence_score: renovationConfidenceScore(assumptions),
     confidence_label: assumptions.renovation.confidence_label || null,
     thresholds: results,
@@ -419,6 +473,7 @@ function renovationConfidenceScore(assumptions) {
     return round(clamp(assumptions.renovation.confidence_score, 0, 100), 0);
   }
   let score = 70;
+  if (!assumptions.renovation.has_capex_assumption) score -= 28;
   score -= Math.min(30, assumptions.renovation.missing_evidence.length * 10);
   score -= Math.min(20, assumptions.renovation.risks.length * 6);
   const spread = assumptions.renovation.base > 0 ? (assumptions.renovation.high - assumptions.renovation.low) / assumptions.renovation.base : 0;
@@ -435,7 +490,7 @@ function mandateFitScore(assumptions, baseMetrics, mandate) {
     ? String(mandate.buy_box_json.property_type).toLowerCase() === String(assumptions.property.property_type).toLowerCase() ? 10 : 4
     : 7;
   const returnScore = baseMetrics.irr === null ? 6 : clamp((baseMetrics.irr / (assumptions.investor.target_irr_pct / 100)) * 25, 0, 25);
-  const renovationScore = assumptions.renovation.base > 0 ? clamp(renovationConfidenceScore(assumptions) / 100 * 10, 2, 10) : 7;
+  const renovationScore = assumptions.renovation.has_capex_assumption ? clamp(renovationConfidenceScore(assumptions) / 100 * 10, 2, 10) : 3;
   const riskScore = baseMetrics.capital_loss ? 4 : 8;
   const evidenceScore = assumptions.missing_assumptions.length ? 2 : 4;
   return {
@@ -471,7 +526,9 @@ function sensitivity(assumptions, baseMetrics) {
     const metrics = calculateDealMetrics(withScenario(assumptions, { property: { purchase_price: price } }));
     return { purchase_price: round(price, 0), irr: metrics.irr, clears_target: (metrics.irr ?? -1) >= assumptions.investor.target_irr_pct / 100 };
   });
-  const renovationSteps = [assumptions.renovation.low, assumptions.renovation.base * 0.9, assumptions.renovation.base, assumptions.renovation.base * 1.1, assumptions.renovation.high]
+  const renovationSteps = (assumptions.renovation.has_capex_assumption
+    ? [assumptions.renovation.low, assumptions.renovation.base * 0.9, assumptions.renovation.base, assumptions.renovation.base * 1.1, assumptions.renovation.high]
+    : [])
     .map((amount) => {
       const metrics = calculateDealMetrics(withScenario(assumptions, { renovation: { base: amount } }));
       return { renovation_cost: round(amount, 0), irr: metrics.irr };
@@ -484,7 +541,9 @@ function sensitivity(assumptions, baseMetrics) {
   const drivers = [
     ["exit_value", { exit: { exit_growth_pct: assumptions.exit.exit_growth_pct + 2 } }, { exit: { exit_growth_pct: assumptions.exit.exit_growth_pct - 2 } }],
     ["purchase_price", { property: { purchase_price: assumptions.property.purchase_price * 0.95 } }, { property: { purchase_price: assumptions.property.purchase_price * 1.05 } }],
-    ["renovation_cost", { renovation: { base: assumptions.renovation.low } }, { renovation: { base: assumptions.renovation.high } }],
+    ...(assumptions.renovation.has_capex_assumption
+      ? [["renovation_cost", { renovation: { base: assumptions.renovation.low } }, { renovation: { base: assumptions.renovation.high } }]]
+      : []),
     ["rent", { operations: { gross_annual_rent: assumptions.operations.gross_annual_rent * 1.08 } }, { operations: { gross_annual_rent: assumptions.operations.gross_annual_rent * 0.92 } }],
     ["vacancy", { operations: { vacancy_pct: Math.max(0, assumptions.operations.vacancy_pct - 4) } }, { operations: { vacancy_pct: assumptions.operations.vacancy_pct + 5 } }],
     ["financing_rate", { financing: { financing_rate_pct: Math.max(0, assumptions.financing.financing_rate_pct - 0.75) } }, { financing: { financing_rate_pct: assumptions.financing.financing_rate_pct + 0.75 } }],
@@ -500,7 +559,7 @@ function sensitivity(assumptions, baseMetrics) {
 function recommendation({ baseMetrics, downsideMetrics, monteCarlo, maxBid, assumptions, capexRisk }) {
   const target = assumptions.investor.target_irr_pct / 100;
   if ((baseMetrics.irr ?? -1) >= target && !downsideMetrics.capital_loss && monteCarlo.probability_capital_loss < 0.15) return "Strong Candidate";
-  if ((baseMetrics.irr ?? -1) >= target * 0.9 && (capexRisk.overrun_risk_label === "High" || capexRisk.overrun_risk_label === "Severe" || assumptions.renovation.missing_evidence.length)) return "Promising";
+  if ((baseMetrics.irr ?? -1) >= target * 0.9 && (capexRisk.overrun_risk_label === "High" || capexRisk.overrun_risk_label === "Severe" || capexRisk.overrun_risk_label === "Needs evidence" || assumptions.renovation.missing_evidence.length)) return "Promising";
   if ((baseMetrics.irr ?? -1) < target && maxBid < assumptions.property.purchase_price * 0.995) return "Negotiate";
   if (monteCarlo.probability_target_irr < 0.25 || assumptions.missing_assumptions.length) return "Watchlist";
   if ((baseMetrics.irr ?? -1) < target * 0.5 || monteCarlo.probability_capital_loss > 0.35) return "Pass";
@@ -509,10 +568,13 @@ function recommendation({ baseMetrics, downsideMetrics, monteCarlo, maxBid, assu
 
 function riskFlags({ baseMetrics, monteCarlo, assumptions, capexRisk, maxBid }) {
   const target = assumptions.investor.target_irr_pct / 100;
+  const capexLevel = capexRisk.overrun_risk_label === "Needs evidence"
+    ? "high"
+    : String(capexRisk.overrun_risk_label || "low").toLowerCase();
   return [
     { key: "return_risk", label: "Return risk", level: (baseMetrics.irr ?? -1) >= target ? "low" : "high", detail: "Base IRR compared with the selected target return." },
     { key: "capital_loss_risk", label: "Capital loss risk", level: monteCarlo.probability_capital_loss > 0.2 ? "high" : monteCarlo.probability_capital_loss > 0.08 ? "medium" : "low", detail: "Probability simulated total cash returned is below equity invested." },
-    { key: "capex_risk", label: "Capex risk", level: capexRisk.overrun_risk_label.toLowerCase(), detail: "Probability renovation cost exceeds the base estimate." },
+    { key: "capex_risk", label: "Capex risk", level: capexLevel, detail: capexRisk.overrun_risk_label === "Needs evidence" ? "Renovation capex needs a priced estimate or explicit planning allowance." : "Probability renovation cost exceeds the base estimate." },
     { key: "rent_risk", label: "Rent risk", level: assumptions.operations.gross_annual_rent > (assumptions.property.current_rent || assumptions.operations.gross_annual_rent) * 1.1 ? "medium" : "low", detail: "Whether target returns depend on higher-than-current rent." },
     { key: "exit_risk", label: "Exit risk", level: assumptions.exit.exit_growth_pct > 4 ? "medium" : "low", detail: "Whether returns depend heavily on appreciation." },
     { key: "financing_risk", label: "Financing risk", level: assumptions.financing.financing_rate_pct > 6.5 ? "medium" : "low", detail: "Sensitivity to higher borrowing cost." },
@@ -625,8 +687,8 @@ export function runUnderwritingEngine({ opportunity, mandate = null, input = {},
         factors: [
           { key: "photos", label: "Photos", score: assumptions.renovation.missing_evidence.length ? 10 : 16, max: 20 },
           { key: "floor_plan", label: "Floor plan", score: assumptions.property.built_up_area_sqm ? 12 : 6, max: 15 },
-          { key: "contractor_quote", label: "Contractor quote", score: assumptions.renovation.confidence_label?.toLowerCase().includes("quote") ? 22 : 8, max: 25 },
-          { key: "scope_clarity", label: "Scope clarity", score: assumptions.renovation.base > 0 ? 11 : 4, max: 15 },
+          { key: "contractor_quote", label: "Contractor quote", score: assumptions.renovation.source === "priced_estimate" || assumptions.renovation.confidence_label?.toLowerCase().includes("quote") ? 22 : 8, max: 25 },
+          { key: "scope_clarity", label: "Scope clarity", score: assumptions.renovation.has_capex_assumption ? 11 : 4, max: 15 },
           { key: "mep_visibility", label: "MEP visibility", score: assumptions.renovation.risks.length ? 6 : 11, max: 15 },
           { key: "missing_evidence", label: "Missing evidence", score: Math.max(0, 10 - assumptions.renovation.missing_evidence.length * 3), max: 10 },
         ],
