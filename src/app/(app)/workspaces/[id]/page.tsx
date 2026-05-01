@@ -7,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
-  BarChart3,
   Building2,
   CheckCircle2,
   ChevronDown,
@@ -1298,6 +1297,8 @@ export default function WorkspaceCockpitPage() {
             selectedId={selectedOpportunity?.id ?? null}
             onSelect={setSelectedOpportunityId}
             emptyText={t('emptyCandidates')}
+            candidateCount={opportunities.length}
+            pursueCount={pursueCount}
           />
         </aside>
 
@@ -1315,6 +1316,8 @@ export default function WorkspaceCockpitPage() {
                     selectedId={selectedOpportunity?.id ?? null}
                     onSelect={setSelectedOpportunityId}
                     emptyText={t('emptyCandidates')}
+                    candidateCount={opportunities.length}
+                    pursueCount={pursueCount}
                     compact
                   />
                 </div>
@@ -1385,8 +1388,6 @@ export default function WorkspaceCockpitPage() {
             opportunity={selectedOpportunity}
             missingItems={selectedMissing}
             claims={claims}
-            candidates={opportunities.length}
-            pursue={pursueCount}
             openItems={missingCount}
             confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
             primaryActionLabel={primaryAction.label}
@@ -1636,20 +1637,34 @@ function OpportunityRail({
   selectedId,
   onSelect,
   emptyText,
+  candidateCount,
+  pursueCount,
   compact = false,
 }: {
   opportunities: OpportunityRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   emptyText: string;
+  candidateCount: number;
+  pursueCount: number;
   compact?: boolean;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   return (
     <Panel className={cn('p-4', compact && 'overflow-hidden')} data-testid={compact ? 'acquisition-opportunity-rail-compact' : 'acquisition-opportunity-rail'}>
-      <div className={cn('flex items-center justify-between', compact ? 'mb-4' : 'mb-5')}>
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedOpportunities')}</p>
-        <Building2 className="h-4 w-4 text-accent" />
+      <div className={cn('flex items-start justify-between gap-3', compact ? 'mb-4' : 'mb-5')}>
+        <div className="min-w-0">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('rankedOpportunities')}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-2.5 py-1 text-[11px] font-semibold text-text-soft">
+              {candidateCount} {t('candidates')}
+            </span>
+            <span className="rounded-full border border-accent/22 bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">
+              {pursueCount} {t('pursue')}
+            </span>
+          </div>
+        </div>
+        <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
       </div>
       <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-4')}>
         {opportunities.length === 0 ? (
@@ -3864,8 +3879,6 @@ function LiveFeedRail({
   opportunity,
   missingItems,
   claims,
-  candidates,
-  pursue,
   openItems,
   confidence,
   primaryActionLabel,
@@ -3887,8 +3900,6 @@ function LiveFeedRail({
   opportunity: OpportunityRow | null;
   missingItems: string[];
   claims: AcquisitionClaimRow[];
-  candidates: number;
-  pursue: number;
   openItems: number;
   confidence: string;
   primaryActionLabel: string;
@@ -3968,9 +3979,7 @@ function LiveFeedRail({
   return (
     <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-[rgba(255,255,255,0.07)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
       <div className="space-y-4">
-        <CommandPulsePanel
-          candidates={candidates}
-          pursue={pursue}
+        <MandateActionsPanel
           openItems={openItems}
           confidence={confidence}
           title={currentBlocker}
@@ -4016,9 +4025,7 @@ function LiveFeedRail({
   );
 }
 
-function CommandPulsePanel({
-  candidates,
-  pursue,
+function MandateActionsPanel({
   openItems,
   confidence,
   title,
@@ -4034,8 +4041,6 @@ function CommandPulsePanel({
   onScheduleVisit,
   onPassProperty,
 }: {
-  candidates: number;
-  pursue: number;
   openItems: number;
   confidence: string;
   title: string;
@@ -4059,49 +4064,40 @@ function CommandPulsePanel({
     { key: 'visit', label: t('scheduleVisit'), meta: t('progress.nextVisit'), onClick: onScheduleVisit, disabled: !opportunity },
     { key: 'pass', label: t('pass'), meta: t('actionDock.passMeta'), onClick: onPassProperty, disabled: !opportunity },
   ];
-  const metrics = [
-    { key: 'candidates', icon: Search, label: t('candidates'), value: candidates.toString(), hot: false },
-    { key: 'pursue', icon: TrendingUp, label: t('pursue'), value: pursue.toString(), hot: true },
-    { key: 'openItems', icon: ClipboardList, label: t('openItems'), value: openItems.toString(), hot: openItems > 0 },
-    { key: 'confidence', icon: BarChart3, label: t('confidence'), value: confidence, hot: false },
-  ];
   return (
     <Panel className={cn('overflow-hidden p-0', blocked ? 'border-warning/30' : 'border-success/25')}>
       <div className="p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">{t('mandatePulse')}</p>
-          <Search className="h-4 w-4 text-accent" />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {metrics.map(({ key, icon: Icon, label, value, hot }) => (
-            <div key={key} className={cn('rounded-[12px] border p-3', hot ? 'border-accent/28 bg-accent/10' : 'border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/72')}>
-              <Icon className="h-3.5 w-3.5 text-accent" />
-              <p className="mt-2 truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
-              <p className="mt-1 truncate font-mono text-base font-semibold text-text">{value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-5 border-t border-[rgba(var(--accent-rgb),0.14)] pt-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className={cn('font-mono text-xs uppercase tracking-[0.24em]', blocked ? 'text-warning' : 'text-success')}>
-                {t('actionDock.title')}
-              </p>
-              <h3 className="mt-2 text-xl font-bold leading-tight text-text">{title}</h3>
-            </div>
-            <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]')}>
-              {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
-            </span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('mandateActions')}</p>
+            <h3 className="mt-2 text-xl font-bold leading-tight text-text">{title}</h3>
           </div>
-          <p className="mt-3 text-sm leading-6 text-text-soft">{actionResult}</p>
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]')}>
+            {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
+          </span>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className={cn('rounded-full border px-2.5 py-1 text-[11px] font-semibold', openItems > 0 ? 'border-warning/30 bg-warning/10 text-warning' : 'border-success/25 bg-success/10 text-success')}>
+            {openItems} {t('openItems')}
+          </span>
+          <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-2.5 py-1 text-[11px] font-semibold text-text-soft">
+            {t('confidence')}: {confidence}
+          </span>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-text-soft">{actionResult}</p>
+        <div className="mt-4 flex items-center gap-2">
+          <div className={cn('h-px flex-1', blocked ? 'bg-warning/30' : 'bg-success/25')} />
+          <p className={cn('font-mono text-[11px] uppercase tracking-[0.2em]', blocked ? 'text-warning' : 'text-success')}>
+            {t('actionDock.title')}
+          </p>
+          <div className={cn('h-px flex-1', blocked ? 'bg-warning/30' : 'bg-success/25')} />
         </div>
         <button
           type="button"
           onClick={onPrimaryAction}
           disabled={busy}
           className={cn(
-            'mt-4 w-full rounded-[14px] px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
+            'mt-3 w-full rounded-[14px] px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
             blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]'
           )}
         >
