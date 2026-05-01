@@ -7,6 +7,7 @@ import {
   normalizeSources,
   __test,
 } from "../src/handlers/acquisition.js";
+import { runAndPersistUnderwriting } from "../src/underwriting/persistence.js";
 
 function makeId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
@@ -299,6 +300,74 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   assert.equal(supabase.db.acquisition_events.length, 2);
   assert(
     supabase.db.acquisition_claims.some((claim) => claim.opportunity_id === promoted.opportunity.id),
+  );
+});
+
+test("underwriting run persists versioned assumptions and outputs on base scenario", async () => {
+  const supabase = createMockSupabase({
+    workspaces: [{ id: "ws_1", owner_id: "user_1", org_id: null }],
+    acquisition_opportunities: [{
+      id: "opp_1",
+      workspace_id: "ws_1",
+      title: "Riyadh villa",
+      metadata_json: {
+        asking_price: 3200000,
+        acquisition_price: 3100000,
+        monthly_rent: 15417,
+        property_type: "villa",
+      },
+      renovation_capex_json: {
+        low_total: 180000,
+        base_total: 260000,
+        high_total: 420000,
+      },
+    }],
+    acquisition_mandates: [{
+      id: "mandate_1",
+      workspace_id: "ws_1",
+      budget_range_json: { max: 4000000 },
+      buy_box_json: { property_type: "villa" },
+      target_locations_json: ["Riyadh"],
+    }],
+    acquisition_scenarios: [],
+  });
+
+  const result = await runAndPersistUnderwriting({
+    supabase,
+    opportunityId: "opp_1",
+    input: { mode: "quick", target_irr_pct: 8 },
+    userId: "user_1",
+  });
+
+  assert.equal(result.underwriting.status, "complete");
+  assert.equal(supabase.db.acquisition_scenarios.length, 1);
+  const saved = supabase.db.acquisition_scenarios[0];
+  assert.equal(saved.scenario_kind, "base");
+  assert.equal(saved.assumptions_json.underwriting_engine_version, "underwriting/v1");
+  assert.equal(saved.outputs_json.underwriting.underwriting_engine_version, "underwriting/v1");
+  assert(saved.outputs_json.underwriting.summary.max_bid > 0);
+});
+
+test("underwriting run rejects users without workspace write access", async () => {
+  const supabase = createMockSupabase({
+    workspaces: [{ id: "ws_1", owner_id: "user_1", org_id: null }],
+    acquisition_opportunities: [{
+      id: "opp_1",
+      workspace_id: "ws_1",
+      metadata_json: { acquisition_price: 3100000, monthly_rent: 15000 },
+      renovation_capex_json: { base_total: 200000 },
+    }],
+    acquisition_scenarios: [],
+  });
+
+  await assert.rejects(
+    () => runAndPersistUnderwriting({
+      supabase,
+      opportunityId: "opp_1",
+      input: { mode: "quick" },
+      userId: "user_2",
+    }),
+    /workspace_write_access_denied/,
   );
 });
 

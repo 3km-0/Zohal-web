@@ -216,6 +216,81 @@ type ScenarioState = {
   vacancy: number;
   hold: number;
   appreciation: number;
+  financingRate: number;
+  targetIrr: number;
+};
+
+type UnderwritingMetricSet = {
+  irr?: number | null;
+  cash_on_cash?: number | null;
+  equity_multiple?: number | null;
+  equity_required?: number | null;
+  annual_cash_flow?: number | null;
+};
+
+type UnderwritingRun = {
+  underwriting_engine_version?: string;
+  status?: string;
+  summary?: {
+    recommendation?: string;
+    mandate_fit_score?: number;
+    median_irr?: number;
+    p10_irr?: number;
+    p90_irr?: number;
+    probability_target_irr?: number;
+    probability_capital_loss?: number;
+    median_equity_multiple?: number;
+    target_irr?: number;
+    capex_overrun_risk?: string;
+    current_ask?: number;
+    max_bid?: number;
+    main_risk?: string;
+    next_action?: string;
+    missing_assumptions?: string[];
+  };
+  scenarios?: Array<{
+    key: string;
+    label: string;
+    assumptions?: Record<string, number | string | null>;
+    metrics: UnderwritingMetricSet;
+  }>;
+  monte_carlo?: {
+    runs?: number;
+    p10_irr?: number;
+    p50_irr?: number;
+    p90_irr?: number;
+    probability_target_irr?: number;
+    probability_capital_loss?: number;
+    histogram?: Array<{ min_irr: number; max_irr: number; count: number; pct: number }>;
+  };
+  capex?: {
+    low?: number | null;
+    base?: number | null;
+    high?: number | null;
+    confidence_score?: number | null;
+    overrun_risk_label?: string | null;
+    thresholds?: Array<{ key: string; amount: number; probability: number }>;
+  };
+  mandate_fit?: {
+    score?: number;
+    components?: Array<{ key: string; label: string; score: number; max: number }>;
+  };
+  renovation_confidence?: {
+    score?: number;
+    label?: string;
+    factors?: Array<{ key: string; label: string; score: number; max: number }>;
+  };
+  sensitivity?: {
+    purchase_price?: Array<{ purchase_price: number; irr: number | null; clears_target?: boolean }>;
+    tornado?: Array<{ key: string; upside_irr: number | null; downside_irr: number | null; impact: number }>;
+  };
+  risk_flags?: Array<{ key: string; label: string; level: string; detail: string }>;
+  readout?: { investor_summary?: string; disclaimer?: string };
+};
+
+type UnderwritingResponse = {
+  scenario?: { id?: string; outputs_json?: { underwriting?: UnderwritingRun } };
+  underwriting?: UnderwritingRun;
 };
 
 type LiveFeedTone = 'lime' | 'cyan' | 'warn' | 'neutral';
@@ -393,6 +468,21 @@ function scenarioFromOpportunity(item: OpportunityRow | null | undefined): Scena
     vacancy: metadataNumber(item, ['vacancy', 'vacancy_rate']) ?? 7,
     hold: metadataNumber(item, ['hold_period', 'hold_years']) ?? 5,
     appreciation: metadataNumber(item, ['appreciation', 'annual_appreciation']) ?? 4,
+    financingRate: metadataNumber(item, ['financing_rate_pct', 'financing_rate']) ?? 5.5,
+    targetIrr: metadataNumber(item, ['target_irr_pct', 'target_irr']) ?? 8,
+  };
+}
+
+function completeScenario(seed: Partial<ScenarioState>): ScenarioState {
+  return {
+    price: seed.price ?? 0,
+    renovation: seed.renovation ?? 0,
+    rent: seed.rent ?? 0,
+    vacancy: seed.vacancy ?? 7,
+    hold: seed.hold ?? 5,
+    appreciation: seed.appreciation ?? 4,
+    financingRate: seed.financingRate ?? 5.5,
+    targetIrr: seed.targetIrr ?? 8,
   };
 }
 
@@ -503,10 +593,12 @@ export default function WorkspaceCockpitPage() {
   const [drawerWidth, setDrawerWidth] = useState(430);
   const [heroMapOpen, setHeroMapOpen] = useState(false);
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
+  const [underwriting, setUnderwriting] = useState<UnderwritingRun | null>(null);
   const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [readinessBusy, setReadinessBusy] = useState(false);
   const [scenarioBusy, setScenarioBusy] = useState(false);
+  const [underwritingBusy, setUnderwritingBusy] = useState(false);
   const [capexBusy, setCapexBusy] = useState(false);
   const [capexError, setCapexError] = useState<string | null>(null);
   const [renovationEvents, setRenovationEvents] = useState<RenovationEstimateEventRow[]>([]);
@@ -634,7 +726,32 @@ export default function WorkspaceCockpitPage() {
 
   useEffect(() => {
     setScenario(scenarioFromOpportunity(selectedOpportunity));
+    setUnderwriting(null);
   }, [selectedOpportunity]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUnderwriting() {
+      if (!selectedOpportunity?.id) {
+        setUnderwriting(null);
+        return;
+      }
+      const { data } = await supabase
+        .from('acquisition_scenarios')
+        .select('outputs_json')
+        .eq('opportunity_id', selectedOpportunity.id)
+        .eq('scenario_kind', 'base')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const output = (data?.outputs_json as { underwriting?: UnderwritingRun } | null)?.underwriting ?? null;
+      if (!cancelled) setUnderwriting(output);
+    }
+    void loadUnderwriting();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOpportunity?.id, supabase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -853,6 +970,41 @@ export default function WorkspaceCockpitPage() {
       setApprovalError(error instanceof Error ? error.message : t('scenarioSaveError'));
     } finally {
       setScenarioBusy(false);
+    }
+  }, [selectedOpportunity, supabase, t]);
+
+  const runUnderwriting = useCallback(async (nextScenario: ScenarioState) => {
+    if (!selectedOpportunity) return;
+    setUnderwritingBusy(true);
+    setApprovalError(null);
+    try {
+      const response = await invokeZohalBackendJson<UnderwritingResponse>(
+        supabase,
+        `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/underwriting-run`,
+        {
+          mode: 'quick',
+          save: true,
+          target_irr_pct: nextScenario.targetIrr,
+          financing_rate_pct: nextScenario.financingRate,
+          assumptions: {
+            purchase_price: nextScenario.price,
+            acquisition_price: nextScenario.price,
+            monthly_rent: nextScenario.rent,
+            renovation: nextScenario.renovation,
+            vacancy_pct: nextScenario.vacancy,
+            hold_period_years: nextScenario.hold,
+            exit_growth_pct: nextScenario.appreciation,
+            financing_rate_pct: nextScenario.financingRate,
+            target_irr_pct: nextScenario.targetIrr,
+          },
+        },
+      );
+      setUnderwriting(response.underwriting ?? response.scenario?.outputs_json?.underwriting ?? null);
+      setScenario(nextScenario);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('underwritingRunError'));
+    } finally {
+      setUnderwritingBusy(false);
     }
   }, [selectedOpportunity, supabase, t]);
 
@@ -1096,9 +1248,12 @@ export default function WorkspaceCockpitPage() {
                     <ModelModule
                       opportunity={selectedOpportunity}
                       scenario={scenario}
+                      underwriting={underwriting}
                       saving={scenarioBusy}
+                      running={underwritingBusy}
                       onScenarioChange={setScenario}
                       onSave={saveScenarioAssumptions}
+                      onRunUnderwriting={runUnderwriting}
                     />
                   ) : activePrimaryTab === 'renovation' ? (
                     <RenovationTab
@@ -2111,19 +2266,25 @@ function OverviewModule({
 function ModelModule({
   opportunity,
   scenario,
+  underwriting,
   saving,
+  running,
   onScenarioChange,
   onSave,
+  onRunUnderwriting,
 }: {
   opportunity: OpportunityRow | null;
   scenario: ScenarioState | null;
+  underwriting: UnderwritingRun | null;
   saving: boolean;
+  running: boolean;
   onScenarioChange: (next: ScenarioState) => void;
   onSave: (next: ScenarioState) => Promise<void>;
+  onRunUnderwriting: (next: ScenarioState) => Promise<void>;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   if (!scenario) {
-    const seed = seedScenarioFromOpportunity(opportunity);
+    const seed = completeScenario(seedScenarioFromOpportunity(opportunity));
     return (
       <Panel className="grid min-h-[380px] place-items-center p-8 text-center">
         <div>
@@ -2148,8 +2309,8 @@ function ModelModule({
   return (
     <div className="grid gap-5 [@media(min-width:1780px)]:grid-cols-[0.95fr_1.05fr]">
       <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('scenarioModeler')}</p>
-        <h3 className="mt-1 text-xl font-semibold text-text">{t('modelKnobsTitle')}</h3>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('underwritingTitle')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('underwritingKnobsTitle')}</h3>
         <div className="mt-5 grid gap-3">
           <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={scenario.price * 0.85} max={scenario.price * 1.12} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
           <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={Math.max(100000, scenario.renovation * 2.2)} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
@@ -2157,31 +2318,235 @@ function ModelModule({
           <ScenarioSlider label={t('vacancy')} value={scenario.vacancy} min={0} max={20} step={1} format={(v) => `${v}%`} onChange={set('vacancy')} />
           <ScenarioSlider label={t('holdPeriod')} value={scenario.hold} min={1} max={10} step={1} format={(v) => `${v} ${t('years')}`} onChange={set('hold')} />
           <ScenarioSlider label={t('appreciation')} value={scenario.appreciation} min={0} max={10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
+          <ScenarioSlider label={t('financingRate')} value={scenario.financingRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('financingRate')} />
+          <ScenarioSlider label={t('targetIrr')} value={scenario.targetIrr} min={2} max={18} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('targetIrr')} />
         </div>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void onSave(scenario)}
-          className="mt-4 w-full rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? t('savingAssumptions') : t('saveAssumptions')}
-        </button>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void onSave(scenario)}
+            className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? t('savingAssumptions') : t('saveAssumptions')}
+          </button>
+          <button
+            type="button"
+            disabled={running}
+            onClick={() => void onRunUnderwriting(scenario)}
+            className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {running ? t('runningUnderwriting') : t('runDealSimulation')}
+          </button>
+        </div>
       </Panel>
       <div className="space-y-5">
-        <div className="grid min-w-0 gap-3 md:grid-cols-2">
-          <OutputMetric label={t('equityRequired')} value={formatSAR.format(returns.equity)} hot />
-          <OutputMetric label={t('annualCashFlow')} value={formatSAR.format(returns.cashFlow)} />
-          <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
-          <OutputMetric label={t('baseIrr')} value={pct(returns.irr)} hot />
-        </div>
-        <ScenarioCharts scenario={scenario} />
+        {underwriting ? (
+          <UnderwritingDashboard underwriting={underwriting} />
+        ) : (
+          <>
+            <div className="grid min-w-0 gap-3 md:grid-cols-2">
+              <OutputMetric label={t('equityRequired')} value={formatSAR.format(returns.equity)} hot />
+              <OutputMetric label={t('annualCashFlow')} value={formatSAR.format(returns.cashFlow)} />
+              <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
+              <OutputMetric label={t('baseIrr')} value={pct(returns.irr)} hot />
+            </div>
+            <ScenarioCharts scenario={scenario} />
+          </>
+        )}
         <Panel className="border-accent/20 bg-accent/10 p-5">
           <p className="text-sm leading-6 text-text">
-            {t('modelSensitivityNote')}
+            {underwriting?.readout?.investor_summary || t('modelSensitivityNote')}
           </p>
+          {underwriting?.readout?.disclaimer ? <p className="mt-3 text-xs leading-5 text-text-muted">{underwriting.readout.disclaimer}</p> : null}
         </Panel>
       </div>
     </div>
+  );
+}
+
+function pctMaybe(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? pct(value) : '--';
+}
+
+function sarMaybe(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? formatSAR.format(value) : '--';
+}
+
+function UnderwritingDashboard({ underwriting }: { underwriting: UnderwritingRun }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const summary = underwriting.summary || {};
+  if (underwriting.status === 'needs_assumptions') {
+    return (
+      <Panel className="border-warning/25 bg-warning/10 p-5">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-warning">{t('underwritingBlocked')}</p>
+        <h3 className="mt-2 text-xl font-semibold text-text">{t('underwritingNeedsAssumptions')}</h3>
+        <p className="mt-2 text-sm leading-6 text-text-soft">{(summary.missing_assumptions || []).join(', ') || t('underwritingNeedsAssumptionsBody')}</p>
+      </Panel>
+    );
+  }
+  return (
+    <div className="space-y-5">
+      <Panel className="overflow-hidden p-0">
+        <div className="border-b border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 px-5 py-4">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('recommendationSummary')}</p>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h3 className="text-3xl font-black uppercase leading-none text-text">{summary.recommendation || t('notSet')}</h3>
+            <span className="rounded-[12px] border border-accent/25 bg-accent/10 px-3 py-2 font-mono text-xs font-semibold text-accent">
+              {t('mandateFit')}: {summary.mandate_fit_score ?? '--'} / 100
+            </span>
+          </div>
+        </div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+          <OutputMetric label={t('medianIrr')} value={pctMaybe(summary.median_irr)} hot />
+          <OutputMetric label={t('targetProbability')} value={pctMaybe(summary.probability_target_irr)} />
+          <OutputMetric label={t('capexOverrunRisk')} value={summary.capex_overrun_risk || '--'} />
+          <OutputMetric label={t('maxBid')} value={sarMaybe(summary.max_bid)} hot />
+        </div>
+        <div className="grid gap-3 border-t border-[rgba(var(--accent-rgb),0.12)] p-5 sm:grid-cols-3">
+          <DecisionBlock icon={AlertTriangle} title={t('mainRisk')} body={summary.main_risk || t('uncertainEmpty')} />
+          <DecisionBlock icon={TrendingUp} title={t('p10P90Irr')} body={`${pctMaybe(summary.p10_irr)} / ${pctMaybe(summary.p90_irr)}`} />
+          <DecisionBlock icon={CheckCircle2} title={t('nextAction')} body={summary.next_action || t('nextActionReview')} />
+        </div>
+      </Panel>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <ScenarioComparisonChart scenarios={underwriting.scenarios || []} target={summary.target_irr ?? null} />
+        <MonteCarloChart underwriting={underwriting} />
+        <CapexUnderwritingChart capex={underwriting.capex} />
+        <PurchaseSensitivityChart points={underwriting.sensitivity?.purchase_price || []} maxBid={summary.max_bid ?? null} currentAsk={summary.current_ask ?? null} />
+        <BreakdownChart title={t('mandateFitBreakdown')} rows={underwriting.mandate_fit?.components || []} />
+        <BreakdownChart title={t('renovationConfidence')} rows={underwriting.renovation_confidence?.factors || []} />
+      </div>
+    </div>
+  );
+}
+
+function ScenarioComparisonChart({ scenarios, target }: { scenarios: NonNullable<UnderwritingRun['scenarios']>; target: number | null }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const max = Math.max(0.01, ...(scenarios || []).map((item) => Math.abs(item.metrics.irr || 0)), target || 0);
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('scenarioComparison')}</p>
+      <div className="mt-5 flex h-52 items-end gap-4">
+        {scenarios.map((item) => {
+          const value = item.metrics.irr ?? 0;
+          const height = Math.max(8, Math.abs(value) / max * 180);
+          const clears = target !== null && value >= target;
+          return (
+            <div key={item.key} className="flex flex-1 flex-col items-center gap-2">
+              <span className="font-mono text-xs text-text">{pctMaybe(value)}</span>
+              <div className={cn('w-full rounded-t-[10px] border border-white/10', clears ? 'bg-accent shadow-[0_0_24px_rgba(var(--accent-rgb),0.24)]' : item.key === 'downside' ? 'bg-warning' : 'bg-highlight')} style={{ height }} />
+              <span className="text-xs text-text-soft">{t(item.key as 'downside' | 'base' | 'upside')}</span>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+function MonteCarloChart({ underwriting }: { underwriting: UnderwritingRun }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const bins = underwriting.monte_carlo?.histogram || [];
+  const maxCount = Math.max(1, ...bins.map((bin) => bin.count));
+  return (
+    <Panel className="p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('returnDistribution')}</p>
+          <p className="mt-1 text-sm text-text-soft">{t('simulationRuns', { count: underwriting.monte_carlo?.runs ?? 0 })}</p>
+        </div>
+        <span className="rounded-[10px] border border-highlight/25 bg-highlight/10 px-3 py-1 font-mono text-xs text-highlight">
+          P50 {pctMaybe(underwriting.monte_carlo?.p50_irr)}
+        </span>
+      </div>
+      <div className="mt-5 flex h-44 items-end gap-1">
+        {bins.map((bin, index) => (
+          <div key={`${bin.min_irr}-${index}`} className={cn('flex-1 rounded-t-[6px]', bin.max_irr < 0 ? 'bg-error/80' : 'bg-accent/80')} style={{ height: `${Math.max(4, (bin.count / maxCount) * 100)}%` }} title={`${pctMaybe(bin.min_irr)} - ${pctMaybe(bin.max_irr)}`} />
+        ))}
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <OutputMetric label="P10" value={pctMaybe(underwriting.monte_carlo?.p10_irr)} />
+        <OutputMetric label="P50" value={pctMaybe(underwriting.monte_carlo?.p50_irr)} hot />
+        <OutputMetric label="P90" value={pctMaybe(underwriting.monte_carlo?.p90_irr)} />
+      </div>
+    </Panel>
+  );
+}
+
+function CapexUnderwritingChart({ capex }: { capex?: UnderwritingRun['capex'] }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const low = capex?.low ?? 0;
+  const base = capex?.base ?? low;
+  const high = capex?.high ?? Math.max(base, low);
+  const span = Math.max(1, high - low);
+  const baseLeft = ((base - low) / span) * 100;
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('capexRange')}</p>
+      <div className="mt-5 rounded-[16px] border border-warning/25 bg-warning/10 p-4">
+        <div className="relative h-8 rounded-full bg-border">
+          <div className="absolute inset-y-0 rounded-full bg-warning/70" style={{ left: 0, right: 0 }} />
+          <div className="absolute -top-1 h-10 w-1 rounded-full bg-accent shadow-[0_0_16px_rgba(var(--accent-rgb),0.6)]" style={{ left: `${baseLeft}%` }} />
+        </div>
+        <div className="mt-3 flex justify-between gap-2 font-mono text-xs text-text-soft">
+          <span>{compactSAR(low)}</span>
+          <span>{compactSAR(base)}</span>
+          <span>{compactSAR(high)}</span>
+        </div>
+      </div>
+      <div className="mt-4 space-y-2">
+        {(capex?.thresholds || []).slice(0, 4).map((item) => (
+          <div key={item.key} className="flex justify-between gap-3 rounded-[12px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt px-3 py-2 text-xs">
+            <span className="text-text-soft">{humanize(item.key)} &gt; {compactSAR(item.amount)}</span>
+            <span className="font-mono text-warning">{pctMaybe(item.probability)}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function PurchaseSensitivityChart({ points = [], maxBid, currentAsk }: { points?: NonNullable<UnderwritingRun['sensitivity']>['purchase_price']; maxBid: number | null; currentAsk: number | null }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const maxIrr = Math.max(0.01, ...points.map((point) => Math.abs(point.irr || 0)));
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{t('purchaseSensitivity')}</p>
+      <div className="mt-5 space-y-3">
+        {points.map((point) => (
+          <div key={point.purchase_price} className="grid grid-cols-[92px_1fr_54px] items-center gap-3 text-xs">
+            <span className="text-text-soft">{compactSAR(point.purchase_price)}</span>
+            <div className="h-2 rounded-full bg-border">
+              <div className={cn('h-2 rounded-full', point.clears_target ? 'bg-accent' : 'bg-highlight')} style={{ width: `${Math.max(4, Math.abs(point.irr || 0) / maxIrr * 100)}%` }} />
+            </div>
+            <span className="font-mono text-text">{pctMaybe(point.irr)}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-xs leading-5 text-text-soft">{t('maxBid')}: {sarMaybe(maxBid)} · {t('currentAsk')}: {sarMaybe(currentAsk)}</p>
+    </Panel>
+  );
+}
+
+function BreakdownChart({ title, rows }: { title: string; rows: Array<{ key: string; label: string; score: number; max: number }> }) {
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-text-soft">{title}</p>
+      <div className="mt-5 space-y-3">
+        {rows.map((row) => (
+          <div key={row.key} className="space-y-1">
+            <div className="flex justify-between gap-3 text-xs">
+              <span className="text-text">{row.label}</span>
+              <span className="font-mono text-text-soft">{row.score} / {row.max}</span>
+            </div>
+            <div className="h-2 rounded-full bg-border">
+              <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(3, Math.min(100, (row.score / Math.max(1, row.max)) * 100))}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 
@@ -2500,7 +2865,7 @@ function RenovationTab({
   onRequestQuote: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const seed = scenario ?? seedScenarioFromOpportunity(opportunity);
+  const seed = scenario ?? completeScenario(seedScenarioFromOpportunity(opportunity));
   const [strategy, setStrategy] = useState(opportunity?.renovation_capex_json?.strategy || 'rental_ready');
   const [finishLevel, setFinishLevel] = useState(opportunity?.renovation_capex_json?.finish_level || 'mid_grade');
   const [notes, setNotes] = useState('');

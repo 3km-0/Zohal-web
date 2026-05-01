@@ -13,6 +13,7 @@ import {
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 import { runRenovationCapexAgent } from "../renovation/agent.js";
+import { runAndPersistUnderwriting } from "../underwriting/persistence.js";
 
 const SEARCH_TASK_QUEUE = String(
   process.env.GCP_ACQUISITION_SEARCH_TASK_QUEUE || "acquisition-search-runs",
@@ -2122,6 +2123,20 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       capexByOpportunity.set(event.acquisition_opportunity_id, event);
     }
   }
+  const underwritingByOpportunity = new Map();
+  for (const scenario of scenarios) {
+    const underwriting = scenario.outputs_json?.underwriting;
+    if (underwriting && !underwritingByOpportunity.has(scenario.opportunity_id)) {
+      underwritingByOpportunity.set(scenario.opportunity_id, {
+        scenario_id: scenario.id,
+        status: underwriting.status || null,
+        summary: underwriting.summary || null,
+        risk_flags: underwriting.risk_flags || [],
+        generated_at: underwriting.generated_at || scenario.updated_at || null,
+        basis: "modeled_output",
+      });
+    }
+  }
 
   const candidateRows = candidates.map((candidate) => {
     const fit = compactJson(candidate.screening_output_json?.fit, {});
@@ -2155,6 +2170,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
   const opportunityRows = opportunities.map((opportunity) => {
     const claimRows = claimsByOpportunity.get(opportunity.id) || [];
     const capexEvent = capexByOpportunity.get(opportunity.id);
+    const underwriting = underwritingByOpportunity.get(opportunity.id) || null;
     const capexJson = compactJson(opportunity.renovation_capex_json || capexEvent?.estimate_json, {});
     const modeledYield = Number(opportunity.metadata_json?.modeled_yield_pct || opportunity.result_json?.modeled_yield_pct);
     const askingPrice = Number(opportunity.asking_price || opportunity.metadata_json?.asking_price || opportunity.result_json?.asking_price);
@@ -2180,6 +2196,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       photo_refs: photoRefs,
       confidence: normalizeText(opportunity.metadata_json?.confidence || opportunity.result_json?.confidence) || null,
       summary: normalizeText(opportunity.summary || opportunity.description || opportunity.result_json?.summary),
+      underwriting,
       evidence_id: typeof evidenceId === "string" ? evidenceId : evidenceId?.evidence_id || opportunity.id,
       claim_count: claimRows.length,
     };
@@ -2251,6 +2268,15 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
           basis: row.capex_base ? "modeled_output" : "uncertain_needs_diligence",
         },
       })),
+    },
+    underwriting: {
+      opportunities: opportunityRows
+        .filter((row) => row.underwriting)
+        .map((row) => ({
+          opportunity_id: row.opportunity_id,
+          title: row.title,
+          ...row.underwriting,
+        })),
     },
     diligence_gaps: diligenceItems.map((item) => ({
       id: item.id,
@@ -2608,6 +2634,7 @@ function matchRoute(method, pathname) {
   if (method === "GET" && parts[3] === "opportunities" && parts.length === 5) return { name: "getOpportunity", opportunityId: parts[4] };
   if (method === "GET" && parts[3] === "opportunities" && parts[5] === "actions" && parts.length === 6) return { name: "listOpportunityActions", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "capex-estimate" && parts.length === 6) return { name: "generateCapexEstimate", opportunityId: parts[4] };
+  if (method === "POST" && parts[3] === "opportunities" && parts[5] === "underwriting-run" && parts.length === 6) return { name: "runUnderwriting", opportunityId: parts[4] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "actions" && parts[7] === "prepare") return { name: "prepareOpportunityAction", opportunityId: parts[4], actionId: parts[6] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "actions" && parts[7] === "execute") return { name: "executeOpportunityAction", opportunityId: parts[4], actionId: parts[6] };
   if (method === "POST" && parts[3] === "opportunities" && parts[5] === "enrich") return { name: "enrichOpportunity", opportunityId: parts[4] };
@@ -2636,7 +2663,7 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
   const route = matchRoute(req.method, new URL(req.url || "/", "http://localhost").pathname);
   if (!route) return false;
   try {
-    if (route.name === "generateCapexEstimate") {
+    if (route.name === "generateCapexEstimate" || route.name === "runUnderwriting") {
       const body = await readJsonBody(req);
       const allowInternal = isInternalCaller(req.headers);
       let userId = null;
@@ -2655,14 +2682,23 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
           throw error;
         }
       }
-      return sendJson(res, 200, buildEnvelope(requestId, await runRenovationCapexAgent({
-        supabase,
-        opportunityId: route.opportunityId,
-        input: body,
-        requestId,
-        userId,
-        allowInternal,
-      })));
+      const result = route.name === "generateCapexEstimate"
+        ? await runRenovationCapexAgent({
+          supabase,
+          opportunityId: route.opportunityId,
+          input: body,
+          requestId,
+          userId,
+          allowInternal,
+        })
+        : await runAndPersistUnderwriting({
+          supabase,
+          opportunityId: route.opportunityId,
+          input: body,
+          userId,
+          allowInternal,
+        });
+      return sendJson(res, 200, buildEnvelope(requestId, result));
     }
     if (route.name === "addDealDeskReportNote") {
       const body = await readJsonBody(req);
