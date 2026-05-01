@@ -2335,25 +2335,27 @@ function ModelModule({
   const rentMax = Math.max(scenario.rent, anchor.rent * 1.35, 5000);
   return (
     <div className="grid gap-5 [@media(min-width:1780px)]:grid-cols-[0.95fr_1.05fr]">
-      <Panel className="p-5">
+      <Panel className="p-4">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('underwritingTitle')}</p>
         <h3 className="mt-1 text-xl font-semibold text-text">{t('underwritingKnobsTitle')}</h3>
-        <div className="mt-5 grid gap-3">
-          <div className="grid gap-2 rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4 sm:grid-cols-2">
+        <div className="mt-4 flex justify-start">
+          <div className="inline-flex w-fit rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-1">
             {(['rent_hold', 'flip'] as const).map((strategy) => (
               <button
                 key={strategy}
                 type="button"
                 onClick={() => setStrategy(strategy)}
                 className={cn(
-                  'rounded-[12px] border px-4 py-3 text-sm font-semibold transition',
-                  scenario.strategy === strategy ? 'border-accent bg-accent text-[color:var(--accent-text)]' : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface text-text-soft hover:text-text',
+                  'rounded-[9px] px-3 py-2 text-xs font-semibold transition sm:text-sm',
+                  scenario.strategy === strategy ? 'bg-accent text-[color:var(--accent-text)] shadow-[0_0_16px_rgba(var(--accent-rgb),0.12)]' : 'text-text-soft hover:bg-surface hover:text-text',
                 )}
               >
                 {t(strategy === 'flip' ? 'strategyFlip' : 'strategyRentHold')}
               </button>
             ))}
           </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={priceMin} max={priceMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
           <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={renovationMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
           {scenario.strategy === 'rent_hold' ? (
@@ -2538,12 +2540,20 @@ function MonteCarloChart({ underwriting }: { underwriting: UnderwritingRun }) {
           P50 {pctMaybe(underwriting.monte_carlo?.p50_irr)}
         </span>
       </div>
-      <div className="mt-5 flex h-44 items-end gap-1">
-        {bins.map((bin, index) => (
-          <div key={`${bin.min_irr}-${index}`} className={cn('flex-1 rounded-t-[6px]', bin.max_irr < 0 ? 'bg-error/80' : 'bg-accent/80')} style={{ height: `${Math.max(4, (bin.count / maxCount) * 100)}%` }} title={`${pctMaybe(bin.min_irr)} - ${pctMaybe(bin.max_irr)}`} />
-        ))}
+      <div className="mt-5 rounded-[16px] border border-[rgba(var(--accent-rgb),0.12)] bg-surface-alt/70 p-3">
+        <div className="flex h-28 items-end gap-1 border-b border-border/70 px-1">
+          {bins.length ? bins.map((bin, index) => (
+            <div key={`${bin.min_irr}-${index}`} className={cn('flex-1 rounded-t-[5px]', bin.max_irr < 0 ? 'bg-error/80' : bin.min_irr >= (target ?? Infinity) ? 'bg-accent/90' : 'bg-highlight/75')} style={{ height: `${Math.max(5, (bin.count / maxCount) * 100)}%` }} title={`${pctMaybe(bin.min_irr)} - ${pctMaybe(bin.max_irr)}`} />
+          )) : (
+            <div className="grid h-full flex-1 place-items-center text-xs text-text-muted">{t('notSet')}</div>
+          )}
+        </div>
+        <div className="mt-2 flex justify-between font-mono text-[10px] text-text-muted">
+          <span>{pctMaybe(domainMin)}</span>
+          <span>{pctMaybe(domainMax)}</span>
+        </div>
       </div>
-      <div className="mt-5 rounded-[16px] border border-[rgba(var(--highlight-rgb),0.18)] bg-highlight/10 p-4">
+      <div className="mt-4 rounded-[16px] border border-[rgba(var(--highlight-rgb),0.18)] bg-highlight/10 p-4">
         <div className="relative h-12">
           <div className="absolute left-0 right-0 top-1/2 h-px bg-border" />
           <div className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-highlight/45" style={{ left: `${pos(p10)}%`, width: `${Math.max(2, pos(p90) - pos(p10))}%` }} />
@@ -2558,10 +2568,8 @@ function MonteCarloChart({ underwriting }: { underwriting: UnderwritingRun }) {
             </div>
           ))}
         </div>
-        <div className="mt-3 flex justify-between font-mono text-[10px] text-text-muted">
-          <span>{pctMaybe(domainMin)}</span>
+        <div className="mt-3 flex justify-center font-mono text-[10px] text-text-muted">
           {target !== null ? <span className="text-accent">{t('targetIrr')} {pctMaybe(target)}</span> : null}
-          <span>{pctMaybe(domainMax)}</span>
         </div>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -2591,22 +2599,40 @@ function CapexUnderwritingChart({ capex }: { capex?: UnderwritingRun['capex'] })
       </div>
       {hasRange ? (
         <>
-          <div className="mt-5 rounded-[16px] border border-warning/25 bg-warning/10 p-4">
-            <div className="relative h-8 rounded-full bg-border">
-              <div className="absolute inset-y-0 rounded-full bg-warning/70" style={{ left: 0, right: 0 }} />
-              <div className="absolute -top-1 h-10 w-1 rounded-full bg-accent shadow-[0_0_16px_rgba(var(--accent-rgb),0.6)]" style={{ left: `${baseLeft}%` }} />
+          <div className="mt-5 rounded-[16px] border border-warning/20 bg-warning/10 p-4">
+            <div className="mb-3 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <p className="font-mono uppercase tracking-[0.14em] text-text-muted">{t('capexLow')}</p>
+                <p className="mt-1 font-mono text-text">{compactSAR(low)}</p>
+              </div>
+              <div className="text-center">
+                <p className="font-mono uppercase tracking-[0.14em] text-accent">{t('capexBase')}</p>
+                <p className="mt-1 font-mono text-text">{compactSAR(base)}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono uppercase tracking-[0.14em] text-text-muted">{t('capexHigh')}</p>
+                <p className="mt-1 font-mono text-text">{compactSAR(high)}</p>
+              </div>
             </div>
-            <div className="mt-3 flex justify-between gap-2 font-mono text-xs text-text-soft">
-              <span>{compactSAR(low)}</span>
-              <span>{compactSAR(base)}</span>
-              <span>{compactSAR(high)}</span>
+            <div className="relative h-8">
+              <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-border" />
+              <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-warning/55" />
+              <div className="absolute top-0 h-8 w-1 rounded-full bg-accent shadow-[0_0_18px_rgba(var(--accent-rgb),0.5)]" style={{ left: `${baseLeft}%` }} />
             </div>
           </div>
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {(capex?.thresholds || []).slice(0, 4).map((item) => (
-              <div key={item.key} className="flex justify-between gap-3 rounded-[12px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt px-3 py-2 text-xs">
-                <span className="text-text-soft">{item.label || humanize(item.key)} · {compactSAR(item.amount)}</span>
-                <span className="font-mono text-warning">{pctMaybe(item.probability)}</span>
+              <div key={item.key} className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt px-3 py-2 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-soft">{item.label || humanize(item.key)}</span>
+                  <span className="font-mono text-warning">{pctMaybe(item.probability)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="h-1.5 flex-1 rounded-full bg-border">
+                    <div className="h-1.5 rounded-full bg-warning" style={{ width: `${Math.max(3, Math.min(100, item.probability * 100))}%` }} />
+                  </div>
+                  <span className="font-mono text-[10px] text-text-muted">{compactSAR(item.amount)}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -4222,10 +4248,10 @@ function ScenarioSlider({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
-      <div className="mb-3 flex justify-between gap-4">
-        <p className="text-sm font-medium text-text">{label}</p>
-        <span className="rounded-[8px] border border-[rgba(var(--accent-rgb),0.28)] bg-accent/10 px-3 py-1.5 font-mono text-sm text-accent">{format(value)}</span>
+    <div className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="truncate text-xs font-semibold text-text-soft">{label}</p>
+        <span className="rounded-[7px] border border-[rgba(var(--accent-rgb),0.24)] bg-accent/10 px-2 py-1 font-mono text-xs text-accent">{format(value)}</span>
       </div>
       <input className="w-full accent-accent" type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     </div>
