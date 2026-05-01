@@ -212,7 +212,11 @@ export default function SettingsPage() {
             </div>
 
             {effectiveTier === 'free' && (
-              <Button variant="secondary" className="mt-4">
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => router.push('/subscription')}
+              >
                 {tSettings('upgradeToPro')}
               </Button>
             )}
