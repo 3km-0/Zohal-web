@@ -1347,6 +1347,7 @@ export default function WorkspaceCockpitPage() {
                     <RenovationTab
                       opportunity={selectedOpportunity}
                       scenario={scenario}
+                      underwriting={underwriting}
                       saving={scenarioBusy}
                       generating={capexBusy}
                       error={capexError}
@@ -2516,30 +2517,32 @@ function ModelModule({
       {underwriting?.readout?.disclaimer ? <p className="mt-3 text-xs leading-5 text-text-muted">{underwriting.readout.disclaimer}</p> : null}
     </Panel>
   );
+  if (underwriting) {
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-5 [@media(min-width:1480px)]:grid-cols-[0.95fr_1.05fr]">
+          {controls}
+          <UnderwritingSummaryPanel underwriting={underwriting} />
+        </div>
+        <UnderwritingChartsGrid underwriting={underwriting} />
+        {readoutPanel}
+      </div>
+    );
+  }
   return (
     <div className="grid gap-5 [@media(min-width:1480px)]:grid-cols-[0.9fr_1.1fr]">
       <div className="space-y-5">
         {controls}
-        {underwriting ? <UnderwritingSummaryPanel underwriting={underwriting} /> : null}
         {readoutPanel}
       </div>
       <div className="space-y-5">
-        {underwriting ? (
-          <>
-            <UnderwritingChartsGrid underwriting={underwriting} />
-            <ScenarioCharts scenario={scenario} />
-          </>
-        ) : (
-          <>
-            <div className="grid min-w-0 gap-3 md:grid-cols-2">
-              <OutputMetric label={t('equityRequired')} value={formatSAR.format(returns.equity)} hot />
-              <OutputMetric label={t('annualCashFlow')} value={formatSAR.format(returns.cashFlow)} />
-              <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
-              <OutputMetric label={t('baseIrr')} value={pct(returns.irr)} hot />
-            </div>
-            <ScenarioCharts scenario={scenario} />
-          </>
-        )}
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+          <OutputMetric label={t('equityRequired')} value={formatSAR.format(returns.equity)} hot />
+          <OutputMetric label={t('annualCashFlow')} value={formatSAR.format(returns.cashFlow)} />
+          <OutputMetric label={t('cashOnCash')} value={pct(returns.coc)} />
+          <OutputMetric label={t('baseIrr')} value={pct(returns.irr)} hot />
+        </div>
+        <ScenarioCharts scenario={scenario} />
       </div>
     </div>
   );
@@ -2634,7 +2637,6 @@ function UnderwritingChartsGrid({ underwriting }: { underwriting: UnderwritingRu
       <CapexUnderwritingChart capex={underwriting.capex} />
       <PurchaseSensitivityChart points={underwriting.sensitivity?.purchase_price || []} maxBid={summary.max_bid ?? null} currentAsk={summary.current_ask ?? null} />
       <BreakdownChart title={t('mandateFitBreakdown')} rows={underwriting.mandate_fit?.components || []} />
-      <BreakdownChart title={t('renovationConfidence')} rows={underwriting.renovation_confidence?.factors || []} />
     </div>
   );
 }
@@ -2670,8 +2672,6 @@ function FinancingStructureChart({ underwriting }: { underwriting: UnderwritingR
   const equity = financing?.equity_required ?? 0;
   const total = Math.max(1, debt + equity);
   const refi = financing?.refinance;
-  const ltvSensitivity = underwriting.sensitivity?.financing_ltv || [];
-  const maxImpact = Math.max(0.01, ...ltvSensitivity.map((point) => Math.abs(point.irr || 0)));
   return (
     <Panel className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -2699,6 +2699,12 @@ function FinancingStructureChart({ underwriting }: { underwriting: UnderwritingR
           </div>
         </div>
       </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <OutputMini label={t('annualDebtService')} value={sarMaybe(financing?.annual_debt_service)} />
+        <OutputMini label={t('debtServiceCoverage')} value={typeof financing?.debt_service_coverage_ratio === 'number' ? financing.debt_service_coverage_ratio.toFixed(2) : '--'} hot />
+        <OutputMini label={t('afterRepairValue')} value={sarMaybe(financing?.after_repair_value)} />
+        <OutputMini label={t('exitValue')} value={sarMaybe(financing?.exit_price)} />
+      </div>
       {refi?.enabled ? (
         <div className="mt-4 rounded-[14px] border border-[rgba(var(--highlight-rgb),0.18)] bg-highlight/10 p-3">
           <div className="grid gap-3 text-xs sm:grid-cols-3">
@@ -2715,19 +2721,6 @@ function FinancingStructureChart({ underwriting }: { underwriting: UnderwritingR
               <p className="mt-1 font-mono text-text">{sarMaybe(refi.annual_debt_service)}</p>
             </div>
           </div>
-        </div>
-      ) : null}
-      {ltvSensitivity.length ? (
-        <div className="mt-4 space-y-2">
-          {ltvSensitivity.map((point) => (
-            <div key={point.ltv_pct} className="grid grid-cols-[44px_1fr_54px] items-center gap-3 text-xs">
-              <span className="font-mono text-text-soft">{point.ltv_pct.toFixed(0)}%</span>
-              <div className="h-2 rounded-full bg-border">
-                <div className={cn('h-2 rounded-full', (point.irr ?? -1) >= (underwriting.summary?.target_irr ?? Infinity) ? 'bg-accent' : 'bg-highlight')} style={{ width: `${Math.max(4, Math.abs(point.irr || 0) / maxImpact * 100)}%` }} />
-              </div>
-              <span className="font-mono text-text">{pctMaybe(point.irr)}</span>
-            </div>
-          ))}
         </div>
       ) : null}
     </Panel>
@@ -3079,11 +3072,13 @@ function CapexRangeBar({ estimate }: { estimate: RenovationCapexEstimate }) {
 function RenovationModule({
   opportunity,
   scenario,
+  underwriting,
   events,
   onRequestQuote,
 }: {
   opportunity: OpportunityRow | null;
   scenario: ScenarioState | null;
+  underwriting: UnderwritingRun | null;
   events: RenovationEstimateEventRow[];
   onRequestQuote: () => void;
 }) {
@@ -3153,6 +3148,9 @@ function RenovationModule({
       {estimate?.assumptions?.length ? <NoticeList title={t('assumptions')} items={estimate.assumptions} /> : null}
       {estimate?.missing_evidence?.length ? <NoticeList title={t('missingEvidence')} items={estimate.missing_evidence} /> : null}
       {estimate?.risks?.length ? <NoticeList title={t('risks')} items={estimate.risks} /> : null}
+      {underwriting?.renovation_confidence?.factors?.length ? (
+        <BreakdownChart title={t('renovationConfidence')} rows={underwriting.renovation_confidence.factors} />
+      ) : null}
       {returnsBase && returnsHigh ? (
         <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-text-soft">{t('scenarioImpact')}</p>
@@ -3201,6 +3199,7 @@ function NoticeList({ title, items }: { title: string; items: RenovationCapexNot
 function RenovationTab({
   opportunity,
   scenario,
+  underwriting,
   saving,
   generating,
   error,
@@ -3212,6 +3211,7 @@ function RenovationTab({
 }: {
   opportunity: OpportunityRow | null;
   scenario: ScenarioState | null;
+  underwriting: UnderwritingRun | null;
   saving: boolean;
   generating: boolean;
   error: string | null;
@@ -3289,7 +3289,7 @@ function RenovationTab({
           {saving ? t('savingAssumptions') : t('saveAssumptions')}
         </button>
       </Panel>
-      <RenovationModule opportunity={opportunity} scenario={scenario} events={events} onRequestQuote={onRequestQuote} />
+      <RenovationModule opportunity={opportunity} scenario={scenario} underwriting={underwriting} events={events} onRequestQuote={onRequestQuote} />
     </div>
   );
 }
