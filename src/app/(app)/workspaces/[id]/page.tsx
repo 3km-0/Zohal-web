@@ -2415,103 +2415,118 @@ function ModelModule({
   const arvMin = 0;
   const arvMax = Math.max(scenario.arv, scenario.price * 1.8, scenario.price + scenario.renovation * 2, arvMin + 10000);
   const refiYearMax = Math.max(1, scenario.hold - 1);
-  return (
-    <div className="grid gap-5 [@media(min-width:1780px)]:grid-cols-[0.95fr_1.05fr]">
-      <Panel className="p-4">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('underwritingTitle')}</p>
-        <h3 className="mt-1 text-xl font-semibold text-text">{t('underwritingKnobsTitle')}</h3>
-        <div className="mt-4 flex justify-start">
-          <div className="inline-flex w-fit rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-1">
-            {(['rent_hold', 'flip'] as const).map((strategy) => (
-              <button
-                key={strategy}
-                type="button"
-                onClick={() => setStrategy(strategy)}
-                className={cn(
-                  'rounded-[9px] px-3 py-2 text-xs font-semibold transition sm:text-sm',
-                  scenario.strategy === strategy ? 'bg-accent text-[color:var(--accent-text)] shadow-[0_0_16px_rgba(var(--accent-rgb),0.12)]' : 'text-text-soft hover:bg-surface hover:text-text',
-                )}
-              >
-                {t(strategy === 'flip' ? 'strategyFlip' : 'strategyRentHold')}
-              </button>
-            ))}
+  const controls = (
+    <Panel className="p-4">
+      <p className="font-mono text-xs uppercase tracking-[0.24em] text-highlight">{t('underwritingTitle')}</p>
+      <h3 className="mt-1 text-xl font-semibold text-text">{t('underwritingKnobsTitle')}</h3>
+      <div className="mt-4 flex justify-start">
+        <div className="inline-flex w-fit rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-1">
+          {(['rent_hold', 'flip'] as const).map((strategy) => (
+            <button
+              key={strategy}
+              type="button"
+              onClick={() => setStrategy(strategy)}
+              className={cn(
+                'rounded-[9px] px-3 py-2 text-xs font-semibold transition sm:text-sm',
+                scenario.strategy === strategy ? 'bg-accent text-[color:var(--accent-text)] shadow-[0_0_16px_rgba(var(--accent-rgb),0.12)]' : 'text-text-soft hover:bg-surface hover:text-text',
+              )}
+            >
+              {t(strategy === 'flip' ? 'strategyFlip' : 'strategyRentHold')}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={priceMin} max={priceMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
+        <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={renovationMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
+        {scenario.strategy === 'rent_hold' ? (
+          <>
+            <ScenarioSlider label={t('monthlyRent')} value={scenario.rent} min={rentMin} max={rentMax} step={500} format={(v) => formatSAR.format(v)} onChange={set('rent')} />
+            <ScenarioSlider label={t('vacancy')} value={scenario.vacancy} min={0} max={20} step={1} format={(v) => `${v}%`} onChange={set('vacancy')} />
+          </>
+        ) : null}
+        <ScenarioSlider label={t('holdPeriod')} value={scenario.hold} min={1} max={10} step={1} format={(v) => `${v} ${t('years')}`} onChange={set('hold')} />
+        <ScenarioSlider label={t(scenario.strategy === 'flip' ? 'exitUplift' : 'appreciation')} value={scenario.appreciation} min={scenario.strategy === 'flip' ? -5 : 0} max={scenario.strategy === 'flip' ? 35 : 10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
+        <ScenarioSlider label={t('financingRate')} value={scenario.financingRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('financingRate')} />
+        <ScenarioSlider label={t('targetIrr')} value={scenario.targetIrr} min={2} max={18} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('targetIrr')} />
+      </div>
+      <div className="mt-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.12)] bg-surface-alt/70">
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((open) => !open)}
+          className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+        >
+          <span>
+            <span className="block text-sm font-semibold text-text">{t('advancedFinancing')}</span>
+            <span className="mt-1 block text-xs leading-5 text-text-muted">{t('advancedFinancingHint')}</span>
+          </span>
+          <ChevronDown className={cn('h-4 w-4 text-text-soft transition', advancedOpen && 'rotate-180')} />
+        </button>
+        {advancedOpen ? (
+          <div className="grid gap-3 border-t border-[rgba(var(--accent-rgb),0.12)] p-3 md:grid-cols-2">
+            <ScenarioSlider label={t('ltv')} value={scenario.ltv} min={0} max={85} step={1} format={(v) => `${v.toFixed(0)}%`} onChange={set('ltv')} />
+            <ScenarioSlider label={t('afterRepairValue')} value={scenario.arv} min={arvMin} max={arvMax} step={10000} format={(v) => v > 0 ? formatSAR.format(v) : t('notSet')} onChange={set('arv')} />
+            {scenario.strategy === 'rent_hold' ? (
+              <div className="md:col-span-2 rounded-[14px] border border-[rgba(var(--highlight-rgb),0.16)] bg-highlight/10 p-3">
+                <label className="flex items-center justify-between gap-3">
+                  <span>
+                    <span className="block text-sm font-semibold text-text">{t('enableRefinance')}</span>
+                    <span className="mt-1 block text-xs leading-5 text-text-muted">{t('enableRefinanceHint')}</span>
+                  </span>
+                  <input className="h-5 w-5 accent-accent" type="checkbox" checked={scenario.refinanceEnabled} onChange={(event) => setRefinanceEnabled(event.target.checked)} />
+                </label>
+              </div>
+            ) : null}
+            {scenario.strategy === 'rent_hold' && scenario.refinanceEnabled ? (
+              <>
+                <ScenarioSlider label={t('refinanceYear')} value={Math.min(scenario.refinanceYear, refiYearMax)} min={1} max={refiYearMax} step={1} format={(v) => `${v.toFixed(0)} ${t('years')}`} onChange={set('refinanceYear')} />
+                <ScenarioSlider label={t('refinanceLtv')} value={scenario.refinanceLtv} min={0} max={85} step={1} format={(v) => `${v.toFixed(0)}%`} onChange={set('refinanceLtv')} />
+                <ScenarioSlider label={t('refinanceRate')} value={scenario.refinanceRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('refinanceRate')} />
+                <ScenarioSlider label={t('refinanceCost')} value={scenario.refinanceCost} min={0} max={4} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('refinanceCost')} />
+              </>
+            ) : null}
           </div>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <ScenarioSlider label={t('acquisitionPrice')} value={scenario.price} min={priceMin} max={priceMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('price')} />
-          <ScenarioSlider label={t('renovationBudget')} value={scenario.renovation} min={0} max={renovationMax} step={10000} format={(v) => formatSAR.format(v)} onChange={set('renovation')} />
-          {scenario.strategy === 'rent_hold' ? (
-            <>
-              <ScenarioSlider label={t('monthlyRent')} value={scenario.rent} min={rentMin} max={rentMax} step={500} format={(v) => formatSAR.format(v)} onChange={set('rent')} />
-              <ScenarioSlider label={t('vacancy')} value={scenario.vacancy} min={0} max={20} step={1} format={(v) => `${v}%`} onChange={set('vacancy')} />
-            </>
-          ) : null}
-          <ScenarioSlider label={t('holdPeriod')} value={scenario.hold} min={1} max={10} step={1} format={(v) => `${v} ${t('years')}`} onChange={set('hold')} />
-          <ScenarioSlider label={t(scenario.strategy === 'flip' ? 'exitUplift' : 'appreciation')} value={scenario.appreciation} min={scenario.strategy === 'flip' ? -5 : 0} max={scenario.strategy === 'flip' ? 35 : 10} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('appreciation')} />
-          <ScenarioSlider label={t('financingRate')} value={scenario.financingRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('financingRate')} />
-          <ScenarioSlider label={t('targetIrr')} value={scenario.targetIrr} min={2} max={18} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('targetIrr')} />
-        </div>
-        <div className="mt-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.12)] bg-surface-alt/70">
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen((open) => !open)}
-            className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
-          >
-            <span>
-              <span className="block text-sm font-semibold text-text">{t('advancedFinancing')}</span>
-              <span className="mt-1 block text-xs leading-5 text-text-muted">{t('advancedFinancingHint')}</span>
-            </span>
-            <ChevronDown className={cn('h-4 w-4 text-text-soft transition', advancedOpen && 'rotate-180')} />
-          </button>
-          {advancedOpen ? (
-            <div className="grid gap-3 border-t border-[rgba(var(--accent-rgb),0.12)] p-3 md:grid-cols-2">
-              <ScenarioSlider label={t('ltv')} value={scenario.ltv} min={0} max={85} step={1} format={(v) => `${v.toFixed(0)}%`} onChange={set('ltv')} />
-              <ScenarioSlider label={t('afterRepairValue')} value={scenario.arv} min={arvMin} max={arvMax} step={10000} format={(v) => v > 0 ? formatSAR.format(v) : t('notSet')} onChange={set('arv')} />
-              {scenario.strategy === 'rent_hold' ? (
-                <div className="md:col-span-2 rounded-[14px] border border-[rgba(var(--highlight-rgb),0.16)] bg-highlight/10 p-3">
-                  <label className="flex items-center justify-between gap-3">
-                    <span>
-                      <span className="block text-sm font-semibold text-text">{t('enableRefinance')}</span>
-                      <span className="mt-1 block text-xs leading-5 text-text-muted">{t('enableRefinanceHint')}</span>
-                    </span>
-                    <input className="h-5 w-5 accent-accent" type="checkbox" checked={scenario.refinanceEnabled} onChange={(event) => setRefinanceEnabled(event.target.checked)} />
-                  </label>
-                </div>
-              ) : null}
-              {scenario.strategy === 'rent_hold' && scenario.refinanceEnabled ? (
-                <>
-                  <ScenarioSlider label={t('refinanceYear')} value={Math.min(scenario.refinanceYear, refiYearMax)} min={1} max={refiYearMax} step={1} format={(v) => `${v.toFixed(0)} ${t('years')}`} onChange={set('refinanceYear')} />
-                  <ScenarioSlider label={t('refinanceLtv')} value={scenario.refinanceLtv} min={0} max={85} step={1} format={(v) => `${v.toFixed(0)}%`} onChange={set('refinanceLtv')} />
-                  <ScenarioSlider label={t('refinanceRate')} value={scenario.refinanceRate} min={0} max={12} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('refinanceRate')} />
-                  <ScenarioSlider label={t('refinanceCost')} value={scenario.refinanceCost} min={0} max={4} step={0.1} format={(v) => `${v.toFixed(1)}%`} onChange={set('refinanceCost')} />
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void onSave(scenario)}
-            className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? t('savingAssumptions') : t('saveAssumptions')}
-          </button>
-          <button
-            type="button"
-            disabled={running}
-            onClick={() => void onRunUnderwriting(scenario)}
-            className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {running ? t('runningUnderwriting') : t('runDealSimulation')}
-          </button>
-        </div>
-      </Panel>
+        ) : null}
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void onSave(scenario)}
+          className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt px-4 py-3 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? t('savingAssumptions') : t('saveAssumptions')}
+        </button>
+        <button
+          type="button"
+          disabled={running}
+          onClick={() => void onRunUnderwriting(scenario)}
+          className="rounded-[14px] bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {running ? t('runningUnderwriting') : t('runDealSimulation')}
+        </button>
+      </div>
+    </Panel>
+  );
+  const readoutPanel = (
+    <Panel className="border-accent/20 bg-accent/10 p-5">
+      <p className="text-sm leading-6 text-text">
+        {underwriting?.readout?.investor_summary || t('modelSensitivityNote')}
+      </p>
+      {underwriting?.readout?.disclaimer ? <p className="mt-3 text-xs leading-5 text-text-muted">{underwriting.readout.disclaimer}</p> : null}
+    </Panel>
+  );
+  return (
+    <div className="grid gap-5 [@media(min-width:1480px)]:grid-cols-[0.9fr_1.1fr]">
+      <div className="space-y-5">
+        {controls}
+        {underwriting ? <UnderwritingSummaryPanel underwriting={underwriting} /> : null}
+        {readoutPanel}
+      </div>
       <div className="space-y-5">
         {underwriting ? (
           <>
-            <UnderwritingDashboard underwriting={underwriting} />
+            <UnderwritingChartsGrid underwriting={underwriting} />
             <ScenarioCharts scenario={scenario} />
           </>
         ) : (
@@ -2525,12 +2540,6 @@ function ModelModule({
             <ScenarioCharts scenario={scenario} />
           </>
         )}
-        <Panel className="border-accent/20 bg-accent/10 p-5">
-          <p className="text-sm leading-6 text-text">
-            {underwriting?.readout?.investor_summary || t('modelSensitivityNote')}
-          </p>
-          {underwriting?.readout?.disclaimer ? <p className="mt-3 text-xs leading-5 text-text-muted">{underwriting.readout.disclaimer}</p> : null}
-        </Panel>
       </div>
     </div>
   );
@@ -2579,37 +2588,53 @@ function UnderwritingDashboard({ underwriting }: { underwriting: UnderwritingRun
   }
   return (
     <div className="space-y-5">
-      <Panel className="overflow-hidden p-0">
-        <div className="border-b border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 px-5 py-4">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('recommendationSummary')}</p>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h3 className="text-3xl font-black uppercase leading-none text-text">{summary.recommendation || t('notSet')}</h3>
-            <span className="rounded-[12px] border border-accent/25 bg-accent/10 px-3 py-2 font-mono text-xs font-semibold text-accent">
-              {t('mandateFit')}: {summary.mandate_fit_score ?? '--'} / 100
-            </span>
-          </div>
+      <UnderwritingSummaryPanel underwriting={underwriting} />
+      <UnderwritingChartsGrid underwriting={underwriting} />
+    </div>
+  );
+}
+
+function UnderwritingSummaryPanel({ underwriting }: { underwriting: UnderwritingRun }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const summary = underwriting.summary || {};
+  return (
+    <Panel className="overflow-hidden p-0">
+      <div className="border-b border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 px-5 py-4">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('recommendationSummary')}</p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <h3 className="text-3xl font-black uppercase leading-none text-text">{summary.recommendation || t('notSet')}</h3>
+          <span className="rounded-[12px] border border-accent/25 bg-accent/10 px-3 py-2 font-mono text-xs font-semibold text-accent">
+            {t('mandateFit')}: {summary.mandate_fit_score ?? '--'} / 100
+          </span>
         </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
-          <OutputMetric label={t('medianIrr')} value={pctMaybe(summary.median_irr)} hot />
-          <OutputMetric label={t('targetProbability')} value={pctMaybe(summary.probability_target_irr)} />
-          <OutputMetric label={t('capexOverrunRisk')} value={summary.capex_overrun_risk || '--'} />
-          <OutputMetric label={t('maxBid')} value={sarMaybe(summary.max_bid)} hot />
-        </div>
-        <div className="grid gap-3 border-t border-[rgba(var(--accent-rgb),0.12)] p-5 sm:grid-cols-3">
-          <DecisionBlock icon={AlertTriangle} title={t('mainRisk')} body={summary.main_risk || t('uncertainEmpty')} />
-          <DecisionBlock icon={TrendingUp} title={t('p10P90Irr')} body={`${pctMaybe(summary.p10_irr)} / ${pctMaybe(summary.p90_irr)}`} />
-          <DecisionBlock icon={CheckCircle2} title={t('nextAction')} body={summary.next_action || t('nextActionReview')} />
-        </div>
-      </Panel>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <ScenarioComparisonChart scenarios={underwriting.scenarios || []} target={summary.target_irr ?? null} />
-        <MonteCarloChart underwriting={underwriting} />
-        <FinancingStructureChart underwriting={underwriting} />
-        <CapexUnderwritingChart capex={underwriting.capex} />
-        <PurchaseSensitivityChart points={underwriting.sensitivity?.purchase_price || []} maxBid={summary.max_bid ?? null} currentAsk={summary.current_ask ?? null} />
-        <BreakdownChart title={t('mandateFitBreakdown')} rows={underwriting.mandate_fit?.components || []} />
-        <BreakdownChart title={t('renovationConfidence')} rows={underwriting.renovation_confidence?.factors || []} />
       </div>
+      <div className="grid gap-3 p-5 sm:grid-cols-2">
+        <OutputMetric label={t('medianIrr')} value={pctMaybe(summary.median_irr)} hot />
+        <OutputMetric label={t('targetProbability')} value={pctMaybe(summary.probability_target_irr)} />
+        <OutputMetric label={t('capexOverrunRisk')} value={summary.capex_overrun_risk || '--'} />
+        <OutputMetric label={t('maxBid')} value={sarMaybe(summary.max_bid)} hot />
+      </div>
+      <div className="grid gap-3 border-t border-[rgba(var(--accent-rgb),0.12)] p-5 md:grid-cols-3 [@media(min-width:1480px)]:grid-cols-1">
+        <DecisionBlock icon={AlertTriangle} title={t('mainRisk')} body={summary.main_risk || t('uncertainEmpty')} />
+        <DecisionBlock icon={TrendingUp} title={t('p10P90Irr')} body={`${pctMaybe(summary.p10_irr)} / ${pctMaybe(summary.p90_irr)}`} />
+        <DecisionBlock icon={CheckCircle2} title={t('nextAction')} body={summary.next_action || t('nextActionReview')} />
+      </div>
+    </Panel>
+  );
+}
+
+function UnderwritingChartsGrid({ underwriting }: { underwriting: UnderwritingRun }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const summary = underwriting.summary || {};
+  return (
+    <div className="grid gap-5 xl:grid-cols-2">
+      <ScenarioComparisonChart scenarios={underwriting.scenarios || []} target={summary.target_irr ?? null} />
+      <MonteCarloChart underwriting={underwriting} />
+      <FinancingStructureChart underwriting={underwriting} />
+      <CapexUnderwritingChart capex={underwriting.capex} />
+      <PurchaseSensitivityChart points={underwriting.sensitivity?.purchase_price || []} maxBid={summary.max_bid ?? null} currentAsk={summary.current_ask ?? null} />
+      <BreakdownChart title={t('mandateFitBreakdown')} rows={underwriting.mandate_fit?.components || []} />
+      <BreakdownChart title={t('renovationConfidence')} rows={underwriting.renovation_confidence?.factors || []} />
     </div>
   );
 }
