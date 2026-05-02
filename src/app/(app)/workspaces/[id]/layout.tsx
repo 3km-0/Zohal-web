@@ -45,8 +45,8 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
   const backHref = fromFolderId ? `/workspaces/folders/${encodeURIComponent(fromFolderId)}` : '/workspaces';
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]">
-      <div className="relative z-[200] border-b border-[rgba(var(--accent-rgb),0.16)] bg-background/90 px-4 py-3 backdrop-blur md:px-6 dark:bg-[#0A0C0A]/90">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[image:var(--console-bg)] bg-background text-text">
+      <div className="relative z-[200] border-b border-[rgba(var(--accent-rgb),0.16)] bg-background/90 px-4 py-3 backdrop-blur md:px-6">
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(260px,0.9fr)_minmax(440px,1.4fr)_auto] xl:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Link

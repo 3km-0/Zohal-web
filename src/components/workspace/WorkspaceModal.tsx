@@ -196,10 +196,10 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
       <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
 
       <Card
-        className="relative z-10 max-h-[92vh] w-full max-w-4xl overflow-hidden border-white/10 bg-[#05080d]/95 shadow-[0_32px_120px_rgba(0,0,0,0.55)] animate-slide-up"
+        className="relative z-10 max-h-[92vh] w-full max-w-4xl overflow-hidden border-border bg-surface shadow-[var(--shadowMd)] animate-slide-up"
         padding="none"
       >
-        <div className="flex items-start justify-between border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02))] p-5 sm:p-6">
+        <div className="flex items-start justify-between border-b border-border bg-[image:var(--panel-bg)] p-5 sm:p-6">
           <div>
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
               {isEditing ? tModal('editEyebrow') : tModal('eyebrow')}

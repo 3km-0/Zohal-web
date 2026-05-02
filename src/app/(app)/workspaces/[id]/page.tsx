@@ -338,35 +338,13 @@ type LiveFeedItem = {
   tone: LiveFeedTone;
 };
 
-const acquisitionObsidianStyle = {
-  '--bg': '#0A0F14',
-  '--surface': '#0F151B',
-  '--surface-alt': '#141C23',
-  '--surface-active': '#18222A',
-  '--text': '#F5F7EF',
-  '--text-soft': '#9EAFA6',
-  '--text-muted': '#748179',
-  '--border': 'rgba(255, 255, 255, 0.07)',
-  '--accent': '#B7F34A',
-  '--accent-rgb': '183, 243, 74',
-  '--accent-alt': '#D1FF76',
-  '--highlight': '#2FD7FF',
-  '--highlight-rgb': '47, 215, 255',
-  '--success': '#74D7A0',
-  '--warning': '#F0B33F',
-  '--accent-soft': 'rgba(183, 243, 74, 0.12)',
-  '--accent-dim': 'rgba(183, 243, 74, 0.055)',
-  '--grid-color': 'rgba(183, 243, 74, 0.028)',
-  '--grid-opacity': '0.12',
-  '--grid-size': '58px',
-  '--console-bg':
-    'radial-gradient(circle at 70% 20%, rgba(183, 243, 74, 0.07) 0%, transparent 35%), radial-gradient(circle at 25% 65%, rgba(47, 215, 255, 0.05) 0%, transparent 35%), linear-gradient(180deg, #0A0F14 0%, #080C10 100%)',
-  '--panel-bg':
-    'linear-gradient(180deg, #141C23 0%, #0A0F14 100%)',
-} as CSSProperties;
-
-const obsidianBorder = 'border-[rgba(255,255,255,0.07)]';
-const obsidianPanel = 'bg-[image:var(--panel-bg)] shadow-[0_12px_36px_rgba(0,0,0,.32),inset_0_1px_0_rgba(255,255,255,.04)]';
+// Borders and panel chrome for the acquisition workspace use the active
+// Zohal palette (editorial / obsidian / cockpit) via CSS variables instead of
+// hard-coded obsidian values, so the workspace adopts the same mood as the
+// rest of the app.
+const cockpitBorder = 'border-border';
+const cockpitPanel =
+  'bg-[image:var(--panel-bg)] shadow-[var(--shadowMd)] dark:shadow-[0_12px_36px_rgba(0,0,0,.32),inset_0_1px_0_rgba(255,255,255,.04)]';
 
 const moduleIcons: Record<CockpitModule, LucideIcon> = {
   overview: ShieldCheck,
@@ -1265,7 +1243,7 @@ export default function WorkspaceCockpitPage() {
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background text-text dark:bg-[image:var(--console-bg)]" style={acquisitionObsidianStyle}>
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[image:var(--console-bg)] bg-background text-text">
       {!loading ? (
         <HeaderProgressPortal targetId={headerProgressSlotId}>
           <ProgressTracker
@@ -1284,7 +1262,7 @@ export default function WorkspaceCockpitPage() {
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb),.04),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb),.055),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(var(--highlight-rgb),.035),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-[image:var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block">
           <BrandBlock />
           <BuyBoxCard
             workspace={workspace}
@@ -1751,7 +1729,7 @@ function CockpitHero({
   const displayTitle = cleanDisplayText(title);
   const thesis = investmentThesisFor(opportunity, t('heroAnalystThesis'));
   return (
-    <Panel className="relative overflow-hidden rounded-[28px] border-[rgba(255,255,255,0.07)] p-7" data-testid="acquisition-cockpit-hero">
+    <Panel className="relative overflow-hidden rounded-[28px] border-border p-7" data-testid="acquisition-cockpit-hero">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb),.055),transparent_36%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb),.045),transparent_32%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,.92fr)] xl:items-stretch">
@@ -1769,7 +1747,7 @@ function CockpitHero({
             {facts.area ? <TrustPill label={facts.area} tone="slate" /> : null}
             {latestUpdate ? <TrustPill label={formatRelativeTime(latestUpdate)} tone="slate" /> : null}
           </div>
-          <div className="mt-6 max-w-3xl rounded-r-[18px] border-l-2 border-accent/70 bg-[#0A0F14]/55 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
+          <div className="mt-6 max-w-3xl rounded-r-[18px] border-l-2 border-accent/70 bg-background/55 p-5 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('investmentThesis')}</p>
             <p className="mt-3 text-base leading-7 text-text-soft">
               {opportunity ? thesis : t('emptyPosture')}
@@ -1799,7 +1777,7 @@ function CockpitHero({
           </div>
         </div>
 
-        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-[rgba(255,255,255,0.07)] bg-[#0A0F14] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+        <div className="relative min-h-[310px] overflow-hidden rounded-[18px] border border-border bg-background shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
           {heroPhoto ? (
             <>
               <img
@@ -1832,7 +1810,7 @@ function CockpitHero({
         </div>
       </div>
       {mapOpen ? (
-        <div className="relative mt-6 overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0F14]">
+        <div className="relative mt-6 overflow-hidden rounded-[18px] border border-highlight/20 bg-background">
           <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
           <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
@@ -1961,7 +1939,7 @@ function ProgressTracker({
                   compact ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-sm',
                   completed && 'border-accent/45 bg-accent/18 text-accent',
                   active && !nodeBlocked && 'border-accent/65 bg-accent/14 text-accent shadow-[0_0_0_5px_var(--accent-dim),0_0_20px_rgba(var(--accent-rgb,183,243,74),.12)]',
-                  nodeBlocked && 'border-warning bg-warning text-[#0A0C0A] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(245,183,58,.18)]',
+                  nodeBlocked && 'border-warning bg-warning text-[color:var(--accent-text)] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(245,183,58,.18)]',
                   pending && 'border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] text-text-muted'
                 )}>
                   {nodeBlocked ? (
@@ -2086,7 +2064,7 @@ function CurrentBlockerBanner({
     <div className={cn('rounded-[14px] border p-4 shadow-[var(--shadowSm)]', blocked ? 'border-warning/35 bg-warning/12' : 'border-success/30 bg-success/10')}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]')}>
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[color:var(--accent-text)]' : 'bg-success text-[color:var(--accent-text)]')}>
             {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
           </span>
           <div>
@@ -2101,7 +2079,7 @@ function CurrentBlockerBanner({
           disabled={busy}
           className={cn(
             'rounded-[12px] px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
-            blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]'
+            blocked ? 'bg-warning text-[color:var(--accent-text)]' : 'bg-success text-[color:var(--accent-text)]'
           )}
         >
           {actionLabel}
@@ -2115,7 +2093,7 @@ function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (mo
   const t = useTranslations('workspaceCockpitPage.modules');
   const modules: CockpitModule[] = ['overview', 'model', 'openItems', 'renovation', 'outreach', 'offer'];
   return (
-    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-2 dark:bg-[#141816]/95">
+    <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-2">
       {modules.map((module) => {
         const Icon = moduleIcons[module];
         const selected = active === module;
@@ -3455,7 +3433,7 @@ function VisualCompanion({
       </div>
 
       {mode === 'map' ? (
-        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0F14]">
+        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-highlight/20 bg-background">
           <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
           <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
@@ -3504,7 +3482,7 @@ function VisualCompanion({
             </>
           ) : (
             <>
-              <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb,35,215,255),.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))] p-4">
+              <div className="rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-[radial-gradient(circle_at_25%_20%,rgba(var(--highlight-rgb),.18),transparent_32%),var(--panel-bg)] p-4">
                 <TrustPill label={t('photoEvidence')} tone="cyan" />
                 <p className="mt-4 text-sm leading-6 text-text-soft">{condition || t('photosEmpty')}</p>
               </div>
@@ -3621,7 +3599,7 @@ function WorkspaceCommandDrawer({
         <div onPointerDown={handleDragStart} aria-hidden="true" className="absolute inset-y-0 left-0 z-10 hidden w-2 cursor-col-resize touch-none items-center justify-center xl:flex">
           <div className={cn('h-10 w-1 rounded-full transition-colors', isDragging ? 'bg-accent' : 'bg-border hover:bg-accent/60')} />
         </div>
-        <div className="flex items-center justify-between border-b border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] px-4 py-3 dark:bg-[#0A0F14]">
+        <div className="flex items-center justify-between border-b border-[rgba(var(--accent-rgb),0.16)] bg-background px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-text">{t('evidencePaneTitle')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
@@ -3630,7 +3608,7 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-4 gap-1 border-b border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] p-2 dark:bg-[#141816]">
+        <div className="grid grid-cols-4 gap-1 border-b border-[rgba(var(--accent-rgb),0.16)] bg-background p-2">
           {tabs.map(({ key, label, icon: Icon }) => {
             const selected = activeTab === key;
             return (
@@ -3855,7 +3833,7 @@ function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
     <Panel className="p-4">
       <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.map')}</p>
       <h3 className="mt-1 text-xl font-semibold text-text">{title}</h3>
-        <div className="relative mt-4 min-h-[360px] overflow-hidden rounded-[18px] border border-highlight/20 bg-[#0A0F14]">
+        <div className="relative mt-4 min-h-[360px] overflow-hidden rounded-[18px] border border-highlight/20 bg-background">
         <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
         <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
         <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
@@ -4001,7 +3979,7 @@ function LiveFeedRail({
   const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
 
   return (
-    <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-[rgba(255,255,255,0.07)] bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),linear-gradient(180deg,rgba(20,28,35,.88),rgba(10,15,20,.96))] p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
+    <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-border bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
       <div className="space-y-4">
         <MandateActionsPanel
           openItems={openItems}
@@ -4096,7 +4074,7 @@ function MandateActionsPanel({
             <p className="font-mono text-xs uppercase tracking-[0.24em] text-text-soft">{t('mandateActions')}</p>
             <h3 className="mt-2 text-xl font-bold leading-tight text-text">{title}</h3>
           </div>
-          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]')}>
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[12px]', blocked ? 'bg-warning text-[color:var(--accent-text)]' : 'bg-success text-[color:var(--accent-text)]')}>
             {blocked ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-5 w-5" />}
           </span>
         </div>
@@ -4122,7 +4100,7 @@ function MandateActionsPanel({
           disabled={busy}
           className={cn(
             'mt-3 w-full rounded-[14px] px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
-            blocked ? 'bg-warning text-[#0A0C0A]' : 'bg-success text-[#0A0C0A]'
+            blocked ? 'bg-warning text-[color:var(--accent-text)]' : 'bg-success text-[color:var(--accent-text)]'
           )}
         >
           {busy ? t('actionDock.working') : actionLabel}
@@ -4163,7 +4141,7 @@ function LiveFeedRow({ item }: { item: LiveFeedItem }) {
     lime: 'border-accent/18 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]',
     cyan: 'border-highlight/18 shadow-[inset_0_1px_0_rgba(var(--highlight-rgb),.05)]',
     warn: 'border-warning/22 shadow-[inset_0_1px_0_rgba(255,199,89,.06)]',
-    neutral: 'border-[rgba(var(--accent-rgb),0.12)] shadow-[inset_0_1px_0_rgba(255,255,255,.035)]',
+    neutral: 'border-[rgba(var(--accent-rgb),0.12)] shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.04)]',
   }[item.tone];
   const dotClass = {
     lime: 'bg-accent shadow-[0_0_12px_var(--accent-soft)]',
@@ -4172,7 +4150,7 @@ function LiveFeedRow({ item }: { item: LiveFeedItem }) {
     neutral: 'bg-text-muted',
   }[item.tone];
   return (
-    <article className={cn('rounded-[18px] border bg-[linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))] px-4 py-3.5 transition hover:border-accent/28', toneBorder)}>
+    <article className={cn('rounded-[18px] border bg-surface-alt/40 px-4 py-3.5 transition hover:border-accent/28', toneBorder)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClass)} />
@@ -4718,7 +4696,7 @@ function Panel({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-[20px] border', obsidianBorder, obsidianPanel, 'backdrop-blur', className)}
+      className={cn('rounded-[20px] border', cockpitBorder, cockpitPanel, 'backdrop-blur', className)}
       {...props}
     >
       {children}
