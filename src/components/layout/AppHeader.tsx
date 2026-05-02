@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Crown, FolderOpen, House, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Crown, FolderOpen, House, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ import { useAppShell } from './AppShellContext';
 import {
   applyThemeMode,
   DEFAULT_THEME_MODE,
+  nextThemeMode as nextThemeModeFn,
   resolveThemeMode,
   subscribeToThemeMode,
   type ThemeMode,
@@ -52,11 +53,15 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
     return subscribeToThemeMode(setThemeMode);
   }, []);
 
-  const nextThemeMode: ThemeMode = themeMode === 'light' ? 'dark' : 'light';
+  const upcomingThemeMode: ThemeMode = nextThemeModeFn(themeMode);
   const themeToggleLabel =
-    themeMode === 'light'
-      ? tSettingsPage('switchToDarkMode')
-      : tSettingsPage('switchToLightMode');
+    upcomingThemeMode === 'light'
+      ? tSettingsPage('switchToLightMode')
+      : upcomingThemeMode === 'cockpit'
+        ? tSettingsPage('switchToCockpitMode')
+        : tSettingsPage('switchToDarkMode');
+  const ThemeToggleIcon =
+    upcomingThemeMode === 'light' ? Sun : upcomingThemeMode === 'cockpit' ? Sparkles : Moon;
 
   return (
     <header
@@ -98,13 +103,15 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
 
         <button
           type="button"
-          onClick={() => applyThemeMode(nextThemeMode)}
+          onClick={() => applyThemeMode(upcomingThemeMode)}
           className="inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-zohal-sm border border-border bg-surface-alt text-text-soft transition-colors hover:border-accent hover:bg-surface hover:text-text"
           aria-label={themeToggleLabel}
           title={themeToggleLabel}
           data-testid="app-header-theme-toggle"
+          data-theme-current={themeMode}
+          data-theme-next={upcomingThemeMode}
         >
-          {themeMode === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          <ThemeToggleIcon className="h-4 w-4" />
         </button>
 
         {/* Language Switcher */}

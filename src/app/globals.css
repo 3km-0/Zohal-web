@@ -4,194 +4,75 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Zohal Design Language - CSS Variables */
-:root {
-  /* Light Theme (Default) */
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-alt: #fafaf9;
-  --text: #1c1917;
-  --text-soft: #78716c;
-  --text-muted: #a8a29e;
-  --border: #e7e5e4;
-  --accent: #4f46e5;
-  --accent-alt: #4338ca;
-  --success: #16a34a;
-  --error: #dc2626;
-  --warning: #b45309;
-  --warning-soft: rgba(180, 83, 9, 0.06);
-  --highlight: #312e81;
-  --accent-soft: rgba(79, 70, 229, 0.07);
-  --accent-dim: rgba(79, 70, 229, 0.04);
-  --accent-text: #ffffff;
-  --button-primary-bg: #1c1917;
-  --button-primary-bg-hover: #292524;
-  --button-primary-text: #ffffff;
-  --grid-color: transparent;
-  --grid-opacity: 0;
-  --grid-size: 20px;
+/*
+ * Zohal Design Language - CSS Variables
+ *
+ * Three palettes share the same token surface:
+ *   - zohal-light    Editorial Acquisition Desk (cream / paper / brass / ink)
+ *   - zohal-dark     Obsidian Acquisition Console (existing lime / cyan)
+ *   - zohal-cockpit  Institutional Acquisition Cockpit (charcoal / brass / ivory)
+ */
 
-  /* Font Variables */
+/* Shared font + radii tokens (palette-independent) */
+:root {
   --font-source-serif: 'Instrument Serif', Georgia, serif;
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-instrument-serif: 'Instrument Serif', Georgia, serif;
   --font-plus-jakarta: 'Inter', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
 
-  /* Shared semantic radii + shadows */
   --rSm: 6px;
   --rMd: 10px;
   --rLg: 16px;
   --rPill: 999px;
-  --shadowSm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadowMd: 0 4px 12px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.06);
-  --nav-bg-top: rgba(255, 255, 255, 0.78);
-  --nav-bg-scrolled: rgba(255, 255, 255, 0.92);
-  --nav-border: rgba(28, 25, 23, 0.08);
 }
 
-/* Dark Theme (Default app mode) */
-[data-theme='dark'] {
-  --bg: #0a0f14;
-  --surface: #0f151b;
-  --surface-alt: #141c23;
-  --text: #f5f7ef;
-  --text-soft: #9eafa6;
-  --text-muted: #748179;
-  --border: rgba(255, 255, 255, 0.07);
-  --accent: #b7f34a;
-  --highlight: #2fd7ff;
-  --accent-alt: #d1ff76;
-  --success: #74d7a0;
-  --error: #f05a5a;
-  --warning: #f0b33f;
-  --warning-soft: rgba(240, 179, 63, 0.12);
-  --accent-soft: rgba(183, 243, 74, 0.12);
-  --accent-dim: rgba(183, 243, 74, 0.055);
-  --accent-text: #0a0c0a;
-  --button-primary-bg: #b7f34a;
-  --button-primary-bg-hover: #d1ff76;
-  --button-primary-text: #0a0c0a;
-  --grid-color: rgba(183, 243, 74, 0.028);
-  --grid-opacity: 0.12;
-  --grid-size: 58px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 36px rgba(0, 0, 0, 0.32);
-  --shadowMd: 0 12px 36px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --nav-bg-top: rgba(10, 15, 20, 0.78);
-  --nav-bg-scrolled: rgba(10, 15, 20, 0.92);
-  --nav-border: rgba(255, 255, 255, 0.07);
-}
-
-[data-theme='zohal-light'] {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-alt: #fafaf9;
-
-  --text: #1c1917;
-  --text-soft: #78716c;
-  --text-muted: #a8a29e;
-
-  --border: #e7e5e4;
-
-  --accent: #4f46e5;
-  --accent-alt: #4338ca;
-  --highlight: #312e81;
-  --success: #16a34a;
-  --error: #b91c1c;
-  --warning: #b45309;
-  --warning-soft: rgba(180, 83, 9, 0.06);
-  --accent-soft: rgba(79, 70, 229, 0.07);
-  --accent-dim: rgba(79, 70, 229, 0.04);
-  --accent-text: #ffffff;
-  --grid-color: transparent;
-  --grid-opacity: 0;
-  --grid-size: 20px;
-
-  --shadowSm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadowMd: 0 4px 12px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.06);
-
-  --nav-bg-top: rgba(255, 255, 255, 0.78);
-  --nav-bg-scrolled: rgba(255, 255, 255, 0.92);
-  --nav-border: rgba(28, 25, 23, 0.08);
-}
-
-[data-theme='zohal-dark'] {
-  --bg: #0a0f14;
-  --surface: #0f151b;
-  --surface-alt: #141c23;
-
-  --text: #f5f7ef;
-  --text-soft: #9eafa6;
-  --text-muted: #748179;
-
-  --border: rgba(255, 255, 255, 0.07);
-
-  --accent: #b7f34a;
-  --accent-alt: #d1ff76;
-  --highlight: #2fd7ff;
-  --success: #74d7a0;
-  --error: #f05a5a;
-  --warning: #f0b33f;
-  --warning-soft: rgba(240, 179, 63, 0.12);
-  --accent-soft: rgba(183, 243, 74, 0.12);
-  --accent-dim: rgba(183, 243, 74, 0.055);
-  --accent-text: #0a0c0a;
-  --grid-color: rgba(183, 243, 74, 0.028);
-  --grid-opacity: 0.12;
-  --grid-size: 58px;
-
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 36px rgba(0, 0, 0, 0.32);
-  --shadowMd: 0 12px 36px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-
-  --nav-bg-top: rgba(10, 15, 20, 0.78);
-  --nav-bg-scrolled: rgba(10, 15, 20, 0.92);
-  --nav-border: rgba(255, 255, 255, 0.07);
-}
-
-/* Zohal Obsidian acquisition design language. */
+/* Editorial Acquisition Desk (light) — replaces the previous white default */
 :root,
 [data-theme='zohal-light'] {
-  --bg: #0a0f14;
-  --surface: #0f151b;
-  --surface-alt: #141c23;
-  --surface-active: #18222a;
-  --surface-nested: #0f1a14;
-  --text: #f5f7ef;
-  --text-soft: #9eafa6;
-  --text-muted: #748179;
-  --text-faint: #566156;
-  --border: rgba(255, 255, 255, 0.07);
-  --accent: #b7f34a;
-  --accent-rgb: 183, 243, 74;
-  --accent-alt: #d1ff76;
-  --highlight: #2fd7ff;
-  --highlight-rgb: 47, 215, 255;
-  --success: #74d7a0;
-  --error: #f05a5a;
-  --warning: #f0b33f;
-  --warning-soft: rgba(240, 179, 63, 0.12);
-  --accent-soft: rgba(183, 243, 74, 0.12);
-  --accent-dim: rgba(183, 243, 74, 0.055);
-  --accent-text: #0a0c0a;
-  --button-primary-bg: #b7f34a;
-  --button-primary-bg-hover: #d1ff76;
-  --button-primary-text: #0a0c0a;
-  --grid-color: rgba(183, 243, 74, 0.028);
-  --grid-opacity: 0.12;
-  --grid-size: 58px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 36px rgba(0, 0, 0, 0.32);
-  --shadowMd: 0 12px 36px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --nav-bg-top: rgba(10, 15, 20, 0.78);
-  --nav-bg-scrolled: rgba(10, 15, 20, 0.92);
-  --nav-border: rgba(255, 255, 255, 0.07);
+  --bg: #f4f0e8;
+  --surface: #fbf8f2;
+  --surface-alt: #eee8dd;
+  --surface-active: #ffffff;
+  --surface-nested: #f0eadf;
+  --text: #22211f;
+  --text-soft: #5c564d;
+  --text-muted: #837b70;
+  --text-faint: #a59b8a;
+  --border: #d8d0c2;
+  --border-strong: #b9ae9c;
+  --accent: #b2793e;
+  --accent-rgb: 178, 121, 62;
+  --accent-alt: #c98b41;
+  --highlight: #c7642b;
+  --highlight-rgb: 199, 100, 43;
+  --success: #4f7d4a;
+  --error: #b8412b;
+  --warning: #b07a25;
+  --warning-soft: rgba(176, 122, 37, 0.12);
+  --accent-soft: rgba(178, 121, 62, 0.1);
+  --accent-dim: rgba(178, 121, 62, 0.05);
+  --accent-text: #fbf8f2;
+  --button-primary-bg: #b2793e;
+  --button-primary-bg-hover: #9a6532;
+  --button-primary-text: #fbf8f2;
+  --grid-color: rgba(34, 33, 31, 0.04);
+  --grid-opacity: 0.45;
+  --grid-size: 28px;
+  --shadowSm: 0 1px 2px rgba(34, 33, 31, 0.04), 0 1px 3px rgba(34, 33, 31, 0.05);
+  --shadowMd: 0 4px 12px rgba(34, 33, 31, 0.05), 0 18px 48px rgba(34, 33, 31, 0.07);
+  --nav-bg-top: rgba(244, 240, 232, 0.78);
+  --nav-bg-scrolled: rgba(244, 240, 232, 0.94);
+  --nav-border: rgba(34, 33, 31, 0.1);
   --console-bg:
-    radial-gradient(circle at 70% 20%, rgba(183, 243, 74, 0.07) 0%, transparent 35%),
-    radial-gradient(circle at 25% 65%, rgba(47, 215, 255, 0.05) 0%, transparent 35%),
-    linear-gradient(180deg, #0a0f14 0%, #080c10 100%);
+    radial-gradient(circle at 75% 18%, rgba(178, 121, 62, 0.06) 0%, transparent 38%),
+    radial-gradient(circle at 22% 70%, rgba(199, 100, 43, 0.04) 0%, transparent 40%),
+    linear-gradient(180deg, #f4f0e8 0%, #ede5d6 100%);
   --panel-bg:
-    linear-gradient(180deg, #141c23 0%, #0a0f14 100%);
+    linear-gradient(180deg, #fbf8f2 0%, #f0eadf 100%);
 }
 
+/* Obsidian Acquisition Console (existing dark — preserved) */
 [data-theme='dark'],
 [data-theme='zohal-dark'] {
   --bg: #0a0f14;
@@ -204,6 +85,7 @@
   --text-muted: #748179;
   --text-faint: #566156;
   --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
   --accent: #b7f34a;
   --accent-rgb: 183, 243, 74;
   --accent-alt: #d1ff76;
@@ -233,6 +115,52 @@
     linear-gradient(180deg, #0a0f14 0%, #080c10 100%);
   --panel-bg:
     linear-gradient(180deg, #141c23 0%, #0a0f14 100%);
+}
+
+/* Institutional Acquisition Cockpit (new charcoal / brass dark) */
+[data-theme='zohal-cockpit'] {
+  --bg: #0f1113;
+  --surface: #181a1c;
+  --surface-alt: #131619;
+  --surface-active: #1d2023;
+  --surface-nested: #15171a;
+  --text: #f2eee8;
+  --text-soft: #b9b1a5;
+  --text-muted: #8a857d;
+  --text-faint: #6a655d;
+  --border: #2c2e31;
+  --border-strong: #3a3d41;
+  --accent: #b8935a;
+  --accent-rgb: 184, 147, 90;
+  --accent-alt: #d4af37;
+  --highlight: #d4af37;
+  --highlight-rgb: 212, 175, 55;
+  --success: #8aa37a;
+  --error: #c9695a;
+  --warning: #d4af37;
+  --warning-soft: rgba(212, 175, 55, 0.12);
+  --accent-soft: rgba(184, 147, 90, 0.14);
+  --accent-dim: rgba(184, 147, 90, 0.06);
+  --accent-text: #0f1113;
+  --button-primary-bg: #b8935a;
+  --button-primary-bg-hover: #c9a368;
+  --button-primary-text: #0f1113;
+  --brass-border: #8f744b;
+  --muted-bronze: #7e6a4a;
+  --grid-color: rgba(212, 175, 55, 0.025);
+  --grid-opacity: 0.14;
+  --grid-size: 48px;
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadowMd: 0 18px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --nav-bg-top: rgba(15, 17, 19, 0.8);
+  --nav-bg-scrolled: rgba(15, 17, 19, 0.94);
+  --nav-border: #2c2e31;
+  --console-bg:
+    radial-gradient(circle at 78% 18%, rgba(184, 147, 90, 0.08) 0%, transparent 38%),
+    radial-gradient(circle at 20% 72%, rgba(212, 175, 55, 0.04) 0%, transparent 42%),
+    linear-gradient(180deg, #0f1113 0%, #0a0c0e 100%);
+  --panel-bg:
+    linear-gradient(180deg, #181a1c 0%, #131619 100%);
 }
 
 /* Base Styles */

@@ -16,6 +16,7 @@ vi.mock('next-intl', () => ({
       openMenu: 'Open menu',
       switchToDarkMode: 'Switch to dark mode',
       switchToLightMode: 'Switch to light mode',
+      switchToCockpitMode: 'Switch to cockpit mode',
     })[key] ?? key,
 }));
 
@@ -48,17 +49,28 @@ vi.mock('next/link', () => ({
 describe('AppHeader', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    document.documentElement.setAttribute('data-theme', 'zohal-light');
+    document.documentElement.setAttribute('data-theme', 'zohal-dark');
   });
 
-  it('toggles from Obsidian dark to light mode from the header control', () => {
+  it('cycles light → dark → cockpit → light from the header control', () => {
+    window.localStorage.setItem('theme', 'light');
+
     render(React.createElement(AppHeader, { title: 'Workspace' }));
 
     const toggle = screen.getByTestId('app-header-theme-toggle');
+    expect(toggle).toHaveAttribute('aria-label', 'Switch to dark mode');
+
+    fireEvent.click(toggle);
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-dark');
+    expect(window.localStorage.getItem('theme')).toBe('dark');
+    expect(toggle).toHaveAttribute('aria-label', 'Switch to cockpit mode');
+
+    fireEvent.click(toggle);
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-cockpit');
+    expect(window.localStorage.getItem('theme')).toBe('cockpit');
     expect(toggle).toHaveAttribute('aria-label', 'Switch to light mode');
 
     fireEvent.click(toggle);
-
     expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-light');
     expect(window.localStorage.getItem('theme')).toBe('light');
     expect(toggle).toHaveAttribute('aria-label', 'Switch to dark mode');

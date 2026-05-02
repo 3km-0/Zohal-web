@@ -1,19 +1,35 @@
 'use client';
 
-export type ThemeMode = 'light' | 'dark';
-export type DataTheme = 'zohal-light' | 'zohal-dark';
+/**
+ * Three Zohal palettes share the same token surface:
+ *   - 'light'    Editorial Acquisition Desk (cream / paper / brass / ink)
+ *   - 'dark'     Obsidian Acquisition Console (existing lime / cyan)
+ *   - 'cockpit'  Institutional Acquisition Cockpit (charcoal / brass / ivory)
+ */
+export type ThemeMode = 'light' | 'dark' | 'cockpit';
+export type DataTheme = 'zohal-light' | 'zohal-dark' | 'zohal-cockpit';
+
+export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'cockpit'] as const;
 
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_CHANGE_EVENT = 'zohal-theme-change';
 export const DEFAULT_THEME_MODE: ThemeMode = 'dark';
 
 export function normalizeThemeMode(value: string | null | undefined): ThemeMode | null {
-  if (value === 'light' || value === 'dark') return value;
+  if (value === 'light' || value === 'dark' || value === 'cockpit') return value;
   return null;
 }
 
 export function themeModeToDataTheme(theme: ThemeMode): DataTheme {
-  return theme === 'light' ? 'zohal-light' : 'zohal-dark';
+  switch (theme) {
+    case 'light':
+      return 'zohal-light';
+    case 'cockpit':
+      return 'zohal-cockpit';
+    case 'dark':
+    default:
+      return 'zohal-dark';
+  }
 }
 
 export function readThemeModeFromStorage(): ThemeMode | null {
@@ -60,6 +76,11 @@ export function initializeThemeMode(): ThemeMode {
   const theme = resolveThemeMode();
   applyThemeMode(theme, { persist: true, notify: false });
   return theme;
+}
+
+export function nextThemeMode(theme: ThemeMode): ThemeMode {
+  const idx = THEME_MODES.indexOf(theme);
+  return THEME_MODES[(idx + 1) % THEME_MODES.length];
 }
 
 export function subscribeToThemeMode(callback: (theme: ThemeMode) => void): () => void {
