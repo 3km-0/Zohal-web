@@ -1332,7 +1332,7 @@ export default function WorkspaceCockpitPage() {
           />
         </aside>
 
-        <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+        <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="mx-auto flex min-h-full w-full max-w-[1840px] flex-col gap-5 p-4 pb-10 lg:p-6 lg:pb-12">
             {loading ? (
               <div className="grid min-h-[520px] place-items-center">
@@ -1434,15 +1434,12 @@ export default function WorkspaceCockpitPage() {
           <LiveFeedRail
             events={events}
             latestUpdate={latestUpdate}
-            documentCount={documentCount}
             opportunity={selectedOpportunity}
             missingItems={selectedMissing}
-            claims={claims}
             openItems={missingCount}
             confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
             primaryActionResult={primaryAction.result}
             hasActionBlocker={hasActionBlocker}
-            onOpenDrawer={openDrawer}
           />
         ) : null}
 
@@ -1464,7 +1461,7 @@ export default function WorkspaceCockpitPage() {
               className="absolute bottom-6 right-6 z-30 inline-flex rounded-[14px] border border-accent/30 bg-accent px-4 py-3 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_28px_var(--accent-soft)] min-[1440px]:hidden"
             >
               <PanelRightOpen className="mr-2 h-4 w-4" />
-              {t('openLiveFeed')}
+              {t('openEvidencePane')}
             </button>
           )}
 	      </div>
@@ -3852,33 +3849,26 @@ function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
 function LiveFeedRail({
   events,
   latestUpdate,
-  documentCount,
   opportunity,
   missingItems,
-  claims,
   openItems,
   confidence,
   primaryActionResult,
   hasActionBlocker,
-  onOpenDrawer,
 }: {
   events: AcquisitionEventRow[];
   latestUpdate: string | null;
-  documentCount: number;
   opportunity: OpportunityRow | null;
   missingItems: string[];
-  claims: AcquisitionClaimRow[];
   openItems: number;
   confidence: string;
   primaryActionResult: string;
   hasActionBlocker: boolean;
-  onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const marketSignal = metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']);
   const brokerSignal = metadataString(opportunity, ['broker_note', 'counterparty_note', 'seller_note']);
   const titleSignal = metadataString(opportunity, ['title_note', 'title_status', 'deed_status']);
-  const sourceCount = Math.max(documentCount, claims.length);
   const selectedEvents = events
     .filter((event) => !opportunity?.id || !event.opportunity_id || event.opportunity_id === opportunity.id)
     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
@@ -3909,16 +3899,8 @@ function LiveFeedRail({
       tone: 'warn',
     } : null,
     {
-      id: 'evidence',
-      tag: t('feedTags.evidence'),
-      title: t('feedEvidenceTitle'),
-      body: claims.length ? t('overviewClaimBody', { count: claims.length }) : t('sourceDocuments', { count: documentCount }),
-      time: latestUpdate,
-      tone: 'cyan',
-    },
-    {
       id: 'diligence',
-      tag: openItems > 0 ? t('feedTags.risk') : t('feedTags.evidence'),
+      tag: openItems > 0 ? t('feedTags.risk') : t('feedTags.clear'),
       title: t('feedDiligenceTitle'),
       body: openItems > 0 ? t('feedDiligenceBody', { count: openItems }) : t('feedDiligenceClear'),
       time: latestUpdate,
@@ -3962,20 +3944,12 @@ function LiveFeedRail({
   return (
     <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-border bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
       <div className="space-y-4">
-        <Panel className="overflow-hidden rounded-[24px] border-[rgba(var(--accent-rgb),0.12)] p-0">
+        <Panel className="overflow-hidden rounded-[18px] border-[rgba(var(--accent-rgb),0.12)] p-0">
           <div className="px-5 py-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent">{t('coordinationLog')}</p>
-                <h3 className="mt-2 text-2xl font-bold leading-tight text-text">{t('coordinationFeed')}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenDrawer('evidence')}
-                className="shrink-0 rounded-[12px] border border-[rgba(var(--accent-rgb),0.48)] bg-accent/10 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition hover:bg-accent/15"
-              >
-                {sourceCount} {t('sources')}
-              </button>
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent">{t('liveFeed')}</p>
+              <h3 className="mt-2 text-2xl font-bold leading-tight text-text">{t('coordinationLog')}</h3>
+              <p className="mt-2 text-sm leading-6 text-text-soft">{t('feedSubtitle')}</p>
             </div>
           </div>
 
@@ -4134,7 +4108,7 @@ function feedTagForEvent(eventType: string | null | undefined, t: ReturnType<typ
   if (type.includes('broker') || type.includes('outreach') || type.includes('message')) return t('feedTags.broker');
   if (type.includes('risk') || type.includes('missing') || type.includes('diligence')) return t('feedTags.risk');
   if (type.includes('title') || type.includes('deed')) return t('feedTags.title');
-  if (type.includes('evidence') || type.includes('document') || type.includes('source')) return t('feedTags.evidence');
+  if (type.includes('evidence') || type.includes('document') || type.includes('source')) return t('feedTags.records');
   return t('feedTags.action');
 }
 
