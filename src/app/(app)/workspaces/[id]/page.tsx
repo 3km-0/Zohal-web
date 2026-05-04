@@ -1861,7 +1861,7 @@ function CockpitHero({
       </div>
       {mapOpen ? (
         <div className="mt-6">
-          <GoogleLocationMap opportunity={opportunity} minHeight={320} />
+          <GoogleLocationMap opportunity={opportunity} minHeight={320} onClose={onToggleMap} />
         </div>
       ) : null}
     </Panel>
@@ -3473,7 +3473,15 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
   );
 }
 
-function GoogleLocationMap({ opportunity, minHeight = 250 }: { opportunity: OpportunityRow | null; minHeight?: number }) {
+function GoogleLocationMap({
+  opportunity,
+  minHeight = 250,
+  onClose,
+}: {
+  opportunity: OpportunityRow | null;
+  minHeight?: number;
+  onClose?: () => void;
+}) {
   const t = useTranslations('workspaceCockpitPage');
   const title = titleFor(opportunity) || t('emptyCockpitTitle');
   const embedUrl = googleMapsEmbedUrl(opportunity);
@@ -3505,18 +3513,25 @@ function GoogleLocationMap({ opportunity, minHeight = 250 }: { opportunity: Oppo
           </div>
         </div>
       )}
-      <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/86 p-3 shadow-[var(--shadowSm)] backdrop-blur">
+      <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-white/12 bg-[rgba(10,12,14,0.90)] p-3 text-white shadow-[0_18px_42px_rgba(0,0,0,.34)] backdrop-blur-md">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
-            <p className="mt-1 truncate text-sm font-semibold text-text">{title}</p>
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-soft">{locationLabel || marketSignal || t('marketSignalEmpty')}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#D4AF37]">{t('activeTarget')}</p>
+            <p className="mt-1 truncate text-sm font-semibold text-white">{title}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/72">{locationLabel || marketSignal || t('marketSignalEmpty')}</p>
           </div>
-          {mapsUrl ? (
-            <a href={mapsUrl} target="_blank" rel="noreferrer" aria-label={t('openGoogleMaps')} className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-highlight/25 bg-highlight/10 text-highlight transition hover:bg-highlight hover:text-background">
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-2">
+            {onClose ? (
+              <button type="button" onClick={onClose} className="h-9 rounded-[10px] border border-white/18 bg-white/8 px-3 text-xs font-semibold text-white/86 transition hover:bg-white/16">
+                {t('closeMap')}
+              </button>
+            ) : null}
+            {mapsUrl ? (
+              <a href={mapsUrl} target="_blank" rel="noreferrer" aria-label={t('openGoogleMaps')} className="grid h-9 w-9 place-items-center rounded-[10px] border border-[#D4AF37]/40 bg-[#D4AF37]/14 text-[#D4AF37] transition hover:bg-[#D4AF37] hover:text-black">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

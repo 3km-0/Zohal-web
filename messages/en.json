@@ -3215,6 +3215,7 @@
     "googleMapTitle": "Google Maps location",
     "googleMapUnavailable": "Google Maps needs a location or enabled embed key.",
     "openGoogleMaps": "Open in Google Maps",
+    "closeMap": "Close map",
     "photoEvidence": "Evidence photo",
     "photosEmpty": "Photo evidence has not been attached yet. Keep this companion pane as a review surface until source-backed images exist.",
     "facade": "Facade",
