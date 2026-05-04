@@ -2091,9 +2091,10 @@ function CockpitHero({
   useEffect(() => {
     setPhotoIndex(0);
   }, [opportunity?.id]);
-  const showPhotoControls = photos.length > 1;
+  const hasPreviousPhoto = photoIndex > 0;
+  const hasNextPhoto = photoIndex < photos.length - 1;
   const goPhoto = (direction: -1 | 1) => {
-    setPhotoIndex((current) => (current + direction + photos.length) % photos.length);
+    setPhotoIndex((current) => Math.min(Math.max(current + direction, 0), Math.max(photos.length - 1, 0)));
   };
   return (
     <Panel className="relative overflow-hidden rounded-[28px] border-border p-7" data-testid="acquisition-cockpit-hero">
@@ -2160,25 +2161,29 @@ function CockpitHero({
                 data-testid="acquisition-hero-photo"
                 className="absolute inset-0 h-full w-full object-contain p-3"
               />
-              {showPhotoControls ? (
-                <div className="absolute inset-x-4 top-1/2 flex -translate-y-1/2 items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => goPhoto(-1)}
-                    aria-label={t('previousPhoto')}
-                    className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goPhoto(1)}
-                    aria-label={t('nextPhoto')}
-                    className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </div>
+              {hasPreviousPhoto || hasNextPhoto ? (
+                <>
+                  {hasPreviousPhoto ? (
+                    <button
+                      type="button"
+                      onClick={() => goPhoto(-1)}
+                      aria-label={t('previousPhoto')}
+                      className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                  ) : null}
+                  {hasNextPhoto ? (
+                    <button
+                      type="button"
+                      onClick={() => goPhoto(1)}
+                      aria-label={t('nextPhoto')}
+                      className="absolute right-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  ) : null}
+                </>
               ) : null}
             </>
           ) : (
@@ -2186,7 +2191,7 @@ function CockpitHero({
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
           <div className="absolute left-4 top-4 rounded-[9px] border border-highlight/25 bg-black/35 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-highlight backdrop-blur">
-            {showPhotoControls ? t('photoCounter', { current: photoIndex + 1, total: photos.length }) : t('photoEvidence')}
+            {photos.length > 1 ? t('photoCounter', { current: photoIndex + 1, total: photos.length }) : t('photoEvidence')}
           </div>
           <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-4">
             <HeroChip label={t('mandateFit')} value={recommendation} />
@@ -2715,6 +2720,8 @@ function OverviewModule({
             {marketAnalysis.sample ? <TrustPill label={marketAnalysis.sample} tone="lime" /> : null}
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <IntelligenceMetric label={t('intelligence.price')} value={facts.price || t('notSet')} />
+            <IntelligenceMetric label={t('intelligence.area')} value={facts.area || t('notSet')} />
             <IntelligenceMetric label={t('intelligence.askingPpsm')} value={marketAnalysis.askingPpsm || t('notSet')} />
             <IntelligenceMetric label={t('intelligence.marketBenchmark')} value={marketAnalysis.benchmark || t('notSet')} />
             <IntelligenceMetric label={t('intelligence.marketVariance')} value={marketAnalysis.variance || t('notSet')} />
@@ -2724,20 +2731,6 @@ function OverviewModule({
             {intelligenceItems.map((item) => (
               <IntelligenceSignal key={item.label} label={item.label} value={item.value} tone={item.tone} />
             ))}
-          </div>
-        </Panel>
-        <Panel className="overflow-hidden p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('dealIntelligence')}</p>
-              <h3 className="mt-1 text-2xl font-semibold text-text">{t('dealIntelligenceTitle')}</h3>
-            </div>
-            <TrustPill label={confidence} tone="cyan" />
-          </div>
-          <p className="mt-4 text-sm leading-6 text-text-soft">{marketAnalysis.summary}</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <IntelligenceMetric label={t('intelligence.price')} value={facts.price || t('notSet')} />
-            <IntelligenceMetric label={t('intelligence.area')} value={facts.area || t('notSet')} />
           </div>
         </Panel>
         <Panel className="p-5">
@@ -3954,9 +3947,10 @@ function VisualCompanion({
   useEffect(() => {
     setPhotoIndex(0);
   }, [opportunity?.id, mode]);
-  const showPhotoControls = photoRefs.length > 1;
+  const hasPreviousPhoto = photoIndex > 0;
+  const hasNextPhoto = photoIndex < photoRefs.length - 1;
   const goPhoto = (direction: -1 | 1) => {
-    setPhotoIndex((current) => (current + direction + photoRefs.length) % photoRefs.length);
+    setPhotoIndex((current) => Math.min(Math.max(current + direction, 0), Math.max(photoRefs.length - 1, 0)));
   };
   const modes: { key: typeof mode; label: string }[] = [
     { key: 'map', label: t('visualModes.map') },
@@ -4014,24 +4008,28 @@ function VisualCompanion({
                   className="relative h-full w-full object-contain p-2"
                   loading="lazy"
                 />
-                {showPhotoControls ? (
+                {hasPreviousPhoto || hasNextPhoto ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => goPhoto(-1)}
-                      aria-label={t('previousPhoto')}
-                      className="absolute left-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur transition hover:bg-black/70"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => goPhoto(1)}
-                      aria-label={t('nextPhoto')}
-                      className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur transition hover:bg-black/70"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+                    {hasPreviousPhoto ? (
+                      <button
+                        type="button"
+                        onClick={() => goPhoto(-1)}
+                        aria-label={t('previousPhoto')}
+                        className="absolute left-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur transition hover:bg-black/70"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                    {hasNextPhoto ? (
+                      <button
+                        type="button"
+                        onClick={() => goPhoto(1)}
+                        aria-label={t('nextPhoto')}
+                        className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur transition hover:bg-black/70"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    ) : null}
                     <span className="absolute bottom-3 right-3 rounded-full border border-white/15 bg-black/55 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
                       {t('photoCounter', { current: photoIndex + 1, total: photoRefs.length })}
                     </span>
