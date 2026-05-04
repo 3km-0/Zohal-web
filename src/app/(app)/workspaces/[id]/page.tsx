@@ -13,7 +13,6 @@ import {
   ClipboardList,
   Clock3,
   ExternalLink,
-  FileText,
   Gauge,
   HelpCircle,
   Home,
@@ -205,8 +204,7 @@ type AcquisitionClaimRow = {
 
 type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
-type PrimaryWorkspaceTab = 'deal' | 'renovation';
-type EvidencePaneTab = 'evidence' | 'activity' | 'files' | 'consent';
+type PrimaryWorkspaceTab = 'overview' | 'underwriting' | 'renovation';
 
 type ScenarioState = {
   strategy: 'rent_hold' | 'flip';
@@ -646,9 +644,8 @@ export default function WorkspaceCockpitPage() {
   const [agentOpen, setAgentOpen] = useState(false);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
-  const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryWorkspaceTab>('deal');
+  const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryWorkspaceTab>('overview');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidencePaneTab>('evidence');
   const [drawerWidth, setDrawerWidth] = useState(430);
   const [heroMapOpen, setHeroMapOpen] = useState(false);
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
@@ -856,13 +853,19 @@ export default function WorkspaceCockpitPage() {
 
   const openDrawer = useCallback((tab: WorkspaceDrawerTab) => {
     window.dispatchEvent(new CustomEvent('workspace:header-menu-close'));
-    if (tab === 'activity' || tab === 'files' || tab === 'consent' || tab === 'evidence') {
-      setActiveEvidenceTab(tab);
-    } else {
-      setActiveEvidenceTab('evidence');
+    if (tab === 'files') {
+      const sourceParams = new URLSearchParams({ view: 'property_sources' });
+      if (selectedOpportunity?.id) sourceParams.set('opportunity_id', selectedOpportunity.id);
+      router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
+      return;
+    }
+    if (tab === 'consent') {
+      const sourceParams = new URLSearchParams({ view: 'buyer_vault', intent: 'consent' });
+      router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
+      return;
     }
     setDrawerOpen(true);
-  }, []);
+  }, [router, selectedOpportunity?.id, workspaceId]);
 
   useEffect(() => {
     function onHeaderMenuOpen() {
@@ -1034,7 +1037,7 @@ export default function WorkspaceCockpitPage() {
   const applyRenovationEstimateToDeal = useCallback(async (amount: number) => {
     const base = scenario ?? completeScenario(seedScenarioFromOpportunity(selectedOpportunity));
     await saveScenarioAssumptions({ ...base, renovation: amount });
-    setActivePrimaryTab('deal');
+    setActivePrimaryTab('underwriting');
   }, [saveScenarioAssumptions, scenario, selectedOpportunity]);
 
   const resetScenarioDraft = useCallback(() => {
@@ -1325,7 +1328,27 @@ export default function WorkspaceCockpitPage() {
                     active={activePrimaryTab}
                     onChange={setActivePrimaryTab}
                   />
-                  {activePrimaryTab === 'deal' ? (
+                  {activePrimaryTab === 'overview' ? (
+                    <OverviewModule
+                      documentCount={documentCount}
+                      opportunity={selectedOpportunity}
+                      claims={claims}
+                      openItems={missingCount}
+                      confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
+                      primaryActionLabel={primaryAction.label}
+                      primaryActionResult={primaryAction.result}
+                      currentBlocker={currentBlocker}
+                      hasActionBlocker={hasActionBlocker}
+                      actionBusy={Boolean(readinessBusy || approvalBusy)}
+                      onPrimaryAction={() => void executePrimaryAction()}
+                      onAddEvidence={() => openPropertyFiles({ upload: true })}
+                      onUploadPropertyDocument={() => openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property' })}
+                      onOpenBuyerVault={() => openBuyerVault(true)}
+                      onScheduleVisit={() => void scheduleVisit()}
+                      onPassProperty={() => void updateSelectedStage('passed')}
+                      onOpenDrawer={openDrawer}
+                    />
+                  ) : activePrimaryTab === 'underwriting' ? (
                     <ModelModule
                       opportunity={selectedOpportunity}
                       scenario={scenario}
@@ -1348,7 +1371,7 @@ export default function WorkspaceCockpitPage() {
                       events={renovationEvents}
                       onGenerateEstimate={generateCapexEstimate}
                       onApplyEstimate={applyRenovationEstimateToDeal}
-                      onEditDealAssumptions={() => setActivePrimaryTab('deal')}
+                      onEditDealAssumptions={() => setActivePrimaryTab('underwriting')}
                       onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
                     />
                   ) : null}
@@ -1368,17 +1391,8 @@ export default function WorkspaceCockpitPage() {
             claims={claims}
             openItems={missingCount}
             confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
-            primaryActionLabel={primaryAction.label}
             primaryActionResult={primaryAction.result}
-            currentBlocker={currentBlocker}
             hasActionBlocker={hasActionBlocker}
-            actionBusy={Boolean(readinessBusy || approvalBusy)}
-            onPrimaryAction={() => void executePrimaryAction()}
-            onAddEvidence={() => openPropertyFiles({ upload: true })}
-            onUploadPropertyDocument={() => openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property' })}
-            onOpenBuyerVault={() => openBuyerVault(true)}
-            onScheduleVisit={() => void scheduleVisit()}
-            onPassProperty={() => void updateSelectedStage('passed')}
             onOpenDrawer={openDrawer}
           />
         ) : null}
@@ -1386,18 +1400,11 @@ export default function WorkspaceCockpitPage() {
           {drawerOpen ? (
             <WorkspaceCommandDrawer
               workspaceId={workspaceId}
-              activeTab={activeEvidenceTab}
               width={drawerWidth}
-              events={events}
-              latestUpdate={latestUpdate}
               documentCount={documentCount}
               opportunity={selectedOpportunity}
               missingItems={selectedMissing}
               claims={claims}
-              readinessEvidence={readinessEvidence}
-              sharingGrants={sharingGrants}
-              actionApprovals={actionApprovals}
-              onTabChange={setActiveEvidenceTab}
               onClose={() => setDrawerOpen(false)}
               onWidthChange={setDrawerWidth}
             />
@@ -1922,7 +1929,7 @@ function ProgressTracker({
                 type="button"
                 onClick={() => {
                   if (index <= 1) onOpenDrawer('evidence');
-                  else if (index <= 3) onOpenDrawer('activity');
+                  else if (index <= 3) onOpenDrawer('evidence');
                   else if (index === 4) onOpenDrawer('evidence');
                   else onOpenDrawer('consent');
                 }}
@@ -2001,7 +2008,7 @@ function ProgressTracker({
         <button type="button" onClick={onRequestVisit} disabled={!opportunity || !readinessProfile} className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-4 py-2.5 text-sm font-semibold text-text disabled:cursor-not-allowed disabled:opacity-55">
           {t('scheduleVisit')}
         </button>
-        <button type="button" onClick={() => onOpenDrawer('activity')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
+        <button type="button" onClick={() => onOpenDrawer('evidence')} className="rounded-[12px] border border-highlight/30 bg-highlight/10 px-4 py-2.5 text-sm font-semibold text-highlight">
           {t('progress.coordination')}
         </button>
       </div>
@@ -2018,7 +2025,8 @@ function PrimaryWorkspaceTabs({
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = [
-    { key: 'deal', label: t('dealTab'), icon: Building2 },
+    { key: 'overview', label: t('overviewTab'), icon: ShieldCheck },
+    { key: 'underwriting', label: t('underwritingTab'), icon: Gauge },
     { key: 'renovation', label: t('renovationTab'), icon: Wrench },
   ];
   return (
@@ -2251,55 +2259,99 @@ function OverviewModule({
   documentCount,
   opportunity,
   claims,
+  openItems,
+  confidence,
+  primaryActionLabel,
+  primaryActionResult,
+  currentBlocker,
+  hasActionBlocker,
+  actionBusy,
+  onPrimaryAction,
+  onAddEvidence,
+  onUploadPropertyDocument,
+  onOpenBuyerVault,
+  onScheduleVisit,
+  onPassProperty,
   onOpenDrawer,
 }: {
   documentCount: number;
   opportunity: OpportunityRow | null;
   claims: AcquisitionClaimRow[];
+  openItems: number;
+  confidence: string;
+  primaryActionLabel: string;
+  primaryActionResult: string;
+  currentBlocker: string;
+  hasActionBlocker: boolean;
+  actionBusy: boolean;
+  onPrimaryAction: () => void;
+  onAddEvidence: () => void;
+  onUploadPropertyDocument: () => void;
+  onOpenBuyerVault: () => void;
+  onScheduleVisit: () => void;
+  onPassProperty: () => void;
   onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source']);
   const sourceUrl = sourceUrlFor(opportunity);
   return (
-    <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-      <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('evidenceLayer')}</p>
-        <h3 className="mt-1 text-xl font-semibold text-text">{t('evidenceTruthTitle')}</h3>
-        <div className="mt-5 space-y-3">
-          <FactCard label={t('trust.verified')} body={t('sourceDocuments', { count: documentCount })} basis="verified_source" onEvidence={() => onOpenDrawer('evidence')} info={t('info.verified')} />
-          <FactCard label={t('trust.marketSignal')} body={sourceLabel || t('marketSignalEmpty')} basis="market_signal" onEvidence={() => onOpenDrawer('evidence')} info={t('info.marketSignal')} />
-          <FactCard label={t('trust.counterparty')} body={metadataString(opportunity, ['broker_note', 'counterparty_note']) || t('counterpartyEmpty')} basis="counterparty_provided" onEvidence={() => onOpenDrawer('evidence')} info={t('info.counterparty')} />
-          <FactCard label={t('trust.uncertain')} body={missingInfoList(opportunity?.missing_info_json)[0] || t('uncertainEmpty')} basis={missingInfoList(opportunity?.missing_info_json).length ? 'contradicted' : 'uncertain'} onEvidence={() => onOpenDrawer('evidence')} info={t('info.uncertain')} />
-        </div>
-      </Panel>
-      <Panel className="p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('sourceDrawer')}</p>
-        <h3 className="mt-2 text-2xl font-semibold text-text">{t('overviewClaimTitle')}</h3>
-        <p className="mt-3 text-sm leading-6 text-text">{claims.length ? t('overviewClaimBody', { count: claims.length }) : t('evidenceBody')}</p>
-        {sourceUrl ? (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            data-testid="acquisition-evidence-source-link"
-            className="mt-5 flex min-w-0 items-center gap-3 rounded-[14px] border border-accent/30 bg-accent/10 p-4 text-left transition hover:border-accent/50 hover:bg-accent/15"
-          >
-            <ExternalLink className="h-4 w-4 shrink-0 text-accent" />
-            <span className="min-w-0">
-              <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t('fetchedListing')}</span>
-              <span className="mt-1 block truncate text-sm text-text">{displayUrl(sourceUrl)}</span>
-            </span>
-          </a>
-        ) : null}
-        <div className="mt-5 rounded-3xl border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
-          <p className="text-xs text-text-muted">{t('sources')}</p>
-          <p className="mt-1 text-sm text-text">{documentCount}</p>
-        </div>
-        <button type="button" onClick={() => onOpenDrawer('evidence')} className="mt-3 w-full rounded-[14px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight hover:bg-highlight/15">
-          {t('openEvidenceDrawer')}
-        </button>
-      </Panel>
+    <div className="grid gap-5 [@media(min-width:1480px)]:grid-cols-[0.95fr_1.05fr]">
+      <MandateActionsPanel
+        openItems={openItems}
+        confidence={confidence}
+        title={currentBlocker}
+        actionLabel={primaryActionLabel}
+        actionResult={primaryActionResult}
+        blocked={hasActionBlocker}
+        busy={actionBusy}
+        opportunity={opportunity}
+        onPrimaryAction={onPrimaryAction}
+        onAddEvidence={onAddEvidence}
+        onUploadPropertyDocument={onUploadPropertyDocument}
+        onOpenBuyerVault={onOpenBuyerVault}
+        onScheduleVisit={onScheduleVisit}
+        onPassProperty={onPassProperty}
+      />
+      <div className="grid gap-5 xl:grid-cols-2 [@media(min-width:1480px)]:grid-cols-1">
+        <Panel className="p-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('evidenceLayer')}</p>
+          <h3 className="mt-1 text-xl font-semibold text-text">{t('evidenceTruthTitle')}</h3>
+          <div className="mt-5 space-y-3">
+            <FactCard label={t('trust.verified')} body={t('sourceDocuments', { count: documentCount })} basis="verified_source" onEvidence={() => onOpenDrawer('evidence')} info={t('info.verified')} />
+            <FactCard label={t('trust.marketSignal')} body={sourceLabel || t('marketSignalEmpty')} basis="market_signal" onEvidence={() => onOpenDrawer('evidence')} info={t('info.marketSignal')} />
+            <FactCard label={t('trust.counterparty')} body={metadataString(opportunity, ['broker_note', 'counterparty_note']) || t('counterpartyEmpty')} basis="counterparty_provided" onEvidence={() => onOpenDrawer('evidence')} info={t('info.counterparty')} />
+            <FactCard label={t('trust.uncertain')} body={missingInfoList(opportunity?.missing_info_json)[0] || t('uncertainEmpty')} basis={missingInfoList(opportunity?.missing_info_json).length ? 'contradicted' : 'uncertain'} onEvidence={() => onOpenDrawer('evidence')} info={t('info.uncertain')} />
+          </div>
+        </Panel>
+        <Panel className="p-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('sourceDrawer')}</p>
+          <h3 className="mt-2 text-2xl font-semibold text-text">{t('overviewClaimTitle')}</h3>
+          <p className="mt-3 text-sm leading-6 text-text">{claims.length ? t('overviewClaimBody', { count: claims.length }) : t('evidenceBody')}</p>
+          {sourceUrl ? (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="acquisition-evidence-source-link"
+              className="mt-5 flex min-w-0 items-center gap-3 rounded-[14px] border border-accent/30 bg-accent/10 p-4 text-left transition hover:border-accent/50 hover:bg-accent/15"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0 text-accent" />
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t('fetchedListing')}</span>
+                <span className="mt-1 block truncate text-sm text-text">{displayUrl(sourceUrl)}</span>
+              </span>
+            </a>
+          ) : null}
+          <div className="mt-5 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
+            <p className="text-xs text-text-muted">{t('sources')}</p>
+            <p className="mt-1 text-sm text-text">{documentCount}</p>
+          </div>
+          <button type="button" onClick={() => onOpenDrawer('evidence')} className="mt-3 w-full rounded-[14px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight hover:bg-highlight/15">
+            {t('openEvidenceDrawer')}
+          </button>
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -3525,46 +3577,26 @@ function VisualCompanion({
 
 function WorkspaceCommandDrawer({
   workspaceId,
-  activeTab,
   width,
-  events,
-  latestUpdate,
   documentCount,
   opportunity,
   missingItems,
   claims,
-  readinessEvidence,
-  sharingGrants,
-  actionApprovals,
-  onTabChange,
   onClose,
   onWidthChange,
 }: {
   workspaceId: string;
-  activeTab: EvidencePaneTab;
   width: number;
-  events: AcquisitionEventRow[];
-  latestUpdate: string | null;
   documentCount: number;
   opportunity: OpportunityRow | null;
   missingItems: string[];
   claims: AcquisitionClaimRow[];
-  readinessEvidence: BuyerReadinessEvidenceRow[];
-  sharingGrants: DocumentSharingGrantRow[];
-  actionApprovals: ExternalActionApprovalRow[];
-  onTabChange: (tab: EvidencePaneTab) => void;
   onClose: () => void;
   onWidthChange: (width: number) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const tabs: { key: EvidencePaneTab; label: string; icon: LucideIcon }[] = [
-    { key: 'evidence', label: t('drawer.evidence'), icon: ShieldCheck },
-    { key: 'activity', label: t('drawer.coordination'), icon: MessageSquare },
-    { key: 'files', label: t('drawer.files'), icon: FileText },
-    { key: 'consent', label: t('drawer.consent'), icon: CheckCircle2 },
-  ];
   const handleDragStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     dragStateRef.current = { startX: event.clientX, startWidth: width };
@@ -3608,38 +3640,8 @@ function WorkspaceCommandDrawer({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-4 gap-1 border-b border-[rgba(var(--accent-rgb),0.16)] bg-background p-2">
-          {tabs.map(({ key, label, icon: Icon }) => {
-            const selected = activeTab === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onTabChange(key)}
-                className={cn(
-                  'inline-flex min-h-9 items-center justify-center gap-1 rounded-[9px] px-2 text-xs font-semibold transition',
-                  selected ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                <span className="truncate">{label}</span>
-              </button>
-            );
-          })}
-        </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          {activeTab === 'evidence' ? (
-            <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
-          ) : null}
-          {activeTab === 'files' ? (
-            <DrawerFiles documentCount={documentCount} evidence={readinessEvidence} />
-          ) : null}
-          {activeTab === 'activity' ? (
-            <DrawerActivity events={events} latestUpdate={latestUpdate} />
-          ) : null}
-          {activeTab === 'consent' ? (
-            <DrawerConsent grants={sharingGrants} approvals={actionApprovals} />
-          ) : null}
+          <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
         </div>
       </div>
     </aside>
@@ -3746,85 +3748,6 @@ function DrawerEvidence({
   );
 }
 
-function DrawerActivity({ events, latestUpdate }: { events: AcquisitionEventRow[]; latestUpdate: string | null }) {
-  const t = useTranslations('workspaceCockpitPage');
-  return (
-    <Panel className="p-5">
-      <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('coordinationLog')}</p>
-      <h3 className="mt-1 text-xl font-semibold text-text">{t('dealCommandChannel')}</h3>
-      <p className="mb-3 mt-2 text-xs text-text-muted">{latestUpdate ? t('latestUpdate', { time: formatRelativeTime(latestUpdate) }) : t('noActivity')}</p>
-      <div className="space-y-3">
-        {events.length === 0 ? (
-          <p className="text-sm leading-6 text-text-soft">{t('emptyLog')}</p>
-        ) : events.map((event) => (
-          <div key={event.id} className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
-            <div className="mb-2 flex justify-between gap-3">
-              <p className="text-sm font-medium text-text">{humanize(event.event_type)}</p>
-              {event.created_at ? <span className="text-xs text-text-muted">{formatRelativeTime(event.created_at)}</span> : null}
-            </div>
-            {event.body_text ? <p className="text-sm leading-6 text-text">{event.body_text}</p> : null}
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-function DrawerFiles({ documentCount, evidence }: { documentCount: number; evidence: BuyerReadinessEvidenceRow[] }) {
-  const t = useTranslations('workspaceCockpitPage');
-  return (
-    <Panel className="p-5">
-      <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.files')}</p>
-      <h3 className="mt-1 text-xl font-semibold text-text">{t('filesDrawerTitle')}</h3>
-      <p className="mt-2 text-sm leading-6 text-text-soft">{t('sourceDocuments', { count: documentCount })}</p>
-      <ReadinessList
-        title={t('buyerReadiness.evidenceTitle')}
-        empty={t('buyerReadiness.noEvidence')}
-        items={evidence.map((item) => ({
-          id: item.id,
-          label: humanize(item.evidence_type) || t('buyerReadiness.evidenceFallback'),
-          meta: [humanize(item.status), humanize(item.sensitivity_level)].filter(Boolean).join(' · '),
-          tone: statusTone(item.status),
-        }))}
-      />
-    </Panel>
-  );
-}
-
-function DrawerConsent({ grants, approvals }: { grants: DocumentSharingGrantRow[]; approvals: ExternalActionApprovalRow[] }) {
-  const t = useTranslations('workspaceCockpitPage');
-  return (
-    <div className="space-y-4">
-      <Panel className="p-5">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.consent')}</p>
-        <h3 className="mt-1 text-xl font-semibold text-text">{t('consentDrawerTitle')}</h3>
-        <ReadinessList
-          title={t('buyerReadiness.sharingTitle')}
-          empty={t('buyerReadiness.noSharing')}
-          items={grants.map((item) => ({
-            id: item.id,
-            label: humanize(item.share_mode) || t('buyerReadiness.shareFallback'),
-            meta: [humanize(item.allowed_action), item.revoked_at ? t('buyerReadiness.revoked') : item.expires_at ? t('buyerReadiness.expires', { time: formatRelativeTime(item.expires_at) }) : t('buyerReadiness.noExpiry')].filter(Boolean).join(' · '),
-            tone: item.revoked_at ? 'warn' : 'lime',
-          }))}
-        />
-      </Panel>
-      <Panel className="p-5">
-        <ReadinessList
-          title={t('buyerReadiness.approvalsTitle')}
-          empty={t('buyerReadiness.noApprovals')}
-          items={approvals.map((item) => ({
-            id: item.id,
-            label: humanize(item.action_type) || t('buyerReadiness.actionFallback'),
-            meta: humanize(item.approval_status) || '',
-            tone: statusTone(item.approval_status),
-          }))}
-        />
-      </Panel>
-    </div>
-  );
-}
-
 function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
   const t = useTranslations('workspaceCockpitPage');
   const title = titleFor(opportunity) || t('emptyCockpitTitle');
@@ -3859,17 +3782,8 @@ function LiveFeedRail({
   claims,
   openItems,
   confidence,
-  primaryActionLabel,
   primaryActionResult,
-  currentBlocker,
   hasActionBlocker,
-  actionBusy,
-  onPrimaryAction,
-  onAddEvidence,
-  onUploadPropertyDocument,
-  onOpenBuyerVault,
-  onScheduleVisit,
-  onPassProperty,
   onOpenDrawer,
 }: {
   events: AcquisitionEventRow[];
@@ -3880,17 +3794,8 @@ function LiveFeedRail({
   claims: AcquisitionClaimRow[];
   openItems: number;
   confidence: string;
-  primaryActionLabel: string;
   primaryActionResult: string;
-  currentBlocker: string;
   hasActionBlocker: boolean;
-  actionBusy: boolean;
-  onPrimaryAction: () => void;
-  onAddEvidence: () => void;
-  onUploadPropertyDocument: () => void;
-  onOpenBuyerVault: () => void;
-  onScheduleVisit: () => void;
-  onPassProperty: () => void;
   onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
@@ -3981,28 +3886,12 @@ function LiveFeedRail({
   return (
     <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-border bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
       <div className="space-y-4">
-        <MandateActionsPanel
-          openItems={openItems}
-          confidence={confidence}
-          title={currentBlocker}
-          actionLabel={primaryActionLabel}
-          actionResult={primaryActionResult}
-          blocked={hasActionBlocker}
-          busy={actionBusy}
-          opportunity={opportunity}
-          onPrimaryAction={onPrimaryAction}
-          onAddEvidence={onAddEvidence}
-          onUploadPropertyDocument={onUploadPropertyDocument}
-          onOpenBuyerVault={onOpenBuyerVault}
-          onScheduleVisit={onScheduleVisit}
-          onPassProperty={onPassProperty}
-        />
         <Panel className="overflow-hidden rounded-[24px] border-[rgba(var(--accent-rgb),0.12)] p-0">
           <div className="px-5 py-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent">{t('signalStream')}</p>
-                <h3 className="mt-2 text-2xl font-bold leading-tight text-text">{t('liveFeed')}</h3>
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent">{t('coordinationLog')}</p>
+                <h3 className="mt-2 text-2xl font-bold leading-tight text-text">{t('coordinationFeed')}</h3>
               </div>
               <button
                 type="button"
