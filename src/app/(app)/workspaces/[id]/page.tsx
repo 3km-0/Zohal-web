@@ -2493,13 +2493,15 @@ function CockpitHero({
           {heroPhoto ? (
             <>
               <img
+                key={`hero-bg-${heroPhoto}`}
                 src={heroPhoto}
                 alt=""
                 aria-hidden="true"
                 className="absolute inset-0 h-full w-full scale-110 object-cover opacity-42 blur-2xl"
               />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_44%,transparent_0%,rgba(0,0,0,.18)_52%,rgba(0,0,0,.52)_100%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_52%_44%,transparent_0%,rgba(0,0,0,.18)_52%,rgba(0,0,0,.52)_100%)]" />
               <img
+                key={`hero-photo-${heroPhoto}`}
                 src={heroPhoto}
                 alt={displayTitle || t('emptyCockpitTitle')}
                 data-testid="acquisition-hero-photo"
@@ -2512,7 +2514,7 @@ function CockpitHero({
                       type="button"
                       onClick={() => goPhoto(-1)}
                       aria-label={t('previousPhoto')}
-                      className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
+                      className="absolute left-4 top-1/2 z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -2522,7 +2524,7 @@ function CockpitHero({
                       type="button"
                       onClick={() => goPhoto(1)}
                       aria-label={t('nextPhoto')}
-                      className="absolute right-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
+                      className="absolute right-4 top-1/2 z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
@@ -2533,11 +2535,11 @@ function CockpitHero({
           ) : (
             <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
-          <div className="absolute left-4 top-4 rounded-[9px] border border-highlight/25 bg-black/35 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-highlight backdrop-blur">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
+          <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-[9px] border border-highlight/25 bg-black/35 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-highlight backdrop-blur">
             {photos.length > 1 ? t('photoCounter', { current: photoIndex + 1, total: photos.length }) : t('photoEvidence')}
           </div>
-          <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-4">
+          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 grid gap-3 sm:grid-cols-4">
             <HeroChip label={t('mandateFit')} value={recommendation} />
             <HeroChip label={t('confidence')} value={confidence} />
             <HeroChip label={t('openItems')} value={missingCount.toString()} />
@@ -3076,13 +3078,6 @@ function OverviewModule({
               <IntelligenceSignal key={item.label} label={item.label} value={item.value} tone={item.tone} />
             ))}
           </div>
-        </Panel>
-        <Panel className="p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('locationIntelligence')}</p>
-          <h3 className="mt-1 text-2xl font-semibold text-text">{locationLabel || t('locationIntelligenceTitle')}</h3>
-          <p className="mt-3 text-sm leading-6 text-text-soft">
-            {metadataString(opportunity, ['location_note', 'district_note', 'neighborhood_note']) || locationLabel || t('locationIntelligenceEmpty')}
-          </p>
         </Panel>
       </div>
     </div>
