@@ -77,6 +77,35 @@ type OpportunityRow = {
   renovation_rate_card_id?: string | null;
 };
 
+type MarketObservationRow = {
+  id: string;
+  observation_kind?: string | null;
+  city?: string | null;
+  district?: string | null;
+  neighborhood?: string | null;
+  zone?: string | null;
+  property_type?: string | null;
+  property_subtype?: string | null;
+  average_price_per_sqm?: number | null;
+  median_price_per_sqm?: number | null;
+  min_price_per_sqm?: number | null;
+  max_price_per_sqm?: number | null;
+  price_per_sqm?: number | null;
+  asking_price?: number | null;
+  transaction_price?: number | null;
+  transaction_count?: number | null;
+  listing_count?: number | null;
+  demand_count?: number | null;
+  supply_count?: number | null;
+  days_on_market?: number | null;
+  area_sqm?: number | null;
+  land_area_sqm?: number | null;
+  total_area_sqm?: number | null;
+  observed_at?: string | null;
+  period_label?: string | null;
+  source_confidence_label?: string | null;
+};
+
 type RenovationCapexLine = {
   name?: string | null;
   category?: string | null;
@@ -496,12 +525,194 @@ function compactSAR(value: number | null): string | null {
   return formatSAR.format(value);
 }
 
+function compactNumber(value: number | null): string | null {
+  if (value === null) return null;
+  return new Intl.NumberFormat('en-SA', { maximumFractionDigits: 0 }).format(value);
+}
+
+function compactSARPerSqm(value: number | null): string | null {
+  const formatted = compactNumber(value === null ? null : Math.round(value));
+  return formatted ? `${formatted} SAR/m2` : null;
+}
+
 function dealFacts(item: OpportunityRow | null | undefined): { price: string | null; area: string | null } {
   const price = compactSAR(metadataNumber(item, ['price', 'asking_price', 'acquisition_price', 'purchase_price']));
   const area = metadataNumber(item, ['area_sqm', 'sqm', 'area']);
   return {
     price,
     area: area === null ? item?.area_summary ?? null : `${Math.round(area)} m2`,
+  };
+}
+
+function opportunityAreaSqm(item: OpportunityRow | null | undefined): number | null {
+  return metadataNumber(item, ['area_sqm', 'sqm', 'area', 'land_area_sqm', 'built_up_area_sqm']);
+}
+
+function opportunityPrice(item: OpportunityRow | null | undefined): number | null {
+  return metadataNumber(item, ['price', 'asking_price', 'acquisition_price', 'purchase_price', 'listing_price']);
+}
+
+function opportunityPricePerSqm(item: OpportunityRow | null | undefined): number | null {
+  const direct = metadataNumber(item, ['price_per_sqm', 'asking_price_per_sqm', 'listing_price_per_sqm', 'sar_per_sqm']);
+  if (direct !== null) return direct;
+  const price = opportunityPrice(item);
+  const area = opportunityAreaSqm(item);
+  if (price === null || area === null || area <= 0) return null;
+  return price / area;
+}
+
+function normalizedMarketText(value: string | null | undefined): string {
+  return `${value ?? ''}`.trim().toLowerCase();
+}
+
+function marketLocationParts(item: OpportunityRow | null | undefined): string[] {
+  return [
+    metadataString(item, ['district', 'neighborhood', 'neighbourhood']),
+    metadataString(item, ['city']),
+    metadataString(item, ['region', 'province']),
+  ].map(normalizedMarketText).filter(Boolean);
+}
+
+function marketObservationBenchmark(row: MarketObservationRow): number | null {
+  return row.median_price_per_sqm ?? row.average_price_per_sqm ?? row.price_per_sqm ?? null;
+}
+
+function median(values: number[]): number | null {
+  const sorted = values.filter((value) => Number.isFinite(value) && value > 0).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function rankMarketObservation(row: MarketObservationRow, parts: string[]): number {
+  const haystack = [
+    row.neighborhood,
+    row.district,
+    row.zone,
+    row.city,
+    row.property_subtype,
+    row.property_type,
+  ].map(normalizedMarketText).join(' ');
+  return parts.reduce((score, part, index) => score + (part && haystack.includes(part) ? 10 - index : 0), 0);
+}
+
+function relevantMarketObservations(item: OpportunityRow | null | undefined, observations: MarketObservationRow[]): MarketObservationRow[] {
+  if (!observations.length) return [];
+  const parts = marketLocationParts(item);
+  const ranked = observations
+    .map((row) => ({ row, score: rankMarketObservation(row, parts) }))
+    .sort((a, b) => b.score - a.score);
+  const matched = ranked.filter((item) => item.score > 0).map((item) => item.row);
+  return (matched.length ? matched : ranked.map((item) => item.row)).slice(0, 12);
+}
+
+function marketSampleCount(observations: MarketObservationRow[]): number {
+  const count = observations.reduce((total, row) => total + (row.transaction_count ?? row.listing_count ?? row.demand_count ?? 0), 0);
+  return count > 0 ? count : observations.length;
+}
+
+function marketSpreadLabel(observations: MarketObservationRow[]): string | null {
+  const lows = observations.map((row) => row.min_price_per_sqm).filter((value): value is number => Boolean(value && value > 0));
+  const highs = observations.map((row) => row.max_price_per_sqm).filter((value): value is number => Boolean(value && value > 0));
+  const low = lows.length ? Math.min(...lows) : null;
+  const high = highs.length ? Math.max(...highs) : null;
+  if (low === null || high === null || high <= 0) return null;
+  return `${compactSARPerSqm(low)} - ${compactSARPerSqm(high)}`;
+}
+
+function areaDeltaInsight(
+  item: OpportunityRow | null | undefined,
+  observations: MarketObservationRow[],
+  fallback: string,
+  t: ReturnType<typeof useTranslations>
+): string {
+  const explicit = metadataString(item, ['area_delta_note', 'sqm_delta_note', 'sqm_difference_note', 'similar_properties_sqm_delta']);
+  if (explicit) return explicit;
+  const area = opportunityAreaSqm(item);
+  const marketAreas = observations.map((row) => row.area_sqm ?? row.land_area_sqm ?? row.total_area_sqm ?? null).filter((value): value is number => Boolean(value && value > 0));
+  const typicalArea = median(marketAreas);
+  if (area !== null && typicalArea !== null) {
+    const delta = ((area - typicalArea) / typicalArea) * 100;
+    const direction = delta >= 0 ? t('areaLarger') : t('areaSmaller');
+    return t('areaDeltaAnalysis', {
+      delta: Math.abs(delta).toFixed(1),
+      direction,
+      median: Math.round(typicalArea),
+    });
+  }
+  return fallback;
+}
+
+function marketAnalysisForOpportunity(
+  item: OpportunityRow | null | undefined,
+  observations: MarketObservationRow[],
+  t: ReturnType<typeof useTranslations>
+): {
+  summary: string;
+  benchmark: string | null;
+  askingPpsm: string | null;
+  variance: string | null;
+  sample: string | null;
+  spread: string | null;
+} {
+  const explicit = metadataString(item, ['comps_note', 'market_context', 'valuation_note']);
+  const relevant = relevantMarketObservations(item, observations);
+  const values = relevant.map(marketObservationBenchmark).filter((value): value is number => Boolean(value && value > 0));
+  const benchmark = median(values);
+  const askingPpsm = opportunityPricePerSqm(item);
+  const sampleCount = marketSampleCount(relevant);
+  const sample = relevant.length ? t('marketSample', { count: sampleCount }) : null;
+  const benchmarkLabel = compactSARPerSqm(benchmark);
+  const askingLabel = compactSARPerSqm(askingPpsm);
+
+  if (benchmark !== null && askingPpsm !== null) {
+    const variancePct = ((askingPpsm - benchmark) / benchmark) * 100;
+    const direction = variancePct >= 0 ? t('marketAbove') : t('marketBelow');
+    return {
+      summary: t('marketAnalysisPriced', {
+        asking: askingLabel,
+        benchmark: benchmarkLabel,
+        delta: Math.abs(variancePct).toFixed(1),
+        direction,
+        sample: sampleCount,
+      }),
+      benchmark: benchmarkLabel,
+      askingPpsm: askingLabel,
+      variance: `${variancePct >= 0 ? '+' : '-'}${Math.abs(variancePct).toFixed(1)}%`,
+      sample,
+      spread: marketSpreadLabel(relevant),
+    };
+  }
+
+  if (benchmark !== null) {
+    return {
+      summary: explicit || t('marketAnalysisBenchmarkOnly', { benchmark: benchmarkLabel, sample: sampleCount }),
+      benchmark: benchmarkLabel,
+      askingPpsm: askingLabel,
+      variance: null,
+      sample,
+      spread: marketSpreadLabel(relevant),
+    };
+  }
+
+  if (askingPpsm !== null) {
+    return {
+      summary: explicit || t('marketAnalysisAskingOnly', { asking: askingLabel }),
+      benchmark: null,
+      askingPpsm: askingLabel,
+      variance: null,
+      sample,
+      spread: null,
+    };
+  }
+
+  return {
+    summary: explicit || t('marketAnalysisNeedsFacts'),
+    benchmark: null,
+    askingPpsm: null,
+    variance: null,
+    sample,
+    spread: null,
   };
 }
 
@@ -688,6 +899,7 @@ export default function WorkspaceCockpitPage() {
   const [readinessEvidence, setReadinessEvidence] = useState<BuyerReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<DocumentSharingGrantRow[]>([]);
   const [actionApprovals, setActionApprovals] = useState<ExternalActionApprovalRow[]>([]);
+  const [marketObservations, setMarketObservations] = useState<MarketObservationRow[]>([]);
   const [documentCount, setDocumentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [agentOpen, setAgentOpen] = useState(false);
@@ -833,6 +1045,50 @@ export default function WorkspaceCockpitPage() {
     setScenario(scenarioFromOpportunity(selectedOpportunity));
     setUnderwriting(null);
   }, [selectedOpportunity]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMarketObservations() {
+      if (!selectedOpportunity) {
+        setMarketObservations([]);
+        return;
+      }
+
+      const city = metadataString(selectedOpportunity, ['city']);
+      const region = metadataString(selectedOpportunity, ['region', 'province']);
+      const queryText = city || region;
+      let query = supabase
+        .from('acquisition_market_observations')
+        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label')
+        .eq('country_code', 'SA')
+        .order('observed_at', { ascending: false, nullsFirst: false })
+        .limit(36);
+
+      if (queryText) {
+        query = query.or(`city.ilike.%${queryText}%,region.ilike.%${queryText}%`);
+      }
+
+      const { data } = await query;
+      if (cancelled) return;
+      if (data?.length || !queryText) {
+        setMarketObservations((data ?? []) as MarketObservationRow[]);
+        return;
+      }
+
+      const fallback = await supabase
+        .from('acquisition_market_observations')
+        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label')
+        .eq('country_code', 'SA')
+        .order('observed_at', { ascending: false, nullsFirst: false })
+        .limit(36);
+      if (!cancelled) setMarketObservations((fallback.data ?? []) as MarketObservationRow[]);
+    }
+
+    void loadMarketObservations();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOpportunity, supabase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1380,6 +1636,7 @@ export default function WorkspaceCockpitPage() {
                   {activePrimaryTab === 'overview' ? (
                     <OverviewModule
                       opportunity={selectedOpportunity}
+                      marketObservations={marketObservations}
                       openItems={missingCount}
                       confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
                       primaryActionLabel={primaryAction.label}
@@ -2288,6 +2545,7 @@ function ActionSection({
 
 function OverviewModule({
   opportunity,
+  marketObservations,
   openItems,
   confidence,
   primaryActionLabel,
@@ -2303,6 +2561,7 @@ function OverviewModule({
   onPassProperty,
 }: {
   opportunity: OpportunityRow | null;
+  marketObservations: MarketObservationRow[];
   openItems: number;
   confidence: string;
   primaryActionLabel: string;
@@ -2320,30 +2579,17 @@ function OverviewModule({
   const t = useTranslations('workspaceCockpitPage');
   const locationLabel = locationLabelForOpportunity(opportunity);
   const facts = dealFacts(opportunity);
+  const marketAnalysis = marketAnalysisForOpportunity(opportunity, marketObservations, t);
+  const relevantObservations = relevantMarketObservations(opportunity, marketObservations);
   const intelligenceItems = [
     {
-      label: t('intelligence.location'),
-      value: metadataString(opportunity, ['location_note', 'district_note', 'neighborhood_note']) || locationLabel || t('locationIntelligenceEmpty'),
-      tone: 'cyan' as const,
-    },
-    {
       label: t('intelligence.comps'),
-      value: metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']) || t('compsEmpty'),
+      value: marketAnalysis.summary,
       tone: 'lime' as const,
     },
     {
       label: t('intelligence.areaDelta'),
-      value: metadataString(opportunity, ['area_delta_note', 'sqm_delta_note', 'sqm_difference_note', 'similar_properties_sqm_delta']) || facts.area || t('notSet'),
-      tone: 'neutral' as const,
-    },
-    {
-      label: t('intelligence.liquidity'),
-      value: metadataString(opportunity, ['liquidity_note', 'demand_signal', 'buyer_depth_note']) || t('liquidityEmpty'),
-      tone: 'lime' as const,
-    },
-    {
-      label: t('intelligence.records'),
-      value: metadataString(opportunity, ['title_note', 'title_status', 'deed_status', 'zoning_note']) || t('recordsEmpty'),
+      value: areaDeltaInsight(opportunity, relevantObservations, facts.area || t('notSet'), t),
       tone: 'neutral' as const,
     },
     {
@@ -2353,7 +2599,7 @@ function OverviewModule({
     },
   ];
   return (
-    <div className="grid gap-5 [@media(min-width:1480px)]:grid-cols-[0.95fr_1.05fr]">
+    <div className="grid items-start gap-5 [@media(min-width:1480px)]:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.28fr)]">
       <MandateActionsPanel
         openItems={openItems}
         confidence={confidence}
@@ -2371,6 +2617,26 @@ function OverviewModule({
         onPassProperty={onPassProperty}
       />
       <div className="grid gap-5 xl:grid-cols-2 [@media(min-width:1480px)]:grid-cols-1">
+        <Panel className="p-5 xl:col-span-2 [@media(min-width:1480px)]:col-span-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('marketIntelligence')}</p>
+              <h3 className="mt-1 text-2xl font-semibold text-text">{t('marketIntelligenceTitle')}</h3>
+            </div>
+            {marketAnalysis.sample ? <TrustPill label={marketAnalysis.sample} tone="lime" /> : null}
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <IntelligenceMetric label={t('intelligence.askingPpsm')} value={marketAnalysis.askingPpsm || t('notSet')} />
+            <IntelligenceMetric label={t('intelligence.marketBenchmark')} value={marketAnalysis.benchmark || t('notSet')} />
+            <IntelligenceMetric label={t('intelligence.marketVariance')} value={marketAnalysis.variance || t('notSet')} />
+            <IntelligenceMetric label={t('intelligence.marketSpread')} value={marketAnalysis.spread || t('notSet')} />
+          </div>
+          <div className="mt-5 grid gap-3">
+            {intelligenceItems.map((item) => (
+              <IntelligenceSignal key={item.label} label={item.label} value={item.value} tone={item.tone} />
+            ))}
+          </div>
+        </Panel>
         <Panel className="overflow-hidden p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -2388,17 +2654,11 @@ function OverviewModule({
         <Panel className="p-5">
           <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('locationIntelligence')}</p>
           <h3 className="mt-1 text-2xl font-semibold text-text">{locationLabel || t('locationIntelligenceTitle')}</h3>
+          <p className="mt-3 text-sm leading-6 text-text-soft">
+            {metadataString(opportunity, ['location_note', 'district_note', 'neighborhood_note']) || locationLabel || t('locationIntelligenceEmpty')}
+          </p>
           <div className="mt-5">
             <GoogleLocationMap opportunity={opportunity} minHeight={260} />
-          </div>
-        </Panel>
-        <Panel className="p-5 xl:col-span-2 [@media(min-width:1480px)]:col-span-1">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('marketIntelligence')}</p>
-          <h3 className="mt-1 text-2xl font-semibold text-text">{t('marketIntelligenceTitle')}</h3>
-          <div className="mt-5 grid gap-3">
-            {intelligenceItems.map((item) => (
-              <IntelligenceSignal key={item.label} label={item.label} value={item.value} tone={item.tone} />
-            ))}
           </div>
         </Panel>
       </div>
