@@ -1379,9 +1379,7 @@ export default function WorkspaceCockpitPage() {
                   />
                   {activePrimaryTab === 'overview' ? (
                     <OverviewModule
-                      documentCount={documentCount}
                       opportunity={selectedOpportunity}
-                      claims={claims}
                       openItems={missingCount}
                       confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
                       primaryActionLabel={primaryAction.label}
@@ -1395,7 +1393,6 @@ export default function WorkspaceCockpitPage() {
                       onOpenBuyerVault={() => openBuyerVault(true)}
                       onScheduleVisit={() => void scheduleVisit()}
                       onPassProperty={() => void updateSelectedStage('passed')}
-                      onOpenDrawer={openDrawer}
                     />
                   ) : activePrimaryTab === 'underwriting' ? (
                     <ModelModule
@@ -1863,20 +1860,8 @@ function CockpitHero({
         </div>
       </div>
       {mapOpen ? (
-        <div className="relative mt-6 overflow-hidden rounded-[18px] border border-highlight/20 bg-background">
-          <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
-          <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
-          <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
-          <div className="relative min-h-[320px]">
-            <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
-              {scoreFor(opportunity) ?? '--'}
-            </div>
-            <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/80 p-3 backdrop-blur">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
-              <p className="mt-1 text-sm font-semibold text-text">{title || t('emptyCockpitTitle')}</p>
-              <p className="mt-1 text-xs leading-5 text-text-soft">{metadataString(opportunity, ['district', 'city', 'source', 'source_label', 'listing_source']) || t('marketSignalEmpty')}</p>
-            </div>
-          </div>
+        <div className="mt-6">
+          <GoogleLocationMap opportunity={opportunity} minHeight={320} />
         </div>
       ) : null}
     </Panel>
@@ -2302,9 +2287,7 @@ function ActionSection({
 }
 
 function OverviewModule({
-  documentCount,
   opportunity,
-  claims,
   openItems,
   confidence,
   primaryActionLabel,
@@ -2318,11 +2301,8 @@ function OverviewModule({
   onOpenBuyerVault,
   onScheduleVisit,
   onPassProperty,
-  onOpenDrawer,
 }: {
-  documentCount: number;
   opportunity: OpportunityRow | null;
-  claims: AcquisitionClaimRow[];
   openItems: number;
   confidence: string;
   primaryActionLabel: string;
@@ -2336,11 +2316,42 @@ function OverviewModule({
   onOpenBuyerVault: () => void;
   onScheduleVisit: () => void;
   onPassProperty: () => void;
-  onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source']);
-  const sourceUrl = sourceUrlFor(opportunity);
+  const locationLabel = locationLabelForOpportunity(opportunity);
+  const facts = dealFacts(opportunity);
+  const intelligenceItems = [
+    {
+      label: t('intelligence.location'),
+      value: metadataString(opportunity, ['location_note', 'district_note', 'neighborhood_note']) || locationLabel || t('locationIntelligenceEmpty'),
+      tone: 'cyan' as const,
+    },
+    {
+      label: t('intelligence.comps'),
+      value: metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']) || t('compsEmpty'),
+      tone: 'lime' as const,
+    },
+    {
+      label: t('intelligence.areaDelta'),
+      value: metadataString(opportunity, ['area_delta_note', 'sqm_delta_note', 'sqm_difference_note', 'similar_properties_sqm_delta']) || facts.area || t('notSet'),
+      tone: 'neutral' as const,
+    },
+    {
+      label: t('intelligence.liquidity'),
+      value: metadataString(opportunity, ['liquidity_note', 'demand_signal', 'buyer_depth_note']) || t('liquidityEmpty'),
+      tone: 'lime' as const,
+    },
+    {
+      label: t('intelligence.records'),
+      value: metadataString(opportunity, ['title_note', 'title_status', 'deed_status', 'zoning_note']) || t('recordsEmpty'),
+      tone: 'neutral' as const,
+    },
+    {
+      label: t('intelligence.risk'),
+      value: missingInfoList(opportunity?.missing_info_json)[0] || metadataString(opportunity, ['risk_note', 'screening_risk']) || t('riskEmpty'),
+      tone: missingInfoList(opportunity?.missing_info_json).length ? 'warn' as const : 'lime' as const,
+    },
+  ];
   return (
     <div className="grid gap-5 [@media(min-width:1480px)]:grid-cols-[0.95fr_1.05fr]">
       <MandateActionsPanel
@@ -2360,43 +2371,73 @@ function OverviewModule({
         onPassProperty={onPassProperty}
       />
       <div className="grid gap-5 xl:grid-cols-2 [@media(min-width:1480px)]:grid-cols-1">
-        <Panel className="p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('evidenceLayer')}</p>
-          <h3 className="mt-1 text-xl font-semibold text-text">{t('evidenceTruthTitle')}</h3>
-          <div className="mt-5 space-y-3">
-            <FactCard label={t('trust.verified')} body={t('sourceDocuments', { count: documentCount })} basis="verified_source" onEvidence={() => onOpenDrawer('evidence')} info={t('info.verified')} />
-            <FactCard label={t('trust.marketSignal')} body={sourceLabel || t('marketSignalEmpty')} basis="market_signal" onEvidence={() => onOpenDrawer('evidence')} info={t('info.marketSignal')} />
-            <FactCard label={t('trust.counterparty')} body={metadataString(opportunity, ['broker_note', 'counterparty_note']) || t('counterpartyEmpty')} basis="counterparty_provided" onEvidence={() => onOpenDrawer('evidence')} info={t('info.counterparty')} />
-            <FactCard label={t('trust.uncertain')} body={missingInfoList(opportunity?.missing_info_json)[0] || t('uncertainEmpty')} basis={missingInfoList(opportunity?.missing_info_json).length ? 'contradicted' : 'uncertain'} onEvidence={() => onOpenDrawer('evidence')} info={t('info.uncertain')} />
+        <Panel className="overflow-hidden p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('dealIntelligence')}</p>
+              <h3 className="mt-1 text-2xl font-semibold text-text">{t('dealIntelligenceTitle')}</h3>
+            </div>
+            <TrustPill label={confidence} tone="cyan" />
+          </div>
+          <p className="mt-4 text-sm leading-6 text-text-soft">{investmentThesisFor(opportunity, t('heroAnalystThesis'))}</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <IntelligenceMetric label={t('intelligence.price')} value={facts.price || t('notSet')} />
+            <IntelligenceMetric label={t('intelligence.area')} value={facts.area || t('notSet')} />
           </div>
         </Panel>
         <Panel className="p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('sourceDrawer')}</p>
-          <h3 className="mt-2 text-2xl font-semibold text-text">{t('overviewClaimTitle')}</h3>
-          <p className="mt-3 text-sm leading-6 text-text">{claims.length ? t('overviewClaimBody', { count: claims.length }) : t('evidenceBody')}</p>
-          {sourceUrl ? (
-            <a
-              href={sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="acquisition-evidence-source-link"
-              className="mt-5 flex min-w-0 items-center gap-3 rounded-[14px] border border-accent/30 bg-accent/10 p-4 text-left transition hover:border-accent/50 hover:bg-accent/15"
-            >
-              <ExternalLink className="h-4 w-4 shrink-0 text-accent" />
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t('fetchedListing')}</span>
-                <span className="mt-1 block truncate text-sm text-text">{displayUrl(sourceUrl)}</span>
-              </span>
-            </a>
-          ) : null}
-          <div className="mt-5 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
-            <p className="text-xs text-text-muted">{t('sources')}</p>
-            <p className="mt-1 text-sm text-text">{documentCount}</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('locationIntelligence')}</p>
+          <h3 className="mt-1 text-2xl font-semibold text-text">{locationLabel || t('locationIntelligenceTitle')}</h3>
+          <div className="mt-5">
+            <GoogleLocationMap opportunity={opportunity} minHeight={260} />
           </div>
-          <button type="button" onClick={() => onOpenDrawer('evidence')} className="mt-3 w-full rounded-[14px] border border-highlight/25 bg-highlight/10 px-4 py-3 text-sm font-semibold text-highlight hover:bg-highlight/15">
-            {t('openEvidenceDrawer')}
-          </button>
         </Panel>
+        <Panel className="p-5 xl:col-span-2 [@media(min-width:1480px)]:col-span-1">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('marketIntelligence')}</p>
+          <h3 className="mt-1 text-2xl font-semibold text-text">{t('marketIntelligenceTitle')}</h3>
+          <div className="mt-5 grid gap-3">
+            {intelligenceItems.map((item) => (
+              <IntelligenceSignal key={item.label} label={item.label} value={item.value} tone={item.tone} />
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function IntelligenceMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-text">{value}</p>
+    </div>
+  );
+}
+
+function IntelligenceSignal({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'cyan' | 'lime' | 'neutral' | 'warn';
+}) {
+  const toneClass = {
+    cyan: 'border-highlight/20 text-highlight',
+    lime: 'border-accent/24 text-accent',
+    neutral: 'border-[rgba(var(--accent-rgb),0.16)] text-text-muted',
+    warn: 'border-warning/28 text-warning',
+  }[tone];
+  return (
+    <div className="rounded-[16px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt p-4">
+      <div className="flex items-start gap-3">
+        <span className={cn('mt-1 h-2.5 w-2.5 shrink-0 rounded-full border', toneClass)} />
+        <div className="min-w-0">
+          <p className={cn('font-mono text-[10px] uppercase tracking-[0.2em]', toneClass)}>{label}</p>
+          <p className="mt-2 text-sm leading-6 text-text-soft">{value}</p>
+        </div>
       </div>
     </div>
   );
