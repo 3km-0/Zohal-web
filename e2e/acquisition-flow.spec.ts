@@ -147,7 +147,7 @@ async function runOptionalSmokeSetup(request: APIRequestContext) {
       district: 'Al Arid',
       property_type: 'villa',
       area_sqm: 360,
-      photo_refs_json: ['fixture-photo-1'],
+      photo_refs_json: ['https://example.test/photo-1.jpg', 'https://example.test/photo-2.jpg', 'https://example.test/photo-3.jpg'],
       text: 'Fixture villa for sale SAR 3,200,000 area 360 sqm 5 beds 4 baths.',
     }, requestId);
     candidates = [fixtureResponse.candidate];

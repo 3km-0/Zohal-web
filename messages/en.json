@@ -468,12 +468,21 @@
     "members": "Members",
     "workspaceMenu": "Workspace",
     "workspace": "Cockpit",
-    "publish": "Living Interface",
-    "automations": "Automations",
+    "publish": "Automation reports",
+    "automations": "Automation reports",
     "evidenceTrail": "Evidence trail",
     "activityLog": "Activity log",
     "readinessFiles": "Readiness files",
     "consentApprovals": "Consent and approvals"
+  },
+  "automationReportsPage": {
+    "eyebrow": "Automation reports",
+    "title": "Published reports, delivery, and schedule",
+    "subtitle": "One control surface for the weekly report automation and the Living Interface it sends by email or WhatsApp.",
+    "delivery": "Delivery",
+    "deliveryValue": "Email / WhatsApp",
+    "output": "Output",
+    "outputValue": "Published interface"
   },
   "propertyOperatorPage": {
     "title": "Operator",
@@ -3235,6 +3244,9 @@
     "openGoogleMaps": "Open in Google Maps",
     "closeMap": "Close map",
     "photoEvidence": "Evidence photo",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo",
+    "photoCounter": "Photo {current} / {total}",
     "photosEmpty": "Photo evidence has not been attached yet. Keep this companion pane as a review surface until source-backed images exist.",
     "facade": "Facade",
     "interior": "Interior",

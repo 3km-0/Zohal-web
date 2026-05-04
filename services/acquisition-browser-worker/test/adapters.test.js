@@ -23,6 +23,7 @@ test("Aqar adapter parses search cards and detail page into candidate", () => {
     <img src="/icons/v2/aqar-logo.svg" />
     <img src="/photo.jpg" />
     <img data-src="https://images.aqar.fm/webp/750x0/props/photo-2.webp" />
+    <img srcset="/photo-3.jpg 480w, /photo-3-large.jpg 960w" />
   `, cards[0].source_url);
 
   assert.equal(detail.source, "aqar");
@@ -32,6 +33,8 @@ test("Aqar adapter parses search cards and detail page into candidate", () => {
   assert.deepEqual(detail.photo_refs_json, [
     "https://sa.aqar.fm/photo.jpg",
     "https://images.aqar.fm/webp/750x0/props/photo-2.webp",
+    "https://sa.aqar.fm/photo-3.jpg",
+    "https://sa.aqar.fm/photo-3-large.jpg",
   ]);
   assert.ok(detail.source_fingerprint);
 });

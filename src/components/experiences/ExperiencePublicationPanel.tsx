@@ -14,6 +14,7 @@ import type { SurfaceDiagnosticsEnvelope } from '@/lib/surface-diagnostics';
 
 interface ExperiencePublicationPanelProps {
   workspaceId: string;
+  embedded?: boolean;
 }
 
 interface ListingOverlayReadiness {
@@ -44,7 +45,7 @@ const EXPERIENCE_TEMPLATE_DEFAULTS: Record<
   },
 };
 
-export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicationPanelProps) {
+export function ExperiencePublicationPanel({ workspaceId, embedded = false }: ExperiencePublicationPanelProps) {
   const t = useTranslations('experiencesPage');
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
@@ -293,11 +294,15 @@ export function ExperiencePublicationPanel({ workspaceId }: ExperiencePublicatio
   ];
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <AppHeader title={t('title')} subtitle={t('subtitle')} />
-      <WorkspaceTabs workspaceId={workspaceId} active="publish" />
+    <div className={embedded ? 'space-y-6' : 'flex-1 flex flex-col overflow-hidden'}>
+      {!embedded ? (
+        <>
+          <AppHeader title={t('title')} subtitle={t('subtitle')} />
+          <WorkspaceTabs workspaceId={workspaceId} active="automations" />
+        </>
+      ) : null}
 
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className={embedded ? 'space-y-6' : 'flex-1 overflow-auto p-6 space-y-6'}>
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <Card variant="elevated">
             <CardHeader>

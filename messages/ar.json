@@ -469,12 +469,21 @@
     "members": "الأعضاء",
     "workspaceMenu": "مساحة العمل",
     "workspace": "القمرة",
-    "publish": "الواجهة الحية",
-    "automations": "الأتمتة",
+    "publish": "تقارير الأتمتة",
+    "automations": "تقارير الأتمتة",
     "evidenceTrail": "مسار الأدلة",
     "activityLog": "سجل النشاط",
     "readinessFiles": "ملفات الجاهزية",
     "consentApprovals": "الموافقات والتصاريح"
+  },
+  "automationReportsPage": {
+    "eyebrow": "تقارير الأتمتة",
+    "title": "التقارير المنشورة، الإرسال، والجدولة",
+    "subtitle": "سطح تحكم واحد لأتمتة التقرير الأسبوعي والواجهة الحية التي تُرسل عبر البريد أو واتساب.",
+    "delivery": "الإرسال",
+    "deliveryValue": "البريد / واتساب",
+    "output": "المخرج",
+    "outputValue": "واجهة منشورة"
   },
   "propertyOperatorPage": {
     "title": "المشغّل",
@@ -3234,6 +3243,9 @@
     "openGoogleMaps": "فتح في خرائط Google",
     "closeMap": "إغلاق الخريطة",
     "photoEvidence": "صورة دليل",
+    "previousPhoto": "الصورة السابقة",
+    "nextPhoto": "الصورة التالية",
+    "photoCounter": "صورة {current} / {total}",
     "photosEmpty": "لم تُرفق صور أدلة بعد. تبقى هذه اللوحة سطح مراجعة حتى تتوفر صور مدعومة بالمصادر.",
     "facade": "الواجهة",
     "interior": "الداخل",

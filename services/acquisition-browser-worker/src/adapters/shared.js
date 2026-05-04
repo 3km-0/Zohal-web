@@ -143,6 +143,14 @@ export function extractPhotoRefs(html, baseUrl, limit = 8) {
   for (const match of String(html || "").matchAll(/<img\b[^>]*(?:src|data-src|data-lazy-src)=["']([^"']+)["']/gi)) {
     add(match[1]);
   }
+  for (const match of String(html || "").matchAll(/<img\b[^>]*(?:srcset|data-srcset)=["']([^"']+)["']/gi)) {
+    for (const candidate of match[1].split(",")) {
+      add(candidate.trim().split(/\s+/)[0]);
+    }
+  }
+  for (const match of String(html || "").matchAll(/\b(?:image|photo|thumbnail|url)\b["']?\s*[:=]\s*["']([^"']+\.(?:png|jpe?g|webp|avif)(?:\?[^"']*)?)["']/gi)) {
+    add(match[1]);
+  }
   for (const match of String(html || "").matchAll(/["'](https?:\/\/[^"']+\.(?:png|jpe?g|webp|avif)(?:\?[^"']*)?)["']/gi)) {
     add(match[1]);
   }

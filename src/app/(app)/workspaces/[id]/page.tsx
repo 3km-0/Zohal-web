@@ -10,6 +10,8 @@ import {
   Building2,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock3,
   ExternalLink,
@@ -2078,13 +2080,21 @@ function CockpitHero({
   const facts = dealFacts(opportunity);
   const sourceUrl = sourceUrlFor(opportunity);
   const photos = photoRefsFor(opportunity);
-  const heroPhoto = photos[0] ?? null;
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const heroPhoto = photos[photoIndex] ?? photos[0] ?? null;
   const sourceLabel = metadataString(opportunity, ['source', 'source_label', 'listing_source', 'original_source_channel']);
   const arabicTitle = arabicTitleFor(opportunity);
   const recommendation = humanize(recommendationFor(opportunity)) || t('notSet');
   const confidence = humanize(confidenceFor(opportunity)) || t('notSet');
   const displayTitle = cleanDisplayText(title);
   const thesis = investmentThesisFor(opportunity, t('heroAnalystThesis'));
+  useEffect(() => {
+    setPhotoIndex(0);
+  }, [opportunity?.id]);
+  const showPhotoControls = photos.length > 1;
+  const goPhoto = (direction: -1 | 1) => {
+    setPhotoIndex((current) => (current + direction + photos.length) % photos.length);
+  };
   return (
     <Panel className="relative overflow-hidden rounded-[28px] border-border p-7" data-testid="acquisition-cockpit-hero">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb),.055),transparent_36%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb),.045),transparent_32%)]" />
@@ -2150,13 +2160,33 @@ function CockpitHero({
                 data-testid="acquisition-hero-photo"
                 className="absolute inset-0 h-full w-full object-contain p-3"
               />
+              {showPhotoControls ? (
+                <div className="absolute inset-x-4 top-1/2 flex -translate-y-1/2 items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => goPhoto(-1)}
+                    aria-label={t('previousPhoto')}
+                    className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goPhoto(1)}
+                    aria-label={t('nextPhoto')}
+                    className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/70"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
           <div className="absolute left-4 top-4 rounded-[9px] border border-highlight/25 bg-black/35 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-highlight backdrop-blur">
-            {t('photoEvidence')}
+            {showPhotoControls ? t('photoCounter', { current: photoIndex + 1, total: photos.length }) : t('photoEvidence')}
           </div>
           <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-4">
             <HeroChip label={t('mandateFit')} value={recommendation} />
@@ -3919,6 +3949,15 @@ function VisualCompanion({
   const condition = metadataString(opportunity, ['condition', 'renovation_scope', 'capex_note']);
   const facts = dealFacts(opportunity);
   const photoRefs = photoRefsFor(opportunity);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const activePhoto = photoRefs[photoIndex] ?? photoRefs[0] ?? null;
+  useEffect(() => {
+    setPhotoIndex(0);
+  }, [opportunity?.id, mode]);
+  const showPhotoControls = photoRefs.length > 1;
+  const goPhoto = (direction: -1 | 1) => {
+    setPhotoIndex((current) => (current + direction + photoRefs.length) % photoRefs.length);
+  };
   const modes: { key: typeof mode; label: string }[] = [
     { key: 'map', label: t('visualModes.map') },
     { key: 'photos', label: t('visualModes.photos') },
@@ -3958,33 +3997,65 @@ function VisualCompanion({
 
       {mode === 'photos' ? (
         <div className="grid min-h-[250px] gap-3">
-          {photoRefs.length > 0 ? (
+          {activePhoto ? (
             <>
               <div className="relative h-64 overflow-hidden rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-background">
                 <img
-                  src={photoRefs[0]}
+                  src={activePhoto}
                   alt=""
                   aria-hidden="true"
                   className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
                   loading="lazy"
                 />
                 <img
-                  src={photoRefs[0]}
+                  src={activePhoto}
                   alt={title}
                   data-testid="acquisition-photo"
                   className="relative h-full w-full object-contain p-2"
                   loading="lazy"
                 />
+                {showPhotoControls ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => goPhoto(-1)}
+                      aria-label={t('previousPhoto')}
+                      className="absolute left-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur transition hover:bg-black/70"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goPhoto(1)}
+                      aria-label={t('nextPhoto')}
+                      className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur transition hover:bg-black/70"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                    <span className="absolute bottom-3 right-3 rounded-full border border-white/15 bg-black/55 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+                      {t('photoCounter', { current: photoIndex + 1, total: photoRefs.length })}
+                    </span>
+                  </>
+                ) : null}
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {photoRefs.slice(1, 5).map((photo, index) => (
-                  <img
+                {photoRefs.slice(0, 4).map((photo, index) => (
+                  <button
                     key={photo}
-                    src={photo}
-                    alt={`${title} ${index + 2}`}
-                    className="h-20 w-full rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] object-cover"
-                    loading="lazy"
-                  />
+                    type="button"
+                    onClick={() => setPhotoIndex(index)}
+                    className={cn(
+                      'h-20 overflow-hidden rounded-[14px] border transition',
+                      index === photoIndex ? 'border-highlight shadow-[0_0_18px_rgba(var(--highlight-rgb),.18)]' : 'border-[rgba(var(--accent-rgb),0.16)] opacity-75 hover:opacity-100'
+                    )}
+                  >
+                    <img
+                      src={photo}
+                      alt={`${title} ${index + 1}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  </button>
                 ))}
               </div>
             </>

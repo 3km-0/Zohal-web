@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { ChevronDown, FolderOpen, LayoutDashboard, PanelsTopLeft, ShieldCheck, Bolt } from 'lucide-react';
+import { ChevronDown, FolderOpen, LayoutDashboard, ShieldCheck, Bolt } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -20,7 +20,7 @@ interface WorkspaceTabsProps {
 }
 
 export function resolveWorkspaceTabFromPath(pathname: string): WorkspaceTabKey {
-  if (pathname.includes('/publish') || pathname.includes('/experiences')) return 'publish';
+  if (pathname.includes('/publish') || pathname.includes('/experiences')) return 'automations';
   if (pathname.includes('/automations')) return 'automations';
   if (pathname.includes('/sources') || pathname.includes('/documents/')) return 'sources';
   if (pathname.includes('/operations') || pathname.includes('/operator')) return 'automations';
@@ -90,12 +90,6 @@ export function WorkspaceTabs({
       label: t('automations'),
       href: withFolderContext(`/workspaces/${workspaceId}/automations`),
       icon: Bolt,
-    },
-    {
-      key: 'publish',
-      label: t('publish'),
-      href: withFolderContext(`/workspaces/${workspaceId}/publish`),
-      icon: PanelsTopLeft,
     },
   ];
 
