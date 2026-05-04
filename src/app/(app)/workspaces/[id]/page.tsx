@@ -3012,6 +3012,8 @@ function OverviewModule({
   const facts = dealFacts(opportunity);
   const marketAnalysis = marketAnalysisForOpportunity(opportunity, marketObservations, t);
   const relevantObservations = relevantMarketObservations(opportunity, marketObservations);
+  const recommendation = humanize(recommendationFor(opportunity)) || t('notSet');
+  const thesis = investmentThesisFor(opportunity, t('heroAnalystThesis'));
   const intelligenceItems = [
     {
       label: t('intelligence.comps'),
@@ -3057,6 +3059,25 @@ function OverviewModule({
         </Panel>
       </div>
       <div className="grid gap-5 xl:grid-cols-2 [@media(min-width:1480px)]:grid-cols-1">
+        <Panel className="overflow-hidden p-0 xl:col-span-2 [@media(min-width:1480px)]:col-span-1">
+          <div className="border-b border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('dealIntelligence')}</p>
+                <h3 className="mt-1 text-2xl font-semibold text-text">{t('dealIntelligenceTitle')}</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <TrustPill label={recommendation} tone="lime" />
+                <TrustPill label={confidence} tone="cyan" />
+              </div>
+            </div>
+          </div>
+          <div className="p-5">
+            <p className="text-sm leading-6 text-text-soft">
+              {opportunity ? thesis : t('emptyPosture')}
+            </p>
+          </div>
+        </Panel>
         <Panel className="p-5 xl:col-span-2 [@media(min-width:1480px)]:col-span-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
