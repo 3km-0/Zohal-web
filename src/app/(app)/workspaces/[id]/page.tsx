@@ -414,6 +414,55 @@ function displayUrl(value: string): string {
   }
 }
 
+function coordinateForOpportunity(item: OpportunityRow | null | undefined): { lat: number; lng: number } | null {
+  const lat = metadataNumber(item, ['latitude', 'lat', 'location_latitude', 'geo_latitude']);
+  const lng = metadataNumber(item, ['longitude', 'lng', 'lon', 'location_longitude', 'geo_longitude']);
+  if (lat === null || lng === null) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
+function locationLabelForOpportunity(item: OpportunityRow | null | undefined): string | null {
+  const direct = metadataString(item, ['formatted_address', 'address', 'full_address', 'location', 'location_name']);
+  if (direct) return direct;
+  const parts = [
+    metadataString(item, ['district', 'neighborhood', 'neighbourhood']),
+    metadataString(item, ['city']),
+    metadataString(item, ['region', 'province']),
+  ].filter(Boolean) as string[];
+  return parts.length ? parts.join(', ') : null;
+}
+
+function locationQueryForOpportunity(item: OpportunityRow | null | undefined): string | null {
+  const direct = locationLabelForOpportunity(item);
+  if (direct) {
+    return /saudi|السعودية|ksa/i.test(direct) ? direct : `${direct}, Saudi Arabia`;
+  }
+  const title = titleFor(item);
+  return title ? `${title}, Saudi Arabia` : null;
+}
+
+function googleMapsSearchUrl(item: OpportunityRow | null | undefined): string | null {
+  const coordinate = coordinateForOpportunity(item);
+  const query = coordinate ? `${coordinate.lat},${coordinate.lng}` : locationQueryForOpportunity(item);
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : null;
+}
+
+function googleMapsEmbedUrl(item: OpportunityRow | null | undefined): string | null {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_API_KEY?.trim();
+  if (!key) return null;
+  const coordinate = coordinateForOpportunity(item);
+  const query = coordinate ? `${coordinate.lat},${coordinate.lng}` : locationQueryForOpportunity(item);
+  if (!query) return null;
+  const params = new URLSearchParams({
+    key,
+    q: query,
+    zoom: '15',
+    maptype: 'roadmap',
+  });
+  return `https://www.google.com/maps/embed/v1/place?${params.toString()}`;
+}
+
 function titleFor(item: OpportunityRow | null | undefined): string | null {
   return displayTitleForOpportunity(item);
 }
@@ -3386,6 +3435,56 @@ function CompsModule({ opportunity }: { opportunity: OpportunityRow | null }) {
   );
 }
 
+function GoogleLocationMap({ opportunity, minHeight = 250 }: { opportunity: OpportunityRow | null; minHeight?: number }) {
+  const t = useTranslations('workspaceCockpitPage');
+  const title = titleFor(opportunity) || t('emptyCockpitTitle');
+  const embedUrl = googleMapsEmbedUrl(opportunity);
+  const mapsUrl = googleMapsSearchUrl(opportunity);
+  const locationLabel = locationLabelForOpportunity(opportunity);
+  const marketSignal = metadataString(opportunity, ['district', 'city', 'source', 'source_label', 'listing_source', 'market_context']);
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-[18px] border border-highlight/20 bg-background"
+      style={{ minHeight } as CSSProperties}
+      data-testid="acquisition-google-map"
+    >
+      {embedUrl ? (
+        <iframe
+          title={t('googleMapTitle')}
+          src={embedUrl}
+          className="absolute inset-0 h-full w-full border-0"
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      ) : (
+        <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_30%_24%,rgba(var(--highlight-rgb),.14),transparent_34%),var(--panel-bg)] p-6 text-center">
+          <div>
+            <MapPin className="mx-auto h-8 w-8 text-highlight" />
+            <p className="mt-3 text-sm font-semibold text-text">{t('googleMapUnavailable')}</p>
+            <p className="mt-2 text-xs leading-5 text-text-soft">{locationLabel || t('marketSignalEmpty')}</p>
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/86 p-3 shadow-[var(--shadowSm)] backdrop-blur">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
+            <p className="mt-1 truncate text-sm font-semibold text-text">{title}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-soft">{locationLabel || marketSignal || t('marketSignalEmpty')}</p>
+          </div>
+          {mapsUrl ? (
+            <a href={mapsUrl} target="_blank" rel="noreferrer" aria-label={t('openGoogleMaps')} className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-highlight/25 bg-highlight/10 text-highlight transition hover:bg-highlight hover:text-background">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OutreachModule({
   opportunity,
 }: {
@@ -3485,19 +3584,7 @@ function VisualCompanion({
       </div>
 
       {mode === 'map' ? (
-        <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-highlight/20 bg-background">
-          <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
-          <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
-          <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
-          <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
-            {scoreFor(opportunity) ?? '--'}
-          </div>
-          <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/80 p-3 backdrop-blur">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
-            <p className="mt-1 text-sm font-semibold text-text">{title}</p>
-            <p className="mt-1 text-xs leading-5 text-text-soft">{sourceLabel || t('marketSignalEmpty')}</p>
-          </div>
-        </div>
+        <GoogleLocationMap opportunity={opportunity} />
       ) : null}
 
       {mode === 'photos' ? (
@@ -3751,23 +3838,12 @@ function DrawerEvidence({
 function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
   const t = useTranslations('workspaceCockpitPage');
   const title = titleFor(opportunity) || t('emptyCockpitTitle');
-  const sourceLabel = metadataString(opportunity, ['district', 'city', 'source', 'source_label', 'listing_source']);
   return (
     <Panel className="p-4">
       <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.map')}</p>
       <h3 className="mt-1 text-xl font-semibold text-text">{title}</h3>
-        <div className="relative mt-4 min-h-[360px] overflow-hidden rounded-[18px] border border-highlight/20 bg-background">
-        <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
-        <div className="absolute left-[18%] top-[58%] h-px w-[68%] rotate-[-18deg] bg-accent/70 shadow-[0_0_20px_var(--accent)]" />
-        <div className="absolute left-[58%] top-[16%] h-28 w-px rotate-[34deg] bg-highlight/60 shadow-[0_0_20px_var(--highlight)]" />
-        <div className="absolute left-[48%] top-[42%] grid h-12 w-12 place-items-center rounded-full border border-accent bg-accent/15 font-mono text-xs font-bold text-accent shadow-[0_0_28px_var(--accent-soft)]">
-          {scoreFor(opportunity) ?? '--'}
-        </div>
-        <div className="absolute bottom-4 left-4 right-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-background/80 p-3 backdrop-blur">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('activeTarget')}</p>
-          <p className="mt-1 text-sm font-semibold text-text">{title}</p>
-          <p className="mt-1 text-xs leading-5 text-text-soft">{sourceLabel || t('marketSignalEmpty')}</p>
-        </div>
+      <div className="mt-4">
+        <GoogleLocationMap opportunity={opportunity} minHeight={360} />
       </div>
     </Panel>
   );

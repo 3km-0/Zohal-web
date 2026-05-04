@@ -3190,6 +3190,9 @@
       "parcel": "قطعة"
     },
     "activeTarget": "الهدف النشط",
+    "googleMapTitle": "موقع خرائط Google",
+    "googleMapUnavailable": "تحتاج خرائط Google إلى موقع أو مفتاح تضمين مفعل.",
+    "openGoogleMaps": "فتح في خرائط Google",
     "photoEvidence": "صورة دليل",
     "photosEmpty": "لم تُرفق صور أدلة بعد. تبقى هذه اللوحة سطح مراجعة حتى تتوفر صور مدعومة بالمصادر.",
     "facade": "الواجهة",
