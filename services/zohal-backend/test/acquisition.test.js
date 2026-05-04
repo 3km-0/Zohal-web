@@ -303,6 +303,65 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   );
 });
 
+test("manual listing intake records manual source metadata", async () => {
+  const supabase = createMockSupabase();
+  const result = await __test.createListingCandidate(supabase, {
+    workspace_id: "ws_1",
+    source: "manual_operator",
+    manual_entry: true,
+    title: "Manually added villa",
+    asking_price: 3000000,
+    city: "Riyadh",
+    district: "Al Arid",
+    property_type: "villa",
+    area_sqm: 360,
+  });
+
+  const promoted = await __test.promoteCandidate(supabase, result.candidate.id);
+
+  assert.equal(promoted.opportunity.source_channel, "manual_operator");
+  assert.equal(promoted.opportunity.metadata_json.source, "manual_operator");
+  assert.equal(promoted.opportunity.metadata_json.source_fingerprint, result.candidate.source_fingerprint);
+  assert.equal(result.candidate.limited_evidence_snapshot_json.intake_mode, "manual_user_entry");
+});
+
+test("rejecting an opportunity archives its candidate so future upserts stay suppressed", async () => {
+  const supabase = createMockSupabase();
+  const result = await __test.createListingCandidate(supabase, {
+    workspace_id: "ws_1",
+    source: "aqar",
+    source_url: "https://sa.aqar.fm/123456",
+    title: "Villa district Al Arid Riyadh",
+    asking_price: 3200000,
+    city: "Riyadh",
+    district: "Al Arid",
+    property_type: "villa",
+    area_sqm: 350,
+  });
+  const promoted = await __test.promoteCandidate(supabase, result.candidate.id);
+
+  const rejected = await __test.updateOpportunityStage(supabase, promoted.opportunity.id, {
+    stage: "archived",
+    suppress_source: true,
+  });
+  const repeated = await __test.upsertCandidateDraft(supabase, {
+    workspace_id: "ws_1",
+    source: "aqar",
+    source_url: "https://sa.aqar.fm/123456",
+    title: "Villa district Al Arid Riyadh",
+    asking_price: 3200000,
+    city: "Riyadh",
+    district: "Al Arid",
+    property_type: "villa",
+    area_sqm: 350,
+  });
+
+  assert.equal(rejected.stage, "archived");
+  assert.equal(supabase.db.acquisition_candidate_opportunities[0].status, "archived");
+  assert.equal(repeated.suppressed_by_workspace, true);
+  assert.equal(supabase.db.acquisition_events.at(-1).event_type, "opportunity_rejected");
+});
+
 test("underwriting run persists versioned assumptions and outputs on base scenario", async () => {
   const supabase = createMockSupabase({
     workspaces: [{ id: "ws_1", owner_id: "user_1", org_id: null }],

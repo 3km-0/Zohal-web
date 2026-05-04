@@ -56,6 +56,7 @@ const server = createServer(async (req, res) => {
       const result = await runSearch({
         searchRun: body.search_run,
         mandate: body.mandate,
+        suppressedCandidates: body.suppressed_candidates,
       });
       return sendJson(res, 200, {
         ...result,

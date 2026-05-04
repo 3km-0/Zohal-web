@@ -7,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
-  Building2,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -23,11 +22,13 @@ import {
   MessageSquare,
   PanelRightOpen,
   Pencil,
+  Plus,
   Radar,
   Search,
   Send,
   ShieldCheck,
   TrendingUp,
+  Trash2,
   Wrench,
   X,
 } from 'lucide-react';
@@ -361,6 +362,27 @@ type UnderwritingResponse = {
   underwriting?: UnderwritingRun;
 };
 
+type ManualPropertyDraft = {
+  title: string;
+  askingPrice: string;
+  areaSqm: string;
+  city: string;
+  district: string;
+  propertyType: string;
+  sourceUrl: string;
+  photoUrls: string;
+  notes: string;
+  uploadDocs: boolean;
+};
+
+type ManualListingResponse = {
+  candidate?: { id?: string | null };
+};
+
+type PromoteCandidateResponse = {
+  opportunity?: OpportunityRow | null;
+};
+
 type LiveFeedTone = 'lime' | 'cyan' | 'warn' | 'neutral';
 
 type LiveFeedItem = {
@@ -379,6 +401,19 @@ type LiveFeedItem = {
 const cockpitBorder = 'border-border';
 const cockpitPanel =
   'bg-[image:var(--panel-bg)] shadow-[var(--shadowMd)] dark:shadow-[0_12px_36px_rgba(0,0,0,.32),inset_0_1px_0_rgba(255,255,255,.04)]';
+
+const emptyManualPropertyDraft: ManualPropertyDraft = {
+  title: '',
+  askingPrice: '',
+  areaSqm: '',
+  city: 'Riyadh',
+  district: '',
+  propertyType: 'villa',
+  sourceUrl: '',
+  photoUrls: '',
+  notes: '',
+  uploadDocs: true,
+};
 
 const moduleIcons: Record<CockpitModule, LucideIcon> = {
   overview: ShieldCheck,
@@ -593,6 +628,18 @@ function jsonNumberFromKeys(value: Record<string, unknown> | null | undefined, k
     }
   }
   return null;
+}
+
+function parseManualNumber(value: string): number | null {
+  const parsed = Number(value.replace(/,/g, '').trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function splitManualUrls(value: string): string[] {
+  return value
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//i.test(item));
 }
 
 function marketObservationBenchmark(row: MarketObservationRow): number | null {
@@ -973,6 +1020,9 @@ export default function WorkspaceCockpitPage() {
   const [buyBoxEditorOpen, setBuyBoxEditorOpen] = useState(false);
   const [buyBoxDraft, setBuyBoxDraft] = useState('');
   const [buyBoxSaving, setBuyBoxSaving] = useState(false);
+  const [manualPropertyOpen, setManualPropertyOpen] = useState(false);
+  const [manualPropertyDraft, setManualPropertyDraft] = useState<ManualPropertyDraft>(emptyManualPropertyDraft);
+  const [manualPropertySaving, setManualPropertySaving] = useState(false);
 
   const agentScope: AgentScope = { kind: 'workspace', workspaceId };
 
@@ -1249,11 +1299,12 @@ export default function WorkspaceCockpitPage() {
     router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
   }, [router, workspaceId]);
 
-  const openPropertyFiles = useCallback((options: { upload?: boolean; analysisPolicy?: string } = {}) => {
+  const openPropertyFiles = useCallback((options: { upload?: boolean; analysisPolicy?: string; opportunityId?: string } = {}) => {
     const sourceParams = new URLSearchParams({ view: 'property_sources' });
     if (options.upload) sourceParams.set('upload', '1');
     if (options.analysisPolicy) sourceParams.set('analysis_policy', options.analysisPolicy);
-    if (selectedOpportunity?.id) sourceParams.set('opportunity_id', selectedOpportunity.id);
+    const targetOpportunityId = options.opportunityId ?? selectedOpportunity?.id;
+    if (targetOpportunityId) sourceParams.set('opportunity_id', targetOpportunityId);
     router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
   }, [router, selectedOpportunity?.id, workspaceId]);
 
@@ -1280,6 +1331,74 @@ export default function WorkspaceCockpitPage() {
       setBuyBoxSaving(false);
     }
   }, [buyBoxDraft, supabase, t, workspaceId]);
+
+  const createManualProperty = useCallback(async () => {
+    const title = manualPropertyDraft.title.trim();
+    const sourceUrl = manualPropertyDraft.sourceUrl.trim();
+    if (!title && !sourceUrl) {
+      setApprovalError(t('manualPropertyNeedsTitle'));
+      return;
+    }
+    setManualPropertySaving(true);
+    setApprovalError(null);
+    try {
+      const askingPrice = parseManualNumber(manualPropertyDraft.askingPrice);
+      const areaSqm = parseManualNumber(manualPropertyDraft.areaSqm);
+      const photoRefs = splitManualUrls(manualPropertyDraft.photoUrls);
+      const descriptionParts = [
+        title,
+        manualPropertyDraft.district.trim(),
+        manualPropertyDraft.city.trim(),
+        manualPropertyDraft.notes.trim(),
+      ].filter(Boolean);
+      const intake = await invokeZohalBackendJson<ManualListingResponse>(
+        supabase,
+        '/api/acquisition/v1/intake/listing',
+        {
+          workspace_id: workspaceId,
+          source: 'manual_operator',
+          manual_entry: true,
+          submitted_by_user: true,
+          source_url: sourceUrl || null,
+          title: title || sourceUrl,
+          asking_price: askingPrice,
+          city: manualPropertyDraft.city.trim() || null,
+          district: manualPropertyDraft.district.trim() || null,
+          property_type: manualPropertyDraft.propertyType.trim() || null,
+          area_sqm: areaSqm,
+          photo_refs_json: photoRefs,
+          text: descriptionParts.join('\n'),
+          limited_evidence_snapshot: {
+            source: 'manual_operator',
+            intake_mode: 'manual_user_entry',
+            submitted_by_user: true,
+            submitted_at: new Date().toISOString(),
+            notes: manualPropertyDraft.notes.trim() || null,
+          },
+        },
+      );
+      const candidateId = intake.candidate?.id;
+      if (!candidateId) throw new Error(t('manualPropertyCreateError'));
+      const promoted = await invokeZohalBackendJson<PromoteCandidateResponse>(
+        supabase,
+        `/api/acquisition/v1/candidates/${candidateId}/promote`,
+        {},
+      );
+      const opportunity = promoted.opportunity;
+      if (!opportunity?.id) throw new Error(t('manualPropertyCreateError'));
+      setOpportunities((current) => [opportunity, ...current.filter((item) => item.id !== opportunity.id)]);
+      setSelectedOpportunityId(opportunity.id);
+      setManualPropertyOpen(false);
+      setManualPropertyDraft(emptyManualPropertyDraft);
+      if (manualPropertyDraft.uploadDocs) {
+        openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property', opportunityId: opportunity.id });
+      }
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('manualPropertyCreateError'));
+    } finally {
+      setManualPropertySaving(false);
+    }
+  }, [manualPropertyDraft, openPropertyFiles, supabase, t, workspaceId]);
 
   const requestExternalAction = useCallback(async (actionType: string, draftPayload: Record<string, string> = {}) => {
     setApprovalBusy(actionType);
@@ -1516,18 +1635,45 @@ export default function WorkspaceCockpitPage() {
     if (!selectedOpportunity) return;
     setApprovalBusy(`stage:${stage}`);
     try {
-      const { error } = await supabase
-        .from('acquisition_opportunities')
-        .update({ stage })
-        .eq('id', selectedOpportunity.id);
-      if (error) throw error;
-      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, stage, updated_at: new Date().toISOString() } : item));
+      const response = await invokeZohalBackendJson<PromoteCandidateResponse>(
+        supabase,
+        `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/stage`,
+        { stage, suppress_source: false },
+      );
+      setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id
+        ? { ...item, ...(response.opportunity ?? {}), stage, updated_at: new Date().toISOString() }
+        : item));
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
     } finally {
       setApprovalBusy(null);
     }
   }, [selectedOpportunity, supabase, t]);
+
+  const rejectOpportunity = useCallback(async (opportunityId: string) => {
+    const currentOpportunity = opportunities.find((item) => item.id === opportunityId);
+    if (!currentOpportunity) return;
+    setApprovalBusy(`reject:${opportunityId}`);
+    setApprovalError(null);
+    try {
+      await invokeZohalBackendJson<PromoteCandidateResponse>(
+        supabase,
+        `/api/acquisition/v1/opportunities/${opportunityId}/stage`,
+        {
+          stage: 'archived',
+          suppress_source: true,
+          rejection_reason: 'operator_removed_from_workspace_pipeline',
+        },
+      );
+      const next = opportunities.filter((item) => item.id !== opportunityId);
+      setOpportunities(next);
+      setSelectedOpportunityId((current) => current === opportunityId ? next[0]?.id ?? null : current);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
+    } finally {
+      setApprovalBusy(null);
+    }
+  }, [opportunities, supabase, t]);
 
   const executePrimaryAction = useCallback(async () => {
     if (!selectedOpportunity && primaryAction.action_id !== 'add_listing_evidence') return;
@@ -1581,7 +1727,7 @@ export default function WorkspaceCockpitPage() {
         await requestExternalAction('send_offer', { acquisition_action_id: primaryAction.action_id });
         return;
       case 'pass_property':
-        await updateSelectedStage('passed');
+        if (selectedOpportunity?.id) await rejectOpportunity(selectedOpportunity.id);
         return;
       case 'close_property':
         await updateSelectedStage('closed');
@@ -1599,6 +1745,7 @@ export default function WorkspaceCockpitPage() {
     selectedMissing,
     selectedOpportunity,
     startReadiness,
+    rejectOpportunity,
     updateSelectedStage,
   ]);
 
@@ -1634,6 +1781,8 @@ export default function WorkspaceCockpitPage() {
             opportunities={opportunities}
             selectedId={selectedOpportunity?.id ?? null}
             onSelect={setSelectedOpportunityId}
+            onAddManual={() => setManualPropertyOpen(true)}
+            onReject={(id) => void rejectOpportunity(id)}
             emptyText={t('emptyCandidates')}
             candidateCount={opportunities.length}
             pursueCount={pursueCount}
@@ -1653,6 +1802,8 @@ export default function WorkspaceCockpitPage() {
                     opportunities={opportunities}
                     selectedId={selectedOpportunity?.id ?? null}
                     onSelect={setSelectedOpportunityId}
+                    onAddManual={() => setManualPropertyOpen(true)}
+                    onReject={(id) => void rejectOpportunity(id)}
                     emptyText={t('emptyCandidates')}
                     candidateCount={opportunities.length}
                     pursueCount={pursueCount}
@@ -1701,7 +1852,7 @@ export default function WorkspaceCockpitPage() {
                       onUploadPropertyDocument={() => openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property' })}
                       onOpenBuyerVault={() => openBuyerVault(true)}
                       onScheduleVisit={() => void scheduleVisit()}
-                      onPassProperty={() => void updateSelectedStage('passed')}
+                      onPassProperty={() => selectedOpportunity?.id ? void rejectOpportunity(selectedOpportunity.id) : undefined}
                     />
                   ) : activePrimaryTab === 'underwriting' ? (
                     <ModelModule
@@ -1795,6 +1946,18 @@ export default function WorkspaceCockpitPage() {
           onChange={setBuyBoxDraft}
           onSave={saveBuyBox}
           onClose={() => setBuyBoxEditorOpen(false)}
+        />
+      ) : null}
+      {manualPropertyOpen ? (
+        <ManualPropertyModal
+          draft={manualPropertyDraft}
+          saving={manualPropertySaving}
+          onChange={(patch) => setManualPropertyDraft((current) => ({ ...current, ...patch }))}
+          onSave={() => void createManualProperty()}
+          onClose={() => {
+            setManualPropertyOpen(false);
+            setManualPropertyDraft(emptyManualPropertyDraft);
+          }}
         />
       ) : null}
     </div>
@@ -1969,10 +2132,100 @@ function BuyBoxEditorModal({
   );
 }
 
+function ManualPropertyModal({
+  draft,
+  saving,
+  onChange,
+  onSave,
+  onClose,
+}: {
+  draft: ManualPropertyDraft;
+  saving: boolean;
+  onChange: (patch: Partial<ManualPropertyDraft>) => void;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const inputClass = 'w-full rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-background px-3 py-2.5 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent';
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4 backdrop-blur-md" role="dialog" aria-modal="true">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[20px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface p-5 shadow-2xl shadow-black/35 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">{t('manualPropertyEyebrow')}</p>
+            <h3 className="mt-1 text-xl font-semibold text-text">{t('manualPropertyTitle')}</h3>
+            <p className="mt-1 text-sm leading-6 text-text-muted">{t('manualPropertyHint')}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('close')}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyName')}</span>
+            <input value={draft.title} onChange={(event) => onChange({ title: event.target.value })} className={inputClass} placeholder={t('manualPropertyNamePlaceholder')} />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyPrice')}</span>
+            <input inputMode="numeric" value={draft.askingPrice} onChange={(event) => onChange({ askingPrice: event.target.value })} className={inputClass} placeholder="3200000" />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyArea')}</span>
+            <input inputMode="numeric" value={draft.areaSqm} onChange={(event) => onChange({ areaSqm: event.target.value })} className={inputClass} placeholder="360" />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyCity')}</span>
+            <input value={draft.city} onChange={(event) => onChange({ city: event.target.value })} className={inputClass} placeholder="Riyadh" />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyDistrict')}</span>
+            <input value={draft.district} onChange={(event) => onChange({ district: event.target.value })} className={inputClass} placeholder="Al Arid" />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyType')}</span>
+            <select value={draft.propertyType} onChange={(event) => onChange({ propertyType: event.target.value })} className={inputClass}>
+              <option value="villa">Villa</option>
+              <option value="apartment">Apartment</option>
+              <option value="duplex">Duplex</option>
+              <option value="land">Land</option>
+              <option value="building">Building</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertySourceUrl')}</span>
+            <input value={draft.sourceUrl} onChange={(event) => onChange({ sourceUrl: event.target.value })} className={inputClass} placeholder="https://..." />
+          </label>
+          <label className="sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyPhotos')}</span>
+            <textarea value={draft.photoUrls} onChange={(event) => onChange({ photoUrls: event.target.value })} rows={3} className={cn(inputClass, 'resize-y')} placeholder={t('manualPropertyPhotosPlaceholder')} />
+          </label>
+          <label className="sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-semibold text-text-soft">{t('manualPropertyNotes')}</span>
+            <textarea value={draft.notes} onChange={(event) => onChange({ notes: event.target.value })} rows={4} className={cn(inputClass, 'resize-y')} placeholder={t('manualPropertyNotesPlaceholder')} />
+          </label>
+        </div>
+
+        <label className="mt-4 flex items-start gap-3 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-3 text-sm text-text-soft">
+          <input className="mt-1 h-4 w-4 accent-accent" type="checkbox" checked={draft.uploadDocs} onChange={(event) => onChange({ uploadDocs: event.target.checked })} />
+          <span>{t('manualPropertyUploadDocs')}</span>
+        </label>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? t('manualPropertySaving') : t('manualPropertyCreate')}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OpportunityRail({
   opportunities,
   selectedId,
   onSelect,
+  onAddManual,
+  onReject,
   emptyText,
   candidateCount,
   pursueCount,
@@ -1981,6 +2234,8 @@ function OpportunityRail({
   opportunities: OpportunityRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onAddManual: () => void;
+  onReject: (id: string) => void;
   emptyText: string;
   candidateCount: number;
   pursueCount: number;
@@ -2001,26 +2256,57 @@ function OpportunityRail({
             </span>
           </div>
         </div>
-        <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+        <button
+          type="button"
+          onClick={onAddManual}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border border-accent/25 bg-accent/10 text-accent transition hover:bg-accent/15"
+          aria-label={t('addManualProperty')}
+          title={t('addManualProperty')}
+        >
+          <Plus className="h-4 w-4" />
+        </button>
       </div>
       <div className={cn(compact ? 'flex gap-3 overflow-x-auto pb-1' : 'space-y-4')}>
         {opportunities.length === 0 ? (
           <p className="text-sm leading-6 text-text-muted">{emptyText}</p>
         ) : (
           opportunities.map((item, index) => (
-            <button
+            <div
               key={item.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               data-testid="acquisition-opportunity-card"
               onClick={() => onSelect(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelect(item.id);
+                }
+              }}
               className={cn(
-                'relative rounded-[28px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(18,26,21,.84),rgba(8,12,10,.90))] dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]',
+                'cursor-pointer',
+                'group relative rounded-[28px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(18,26,21,.84),rgba(8,12,10,.90))] dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]',
                 compact ? 'min-w-[260px] p-4' : 'min-h-[238px] w-full p-6',
                 selectedId === item.id
                   ? 'border-[rgba(var(--accent-rgb),0.52)] bg-[rgba(var(--accent-rgb),0.075)] shadow-[0_0_0_1px_rgba(var(--accent-rgb),.16),0_20px_48px_rgba(var(--accent-rgb),.11)]'
                   : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/70 hover:border-[rgba(var(--accent-rgb),0.26)] hover:bg-surface'
               )}
             >
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onReject(item.id);
+                }}
+                className={cn(
+                  'absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-[10px] border border-warning/20 bg-background/40 text-text-muted transition hover:border-warning/40 hover:text-warning',
+                  compact ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100',
+                )}
+                aria-label={t('rejectProperty')}
+                title={t('rejectProperty')}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
               <div className="flex justify-between gap-3">
                 <div className="min-w-0">
                   <p className={cn('text-text-muted', compact ? 'text-[11px]' : 'text-sm')}>#{index + 1} · {humanize(item.stage) || t('notSet')}</p>
@@ -2050,7 +2336,7 @@ function OpportunityRail({
                 <SignalDot hot={missingInfoList(item.missing_info_json).length === 0} warn={missingInfoList(item.missing_info_json).length > 0} />
                 <SignalDot hot={Boolean(scoreFor(item))} />
               </div>
-            </button>
+            </div>
           ))
         )}
       </div>

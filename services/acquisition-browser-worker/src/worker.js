@@ -70,6 +70,35 @@ async function fetchPageHtml(page, url, timeout) {
   return await page.content();
 }
 
+function normalizeUrlForSuppression(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    url.hash = "";
+    url.searchParams.sort();
+    return url.toString().replace(/\/+$/, "").toLowerCase();
+  } catch {
+    return raw.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
+function suppressedUrlSetForSource(suppressedCandidates = [], source) {
+  return new Set(
+    (Array.isArray(suppressedCandidates) ? suppressedCandidates : [])
+      .filter((candidate) => !candidate.source || candidate.source === source)
+      .map((candidate) => normalizeUrlForSuppression(candidate.source_url))
+      .filter(Boolean),
+  );
+}
+
+function filterSuppressedCards(cards, suppressedCandidates, source) {
+  const suppressedUrls = suppressedUrlSetForSource(suppressedCandidates, source);
+  if (!suppressedUrls.size) return { cards, suppressedCount: 0 };
+  const filtered = cards.filter((card) => !suppressedUrls.has(normalizeUrlForSuppression(card.source_url)));
+  return { cards: filtered, suppressedCount: cards.length - filtered.length };
+}
+
 async function loadSearchPage({ page, adapter, mandate, limits }) {
   const searchUrl = adapter.buildSearchUrl(mandate, limits);
   if (typeof adapter.applySearchFilters !== "function") {
@@ -144,7 +173,7 @@ async function captureRunArtifact({ page, adapterRun, searchRun, kind, url, html
   adapterRun.limited_snapshot_refs_json.push(snapshot);
 }
 
-export async function runAdapter({ adapter, mandate, searchRun, limits, browser }) {
+export async function runAdapter({ adapter, mandate, searchRun, limits, browser, suppressedCandidates = [] }) {
   const startedAt = new Date().toISOString();
   const candidates = [];
   const adapterRun = {
@@ -173,9 +202,16 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser 
       ...(searchPage.warnings.length ? { search_warnings: searchPage.warnings } : {}),
     };
     await captureRunArtifact({ page, adapterRun, searchRun, kind: "search", url: searchUrl, html: searchHtml });
-    const cards = adapter.parseSearchResults(searchHtml, searchUrl)
-      .slice(0, limits.max_detail_pages_per_source);
+    const parsedCards = adapter.parseSearchResults(searchHtml, searchUrl);
+    const suppression = filterSuppressedCards(parsedCards, suppressedCandidates, adapter.source);
+    const cards = suppression.cards.slice(0, limits.max_detail_pages_per_source);
     adapterRun.cards_seen = cards.length;
+    if (suppression.suppressedCount > 0) {
+      adapterRun.error_json = {
+        ...adapterRun.error_json,
+        suppressed_cards: suppression.suppressedCount,
+      };
+    }
     if (cards.length === 0) {
       adapterRun.status = "completed_with_warnings";
       adapterRun.error_json = {
@@ -231,7 +267,7 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser 
   return { candidates, adapter_run: adapterRun };
 }
 
-export async function runSearch({ searchRun, mandate }) {
+export async function runSearch({ searchRun, mandate, suppressedCandidates = [] }) {
   const limits = normalizeLimits(searchRun.limits_json);
   const sources = Array.isArray(searchRun.sources_json) && searchRun.sources_json.length
     ? searchRun.sources_json
@@ -241,7 +277,7 @@ export async function runSearch({ searchRun, mandate }) {
     const candidates = [];
     const adapterRuns = [];
     for (const adapter of selected) {
-      const result = await runAdapter({ adapter, mandate, searchRun, limits, browser });
+      const result = await runAdapter({ adapter, mandate, searchRun, limits, browser, suppressedCandidates });
       candidates.push(...result.candidates);
       adapterRuns.push(result.adapter_run);
     }
@@ -253,6 +289,8 @@ export async function runSearch({ searchRun, mandate }) {
 }
 
 export const __test = {
+  filterSuppressedCards,
   normalizeLimits,
+  normalizeUrlForSuppression,
   resolveAuthStatePath,
 };

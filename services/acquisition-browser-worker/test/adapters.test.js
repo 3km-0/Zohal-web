@@ -114,6 +114,19 @@ test("adapter marks gated marketplace contact as missing access metadata", () =>
   assert.equal(detail.limited_evidence_snapshot_json.contact_access.reason, "broker_contact_gated");
 });
 
+test("suppressed listing URLs are removed before detail fetch", () => {
+  const cards = [
+    { source: "aqar", source_url: "https://sa.aqar.fm/123456?utm=test", title: "Rejected villa" },
+    { source: "aqar", source_url: "https://sa.aqar.fm/789", title: "New villa" },
+  ];
+  const result = workerTest.filterSuppressedCards(cards, [
+    { source: "aqar", source_url: "https://sa.aqar.fm/123456?utm=test#photos", status: "archived" },
+  ], "aqar");
+
+  assert.equal(result.suppressedCount, 1);
+  assert.deepEqual(result.cards.map((card) => card.source_url), ["https://sa.aqar.fm/789"]);
+});
+
 test("runAdapter records bounded artifacts and drift warnings for empty result pages", async () => {
   const artifactDir = await mkdtemp(join(tmpdir(), "zohal-browser-artifacts-"));
   process.env.ACQUISITION_BROWSER_ARTIFACT_DIR = artifactDir;

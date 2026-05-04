@@ -13,6 +13,7 @@ import {
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 import { runRenovationCapexAgent } from "../renovation/agent.js";
+import { assertWorkspaceWriteAccess } from "../renovation/catalog.js";
 import { runAndPersistUnderwriting } from "../underwriting/persistence.js";
 
 const SEARCH_TASK_QUEUE = String(
@@ -923,8 +924,24 @@ export async function upsertCandidateDraft(supabase, draft, context = {}) {
   const source = normalizeText(draft.source).toLowerCase();
   if (!source) throw new Error("Candidate source is required");
   const fingerprint = normalizeText(draft.source_fingerprint) || buildSourceFingerprint(draft);
+  const workspaceId = context.workspaceId || draft.workspace_id || null;
+  if (workspaceId && fingerprint) {
+    const { data: existing, error: existingError } = await supabase
+      .from("acquisition_candidate_opportunities")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("source_fingerprint", fingerprint)
+      .maybeSingle();
+    if (existingError) throw new Error(`Failed to inspect candidate suppression: ${existingError.message}`);
+    if (existing && ["archived", "pass"].includes(existing.status)) {
+      return {
+        ...existing,
+        suppressed_by_workspace: true,
+      };
+    }
+  }
   const payload = {
-    workspace_id: context.workspaceId || draft.workspace_id || null,
+    workspace_id: workspaceId,
     search_run_id: context.searchRunId || draft.search_run_id || null,
     mandate_id: context.mandateId || draft.mandate_id || null,
     investor_id: context.investorId || draft.investor_id || null,
@@ -1007,6 +1024,7 @@ async function promoteCandidate(supabase, candidateId) {
       missing_info_json: (screening.missingInformation || []).map((item) => item.title || item.type || "missing_information"),
       metadata_json: {
         candidate_id: candidate.id,
+        source_fingerprint: candidate.source_fingerprint,
         screening,
         source_url: candidate.source_url,
         source: candidate.source,
@@ -1127,7 +1145,18 @@ async function promoteCandidate(supabase, candidateId) {
   return { candidate: promoted, opportunity };
 }
 
-async function callBrowserWorker({ requestId, searchRun, mandate }) {
+async function fetchSuppressedCandidateSources(supabase, workspaceId) {
+  if (!workspaceId) return [];
+  const { data, error } = await supabase
+    .from("acquisition_candidate_opportunities")
+    .select("id, workspace_id, source, source_url, source_fingerprint, status, title, district, asking_price")
+    .eq("workspace_id", workspaceId)
+    .limit(250);
+  if (error) throw new Error(`Failed to load suppressed candidate sources: ${error.message}`);
+  return (data || []).filter((candidate) => ["archived", "pass"].includes(candidate.status));
+}
+
+async function callBrowserWorker({ requestId, searchRun, mandate, suppressedCandidates = [] }) {
   if (!BROWSER_WORKER_URL) {
     return { candidates: [], adapter_runs: [], skipped: true, reason: "ACQUISITION_BROWSER_WORKER_URL not configured" };
   }
@@ -1137,6 +1166,7 @@ async function callBrowserWorker({ requestId, searchRun, mandate }) {
     body: JSON.stringify({
       search_run: searchRun,
       mandate,
+      suppressed_candidates: suppressedCandidates,
       request_id: requestId,
     }),
   });
@@ -1165,7 +1195,8 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
 
   try {
     const mandate = await fetchMandate(supabase, searchRun.mandate_id);
-    const browserResult = await callBrowserWorker({ requestId, searchRun, mandate });
+    const suppressedCandidates = await fetchSuppressedCandidateSources(supabase, searchRun.workspace_id);
+    const browserResult = await callBrowserWorker({ requestId, searchRun, mandate, suppressedCandidates });
     const candidates = [];
     const adapterRuns = [];
     for (const draft of browserResult.candidates || []) {
@@ -1175,6 +1206,7 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
         mandateId: searchRun.mandate_id,
         investorId: searchRun.user_id,
       });
+      if (candidate.suppressed_by_workspace || ["archived", "pass"].includes(candidate.status)) continue;
       const screened = await screenCandidate(supabase, candidate.id, { requestId });
       candidates.push(screened.candidate);
     }
@@ -1274,15 +1306,18 @@ async function createSearchRun(supabase, mandateId, body) {
 }
 
 async function createListingCandidate(supabase, body) {
+  const submittedAt = new Date().toISOString();
   const candidate = await upsertCandidateDraft(supabase, {
     ...body,
     source: body.source || "user_provided_listing",
     source_url: body.source_url || body.url || null,
     limited_evidence_snapshot_json: body.limited_evidence_snapshot || {
       text: normalizeText(body.text || body.description).slice(0, 1200),
-      submitted_at: new Date().toISOString(),
+      submitted_at: submittedAt,
+      submitted_by_user: Boolean(body.submitted_by_user || body.manual_entry || body.source === "manual_operator"),
+      intake_mode: body.source === "manual_operator" || body.manual_entry ? "manual_user_entry" : "listing_intake",
     },
-    captured_at: new Date().toISOString(),
+    captured_at: submittedAt,
   }, {
     workspaceId: normalizeUuid(body.workspace_id),
     mandateId: normalizeUuid(body.mandate_id),
@@ -1363,21 +1398,58 @@ async function updateOpportunityStage(supabase, opportunityId, body = {}) {
     error.statusCode = 400;
     throw error;
   }
+  const { data: existing, error: loadError } = await supabase
+    .from("acquisition_opportunities")
+    .select("*")
+    .eq("id", opportunityId)
+    .maybeSingle();
+  if (loadError || !existing) {
+    const error = new Error(loadError?.message || "Opportunity not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const shouldSuppress = body.suppress_source !== false && ["archived", "passed"].includes(stage);
+  const metadata = existing.metadata_json && typeof existing.metadata_json === "object"
+    ? { ...existing.metadata_json }
+    : {};
+  if (shouldSuppress) {
+    metadata.suppression = {
+      ...(metadata.suppression || {}),
+      suppressed_by_user: true,
+      suppressed_at: new Date().toISOString(),
+      rejection_reason: normalizeText(body.rejection_reason) || "operator_rejected",
+      candidate_id: metadata.candidate_id || null,
+      source: metadata.source || existing.source_channel || null,
+      source_url: metadata.source_url || null,
+      source_fingerprint: metadata.source_fingerprint || null,
+    };
+  }
   const { data, error } = await supabase
     .from("acquisition_opportunities")
-    .update({ stage })
+    .update({ stage, metadata_json: metadata })
     .eq("id", opportunityId)
     .select("*")
     .single();
   if (error || !data) throw new Error(`Failed to update opportunity stage: ${error?.message || "unknown"}`);
+  if (shouldSuppress && metadata.candidate_id) {
+    await supabase
+      .from("acquisition_candidate_opportunities")
+      .update({
+        status: "archived",
+        screening_decision: "pass",
+      })
+      .eq("id", metadata.candidate_id);
+  }
   await insertEvent(supabase, {
     opportunity_id: data.id,
     workspace_id: data.workspace_id,
     created_by: normalizeUuid(body.user_id),
-    event_type: "stage_updated",
+    event_type: shouldSuppress ? "opportunity_rejected" : "stage_updated",
     event_direction: "operator",
-    body_text: `Stage updated to ${stage}`,
-    event_payload: { stage },
+    body_text: shouldSuppress
+      ? "Property rejected and suppressed for this workspace."
+      : `Stage updated to ${stage}`,
+    event_payload: { stage, suppress_source: shouldSuppress },
   });
   return data;
 }
@@ -2700,6 +2772,50 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
         });
       return sendJson(res, 200, buildEnvelope(requestId, result));
     }
+    if (["intakeListing", "promoteCandidate", "updateOpportunityStage"].includes(route.name)) {
+      const body = await readJsonBody(req);
+      const allowInternal = isInternalCaller(req.headers);
+      let userId = null;
+      if (!allowInternal) {
+        const token = bearerToken(req.headers);
+        if (!token) {
+          const error = new Error("not_authenticated");
+          error.statusCode = 401;
+          throw error;
+        }
+        const verified = await verifySupabaseJwt(token);
+        if (!verified.payload?.sub) {
+          const error = new Error("invalid_user_token");
+          error.statusCode = 401;
+          throw error;
+        }
+        userId = normalizeUuid(verified.payload.sub);
+        body.user_id ||= userId;
+        if (route.name === "intakeListing") {
+          await assertWorkspaceWriteAccess(supabase, normalizeUuid(body.workspace_id), userId);
+        } else if (route.name === "promoteCandidate") {
+          const candidate = await fetchCandidate(supabase, route.candidateId);
+          await assertWorkspaceWriteAccess(supabase, candidate.workspace_id, userId);
+        } else if (route.name === "updateOpportunityStage") {
+          const { data: opportunity, error: opportunityError } = await supabase
+            .from("acquisition_opportunities")
+            .select("id, workspace_id")
+            .eq("id", route.opportunityId)
+            .maybeSingle();
+          if (opportunityError) throw opportunityError;
+          await assertWorkspaceWriteAccess(supabase, opportunity?.workspace_id, userId);
+        }
+      }
+      if (route.name === "intakeListing") {
+        const result = await createListingCandidate(supabase, body);
+        return sendJson(res, 201, buildEnvelope(requestId, result));
+      }
+      if (route.name === "promoteCandidate") {
+        const result = await promoteCandidate(supabase, route.candidateId);
+        return sendJson(res, 201, buildEnvelope(requestId, result));
+      }
+      return sendJson(res, 200, buildEnvelope(requestId, { opportunity: await updateOpportunityStage(supabase, route.opportunityId, body) }));
+    }
     if (route.name === "addDealDeskReportNote") {
       const body = await readJsonBody(req);
       const result = await addDealDeskReportNote(supabase, route.reportId, body);
@@ -2859,6 +2975,7 @@ export const __test = {
   recomputeReadinessProfile,
   resolvePrimaryAcquisitionAction,
   screenCandidate,
+  updateOpportunityStage,
   upsertCandidateDraft,
   updateReadinessProfile,
   verifyReadinessEvidence,
