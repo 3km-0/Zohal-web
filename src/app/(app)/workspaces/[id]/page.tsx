@@ -91,6 +91,9 @@ type MarketObservationRow = {
   min_price_per_sqm?: number | null;
   max_price_per_sqm?: number | null;
   price_per_sqm?: number | null;
+  metric_key?: string | null;
+  metric_unit?: string | null;
+  metric_value?: number | null;
   asking_price?: number | null;
   transaction_price?: number | null;
   transaction_count?: number | null;
@@ -104,6 +107,8 @@ type MarketObservationRow = {
   observed_at?: string | null;
   period_label?: string | null;
   source_confidence_label?: string | null;
+  raw_row_json?: Record<string, unknown> | null;
+  normalized_json?: Record<string, unknown> | null;
 };
 
 type RenovationCapexLine = {
@@ -573,8 +578,51 @@ function marketLocationParts(item: OpportunityRow | null | undefined): string[] 
   ].map(normalizedMarketText).filter(Boolean);
 }
 
+function jsonNumberFromKeys(value: Record<string, unknown> | null | undefined, keys: string[]): number | null {
+  if (!value) return null;
+  const entries = Object.entries(value);
+  for (const key of keys) {
+    const match = entries.find(([entryKey]) => normalizedMarketText(entryKey) === normalizedMarketText(key));
+    const raw = match?.[1];
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    if (typeof raw === 'string') {
+      const parsed = Number(raw.replace(/,/g, '').trim());
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
 function marketObservationBenchmark(row: MarketObservationRow): number | null {
-  return row.median_price_per_sqm ?? row.average_price_per_sqm ?? row.price_per_sqm ?? null;
+  const metricKey = normalizedMarketText(row.metric_key);
+  const metricUnit = normalizedMarketText(row.metric_unit);
+  const metricLooksLikePpsm =
+    row.metric_value !== null &&
+    row.metric_value !== undefined &&
+    (
+      metricKey.includes('price_per_sqm') ||
+      metricKey.includes('average_price') ||
+      metricKey.includes('avg_price') ||
+      metricKey.includes('متوسط سعر المتر') ||
+      metricUnit.includes('sqm') ||
+      metricUnit.includes('m2') ||
+      metricUnit.includes('متر')
+    );
+  const jsonBenchmark = jsonNumberFromKeys(row.normalized_json, [
+    'average_price_per_sqm',
+    'median_price_per_sqm',
+    'price_per_sqm',
+    'avg_price_per_sqm',
+    'متوسط سعر المتر',
+    'متوسط سعر المتر المربع',
+  ]) ?? jsonNumberFromKeys(row.raw_row_json, [
+    'متوسط سعر المتر',
+    'متوسط سعر المتر المربع',
+    'average_price_per_sqm',
+    'median_price_per_sqm',
+    'price_per_sqm',
+  ]);
+  return row.median_price_per_sqm ?? row.average_price_per_sqm ?? row.price_per_sqm ?? (metricLooksLikePpsm ? row.metric_value ?? null : null) ?? jsonBenchmark;
 }
 
 function median(values: number[]): number | null {
@@ -907,6 +955,7 @@ export default function WorkspaceCockpitPage() {
   const [activeModule, setActiveModule] = useState<CockpitModule>('model');
   const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryWorkspaceTab>('overview');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeDrawerTab, setActiveDrawerTab] = useState<'evidence' | 'consent'>('evidence');
   const [drawerWidth, setDrawerWidth] = useState(430);
   const [heroMapOpen, setHeroMapOpen] = useState(false);
   const [scenario, setScenario] = useState<ScenarioState | null>(null);
@@ -1059,7 +1108,7 @@ export default function WorkspaceCockpitPage() {
       const queryText = city || region;
       let query = supabase
         .from('acquisition_market_observations')
-        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label')
+        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label, metric_key, metric_unit, metric_value, raw_row_json, normalized_json')
         .eq('country_code', 'SA')
         .order('observed_at', { ascending: false, nullsFirst: false })
         .limit(36);
@@ -1077,7 +1126,7 @@ export default function WorkspaceCockpitPage() {
 
       const fallback = await supabase
         .from('acquisition_market_observations')
-        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label')
+        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label, metric_key, metric_unit, metric_value, raw_row_json, normalized_json')
         .eq('country_code', 'SA')
         .order('observed_at', { ascending: false, nullsFirst: false })
         .limit(36);
@@ -1165,10 +1214,11 @@ export default function WorkspaceCockpitPage() {
       return;
     }
     if (tab === 'consent') {
-      const sourceParams = new URLSearchParams({ view: 'buyer_vault', intent: 'consent' });
-      router.push(`/workspaces/${encodeURIComponent(workspaceId)}/sources?${sourceParams.toString()}`);
+      setActiveDrawerTab('consent');
+      setDrawerOpen(true);
       return;
     }
+    setActiveDrawerTab('evidence');
     setDrawerOpen(true);
   }, [router, selectedOpportunity?.id, workspaceId]);
 
@@ -1687,13 +1737,7 @@ export default function WorkspaceCockpitPage() {
         {!loading ? (
           <LiveFeedRail
             events={events}
-            latestUpdate={latestUpdate}
             opportunity={selectedOpportunity}
-            missingItems={selectedMissing}
-            openItems={missingCount}
-            confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
-            primaryActionResult={primaryAction.result}
-            hasActionBlocker={hasActionBlocker}
           />
         ) : null}
 
@@ -1701,10 +1745,16 @@ export default function WorkspaceCockpitPage() {
             <WorkspaceCommandDrawer
               workspaceId={workspaceId}
               width={drawerWidth}
+              activeTab={activeDrawerTab}
               documentCount={documentCount}
               opportunity={selectedOpportunity}
               missingItems={selectedMissing}
               claims={claims}
+              readinessProfile={readinessProfile}
+              readinessEvidence={readinessEvidence}
+              sharingGrants={sharingGrants}
+              actionApprovals={actionApprovals}
+              onTabChange={setActiveDrawerTab}
               onClose={() => setDrawerOpen(false)}
               onWidthChange={setDrawerWidth}
             />
@@ -2600,22 +2650,31 @@ function OverviewModule({
   ];
   return (
     <div className="grid items-start gap-5 [@media(min-width:1480px)]:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.28fr)]">
-      <MandateActionsPanel
-        openItems={openItems}
-        confidence={confidence}
-        title={currentBlocker}
-        actionLabel={primaryActionLabel}
-        actionResult={primaryActionResult}
-        blocked={hasActionBlocker}
-        busy={actionBusy}
-        opportunity={opportunity}
-        onPrimaryAction={onPrimaryAction}
-        onAddEvidence={onAddEvidence}
-        onUploadPropertyDocument={onUploadPropertyDocument}
-        onOpenBuyerVault={onOpenBuyerVault}
-        onScheduleVisit={onScheduleVisit}
-        onPassProperty={onPassProperty}
-      />
+      <div className="space-y-5">
+        <MandateActionsPanel
+          openItems={openItems}
+          confidence={confidence}
+          title={currentBlocker}
+          actionLabel={primaryActionLabel}
+          actionResult={primaryActionResult}
+          blocked={hasActionBlocker}
+          busy={actionBusy}
+          opportunity={opportunity}
+          onPrimaryAction={onPrimaryAction}
+          onAddEvidence={onAddEvidence}
+          onUploadPropertyDocument={onUploadPropertyDocument}
+          onOpenBuyerVault={onOpenBuyerVault}
+          onScheduleVisit={onScheduleVisit}
+          onPassProperty={onPassProperty}
+        />
+        <Panel className="p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('locationIntelligence')}</p>
+          <h3 className="mt-1 line-clamp-2 text-lg font-semibold text-text">{locationLabel || t('locationIntelligenceTitle')}</h3>
+          <div className="mt-4">
+            <GoogleLocationMap opportunity={opportunity} minHeight={260} />
+          </div>
+        </Panel>
+      </div>
       <div className="grid gap-5 xl:grid-cols-2 [@media(min-width:1480px)]:grid-cols-1">
         <Panel className="p-5 xl:col-span-2 [@media(min-width:1480px)]:col-span-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2645,7 +2704,7 @@ function OverviewModule({
             </div>
             <TrustPill label={confidence} tone="cyan" />
           </div>
-          <p className="mt-4 text-sm leading-6 text-text-soft">{investmentThesisFor(opportunity, t('heroAnalystThesis'))}</p>
+          <p className="mt-4 text-sm leading-6 text-text-soft">{marketAnalysis.summary}</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <IntelligenceMetric label={t('intelligence.price')} value={facts.price || t('notSet')} />
             <IntelligenceMetric label={t('intelligence.area')} value={facts.area || t('notSet')} />
@@ -2657,9 +2716,6 @@ function OverviewModule({
           <p className="mt-3 text-sm leading-6 text-text-soft">
             {metadataString(opportunity, ['location_note', 'district_note', 'neighborhood_note']) || locationLabel || t('locationIntelligenceEmpty')}
           </p>
-          <div className="mt-5">
-            <GoogleLocationMap opportunity={opportunity} minHeight={260} />
-          </div>
         </Panel>
       </div>
     </div>
@@ -3978,19 +4034,31 @@ function VisualCompanion({
 function WorkspaceCommandDrawer({
   workspaceId,
   width,
+  activeTab,
   documentCount,
   opportunity,
   missingItems,
   claims,
+  readinessProfile,
+  readinessEvidence,
+  sharingGrants,
+  actionApprovals,
+  onTabChange,
   onClose,
   onWidthChange,
 }: {
   workspaceId: string;
   width: number;
+  activeTab: 'evidence' | 'consent';
   documentCount: number;
   opportunity: OpportunityRow | null;
   missingItems: string[];
   claims: AcquisitionClaimRow[];
+  readinessProfile: BuyerReadinessProfileRow | null;
+  readinessEvidence: BuyerReadinessEvidenceRow[];
+  sharingGrants: DocumentSharingGrantRow[];
+  actionApprovals: ExternalActionApprovalRow[];
+  onTabChange: (tab: 'evidence' | 'consent') => void;
   onClose: () => void;
   onWidthChange: (width: number) => void;
 }) {
@@ -4033,7 +4101,7 @@ function WorkspaceCommandDrawer({
         </div>
         <div className="flex items-center justify-between border-b border-[rgba(var(--accent-rgb),0.16)] bg-background px-4 py-3">
           <div>
-            <p className="text-sm font-semibold text-text">{t('evidencePaneTitle')}</p>
+            <p className="text-sm font-semibold text-text">{t('evidenceConsentPaneTitle')}</p>
             <p className="text-xs text-text-muted">{opportunity ? titleFor(opportunity) : t('emptyCockpitTitle')}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('close')}>
@@ -4041,10 +4109,63 @@ function WorkspaceCommandDrawer({
           </Button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
+          <div className="mb-4 grid grid-cols-2 gap-2 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-1">
+            {(['evidence', 'consent'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => onTabChange(tab)}
+                className={cn(
+                  'rounded-[10px] px-3 py-2 text-sm font-semibold transition',
+                  activeTab === tab ? 'bg-accent text-[color:var(--accent-text)]' : 'text-text-soft hover:bg-surface hover:text-text'
+                )}
+              >
+                {t(`drawer.${tab}`)}
+              </button>
+            ))}
+          </div>
+          {activeTab === 'evidence' ? (
+            <DrawerEvidence workspaceId={workspaceId} opportunity={opportunity} claims={claims} documentCount={documentCount} missingItems={missingItems} />
+          ) : (
+            <DrawerConsent
+              profile={readinessProfile}
+              evidence={readinessEvidence}
+              grants={sharingGrants}
+              approvals={actionApprovals}
+            />
+          )}
         </div>
       </div>
     </aside>
+  );
+}
+
+function DrawerConsent({
+  profile,
+  evidence,
+  grants,
+  approvals,
+}: {
+  profile: BuyerReadinessProfileRow | null;
+  evidence: BuyerReadinessEvidenceRow[];
+  grants: DocumentSharingGrantRow[];
+  approvals: ExternalActionApprovalRow[];
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  return (
+    <div className="space-y-4">
+      <Panel className="p-5">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-highlight">{t('drawer.consent')}</p>
+        <h3 className="mt-1 text-xl font-semibold text-text">{t('consentDrawerTitle')}</h3>
+        <p className="mt-2 text-sm leading-6 text-text-soft">{t('consentDrawerBody')}</p>
+      </Panel>
+      <BuyerReadinessPanel
+        profile={profile}
+        evidence={evidence}
+        grants={grants}
+        approvals={approvals}
+      />
+    </div>
   );
 }
 
@@ -4164,98 +4285,23 @@ function DrawerMap({ opportunity }: { opportunity: OpportunityRow | null }) {
 
 function LiveFeedRail({
   events,
-  latestUpdate,
   opportunity,
-  missingItems,
-  openItems,
-  confidence,
-  primaryActionResult,
-  hasActionBlocker,
 }: {
   events: AcquisitionEventRow[];
-  latestUpdate: string | null;
   opportunity: OpportunityRow | null;
-  missingItems: string[];
-  openItems: number;
-  confidence: string;
-  primaryActionResult: string;
-  hasActionBlocker: boolean;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const marketSignal = metadataString(opportunity, ['comps_note', 'market_context', 'valuation_note']);
-  const brokerSignal = metadataString(opportunity, ['broker_note', 'counterparty_note', 'seller_note']);
-  const titleSignal = metadataString(opportunity, ['title_note', 'title_status', 'deed_status']);
   const selectedEvents = events
     .filter((event) => !opportunity?.id || !event.opportunity_id || event.opportunity_id === opportunity.id)
     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-  const eventFeedItems: LiveFeedItem[] = selectedEvents.map((event) => ({
+  const feedItems: LiveFeedItem[] = selectedEvents.map((event) => ({
     id: event.id,
     tag: feedTagForEvent(event.event_type, t),
     title: humanize(event.event_type) || t('feedEventTitle'),
     body: event.body_text || t('emptyLog'),
     time: event.created_at,
     tone: feedToneForEvent(event.event_type),
-  }));
-  const rawFeedItems: Array<LiveFeedItem | null> = [
-    ...eventFeedItems,
-    {
-      id: 'next-action',
-      tag: t('feedTags.next'),
-      title: t('feedNextTitle'),
-      body: primaryActionResult,
-      time: latestUpdate,
-      tone: hasActionBlocker ? 'warn' : 'lime',
-    },
-    missingItems[0] ? {
-      id: 'risk',
-      tag: t('feedTags.risk'),
-      title: t('feedRiskTitle'),
-      body: missingItems[0],
-      time: latestUpdate,
-      tone: 'warn',
-    } : null,
-    {
-      id: 'diligence',
-      tag: openItems > 0 ? t('feedTags.risk') : t('feedTags.clear'),
-      title: t('feedDiligenceTitle'),
-      body: openItems > 0 ? t('feedDiligenceBody', { count: openItems }) : t('feedDiligenceClear'),
-      time: latestUpdate,
-      tone: openItems > 0 ? 'warn' : 'lime',
-    },
-    {
-      id: 'confidence',
-      tag: t('confidence'),
-      title: t('feedConfidenceTitle'),
-      body: t('feedConfidenceBody', { confidence }),
-      time: latestUpdate,
-      tone: 'cyan',
-    },
-    marketSignal ? {
-      id: 'market',
-      tag: t('feedTags.market'),
-      title: t('trust.marketSignal'),
-      body: marketSignal,
-      time: latestUpdate,
-      tone: 'lime',
-    } : null,
-    brokerSignal ? {
-      id: 'broker',
-      tag: t('feedTags.broker'),
-      title: t('trust.counterparty'),
-      body: brokerSignal,
-      time: latestUpdate,
-      tone: 'cyan',
-    } : null,
-    titleSignal ? {
-      id: 'title',
-      tag: t('feedTags.title'),
-      title: t('feedTitleTitle'),
-      body: titleSignal,
-      time: latestUpdate,
-      tone: 'neutral',
-    } : null,
-  ];
-  const feedItems = rawFeedItems.filter((item): item is LiveFeedItem => Boolean(item)).slice(0, 10);
+  })).slice(0, 10);
 
   return (
     <aside className="relative hidden h-full w-[344px] shrink-0 overflow-y-auto border-l border-border bg-[radial-gradient(circle_at_24%_8%,rgba(var(--accent-rgb),.045),transparent_32%),var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur min-[1440px]:block 2xl:w-[388px]">
@@ -4263,9 +4309,8 @@ function LiveFeedRail({
         <Panel className="overflow-hidden rounded-[18px] border-[rgba(var(--accent-rgb),0.12)] p-0">
           <div className="px-5 py-5">
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent">{t('liveFeed')}</p>
-              <h3 className="mt-2 text-2xl font-bold leading-tight text-text">{t('coordinationLog')}</h3>
-              <p className="mt-2 text-sm leading-6 text-text-soft">{t('feedSubtitle')}</p>
+              <h3 className="text-2xl font-bold leading-tight text-text">{t('eventFeed')}</h3>
+              <p className="mt-2 text-sm leading-6 text-text-soft">{t('eventFeedSubtitle')}</p>
             </div>
           </div>
 
