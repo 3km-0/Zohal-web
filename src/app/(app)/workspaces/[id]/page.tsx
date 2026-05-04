@@ -615,6 +615,34 @@ function marketLocationParts(item: OpportunityRow | null | undefined): string[] 
   ].map(normalizedMarketText).filter(Boolean);
 }
 
+function marketQueryTermsForOpportunity(item: OpportunityRow | null | undefined): string[] {
+  const specificTerms = [
+    metadataString(item, ['district', 'neighborhood', 'neighbourhood']),
+  ].filter(Boolean) as string[];
+  const rawTerms = specificTerms.length ? specificTerms : [
+    metadataString(item, ['city']),
+    metadataString(item, ['region', 'province']),
+  ].filter(Boolean) as string[];
+  const aliases: Record<string, string[]> = {
+    riyadh: ['الرياض'],
+    jeddah: ['جدة'],
+    makkah: ['مكة', 'مكة المكرمة'],
+    mecca: ['مكة', 'مكة المكرمة'],
+  };
+  const terms = new Set<string>();
+  for (const term of rawTerms) {
+    const cleaned = `${term}`.trim();
+    if (!cleaned) continue;
+    terms.add(cleaned);
+    for (const alias of aliases[normalizedMarketText(cleaned)] ?? []) terms.add(alias);
+  }
+  return [...terms];
+}
+
+function escapePostgrestPattern(value: string): string {
+  return value.replace(/[,%]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function jsonNumberFromKeys(value: Record<string, unknown> | null | undefined, keys: string[]): number | null {
   if (!value) return null;
   const entries = Object.entries(value);
@@ -693,14 +721,37 @@ function rankMarketObservation(row: MarketObservationRow, parts: string[]): numb
   return parts.reduce((score, part, index) => score + (part && haystack.includes(part) ? 10 - index : 0), 0);
 }
 
+function opportunityMarketType(item: OpportunityRow | null | undefined): string | null {
+  const raw = normalizedMarketText(metadataString(item, ['property_type', 'property_subtype', 'type']));
+  if (!raw) return null;
+  if (raw.includes('villa') || raw.includes('فيلا')) return 'villa';
+  if (raw.includes('apartment') || raw.includes('شقة')) return 'apartment';
+  if (raw.includes('land') || raw.includes('أرض') || raw.includes('ارض')) return 'land';
+  return raw;
+}
+
+function rowMatchesOpportunityType(row: MarketObservationRow, type: string | null): boolean {
+  if (!type) return false;
+  const haystack = normalizedMarketText(`${row.property_type ?? ''} ${row.property_subtype ?? ''}`);
+  if (type === 'villa') return haystack.includes('villa') || haystack.includes('فيلا');
+  if (type === 'apartment') return haystack.includes('apartment') || haystack.includes('شقة');
+  if (type === 'land') return haystack.includes('land') || haystack.includes('أرض') || haystack.includes('ارض');
+  return haystack.includes(type);
+}
+
 function relevantMarketObservations(item: OpportunityRow | null | undefined, observations: MarketObservationRow[]): MarketObservationRow[] {
   if (!observations.length) return [];
   const parts = marketLocationParts(item);
+  const type = opportunityMarketType(item);
   const ranked = observations
-    .map((row) => ({ row, score: rankMarketObservation(row, parts) }))
+    .map((row) => ({
+      row,
+      score: rankMarketObservation(row, parts) + (rowMatchesOpportunityType(row, type) ? 8 : 0),
+    }))
     .sort((a, b) => b.score - a.score);
   const matched = ranked.filter((item) => item.score > 0).map((item) => item.row);
-  return (matched.length ? matched : ranked.map((item) => item.row)).slice(0, 12);
+  const typed = type ? matched.filter((row) => rowMatchesOpportunityType(row, type)) : [];
+  return (typed.length ? typed : matched.length ? matched : ranked.map((item) => item.row)).slice(0, 12);
 }
 
 function marketSampleCount(observations: MarketObservationRow[]): number {
@@ -1155,23 +1206,30 @@ export default function WorkspaceCockpitPage() {
         return;
       }
 
-      const city = metadataString(selectedOpportunity, ['city']);
-      const region = metadataString(selectedOpportunity, ['region', 'province']);
-      const queryText = city || region;
+      const marketTerms = marketQueryTermsForOpportunity(selectedOpportunity);
       let query = supabase
         .from('acquisition_market_observations')
         .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label, metric_key, metric_unit, metric_value, raw_row_json, normalized_json')
         .eq('country_code', 'SA')
         .order('observed_at', { ascending: false, nullsFirst: false })
-        .limit(36);
+        .limit(72);
 
-      if (queryText) {
-        query = query.or(`city.ilike.%${queryText}%,region.ilike.%${queryText}%`);
+      if (marketTerms.length) {
+        const orFilters = marketTerms
+          .map(escapePostgrestPattern)
+          .filter(Boolean)
+          .flatMap((term) => [
+            `city.ilike.%${term}%`,
+            `region.ilike.%${term}%`,
+            `district.ilike.%${term}%`,
+            `neighborhood.ilike.%${term}%`,
+          ]);
+        query = query.or(orFilters.join(','));
       }
 
       const { data } = await query;
       if (cancelled) return;
-      if (data?.length || !queryText) {
+      if (data?.length || !marketTerms.length) {
         setMarketObservations((data ?? []) as MarketObservationRow[]);
         return;
       }
@@ -1181,7 +1239,7 @@ export default function WorkspaceCockpitPage() {
         .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label, metric_key, metric_unit, metric_value, raw_row_json, normalized_json')
         .eq('country_code', 'SA')
         .order('observed_at', { ascending: false, nullsFirst: false })
-        .limit(36);
+        .limit(72);
       if (!cancelled) setMarketObservations((fallback.data ?? []) as MarketObservationRow[]);
     }
 

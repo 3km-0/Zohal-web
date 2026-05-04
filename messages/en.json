@@ -2924,7 +2924,7 @@
     "marketBelow": "below",
     "marketAnalysisPriced": "Listing implies {asking}, {delta}% {direction} the local benchmark of {benchmark} across {sample} matched market records.",
     "marketAnalysisBenchmarkOnly": "Matched local benchmark is {benchmark} across {sample} market records. Add asking price and area to score the spread directly.",
-    "marketAnalysisAskingOnly": "Listing implies {asking}. Sync the Saudi market indicators into the observation table to compare it against neighborhood average SAR/sqm.",
+    "marketAnalysisAskingOnly": "Listing implies {asking}. No matched neighborhood SAR/sqm benchmark was found for this deal yet.",
     "marketAnalysisNeedsFacts": "Market records are available, but this deal still needs price and area facts before Zohal can score the SAR/sqm spread.",
     "areaLarger": "larger",
     "areaSmaller": "smaller",

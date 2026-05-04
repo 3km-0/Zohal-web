@@ -2925,7 +2925,7 @@
     "marketBelow": "أقل من",
     "marketAnalysisPriced": "الإعلان يعادل {asking}، بفارق {delta}% {direction} معيار المنطقة البالغ {benchmark} عبر {sample} سجلات سوقية مطابقة.",
     "marketAnalysisBenchmarkOnly": "معيار المنطقة المطابق هو {benchmark} عبر {sample} سجلات سوقية. أضف السعر والمساحة لقياس الفارق مباشرة.",
-    "marketAnalysisAskingOnly": "الإعلان يعادل {asking}. زامن مؤشرات السوق السعودية إلى جدول الملاحظات لمقارنته بمتوسط سعر المتر في الحي.",
+    "marketAnalysisAskingOnly": "الإعلان يعادل {asking}. لم يتم العثور بعد على مؤشر حي مطابق بالريال لكل متر مربع لهذه الصفقة.",
     "marketAnalysisNeedsFacts": "توجد سجلات سوقية، لكن هذه الصفقة تحتاج السعر والمساحة قبل أن يقيس زحل فارق سعر المتر.",
     "areaLarger": "أكبر من",
     "areaSmaller": "أصغر من",
