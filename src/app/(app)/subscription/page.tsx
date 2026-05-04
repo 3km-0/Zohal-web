@@ -50,6 +50,7 @@ interface BillingProfile {
 
 type BillingPeriod = 'monthly' | 'yearly';
 type BillingSegment = 'individuals' | 'business';
+const PUBLIC_SUBSCRIPTION_TIERS = new Set(['pro']);
 
 const TIER_RANK: Record<string, number> = {
   free: 0,
@@ -117,13 +118,10 @@ export default function SubscriptionPage() {
   );
 
   const individualPlans = useMemo(
-    () => sortPlans(plans.filter((plan) => ['pro', 'premium'].includes(plan.tier))),
+    () => sortPlans(plans.filter((plan) => PUBLIC_SUBSCRIPTION_TIERS.has(plan.tier))),
     [plans]
   );
-  const businessPlans = useMemo(
-    () => sortPlans(plans.filter((plan) => plan.tier === 'team')),
-    [plans]
-  );
+  const businessPlans = useMemo<SubscriptionPlan[]>(() => [], []);
   const visiblePlans = billingSegment === 'individuals' ? individualPlans : businessPlans;
 
   const refreshProfile = useCallback(async () => {
@@ -138,9 +136,6 @@ export default function SubscriptionPage() {
       setSubscriptionExpires(profile.subscription_expires_at);
       setPaymentSource(profile.payment_source || 'apple');
       setCurrentStatus(profile.subscription_status || 'active');
-      if (effectiveTier === 'team') {
-        setBillingSegment('business');
-      }
     }
   }, [supabase, user]);
 
@@ -165,10 +160,7 @@ export default function SubscriptionPage() {
   );
 
   useEffect(() => {
-    const requestedTab = searchParams.get('tab');
-    if (requestedTab === 'business' || requestedTab === 'individuals') {
-      setBillingSegment(requestedTab);
-    }
+    setBillingSegment('individuals');
   }, [searchParams]);
 
   useEffect(() => {
@@ -197,6 +189,7 @@ export default function SubscriptionPage() {
 
   const getPrice = (plan: SubscriptionPlan): number | null => {
     if (plan.tier === 'team') return null;
+    if (plan.tier === 'pro') return billingPeriod === 'monthly' ? 299 : 2999;
     return billingPeriod === 'monthly' ? plan.price_monthly_sar : plan.price_yearly_sar;
   };
 
@@ -275,7 +268,7 @@ export default function SubscriptionPage() {
   // `moyasar-create-subscription`; the legacy MoyasarPaymentForm path bypasses
   // the server and therefore cannot honor coupons safely.
   const canApplyPromo = (plan: SubscriptionPlan) =>
-    ['pro', 'premium'].includes(plan.tier) && subscriptionFlags.v2Enabled;
+    PUBLIC_SUBSCRIPTION_TIERS.has(plan.tier) && subscriptionFlags.v2Enabled;
 
   const tierIcons: Record<string, typeof Crown> = {
     free: Zap,
@@ -480,25 +473,9 @@ export default function SubscriptionPage() {
               ))}
             </div>
 
-            <div className="flex items-center rounded-full border border-border bg-surface p-1">
-              {(['individuals', 'business'] as BillingSegment[]).map((segment) => (
-                <button
-                  key={segment}
-                  onClick={() => setBillingSegment(segment)}
-                  className={cn(
-                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
-                    billingSegment === segment
-                      ? 'bg-accent text-white'
-                      : 'text-text-soft hover:text-text'
-                  )}
-                >
-                  {segment === 'individuals' ? t('individualsTab') : t('businessTab')}
-                </button>
-              ))}
-            </div>
           </div>
 
-          <div className={cn('grid gap-6', billingSegment === 'business' ? 'mx-auto max-w-xl' : 'md:grid-cols-2')}>
+          <div className="mx-auto grid max-w-xl gap-6">
             {visiblePlans.map((plan) => {
               const Icon = tierIcons[plan.tier] || Zap;
               const price = getPrice(plan);

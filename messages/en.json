@@ -1066,7 +1066,7 @@
   },
   "subscriptionPage": {
     "title": "Subscription",
-    "subtitle": "Choose the plan that matches your workload",
+    "subtitle": "One simple subscription for document and acquisition work",
     "currentPlan": "Current Plan",
     "currentTrial": "Current Trial",
     "trialBadge": "Trial",
@@ -1099,7 +1099,7 @@
     "yearlySubscription": "Yearly subscription",
     "processingPayment": "Processing your payment...",
     "processingTrial": "Activating your trial...",
-    "teamTrialTitle": "Contact us about Team",
+    "teamTrialTitle": "Contact us",
     "teamTrialSubtitle": "Tell us about your portfolio and operating model.",
     "hostedCheckoutNote": "You will be redirected to Moyasar's secure hosted checkout to complete your subscription.",
     "continueToCheckout": "Continue to Secure Checkout",
@@ -1109,7 +1109,7 @@
     "teamTrialFeature": "Contact us for Team onboarding",
     "promoCodeLabel": "Promotional code",
     "promoCodePlaceholder": "Enter code",
-    "promoCheckoutHint": "If valid, the discount is applied in Moyasar checkout for Core and Investor Pro web subscriptions.",
+    "promoCheckoutHint": "If valid, the discount is applied in Moyasar checkout.",
     "promoTrialHint": "If valid, the discount will be saved now and applied when Team billing starts after the trial.",
     "close": "Close",
     "promoErrors": {
@@ -2462,7 +2462,7 @@
           {
             "id": "pro",
             "name": "Starter Workspace",
-            "price": "SAR 299 / month",
+            "price": "SAR 299 / month or SAR 2,999 / year",
             "bullets": [
               "Best for evaluating one live property with discipline",
               "One acquisition workspace for mandate fit, evidence, scenarios, diligence gaps, and next steps",

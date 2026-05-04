@@ -1154,11 +1154,10 @@ export function Homepage() {
   const pricingTabs = useMemo(
     () => [
       { id: 'professional', label: content.pricing.toggleLabels[0] },
-      { id: 'enterprise', label: content.pricing.toggleLabels[1] },
     ],
     [content.pricing.toggleLabels]
   );
-  const pricingCards = pricingLane === 'professional' ? content.pricing.professional : content.pricing.enterprise;
+  const pricingCards = content.pricing.professional.filter((plan) => plan.id === 'pro');
   const proofIcons = [ShieldCheck, Languages, Scale];
 
   return (
@@ -1389,18 +1388,20 @@ export function Homepage() {
             </div>
           </Reveal>
 
-          <Reveal className="mt-8" delayMs={90}>
-            <PillTabs
-              tabs={pricingTabs}
-              activeId={pricingLane}
-              onChange={(id) => {
-                setPricingLane(id as 'professional' | 'enterprise');
-                trackMarketingEvent('pricing_toggle_change', { pricing_lane: id });
-              }}
-            />
-          </Reveal>
+          {pricingTabs.length > 1 ? (
+            <Reveal className="mt-8" delayMs={90}>
+              <PillTabs
+                tabs={pricingTabs}
+                activeId={pricingLane}
+                onChange={(id) => {
+                  setPricingLane(id as 'professional' | 'enterprise');
+                  trackMarketingEvent('pricing_toggle_change', { pricing_lane: id });
+                }}
+              />
+            </Reveal>
+          ) : null}
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <div className="mt-8 grid max-w-xl gap-4">
             {pricingCards.map((p, index) => (
               <Reveal key={p.id} delayMs={index * 80}>
                 <div

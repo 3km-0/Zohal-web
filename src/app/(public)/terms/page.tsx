@@ -94,20 +94,13 @@ export default function TermsPage() {
 
         <Section icon="🔄" title="3. Subscription Terms">
           <p>
-            Zohal offers auto-renewable subscription plans that provide access to paid features:
+            Zohal offers one public auto-renewable subscription that provides access to paid
+            features:
           </p>
           <ul className="list-disc pl-6 my-4 space-y-2">
             <li>
               <strong className="text-text">Zohal Core:</strong> SAR 299/month or SAR 2,999/year
               for 1 workspace, 1 user, and core document tools
-            </li>
-            <li>
-              <strong className="text-text">Zohal Investor Pro:</strong> SAR 749/month or SAR
-              7,490/year for 3 workspaces, 2 users, mandate broadcasts, and 2 vendor visits
-            </li>
-            <li>
-              <strong className="text-text">Zohal Team:</strong> SAR 24,000/year starting package,
-              with pricing hidden in-product behind a contact-us flow.
             </li>
           </ul>
           <p>
